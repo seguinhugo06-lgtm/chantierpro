@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function App() {
   const [isAuth, setIsAuth] = useState(false);
@@ -6,16 +6,16 @@ export default function App() {
   const [clients, setClients] = useState([]);
   const [devis, setDevis] = useState([]);
   
-  // CLIENT FORM STATE
+  // CLIENT STATE
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
-  const [clientForm, setClientForm] = useState({ 
+  const [clientFormData, setClientFormData] = useState({ 
     nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '' 
   });
   
-  // DEVIS FORM STATE
+  // DEVIS STATE
   const [showDevisForm, setShowDevisForm] = useState(false);
-  const [devisForm, setDevisForm] = useState({ 
+  const [devisFormData, setDevisFormData] = useState({ 
     clientId: '', 
     date: new Date().toISOString().split('T')[0], 
     type: 'devis', 
@@ -25,7 +25,7 @@ export default function App() {
     description: '', quantite: 1, prixUnitaire: 0 
   });
   
-  // LOAD FROM LOCALSTORAGE
+  // LOAD/SAVE LOCALSTORAGE
   useEffect(() => {
     const savedClients = localStorage.getItem('cp_clients');
     const savedDevis = localStorage.getItem('cp_devis');
@@ -33,13 +33,12 @@ export default function App() {
     if (savedDevis) setDevis(JSON.parse(savedDevis));
   }, []);
   
-  // SAVE TO LOCALSTORAGE
   useEffect(() => { 
-    if (isAuth && clients.length >= 0) localStorage.setItem('cp_clients', JSON.stringify(clients)); 
+    if (isAuth) localStorage.setItem('cp_clients', JSON.stringify(clients)); 
   }, [clients, isAuth]);
   
   useEffect(() => { 
-    if (isAuth && devis.length >= 0) localStorage.setItem('cp_devis', JSON.stringify(devis)); 
+    if (isAuth) localStorage.setItem('cp_devis', JSON.stringify(devis)); 
   }, [devis, isAuth]);
   
   // CLIENT HANDLERS
@@ -47,19 +46,19 @@ export default function App() {
     e.preventDefault();
     if (editingClient) {
       setClients(clients.map(c => 
-        c.id === editingClient.id ? { ...clientForm, id: c.id } : c
+        c.id === editingClient.id ? { ...clientFormData, id: c.id } : c
       ));
     } else {
-      setClients([...clients, { ...clientForm, id: Date.now() }]);
+      setClients([...clients, { ...clientFormData, id: Date.now() }]);
     }
-    setClientForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '' });
+    setClientFormData({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '' });
     setEditingClient(null);
     setShowClientForm(false);
   };
   
   const handleClientEdit = (client) => {
     setEditingClient(client);
-    setClientForm(client);
+    setClientFormData(client);
     setShowClientForm(true);
   };
   
@@ -71,7 +70,7 @@ export default function App() {
   
   const handleCancelClientForm = () => {
     setShowClientForm(false);
-    setClientForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '' });
+    setClientFormData({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '' });
     setEditingClient(null);
   };
   
@@ -82,7 +81,7 @@ export default function App() {
       return;
     }
     const montant = currentLigne.quantite * currentLigne.prixUnitaire;
-    setDevisForm(prev => ({ 
+    setDevisFormData(prev => ({ 
       ...prev, 
       lignes: [...prev.lignes, { ...currentLigne, montant }] 
     }));
@@ -90,7 +89,7 @@ export default function App() {
   };
   
   const supprimerLigne = (index) => {
-    setDevisForm(prev => ({ 
+    setDevisFormData(prev => ({ 
       ...prev, 
       lignes: prev.lignes.filter((_, i) => i !== index) 
     }));
@@ -104,22 +103,22 @@ export default function App() {
   };
   
   const handleDevisSubmit = () => {
-    if (!devisForm.clientId || devisForm.lignes.length === 0) {
+    if (!devisFormData.clientId || devisFormData.lignes.length === 0) {
       alert('Sélectionnez un client et ajoutez au moins une ligne');
       return;
     }
-    const totaux = calculerTotaux(devisForm.lignes);
-    const numero = `${devisForm.type === 'devis' ? 'DEV' : 'FACT'}-${new Date().getFullYear()}-${String(devis.length + 1).padStart(3, '0')}`;
+    const totaux = calculerTotaux(devisFormData.lignes);
+    const numero = \`\${devisFormData.type === 'devis' ? 'DEV' : 'FACT'}-\${new Date().getFullYear()}-\${String(devis.length + 1).padStart(3, '0')}\`;
     const nouveauDevis = {
       id: Date.now(),
       numero,
-      ...devisForm,
+      ...devisFormData,
       ...totaux,
       statut: 'brouillon',
       createdAt: new Date().toISOString()
     };
     setDevis([...devis, nouveauDevis]);
-    setDevisForm({ 
+    setDevisFormData({ 
       clientId: '', 
       date: new Date().toISOString().split('T')[0], 
       type: 'devis', 
@@ -131,7 +130,7 @@ export default function App() {
   const transformerEnFacture = (devisId) => {
     const d = devis.find(x => x.id === devisId);
     if (!d) return;
-    const numero = `FACT-${new Date().getFullYear()}-${String(devis.filter(x => x.type === 'facture').length + 1).padStart(3, '0')}`;
+    const numero = \`FACT-\${new Date().getFullYear()}-\${String(devis.filter(x => x.type === 'facture').length + 1).padStart(3, '0')}\`;
     const facture = { 
       ...d, 
       id: Date.now(), 
@@ -149,7 +148,6 @@ export default function App() {
     setDevis(devis.map(d => d.id === id ? { ...d, statut: nouveauStatut } : d));
   };
   
-  // RENDER AUTH SCREEN
   if (!isAuth) {
     return (
       <div style={styles.authContainer}>
@@ -167,23 +165,20 @@ export default function App() {
     );
   }
   
-  // RENDER MAIN APP
   return (
     <div style={styles.app}>
       <Header onLogout={() => setIsAuth(false)} />
       <div style={styles.layout}>
         <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
         <main style={styles.main}>
-          {currentPage === 'dashboard' && (
-            <DashboardPage clients={clients} devis={devis} />
-          )}
+          {currentPage === 'dashboard' && <DashboardPage clients={clients} devis={devis} />}
           {currentPage === 'clients' && (
             <ClientsPage 
               clients={clients}
-              showClientForm={showClientForm}
-              setShowClientForm={setShowClientForm}
-              clientForm={clientForm}
-              setClientForm={setClientForm}
+              showForm={showClientForm}
+              setShowForm={setShowClientForm}
+              formData={clientFormData}
+              setFormData={setClientFormData}
               editingClient={editingClient}
               onSubmit={handleClientSubmit}
               onCancel={handleCancelClientForm}
@@ -195,10 +190,10 @@ export default function App() {
             <DevisPage 
               clients={clients}
               devis={devis}
-              showDevisForm={showDevisForm}
-              setShowDevisForm={setShowDevisForm}
-              devisForm={devisForm}
-              setDevisForm={setDevisForm}
+              showForm={showDevisForm}
+              setShowForm={setShowDevisForm}
+              formData={devisFormData}
+              setFormData={setDevisFormData}
               currentLigne={currentLigne}
               setCurrentLigne={setCurrentLigne}
               onAddLigne={ajouterLigne}
@@ -216,10 +211,6 @@ export default function App() {
   );
 }
 
-// ============================================
-// COMPONENTS
-// ============================================
-
 function Header({ onLogout }) {
   return (
     <header style={styles.header}>
@@ -231,16 +222,14 @@ function Header({ onLogout }) {
             <p style={styles.headerSubtitle}>Mon Entreprise BTP</p>
           </div>
         </div>
-        <button onClick={onLogout} style={styles.logoutButton}>
-          Déconnexion
-        </button>
+        <button onClick={onLogout} style={styles.logoutButton}>Déconnexion</button>
       </div>
     </header>
   );
 }
 
 function Sidebar({ currentPage, setCurrentPage }) {
-  const menuItems = [
+  const items = [
     { id: 'dashboard', icon: '📊', label: 'Tableau de bord' },
     { id: 'clients', icon: '👥', label: 'Clients' },
     { id: 'devis', icon: '📄', label: 'Devis & Factures' },
@@ -250,14 +239,11 @@ function Sidebar({ currentPage, setCurrentPage }) {
   return (
     <aside style={styles.sidebar}>
       <nav>
-        {menuItems.map(item => (
+        {items.map(item => (
           <button 
             key={item.id}
             onClick={() => setCurrentPage(item.id)}
-            style={{
-              ...styles.navButton,
-              ...(currentPage === item.id ? styles.navButtonActive : {})
-            }}
+            style={{...styles.navButton, ...(currentPage === item.id ? styles.navButtonActive : {})}}
           >
             <span style={styles.navIcon}>{item.icon}</span>
             {item.label}
@@ -271,12 +257,8 @@ function Sidebar({ currentPage, setCurrentPage }) {
 function DashboardPage({ clients, devis }) {
   const stats = {
     devisEnCours: devis.filter(d => d.statut === 'envoye').length,
-    caEnAttente: devis.filter(d => d.statut === 'envoye')
-      .reduce((s, d) => s + (d.totalTTC || 0), 0),
-    caMois: devis.filter(d => 
-      d.type === 'facture' && 
-      new Date(d.date).getMonth() === new Date().getMonth()
-    ).reduce((s, d) => s + (d.totalTTC || 0), 0),
+    caEnAttente: devis.filter(d => d.statut === 'envoye').reduce((s, d) => s + (d.totalTTC || 0), 0),
+    caMois: devis.filter(d => d.type === 'facture' && new Date(d.date).getMonth() === new Date().getMonth()).reduce((s, d) => s + (d.totalTTC || 0), 0),
     nbClients: clients.length,
     nbDocs: devis.length
   };
@@ -285,190 +267,119 @@ function DashboardPage({ clients, devis }) {
     <div>
       <h2 style={styles.pageTitle}>Tableau de bord</h2>
       <div style={styles.statsGrid}>
-        <StatCard 
-          icon="⏱️" 
-          label="Devis en cours" 
-          value={stats.devisEnCours}
-          subtext={`${stats.caEnAttente.toFixed(0)}€ en attente`}
-          color="#3b82f6"
-        />
-        <StatCard 
-          icon="💰" 
-          label="CA du mois" 
-          value={`${stats.caMois.toFixed(0)}€`}
-          subtext="+12% vs mois dernier"
-          color="#10b981"
-        />
-        <StatCard 
-          icon="👥" 
-          label="Clients" 
-          value={stats.nbClients}
-          subtext="clients actifs"
-          color="#8b5cf6"
-        />
-        <StatCard 
-          icon="📄" 
-          label="Documents" 
-          value={stats.nbDocs}
-          subtext="devis & factures"
-          color="#f97316"
-        />
+        {[
+          { icon: '⏱️', label: 'Devis en cours', value: stats.devisEnCours, subtext: \`\${stats.caEnAttente.toFixed(0)}€ en attente\`, color: '#3b82f6' },
+          { icon: '💰', label: 'CA du mois', value: \`\${stats.caMois.toFixed(0)}€\`, subtext: '+12% vs mois dernier', color: '#10b981' },
+          { icon: '👥', label: 'Clients', value: stats.nbClients, subtext: 'clients actifs', color: '#8b5cf6' },
+          { icon: '📄', label: 'Documents', value: stats.nbDocs, subtext: 'devis & factures', color: '#f97316' }
+        ].map((s, i) => (
+          <div key={i} style={styles.statCard}>
+            <div style={styles.statIcon}>{s.icon}</div>
+            <p style={styles.statLabel}>{s.label}</p>
+            <p style={styles.statValue}>{s.value}</p>
+            <p style={{...styles.statSubtext, color: s.color}}>{s.subtext}</p>
+          </div>
+        ))}
       </div>
       <div style={styles.successBanner}>
         <h3 style={styles.successTitle}>🎉 Application Fonctionnelle !</h3>
-        <p style={styles.successText}>
-          Gérez vos clients, créez des devis et suivez vos factures
-        </p>
+        <p style={styles.successText}>Gérez vos clients, créez des devis et suivez vos factures</p>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, subtext, color }) {
-  return (
-    <div style={styles.statCard}>
-      <div style={styles.statIcon}>{icon}</div>
-      <p style={styles.statLabel}>{label}</p>
-      <p style={styles.statValue}>{value}</p>
-      <p style={{ ...styles.statSubtext, color }}>{subtext}</p>
-    </div>
-  );
-}
-
-// ============================================
-// CLIENT FORM - COMPOSANT MÉMORISÉ (FIX BUG)
-// ============================================
-
-const ClientFormMemo = memo(({ 
-  clientForm, 
-  setClientForm, 
-  onSubmit, 
-  onCancel, 
-  editingClient 
-}) => {
+function ClientsPage({ clients, showForm, setShowForm, formData, setFormData, editingClient, onSubmit, onCancel, onEdit, onDelete }) {
   
-  // Handler optimisé qui ne recréé pas de fonction à chaque render
-  const handleChange = (field) => (e) => {
-    setClientForm(prev => ({ ...prev, [field]: e.target.value }));
+  // FONCTION HANDLER OPTIMISÉE - KEY FIX
+  const updateField = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
-
-  return (
-    <div style={formStyles.container}>
-      <form onSubmit={onSubmit}>
-        <div style={formStyles.formRow}>
-          <div>
-            <label style={formStyles.label}>Nom *</label>
-            <input
-              type="text"
-              value={clientForm.nom}
-              onChange={handleChange('nom')}
-              required
-              style={formStyles.input}
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <label style={formStyles.label}>Prénom</label>
-            <input
-              type="text"
-              value={clientForm.prenom}
-              onChange={handleChange('prenom')}
-              style={formStyles.input}
-              autoComplete="off"
-            />
-          </div>
-        </div>
-
-        <div style={formStyles.formGroup}>
-          <label style={formStyles.label}>Entreprise</label>
-          <input
-            type="text"
-            value={clientForm.entreprise}
-            onChange={handleChange('entreprise')}
-            style={formStyles.input}
-            autoComplete="off"
-          />
-        </div>
-
-        <div style={formStyles.formRow}>
-          <div>
-            <label style={formStyles.label}>Email *</label>
-            <input
-              type="email"
-              value={clientForm.email}
-              onChange={handleChange('email')}
-              required
-              style={formStyles.input}
-              autoComplete="off"
-            />
-          </div>
-          <div>
-            <label style={formStyles.label}>Téléphone *</label>
-            <input
-              type="tel"
-              value={clientForm.telephone}
-              onChange={handleChange('telephone')}
-              required
-              style={formStyles.input}
-              autoComplete="off"
-            />
-          </div>
-        </div>
-
-        <div style={formStyles.formGroup}>
-          <label style={formStyles.label}>Adresse *</label>
-          <textarea
-            value={clientForm.adresse}
-            onChange={handleChange('adresse')}
-            required
-            rows={3}
-            style={formStyles.textarea}
-          />
-        </div>
-
-        <div style={formStyles.buttonRow}>
-          <button type="button" onClick={onCancel} style={formStyles.cancelButton}>
-            Annuler
-          </button>
-          <button type="submit" style={formStyles.submitButton}>
-            {editingClient ? 'Modifier' : 'Créer'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-});
-
-ClientFormMemo.displayName = 'ClientFormMemo';
-
-function ClientsPage({ 
-  clients, 
-  showClientForm, 
-  setShowClientForm, 
-  clientForm,
-  setClientForm,
-  editingClient,
-  onSubmit,
-  onCancel,
-  onEdit,
-  onDelete
-}) {
-  if (showClientForm) {
+  
+  if (showForm) {
     return (
       <div>
-        <button onClick={onCancel} style={styles.backButton}>
-          ← Retour
-        </button>
-        <h2 style={styles.pageTitle}>
-          {editingClient ? 'Modifier' : 'Nouveau'} client
-        </h2>
-        <ClientFormMemo
-          clientForm={clientForm}
-          setClientForm={setClientForm}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-          editingClient={editingClient}
-        />
+        <button onClick={onCancel} style={styles.backButton}>← Retour</button>
+        <h2 style={styles.pageTitle}>{editingClient ? 'Modifier' : 'Nouveau'} client</h2>
+        <div style={formStyles.container}>
+          <form onSubmit={onSubmit}>
+            <div style={formStyles.row}>
+              <div style={formStyles.field}>
+                <label style={formStyles.label}>Nom *</label>
+                <input
+                  type="text"
+                  value={formData.nom}
+                  onChange={(e) => updateField('nom', e.target.value)}
+                  required
+                  style={formStyles.input}
+                  autoComplete="off"
+                />
+              </div>
+              <div style={formStyles.field}>
+                <label style={formStyles.label}>Prénom</label>
+                <input
+                  type="text"
+                  value={formData.prenom}
+                  onChange={(e) => updateField('prenom', e.target.value)}
+                  style={formStyles.input}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Entreprise</label>
+              <input
+                type="text"
+                value={formData.entreprise}
+                onChange={(e) => updateField('entreprise', e.target.value)}
+                style={formStyles.input}
+                autoComplete="off"
+              />
+            </div>
+            
+            <div style={formStyles.row}>
+              <div style={formStyles.field}>
+                <label style={formStyles.label}>Email *</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  required
+                  style={formStyles.input}
+                  autoComplete="off"
+                />
+              </div>
+              <div style={formStyles.field}>
+                <label style={formStyles.label}>Téléphone *</label>
+                <input
+                  type="tel"
+                  value={formData.telephone}
+                  onChange={(e) => updateField('telephone', e.target.value)}
+                  required
+                  style={formStyles.input}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Adresse *</label>
+              <textarea
+                value={formData.adresse}
+                onChange={(e) => updateField('adresse', e.target.value)}
+                required
+                rows={3}
+                style={formStyles.textarea}
+              />
+            </div>
+            
+            <div style={formStyles.buttonRow}>
+              <button type="button" onClick={onCancel} style={formStyles.cancelBtn}>Annuler</button>
+              <button type="submit" style={formStyles.submitBtn}>{editingClient ? 'Modifier' : 'Créer'}</button>
+            </div>
+          </form>
+        </div>
       </div>
     );
   }
@@ -477,26 +388,28 @@ function ClientsPage({
     <div>
       <div style={styles.pageHeader}>
         <h2 style={styles.pageTitle}>Clients</h2>
-        <button onClick={() => setShowClientForm(true)} style={styles.primaryButton}>
-          + Nouveau
-        </button>
+        <button onClick={() => setShowForm(true)} style={styles.primaryButton}>+ Nouveau</button>
       </div>
       {clients.length === 0 ? (
-        <EmptyState
-          icon="👥"
-          title="Aucun client"
-          buttonText="Ajouter un client"
-          onButtonClick={() => setShowClientForm(true)}
-        />
+        <EmptyState icon="👥" title="Aucun client" buttonText="Ajouter un client" onButtonClick={() => setShowForm(true)} />
       ) : (
         <div style={styles.clientsGrid}>
           {clients.map(c => (
-            <ClientCard
-              key={c.id}
-              client={c}
-              onEdit={() => onEdit(c)}
-              onDelete={() => onDelete(c.id)}
-            />
+            <div key={c.id} style={styles.clientCard}>
+              <div style={styles.clientHeader}>
+                <div style={styles.clientAvatar}>{c.nom[0]}{c.prenom?.[0] || ''}</div>
+                <div style={styles.clientActions}>
+                  <button onClick={() => onEdit(c)} style={styles.iconButton}>✏️</button>
+                  <button onClick={() => onDelete(c.id)} style={styles.deleteIconButton}>🗑️</button>
+                </div>
+              </div>
+              <h3 style={styles.clientName}>{c.nom} {c.prenom}</h3>
+              {c.entreprise && <p style={styles.clientCompany}>{c.entreprise}</p>}
+              <div style={styles.clientInfo}>
+                <p>📧 {c.email}</p>
+                <p>📱 {c.telephone}</p>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -504,153 +417,68 @@ function ClientsPage({
   );
 }
 
-function ClientCard({ client, onEdit, onDelete }) {
-  return (
-    <div style={styles.clientCard}>
-      <div style={styles.clientHeader}>
-        <div style={styles.clientAvatar}>
-          {client.nom[0]}{client.prenom?.[0] || ''}
-        </div>
-        <div style={styles.clientActions}>
-          <button onClick={onEdit} style={styles.iconButton}>✏️</button>
-          <button onClick={onDelete} style={styles.deleteIconButton}>🗑️</button>
-        </div>
-      </div>
-      <h3 style={styles.clientName}>{client.nom} {client.prenom}</h3>
-      {client.entreprise && <p style={styles.clientCompany}>{client.entreprise}</p>}
-      <div style={styles.clientInfo}>
-        <p>📧 {client.email}</p>
-        <p>📱 {client.telephone}</p>
-      </div>
-    </div>
-  );
-}
-
-function DevisPage({
-  clients,
-  devis,
-  showDevisForm,
-  setShowDevisForm,
-  devisForm,
-  setDevisForm,
-  currentLigne,
-  setCurrentLigne,
-  onAddLigne,
-  onDeleteLigne,
-  onSubmit,
-  calculerTotaux,
-  transformerEnFacture,
-  changerStatut
-}) {
-  if (showDevisForm) {
-    const totaux = calculerTotaux(devisForm.lignes);
-    const canSubmit = devisForm.clientId && devisForm.lignes.length > 0;
+function DevisPage({ clients, devis, showForm, setShowForm, formData, setFormData, currentLigne, setCurrentLigne, onAddLigne, onDeleteLigne, onSubmit, calculerTotaux, transformerEnFacture, changerStatut }) {
+  
+  const updateDevisField = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const updateLigneField = (field, value) => {
+    setCurrentLigne(prev => ({ ...prev, [field]: value }));
+  };
+  
+  if (showForm) {
+    const totaux = calculerTotaux(formData.lignes);
+    const canSubmit = formData.clientId && formData.lignes.length > 0;
 
     return (
       <div>
-        <button 
-          onClick={() => {
-            setShowDevisForm(false);
-            setDevisForm({ 
-              clientId: '', 
-              date: new Date().toISOString().split('T')[0], 
-              type: 'devis', 
-              lignes: [] 
-            });
-          }} 
-          style={styles.backButton}
-        >
-          ← Retour
-        </button>
+        <button onClick={() => { setShowForm(false); setFormData({ clientId: '', date: new Date().toISOString().split('T')[0], type: 'devis', lignes: [] }); }} style={styles.backButton}>← Retour</button>
         <h2 style={styles.pageTitle}>Nouveau devis</h2>
         <div style={formStyles.container}>
-          <div style={formStyles.formRow}>
-            <div style={formStyles.formGroup}>
+          <div style={formStyles.row}>
+            <div style={formStyles.field}>
               <label style={formStyles.label}>Client *</label>
-              <select 
-                value={devisForm.clientId} 
-                onChange={(e) => setDevisForm(prev => ({...prev, clientId: e.target.value}))}
-                required 
-                style={formStyles.input}
-              >
+              <select value={formData.clientId} onChange={(e) => updateDevisField('clientId', e.target.value)} required style={formStyles.input}>
                 <option value="">Sélectionner...</option>
-                {clients.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.nom} {c.prenom}
-                  </option>
-                ))}
+                {clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}
               </select>
             </div>
-            <div style={formStyles.formGroup}>
+            <div style={formStyles.field}>
               <label style={formStyles.label}>Date</label>
-              <input 
-                type="date" 
-                value={devisForm.date} 
-                onChange={(e) => setDevisForm(prev => ({...prev, date: e.target.value}))}
-                style={formStyles.input} 
-              />
+              <input type="date" value={formData.date} onChange={(e) => updateDevisField('date', e.target.value)} style={formStyles.input} />
             </div>
           </div>
 
           <h3 style={formStyles.sectionTitle}>Lignes du devis</h3>
           <div style={formStyles.ligneForm}>
-            <input
-              placeholder="Description"
-              value={currentLigne.description}
-              onChange={(e) => setCurrentLigne(prev => ({...prev, description: e.target.value}))}
-              style={formStyles.input}
-            />
-            <input
-              type="number"
-              placeholder="Qté"
-              value={currentLigne.quantite}
-              onChange={(e) => setCurrentLigne(prev => ({...prev, quantite: parseFloat(e.target.value) || 1}))}
-              min="1"
-              style={formStyles.input}
-            />
-            <input
-              type="number"
-              placeholder="Prix HT"
-              step="0.01"
-              value={currentLigne.prixUnitaire}
-              onChange={(e) => setCurrentLigne(prev => ({...prev, prixUnitaire: parseFloat(e.target.value) || 0}))}
-              min="0"
-              style={formStyles.input}
-            />
-            <button onClick={onAddLigne} type="button" style={formStyles.addButton}>
-              +
-            </button>
+            <input placeholder="Description" value={currentLigne.description} onChange={(e) => updateLigneField('description', e.target.value)} style={formStyles.input} />
+            <input type="number" placeholder="Qté" value={currentLigne.quantite} onChange={(e) => updateLigneField('quantite', parseFloat(e.target.value) || 1)} min="1" style={formStyles.input} />
+            <input type="number" placeholder="Prix HT" step="0.01" value={currentLigne.prixUnitaire} onChange={(e) => updateLigneField('prixUnitaire', parseFloat(e.target.value) || 0)} min="0" style={formStyles.input} />
+            <button onClick={onAddLigne} type="button" style={formStyles.addButton}>+</button>
           </div>
 
-          {devisForm.lignes.length > 0 && (
+          {formData.lignes.length > 0 && (
             <div>
               <table style={formStyles.table}>
                 <thead style={formStyles.tableHead}>
                   <tr>
                     <th style={formStyles.th}>Description</th>
-                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Qté</th>
-                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Prix HT</th>
-                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Total</th>
-                    <th style={{ ...formStyles.th, width: '50px' }}></th>
+                    <th style={{...formStyles.th, textAlign: 'right'}}>Qté</th>
+                    <th style={{...formStyles.th, textAlign: 'right'}}>Prix HT</th>
+                    <th style={{...formStyles.th, textAlign: 'right'}}>Total</th>
+                    <th style={{...formStyles.th, width: '50px'}}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {devisForm.lignes.map((ligne, index) => (
+                  {formData.lignes.map((ligne, index) => (
                     <tr key={index}>
                       <td style={formStyles.td}>{ligne.description}</td>
-                      <td style={{ ...formStyles.td, textAlign: 'right' }}>{ligne.quantite}</td>
-                      <td style={{ ...formStyles.td, textAlign: 'right' }}>{ligne.prixUnitaire.toFixed(2)}€</td>
-                      <td style={{ ...formStyles.td, textAlign: 'right', fontWeight: '600' }}>
-                        {ligne.montant.toFixed(2)}€
-                      </td>
-                      <td style={{ ...formStyles.td, textAlign: 'center' }}>
-                        <button 
-                          onClick={() => onDeleteLigne(index)} 
-                          type="button" 
-                          style={formStyles.deleteButton}
-                        >
-                          🗑️
-                        </button>
+                      <td style={{...formStyles.td, textAlign: 'right'}}>{ligne.quantite}</td>
+                      <td style={{...formStyles.td, textAlign: 'right'}}>{ligne.prixUnitaire.toFixed(2)}€</td>
+                      <td style={{...formStyles.td, textAlign: 'right', fontWeight: '600'}}>{ligne.montant.toFixed(2)}€</td>
+                      <td style={{...formStyles.td, textAlign: 'center'}}>
+                        <button onClick={() => onDeleteLigne(index)} type="button" style={formStyles.deleteButton}>🗑️</button>
                       </td>
                     </tr>
                   ))}
@@ -659,20 +487,12 @@ function DevisPage({
               <div style={formStyles.totaux}>
                 <div>Total HT: <strong>{totaux.totalHT.toFixed(2)}€</strong></div>
                 <div>TVA (20%): <strong>{totaux.tva.toFixed(2)}€</strong></div>
-                <div style={formStyles.totalTTC}>
-                  Total TTC: <strong>{totaux.totalTTC.toFixed(2)}€</strong>
-                </div>
+                <div style={formStyles.totalTTC}>Total TTC: <strong>{totaux.totalTTC.toFixed(2)}€</strong></div>
               </div>
             </div>
           )}
 
-          <button 
-            onClick={onSubmit}
-            disabled={!canSubmit}
-            style={canSubmit ? formStyles.submitButton : formStyles.submitButtonDisabled}
-          >
-            Créer le devis
-          </button>
+          <button onClick={onSubmit} disabled={!canSubmit} style={canSubmit ? formStyles.submitBtn : formStyles.submitBtnDisabled}>Créer le devis</button>
         </div>
       </div>
     );
@@ -682,96 +502,54 @@ function DevisPage({
     <div>
       <div style={styles.pageHeader}>
         <h2 style={styles.pageTitle}>Devis & Factures</h2>
-        <button 
-          onClick={() => setShowDevisForm(true)}
-          disabled={clients.length === 0}
-          style={{
-            ...styles.primaryButton,
-            opacity: clients.length === 0 ? 0.5 : 1,
-            cursor: clients.length === 0 ? 'not-allowed' : 'pointer'
-          }}
-        >
-          + Nouveau devis
-        </button>
+        <button onClick={() => setShowForm(true)} disabled={clients.length === 0} style={{...styles.primaryButton, opacity: clients.length === 0 ? 0.5 : 1, cursor: clients.length === 0 ? 'not-allowed' : 'pointer'}}>+ Nouveau devis</button>
       </div>
       
       {devis.length === 0 ? (
-        <EmptyState
-          icon="📄"
-          title="Aucun devis"
-          text={clients.length === 0 ? "Ajoutez d'abord un client" : "Créez votre premier devis"}
-          buttonText={clients.length > 0 ? "Créer un devis" : null}
-          onButtonClick={clients.length > 0 ? () => setShowDevisForm(true) : null}
-        />
+        <EmptyState icon="📄" title="Aucun devis" text={clients.length === 0 ? "Ajoutez d'abord un client" : "Créez votre premier devis"} buttonText={clients.length > 0 ? "Créer un devis" : null} onButtonClick={clients.length > 0 ? () => setShowForm(true) : null} />
       ) : (
-        <DevisList
-          devis={devis}
-          clients={clients}
-          transformerEnFacture={transformerEnFacture}
-          changerStatut={changerStatut}
-        />
-      )}
-    </div>
-  );
-}
-
-function DevisList({ devis, clients, transformerEnFacture, changerStatut }) {
-  return (
-    <div style={styles.tableContainer}>
-      <table style={styles.table}>
-        <thead style={styles.tableHead}>
-          <tr>
-            <th style={styles.th}>Numéro</th>
-            <th style={styles.th}>Client</th>
-            <th style={styles.th}>Date</th>
-            <th style={{ ...styles.th, textAlign: 'right' }}>Montant TTC</th>
-            <th style={styles.th}>Statut</th>
-            <th style={{ ...styles.th, textAlign: 'center' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {devis.map(d => {
-            const client = clients.find(c => c.id === parseInt(d.clientId));
-            return (
-              <tr key={d.id} style={styles.tr}>
-                <td style={{ ...styles.td, fontWeight: '600' }}>{d.numero}</td>
-                <td style={styles.td}>
-                  {client ? `${client.nom} ${client.prenom}` : 'Client inconnu'}
-                </td>
-                <td style={styles.td}>
-                  {new Date(d.date).toLocaleDateString('fr-FR')}
-                </td>
-                <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700', fontSize: '16px' }}>
-                  {d.totalTTC.toFixed(2)}€
-                </td>
-                <td style={styles.td}>
-                  <select 
-                    value={d.statut} 
-                    onChange={(e) => changerStatut(d.id, e.target.value)}
-                    style={styles.statutSelect}
-                  >
-                    <option value="brouillon">Brouillon</option>
-                    <option value="envoye">Envoyé</option>
-                    <option value="accepte">Accepté</option>
-                    <option value="refuse">Refusé</option>
-                    {d.type === 'facture' && <option value="paye">Payé</option>}
-                  </select>
-                </td>
-                <td style={{ ...styles.td, textAlign: 'center' }}>
-                  {d.type === 'devis' && d.statut === 'accepte' && (
-                    <button 
-                      onClick={() => transformerEnFacture(d.id)}
-                      style={styles.factureButton}
-                    >
-                      → Facture
-                    </button>
-                  )}
-                </td>
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead style={styles.tableHead}>
+              <tr>
+                <th style={styles.th}>Numéro</th>
+                <th style={styles.th}>Client</th>
+                <th style={styles.th}>Date</th>
+                <th style={{...styles.th, textAlign: 'right'}}>Montant TTC</th>
+                <th style={styles.th}>Statut</th>
+                <th style={{...styles.th, textAlign: 'center'}}>Actions</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {devis.map(d => {
+                const client = clients.find(c => c.id === parseInt(d.clientId));
+                return (
+                  <tr key={d.id} style={styles.tr}>
+                    <td style={{...styles.td, fontWeight: '600'}}>{d.numero}</td>
+                    <td style={styles.td}>{client ? \`\${client.nom} \${client.prenom}\` : 'Client inconnu'}</td>
+                    <td style={styles.td}>{new Date(d.date).toLocaleDateString('fr-FR')}</td>
+                    <td style={{...styles.td, textAlign: 'right', fontWeight: '700', fontSize: '16px'}}>{d.totalTTC.toFixed(2)}€</td>
+                    <td style={styles.td}>
+                      <select value={d.statut} onChange={(e) => changerStatut(d.id, e.target.value)} style={styles.statutSelect}>
+                        <option value="brouillon">Brouillon</option>
+                        <option value="envoye">Envoyé</option>
+                        <option value="accepte">Accepté</option>
+                        <option value="refuse">Refusé</option>
+                        {d.type === 'facture' && <option value="paye">Payé</option>}
+                      </select>
+                    </td>
+                    <td style={{...styles.td, textAlign: 'center'}}>
+                      {d.type === 'devis' && d.statut === 'accepte' && (
+                        <button onClick={() => transformerEnFacture(d.id)} style={styles.factureButton}>→ Facture</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -782,7 +560,7 @@ function SettingsPage() {
       <h2 style={styles.pageTitle}>Paramètres</h2>
       <div style={formStyles.container}>
         <h3 style={formStyles.sectionTitle}>Informations de l'entreprise</h3>
-        <p style={{ color: '#666' }}>Configuration à venir...</p>
+        <p style={{color: '#666'}}>Configuration à venir...</p>
       </div>
     </div>
   );
@@ -794,532 +572,89 @@ function EmptyState({ icon, title, text, buttonText, onButtonClick }) {
       <div style={styles.emptyIcon}>{icon}</div>
       <h3 style={styles.emptyTitle}>{title}</h3>
       {text && <p style={styles.emptyText}>{text}</p>}
-      {buttonText && onButtonClick && (
-        <button onClick={onButtonClick} style={styles.primaryButton}>
-          {buttonText}
-        </button>
-      )}
+      {buttonText && onButtonClick && <button onClick={onButtonClick} style={styles.primaryButton}>{buttonText}</button>}
     </div>
   );
 }
 
-// ============================================
-// STYLES
-// ============================================
-
 const styles = {
-  authContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #fff5f0 0%, #fff 50%, #fef0f5 100%)',
-    padding: '20px'
-  },
-  authBox: {
-    background: '#fff',
-    padding: '40px',
-    borderRadius: '20px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
-    maxWidth: '450px',
-    width: '100%'
-  },
-  authHeader: {
-    textAlign: 'center',
-    marginBottom: '30px'
-  },
-  logo: {
-    width: '80px',
-    height: '80px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    borderRadius: '16px',
-    margin: '0 auto 20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '40px'
-  },
-  authTitle: {
-    fontSize: '32px',
-    fontWeight: 'bold',
-    color: '#111',
-    marginBottom: '10px',
-    margin: '0 0 10px 0'
-  },
-  authSubtitle: {
-    color: '#666',
-    margin: 0
-  },
-  authButton: {
-    width: '100%',
-    padding: '14px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer'
-  },
-  app: {
-    minHeight: '100vh',
-    background: '#f9fafb'
-  },
-  header: {
-    background: '#fff',
-    borderBottom: '1px solid #e5e7eb',
-    padding: '20px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 50
-  },
-  headerContent: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    maxWidth: '1400px',
-    margin: '0 auto'
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px'
-  },
-  headerLogo: {
-    width: '40px',
-    height: '40px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px'
-  },
-  headerTitle: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    margin: 0,
-    color: '#111'
-  },
-  headerSubtitle: {
-    fontSize: '12px',
-    color: '#666',
-    margin: 0
-  },
-  logoutButton: {
-    padding: '10px 20px',
-    background: '#f3f4f6',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '500',
-    fontSize: '14px'
-  },
-  layout: {
-    display: 'flex'
-  },
-  sidebar: {
-    width: '250px',
-    background: '#fff',
-    borderRight: '1px solid #e5e7eb',
-    minHeight: 'calc(100vh - 81px)',
-    padding: '20px'
-  },
-  navButton: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    marginBottom: '8px',
-    background: 'transparent',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '15px',
-    fontWeight: '500',
-    color: '#374151',
-    textAlign: 'left'
-  },
-  navButtonActive: {
-    background: '#fff7ed',
-    color: '#f97316',
-    fontWeight: '600'
-  },
-  navIcon: {
-    fontSize: '20px'
-  },
-  main: {
-    flex: 1,
-    padding: '40px',
-    maxWidth: '1400px'
-  },
-  pageTitle: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    marginBottom: '30px',
-    margin: '0 0 30px 0',
-    color: '#111'
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '30px'
-  },
-  primaryButton: {
-    padding: '12px 24px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '16px'
-  },
-  backButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '8px 16px',
-    background: '#f3f4f6',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    marginBottom: '20px',
-    fontSize: '14px'
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '20px',
-    marginBottom: '40px'
-  },
-  statCard: {
-    background: '#fff',
-    padding: '24px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-  },
-  statIcon: {
-    fontSize: '32px',
-    marginBottom: '8px'
-  },
-  statLabel: {
-    fontSize: '14px',
-    color: '#666',
-    margin: '0 0 8px 0'
-  },
-  statValue: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    margin: '8px 0',
-    color: '#111'
-  },
-  statSubtext: {
-    fontSize: '14px',
-    fontWeight: '500',
-    margin: 0
-  },
-  successBanner: {
-    background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-    padding: '40px',
-    borderRadius: '16px',
-    color: '#fff',
-    textAlign: 'center'
-  },
-  successTitle: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    margin: '0 0 16px 0'
-  },
-  successText: {
-    fontSize: '18px',
-    opacity: 0.95,
-    margin: 0
-  },
-  clientsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-    gap: '20px'
-  },
-  clientCard: {
-    background: '#fff',
-    padding: '24px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb'
-  },
-  clientHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '16px'
-  },
-  clientAvatar: {
-    width: '50px',
-    height: '50px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
-    fontSize: '24px',
-    fontWeight: 'bold'
-  },
-  clientActions: {
-    display: 'flex',
-    gap: '8px'
-  },
-  iconButton: {
-    padding: '8px',
-    background: '#f3f4f6',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer'
-  },
-  deleteIconButton: {
-    padding: '8px',
-    background: '#fee2e2',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer'
-  },
-  clientName: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    marginBottom: '4px',
-    margin: '0 0 4px 0',
-    color: '#111'
-  },
-  clientCompany: {
-    color: '#666',
-    fontSize: '14px',
-    marginBottom: '12px',
-    margin: '0 0 12px 0'
-  },
-  clientInfo: {
-    fontSize: '14px',
-    color: '#666'
-  },
-  tableContainer: {
-    background: '#fff',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    overflow: 'hidden'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse'
-  },
-  tableHead: {
-    background: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb'
-  },
-  th: {
-    padding: '16px',
-    textAlign: 'left',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase'
-  },
-  tr: {
-    borderBottom: '1px solid #f3f4f6'
-  },
-  td: {
-    padding: '16px'
-  },
-  statutSelect: {
-    padding: '6px 12px',
-    borderRadius: '6px',
-    border: '1px solid #d1d5db',
-    fontSize: '14px',
-    fontWeight: '500',
-    background: '#f3f4f6',
-    color: '#374151'
-  },
-  factureButton: {
-    padding: '8px 16px',
-    background: '#10b981',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  },
-  emptyState: {
-    background: '#fff',
-    padding: '60px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    textAlign: 'center'
-  },
-  emptyIcon: {
-    fontSize: '64px',
-    marginBottom: '20px'
-  },
-  emptyTitle: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    marginBottom: '12px',
-    margin: '0 0 12px 0',
-    color: '#111'
-  },
-  emptyText: {
-    color: '#666',
-    marginBottom: '20px',
-    margin: '0 0 20px 0'
-  }
+  authContainer: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #fff5f0 0%, #fff 50%, #fef0f5 100%)', padding: '20px' },
+  authBox: { background: '#fff', padding: '40px', borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.1)', maxWidth: '450px', width: '100%' },
+  authHeader: { textAlign: 'center', marginBottom: '30px' },
+  logo: { width: '80px', height: '80px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', borderRadius: '16px', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' },
+  authTitle: { fontSize: '32px', fontWeight: 'bold', color: '#111', margin: '0 0 10px 0' },
+  authSubtitle: { color: '#666', margin: 0 },
+  authButton: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer' },
+  app: { minHeight: '100vh', background: '#f9fafb' },
+  header: { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky', top: 0, zIndex: 50 },
+  headerContent: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1400px', margin: '0 auto' },
+  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
+  headerLogo: { width: '40px', height: '40px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' },
+  headerTitle: { fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111' },
+  headerSubtitle: { fontSize: '12px', color: '#666', margin: 0 },
+  logoutButton: { padding: '10px 20px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', fontSize: '14px' },
+  layout: { display: 'flex' },
+  sidebar: { width: '250px', background: '#fff', borderRight: '1px solid #e5e7eb', minHeight: 'calc(100vh - 81px)', padding: '20px' },
+  navButton: { width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', marginBottom: '8px', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '500', color: '#374151', textAlign: 'left' },
+  navButtonActive: { background: '#fff7ed', color: '#f97316', fontWeight: '600' },
+  navIcon: { fontSize: '20px' },
+  main: { flex: 1, padding: '40px', maxWidth: '1400px' },
+  pageTitle: { fontSize: '28px', fontWeight: 'bold', margin: '0 0 30px 0', color: '#111' },
+  pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
+  primaryButton: { padding: '12px 24px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '16px' },
+  backButton: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', marginBottom: '20px', fontSize: '14px' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '40px' },
+  statCard: { background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+  statIcon: { fontSize: '32px', marginBottom: '8px' },
+  statLabel: { fontSize: '14px', color: '#666', margin: '0 0 8px 0' },
+  statValue: { fontSize: '36px', fontWeight: 'bold', margin: '8px 0', color: '#111' },
+  statSubtext: { fontSize: '14px', fontWeight: '500', margin: 0 },
+  successBanner: { background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', padding: '40px', borderRadius: '16px', color: '#fff', textAlign: 'center' },
+  successTitle: { fontSize: '28px', fontWeight: 'bold', margin: '0 0 16px 0' },
+  successText: { fontSize: '18px', opacity: 0.95, margin: 0 },
+  clientsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' },
+  clientCard: { background: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e5e7eb' },
+  clientHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '16px' },
+  clientAvatar: { width: '50px', height: '50px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px', fontWeight: 'bold' },
+  clientActions: { display: 'flex', gap: '8px' },
+  iconButton: { padding: '8px', background: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+  deleteIconButton: { padding: '8px', background: '#fee2e2', border: 'none', borderRadius: '6px', cursor: 'pointer' },
+  clientName: { fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#111' },
+  clientCompany: { color: '#666', fontSize: '14px', margin: '0 0 12px 0' },
+  clientInfo: { fontSize: '14px', color: '#666' },
+  tableContainer: { background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' },
+  table: { width: '100%', borderCollapse: 'collapse' },
+  tableHead: { background: '#f9fafb', borderBottom: '1px solid #e5e7eb' },
+  th: { padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' },
+  tr: { borderBottom: '1px solid #f3f4f6' },
+  td: { padding: '16px' },
+  statutSelect: { padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px', fontWeight: '500', background: '#f3f4f6', color: '#374151' },
+  factureButton: { padding: '8px 16px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' },
+  emptyState: { background: '#fff', padding: '60px', borderRadius: '12px', border: '1px solid #e5e7eb', textAlign: 'center' },
+  emptyIcon: { fontSize: '64px', marginBottom: '20px' },
+  emptyTitle: { fontSize: '20px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#111' },
+  emptyText: { color: '#666', margin: '0 0 20px 0' }
 };
 
 const formStyles = {
-  container: {
-    background: '#fff',
-    padding: '30px',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    maxWidth: '1000px'
-  },
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '20px'
-  },
-  formGroup: {
-    marginBottom: '20px'
-  },
-  label: {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '500',
-    marginBottom: '8px',
-    color: '#374151'
-  },
-  input: {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '16px',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  textarea: {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    resize: 'vertical',
-    fontSize: '16px',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  buttonRow: {
-    display: 'flex',
-    gap: '12px'
-  },
-  cancelButton: {
-    flex: 1,
-    padding: '14px',
-    background: '#f3f4f6',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-  submitButton: {
-    flex: 1,
-    padding: '14px',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '16px',
-    fontWeight: '600'
-  },
-  submitButtonDisabled: {
-    flex: 1,
-    padding: '14px',
-    background: '#d1d5db',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'not-allowed',
-    fontSize: '16px',
-    fontWeight: '600'
-  },
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    color: '#111'
-  },
-  ligneForm: {
-    background: '#f9fafb',
-    padding: '20px',
-    borderRadius: '8px',
-    marginBottom: '20px',
-    display: 'grid',
-    gridTemplateColumns: '2fr 1fr 1fr auto',
-    gap: '12px',
-    alignItems: 'end'
-  },
-  addButton: {
-    padding: '10px 20px',
-    background: '#f97316',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    fontSize: '18px'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    marginBottom: '20px'
-  },
-  tableHead: {
-    background: '#f9fafb'
-  },
-  th: {
-    padding: '12px',
-    textAlign: 'left',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#666'
-  },
-  td: {
-    padding: '12px',
-    borderTop: '1px solid #e5e7eb'
-  },
-  deleteButton: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '18px'
-  },
-  totaux: {
-    background: '#f9fafb',
-    padding: '20px',
-    borderTop: '2px solid #e5e7eb',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '40px',
-    fontSize: '16px'
-  },
-  totalTTC: {
-    fontSize: '20px',
-    color: '#f97316',
-    fontWeight: 'bold'
-  }
+  container: { background: '#fff', padding: '30px', borderRadius: '12px', border: '1px solid #e5e7eb', maxWidth: '1000px' },
+  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' },
+  field: { marginBottom: '20px' },
+  label: { display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px', color: '#374151' },
+  input: { width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' },
+  textarea: { width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', resize: 'vertical', fontSize: '16px', outline: 'none', boxSizing: 'border-box' },
+  buttonRow: { display: 'flex', gap: '12px' },
+  cancelBtn: { flex: 1, padding: '14px', background: '#f3f4f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: '500' },
+  submitBtn: { flex: 1, padding: '14px', background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', fontWeight: '600' },
+  submitBtnDisabled: { flex: 1, padding: '14px', background: '#d1d5db', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'not-allowed', fontSize: '16px', fontWeight: '600' },
+  sectionTitle: { fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#111' },
+  ligneForm: { background: '#f9fafb', padding: '20px', borderRadius: '8px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'end' },
+  addButton: { padding: '10px 20px', background: '#f97316', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '18px' },
+  table: { width: '100%', borderCollapse: 'collapse', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '20px' },
+  tableHead: { background: '#f9fafb' },
+  th: { padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#666' },
+  td: { padding: '12px', borderTop: '1px solid #e5e7eb' },
+  deleteButton: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' },
+  totaux: { background: '#f9fafb', padding: '20px', borderTop: '2px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '40px', fontSize: '16px' },
+  totalTTC: { fontSize: '20px', color: '#f97316', fontWeight: 'bold' }
 };
