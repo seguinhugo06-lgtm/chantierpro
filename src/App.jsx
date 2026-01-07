@@ -1,177 +1,342 @@
-import React, { useState, useEffect } from 'react';
-import { Home, LogOut, Menu, X, TrendingUp, Users, FileText, Settings } from 'lucide-react';
-import AuthScreen from './components/AuthScreen';
-import DashboardPage from './components/DashboardPage';
-import ClientsPage from './components/ClientsPage';
-import DevisPage from './components/DevisPage';
-import SettingsPage from './components/SettingsPage';
+import React, { useState } from 'react';
 
-function NavButton({ icon, label, active, onClick }) {
-  return (
-    <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${active ? 'bg-orange-50 text-orange-600' : 'text-gray-600 hover:bg-gray-50'}`}>
-      {icon}
-      <span className="font-medium">{label}</span>
-    </button>
-  );
-}
-
-export default function ChantierPro() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('login');
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [notification, setNotification] = useState(null);
-  const [clients, setClients] = useState([]);
-  const [devis, setDevis] = useState([]);
-  const [entrepriseInfo, setEntrepriseInfo] = useState({
-    nom: '',
-    adresse: '',
-    siret: '',
-    email: '',
-    telephone: '',
-    tva: 20,
-    mentionsLegales: 'Devis valable 30 jours. TVA non applicable, article 293 B du CGI.'
-  });
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('current_user');
-    const savedClients = localStorage.getItem('clients');
-    const savedDevis = localStorage.getItem('devis');
-    const savedEntreprise = localStorage.getItem('entreprise_info');
-
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-      setCurrentPage('dashboard');
+export default function App() {
+  const [isAuth, setIsAuth] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (email && password) {
+      setIsAuth(true);
     }
-    if (savedClients) setClients(JSON.parse(savedClients));
-    if (savedDevis) setDevis(JSON.parse(savedDevis));
-    if (savedEntreprise) setEntrepriseInfo(JSON.parse(savedEntreprise));
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) localStorage.setItem('clients', JSON.stringify(clients));
-  }, [clients, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated) localStorage.setItem('devis', JSON.stringify(devis));
-  }, [devis, isAuthenticated]);
-
-  useEffect(() => {
-    if (isAuthenticated && entrepriseInfo) localStorage.setItem('entreprise_info', JSON.stringify(entrepriseInfo));
-  }, [entrepriseInfo, isAuthenticated]);
-
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
   };
-
-  const handleLogin = (email, password) => {
-    if (!email || !password) {
-      showNotification('Veuillez remplir tous les champs', 'error');
-      return;
-    }
-    const user = { id: Date.now(), email, nom: email.split('@')[0] };
-    localStorage.setItem('current_user', JSON.stringify(user));
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-    setCurrentPage('dashboard');
-    showNotification('Connexion réussie !');
-  };
-
-  const handleRegister = (email, password, nomEntreprise) => {
-    if (!email || !password || !nomEntreprise) {
-      showNotification('Veuillez remplir tous les champs', 'error');
-      return;
-    }
-    const user = { id: Date.now(), email, nom: email.split('@')[0] };
-    const newEntrepriseInfo = { ...entrepriseInfo, nom: nomEntreprise };
-    localStorage.setItem('current_user', JSON.stringify(user));
-    localStorage.setItem('entreprise_info', JSON.stringify(newEntrepriseInfo));
-    setCurrentUser(user);
-    setEntrepriseInfo(newEntrepriseInfo);
-    setIsAuthenticated(true);
-    setCurrentPage('dashboard');
-    showNotification('Compte créé avec succès !');
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('current_user');
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setCurrentPage('login');
-    showNotification('Déconnexion réussie');
-  };
-
-  if (!isAuthenticated) {
-    return <AuthScreen onLogin={handleLogin} onRegister={handleRegister} />;
-  }
-
-  const stats = {
-    devisEnCours: devis.filter(d => d.statut === 'envoye').length,
-    caEnAttente: devis.filter(d => d.statut === 'envoye').reduce((sum, d) => sum + d.totalTTC, 0),
-    caMois: devis.filter(d => {
-      if (d.type !== 'facture') return false;
-      const date = new Date(d.date);
-      const now = new Date();
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }).reduce((sum, d) => sum + d.totalTTC, 0),
-    nbClients: clients.length
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-          <span>{notification.message}</span>
-        </div>
-      )}
-
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowSidebar(!showSidebar)} className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition">
-              {showSidebar ? <X size={24} /> : <Menu size={24} />}
+  
+  if (!isAuth) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: 'linear-gradient(135deg, #fff5f0 0%, #ffffff 50%, #fef0f5 100%)',
+        padding: '20px'
+      }}>
+        <div style={{ 
+          background: 'white', 
+          padding: '40px', 
+          borderRadius: '20px', 
+          boxShadow: '0 20px 60px rgba(0,0,0,0.1)', 
+          maxWidth: '450px', 
+          width: '100%' 
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <div style={{ 
+              width: '80px', 
+              height: '80px', 
+              background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', 
+              borderRadius: '16px', 
+              margin: '0 auto 20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '40px' 
+            }}>
+              🏗️
+            </div>
+            <h1 style={{ 
+              fontSize: '32px', 
+              fontWeight: 'bold', 
+              color: '#111', 
+              marginBottom: '10px' 
+            }}>
+              ChantierPro
+            </h1>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              Accédez à votre espace ChantierPro
+            </p>
+          </div>
+          
+          <form onSubmit={handleLogin} style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151', 
+                marginBottom: '8px' 
+              }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="votre@email.com"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#f97316'}
+                onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ 
+                display: 'block', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                color: '#374151', 
+                marginBottom: '8px' 
+              }}>
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#f97316'}
+                onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+              />
+            </div>
+            
+            <button 
+              type="submit"
+              style={{ 
+                width: '100%', 
+                padding: '14px', 
+                background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '10px', 
+                fontSize: '16px', 
+                fontWeight: '600', 
+                cursor: 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.target.style.opacity = '1'}
+            >
+              Se connecter
             </button>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-                <Home className="text-white" size={20} />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">ChantierPro</h1>
-                <p className="text-xs text-gray-500">{entrepriseInfo?.nom || 'Mon entreprise'}</p>
-              </div>
+          </form>
+          
+          <div style={{ textAlign: 'center' }}>
+            <button 
+              style={{ 
+                color: '#f97316', 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Pas de compte ? S'inscrire
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+      <header style={{ 
+        background: 'white', 
+        borderBottom: '1px solid #e5e7eb', 
+        padding: '20px', 
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          maxWidth: '1200px', 
+          margin: '0 auto' 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)', 
+              borderRadius: '10px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              fontSize: '20px' 
+            }}>
+              🏗️
+            </div>
+            <div>
+              <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, color: '#111' }}>ChantierPro</h1>
+              <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>Mon Entreprise BTP</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 hidden sm:block">{currentUser?.email}</span>
-            <button onClick={handleLogout} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition flex items-center gap-2">
-              <LogOut size={18} />
-              <span className="hidden sm:inline">Déconnexion</span>
-            </button>
-          </div>
+          <button 
+            onClick={() => setIsAuth(false)} 
+            style={{ 
+              padding: '10px 20px', 
+              background: '#f3f4f6', 
+              border: 'none', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              fontWeight: '500',
+              fontSize: '14px',
+              color: '#374151',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#e5e7eb'}
+            onMouseLeave={(e) => e.target.style.background = '#f3f4f6'}
+          >
+            Déconnexion
+          </button>
         </div>
       </header>
+      
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+        <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '30px', color: '#111' }}>
+          Tableau de bord
+        </h2>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '20px', 
+          marginBottom: '40px' 
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: '24px', 
+            borderRadius: '12px', 
+            border: '1px solid #e5e7eb', 
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)' 
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏱️</div>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px', margin: 0 }}>Devis en cours</p>
+            <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#111', margin: '8px 0' }}>3</p>
+            <p style={{ fontSize: '14px', color: '#3b82f6', fontWeight: '500', marginTop: '8px', margin: 0 }}>
+              12,450€ en attente
+            </p>
+          </div>
+          
+          <div style={{ 
+            background: 'white', 
+            padding: '24px', 
+            borderRadius: '12px', 
+            border: '1px solid #e5e7eb', 
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)' 
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>💰</div>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px', margin: 0 }}>CA du mois</p>
+            <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#111', margin: '8px 0' }}>28,450€</p>
+            <p style={{ fontSize: '14px', color: '#10b981', fontWeight: '500', marginTop: '8px', margin: 0 }}>
+              +12% vs mois dernier
+            </p>
+          </div>
+          
+          <div style={{ 
+            background: 'white', 
+            padding: '24px', 
+            borderRadius: '12px', 
+            border: '1px solid #e5e7eb', 
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)' 
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>👥</div>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px', margin: 0 }}>Clients</p>
+            <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#111', margin: '8px 0' }}>15</p>
+            <p style={{ fontSize: '14px', color: '#8b5cf6', fontWeight: '500', marginTop: '8px', margin: 0 }}>
+              clients actifs
+            </p>
+          </div>
+          
+          <div style={{ 
+            background: 'white', 
+            padding: '24px', 
+            borderRadius: '12px', 
+            border: '1px solid #e5e7eb', 
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)' 
+          }}>
+            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📄</div>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px', margin: 0 }}>Documents</p>
+            <p style={{ fontSize: '36px', fontWeight: 'bold', color: '#111', margin: '8px 0' }}>47</p>
+            <p style={{ fontSize: '14px', color: '#f97316', fontWeight: '500', marginTop: '8px', margin: 0 }}>
+              devis & factures
+            </p>
+          </div>
+        </div>
+        
+        <div style={{ 
+          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', 
+          padding: '40px', 
+          borderRadius: '16px', 
+          color: 'white', 
+          textAlign: 'center',
+          marginBottom: '40px'
+        }}>
+          <h3 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '16px', margin: '0 0 16px 0' }}>
+            🎉 Félicitations !
+          </h3>
+          <p style={{ fontSize: '18px', opacity: 0.95, marginBottom: '16px', margin: '0 0 16px 0' }}>
+            Votre application ChantierPro est maintenant déployée avec succès !
+          </p>
+          <p style={{ fontSize: '16px', opacity: 0.85, margin: 0 }}>
+            Prochaines étapes : Ajouter la gestion complète des clients, devis et factures.
+          </p>
+        </div>
 
-      <div className="flex">
-        {showSidebar && (
-          <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-4 fixed lg:relative z-30">
-            <nav className="space-y-2">
-              <NavButton icon={<TrendingUp size={20} />} label="Tableau de bord" active={currentPage === 'dashboard'} onClick={() => setCurrentPage('dashboard')} />
-              <NavButton icon={<Users size={20} />} label="Clients" active={currentPage === 'clients'} onClick={() => setCurrentPage('clients')} />
-              <NavButton icon={<FileText size={20} />} label="Devis & Factures" active={currentPage === 'devis'} onClick={() => setCurrentPage('devis')} />
-              <NavButton icon={<Settings size={20} />} label="Paramètres" active={currentPage === 'settings'} onClick={() => setCurrentPage('settings')} />
-            </nav>
-          </aside>
-        )}
-
-        <main className="flex-1 p-6">
-          {currentPage === 'dashboard' && <DashboardPage stats={stats} devis={devis} clients={clients} onNavigate={setCurrentPage} />}
-          {currentPage === 'clients' && <ClientsPage clients={clients} setClients={setClients} showNotification={showNotification} />}
-          {currentPage === 'devis' && <DevisPage devis={devis} setDevis={setDevis} clients={clients} entrepriseInfo={entrepriseInfo} showNotification={showNotification} />}
-          {currentPage === 'settings' && <SettingsPage entrepriseInfo={entrepriseInfo} setEntrepriseInfo={setEntrepriseInfo} showNotification={showNotification} />}
-        </main>
-      </div>
+        <div style={{
+          background: 'white',
+          padding: '30px',
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px', color: '#111' }}>
+            📊 Fonctionnalités à venir
+          </h3>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {[
+              '✅ Gestion complète des clients',
+              '✅ Création et édition de devis',
+              '✅ Génération automatique de factures',
+              '✅ Envoi par email',
+              '✅ Suivi des paiements',
+              '✅ Rapports et statistiques'
+            ].map((item, i) => (
+              <li key={i} style={{ 
+                padding: '12px 0', 
+                borderBottom: i < 5 ? '1px solid #f3f4f6' : 'none',
+                fontSize: '16px',
+                color: '#374151'
+              }}>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </main>
     </div>
   );
 }
