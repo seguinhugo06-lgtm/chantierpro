@@ -3,37 +3,68 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Vérifie si on doit utiliser le mode mock (LocalStorage)
 const useMock = !supabaseUrl || !supabaseAnonKey || supabaseUrl === 'undefined' || supabaseUrl.includes('test')
+
+console.log('🔧 ChantierPro - Mode:', useMock ? 'LocalStorage (mock)' : 'Supabase')
 
 let supabase = null
 if (!useMock) {
   try {
     supabase = createClient(supabaseUrl, supabaseAnonKey)
+    console.log('✅ Supabase connecté')
   } catch (e) {
-    console.warn('Supabase init failed, using LocalStorage')
+    console.warn('⚠️ Supabase init failed, using LocalStorage:', e.message)
   }
 }
+
+// Variable pour stocker les listeners d'auth
+let authStateCallbacks = []
 
 export const auth = {
   async signUp(email, password, metadata) {
     if (useMock || !supabase) {
-      localStorage.setItem('mock_user', JSON.stringify({ email, user_metadata: metadata }))
-      return { data: { user: { email, user_metadata: metadata } }, error: null }
+      const mockUser = { 
+        id: 'mock-' + Date.now(),
+        email, 
+        user_metadata: metadata,
+        created_at: new Date().toISOString()
+      }
+      localStorage.setItem('cp_mock_user', JSON.stringify(mockUser))
+      // Notifier les listeners
+      authStateCallbacks.forEach(cb => cb('SIGNED_IN', { user: mockUser }))
+      return { data: { user: mockUser }, error: null }
     }
     return await supabase.auth.signUp({ email, password, options: { data: metadata } })
   },
   
   async signIn(email, password) {
     if (useMock || !supabase) {
-      const user = JSON.parse(localStorage.getItem('mock_user') || '{"email":"demo@demo.com"}')
-      return { data: { user }, error: null }
+      // Récupère l'utilisateur existant ou crée un nouveau
+      let mockUser = localStorage.getItem('cp_mock_user')
+      if (mockUser) {
+        mockUser = JSON.parse(mockUser)
+      } else {
+        mockUser = { 
+          id: 'mock-' + Date.now(),
+          email, 
+          user_metadata: {},
+          created_at: new Date().toISOString()
+        }
+        localStorage.setItem('cp_mock_user', JSON.stringify(mockUser))
+      }
+      // Notifier les listeners
+      authStateCallbacks.forEach(cb => cb('SIGNED_IN', { user: mockUser }))
+      return { data: { user: mockUser, session: { user: mockUser } }, error: null }
     }
     return await supabase.auth.signInWithPassword({ email, password })
   },
   
   async signOut() {
     if (useMock || !supabase) {
-      localStorage.removeItem('mock_user')
+      localStorage.removeItem('cp_mock_user')
+      // Notifier les listeners
+      authStateCallbacks.forEach(cb => cb('SIGNED_OUT', null))
       return { error: null }
     }
     return await supabase.auth.signOut()
@@ -41,7 +72,7 @@ export const auth = {
   
   async getCurrentUser() {
     if (useMock || !supabase) {
-      const user = localStorage.getItem('mock_user')
+      const user = localStorage.getItem('cp_mock_user')
       return user ? JSON.parse(user) : null
     }
     const { data: { user } } = await supabase.auth.getUser()
@@ -50,13 +81,26 @@ export const auth = {
   
   onAuthStateChange(callback) {
     if (useMock || !supabase) {
-      // Format attendu par Supabase : retourne { data: { subscription } }
-      const mockSubscription = {
-        unsubscribe: () => {}
+      // Ajoute le callback à la liste
+      authStateCallbacks.push(callback)
+      
+      // Retourne immédiatement l'état actuel si l'utilisateur est connecté
+      const currentUser = localStorage.getItem('cp_mock_user')
+      if (currentUser) {
+        // Appelle le callback de manière asynchrone pour éviter les problèmes de timing
+        setTimeout(() => {
+          callback('INITIAL_SESSION', { user: JSON.parse(currentUser) })
+        }, 0)
       }
+      
+      // Retourne un objet avec la même structure que Supabase
       return {
         data: {
-          subscription: mockSubscription
+          subscription: {
+            unsubscribe: () => {
+              authStateCallbacks = authStateCallbacks.filter(cb => cb !== callback)
+            }
+          }
         }
       }
     }
@@ -76,7 +120,11 @@ export const clientsDB = {
   async create(client) {
     if (useMock || !supabase) {
       const clients = JSON.parse(localStorage.getItem('cp_clients') || '[]')
-      const newClient = { ...client, id: Date.now().toString(), created_at: new Date().toISOString() }
+      const newClient = { 
+        ...client, 
+        id: Date.now().toString(), 
+        created_at: new Date().toISOString() 
+      }
       clients.push(newClient)
       localStorage.setItem('cp_clients', JSON.stringify(clients))
       return { data: newClient, error: null }
@@ -124,7 +172,11 @@ export const devisDB = {
   async create(devis) {
     if (useMock || !supabase) {
       const allDevis = JSON.parse(localStorage.getItem('cp_devis') || '[]')
-      const newDevis = { ...devis, id: Date.now().toString(), created_at: new Date().toISOString() }
+      const newDevis = { 
+        ...devis, 
+        id: Date.now().toString(), 
+        created_at: new Date().toISOString() 
+      }
       allDevis.push(newDevis)
       localStorage.setItem('cp_devis', JSON.stringify(allDevis))
       return { data: newDevis, error: null }
