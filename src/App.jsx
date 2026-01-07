@@ -397,7 +397,7 @@ function Header({ user, onLogout }) {
           <div>
             <h1 style={styles.headerTitle}>ChantierPro</h1>
             <p style={styles.headerSubtitle}>
-              {user?.user_metadata?.nom || user?.email}
+              {String(user?.user_metadata?.nom || user?.email || '')}
             </p>
           </div>
         </div>
