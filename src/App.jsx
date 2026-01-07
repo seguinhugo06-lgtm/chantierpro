@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import ClientForm from './ClientForm';
-import DevisForm from './DevisForm';
+import React, { useState, useEffect, memo } from 'react';
 
 export default function App() {
   const [isAuth, setIsAuth] = useState(false);
@@ -218,7 +216,10 @@ export default function App() {
   );
 }
 
-// HEADER COMPONENT
+// ============================================
+// COMPONENTS
+// ============================================
+
 function Header({ onLogout }) {
   return (
     <header style={styles.header}>
@@ -238,7 +239,6 @@ function Header({ onLogout }) {
   );
 }
 
-// SIDEBAR COMPONENT
 function Sidebar({ currentPage, setCurrentPage }) {
   const menuItems = [
     { id: 'dashboard', icon: '📊', label: 'Tableau de bord' },
@@ -268,7 +268,6 @@ function Sidebar({ currentPage, setCurrentPage }) {
   );
 }
 
-// DASHBOARD PAGE
 function DashboardPage({ clients, devis }) {
   const stats = {
     devisEnCours: devis.filter(d => d.statut === 'envoye').length,
@@ -336,7 +335,112 @@ function StatCard({ icon, label, value, subtext, color }) {
   );
 }
 
-// CLIENTS PAGE
+// ============================================
+// CLIENT FORM - COMPOSANT MÉMORISÉ (FIX BUG)
+// ============================================
+
+const ClientFormMemo = memo(({ 
+  clientForm, 
+  setClientForm, 
+  onSubmit, 
+  onCancel, 
+  editingClient 
+}) => {
+  
+  // Handler optimisé qui ne recréé pas de fonction à chaque render
+  const handleChange = (field) => (e) => {
+    setClientForm(prev => ({ ...prev, [field]: e.target.value }));
+  };
+
+  return (
+    <div style={formStyles.container}>
+      <form onSubmit={onSubmit}>
+        <div style={formStyles.formRow}>
+          <div>
+            <label style={formStyles.label}>Nom *</label>
+            <input
+              type="text"
+              value={clientForm.nom}
+              onChange={handleChange('nom')}
+              required
+              style={formStyles.input}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label style={formStyles.label}>Prénom</label>
+            <input
+              type="text"
+              value={clientForm.prenom}
+              onChange={handleChange('prenom')}
+              style={formStyles.input}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div style={formStyles.formGroup}>
+          <label style={formStyles.label}>Entreprise</label>
+          <input
+            type="text"
+            value={clientForm.entreprise}
+            onChange={handleChange('entreprise')}
+            style={formStyles.input}
+            autoComplete="off"
+          />
+        </div>
+
+        <div style={formStyles.formRow}>
+          <div>
+            <label style={formStyles.label}>Email *</label>
+            <input
+              type="email"
+              value={clientForm.email}
+              onChange={handleChange('email')}
+              required
+              style={formStyles.input}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label style={formStyles.label}>Téléphone *</label>
+            <input
+              type="tel"
+              value={clientForm.telephone}
+              onChange={handleChange('telephone')}
+              required
+              style={formStyles.input}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+
+        <div style={formStyles.formGroup}>
+          <label style={formStyles.label}>Adresse *</label>
+          <textarea
+            value={clientForm.adresse}
+            onChange={handleChange('adresse')}
+            required
+            rows={3}
+            style={formStyles.textarea}
+          />
+        </div>
+
+        <div style={formStyles.buttonRow}>
+          <button type="button" onClick={onCancel} style={formStyles.cancelButton}>
+            Annuler
+          </button>
+          <button type="submit" style={formStyles.submitButton}>
+            {editingClient ? 'Modifier' : 'Créer'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+});
+
+ClientFormMemo.displayName = 'ClientFormMemo';
+
 function ClientsPage({ 
   clients, 
   showClientForm, 
@@ -358,7 +462,7 @@ function ClientsPage({
         <h2 style={styles.pageTitle}>
           {editingClient ? 'Modifier' : 'Nouveau'} client
         </h2>
-        <ClientForm
+        <ClientFormMemo
           clientForm={clientForm}
           setClientForm={setClientForm}
           onSubmit={onSubmit}
@@ -422,7 +526,6 @@ function ClientCard({ client, onEdit, onDelete }) {
   );
 }
 
-// DEVIS PAGE
 function DevisPage({
   clients,
   devis,
@@ -440,6 +543,9 @@ function DevisPage({
   changerStatut
 }) {
   if (showDevisForm) {
+    const totaux = calculerTotaux(devisForm.lignes);
+    const canSubmit = devisForm.clientId && devisForm.lignes.length > 0;
+
     return (
       <div>
         <button 
@@ -457,17 +563,117 @@ function DevisPage({
           ← Retour
         </button>
         <h2 style={styles.pageTitle}>Nouveau devis</h2>
-        <DevisForm
-          devisForm={devisForm}
-          setDevisForm={setDevisForm}
-          currentLigne={currentLigne}
-          setCurrentLigne={setCurrentLigne}
-          clients={clients}
-          onAddLigne={onAddLigne}
-          onDeleteLigne={onDeleteLigne}
-          onSubmit={onSubmit}
-          calculerTotaux={calculerTotaux}
-        />
+        <div style={formStyles.container}>
+          <div style={formStyles.formRow}>
+            <div style={formStyles.formGroup}>
+              <label style={formStyles.label}>Client *</label>
+              <select 
+                value={devisForm.clientId} 
+                onChange={(e) => setDevisForm(prev => ({...prev, clientId: e.target.value}))}
+                required 
+                style={formStyles.input}
+              >
+                <option value="">Sélectionner...</option>
+                {clients.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.nom} {c.prenom}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={formStyles.formGroup}>
+              <label style={formStyles.label}>Date</label>
+              <input 
+                type="date" 
+                value={devisForm.date} 
+                onChange={(e) => setDevisForm(prev => ({...prev, date: e.target.value}))}
+                style={formStyles.input} 
+              />
+            </div>
+          </div>
+
+          <h3 style={formStyles.sectionTitle}>Lignes du devis</h3>
+          <div style={formStyles.ligneForm}>
+            <input
+              placeholder="Description"
+              value={currentLigne.description}
+              onChange={(e) => setCurrentLigne(prev => ({...prev, description: e.target.value}))}
+              style={formStyles.input}
+            />
+            <input
+              type="number"
+              placeholder="Qté"
+              value={currentLigne.quantite}
+              onChange={(e) => setCurrentLigne(prev => ({...prev, quantite: parseFloat(e.target.value) || 1}))}
+              min="1"
+              style={formStyles.input}
+            />
+            <input
+              type="number"
+              placeholder="Prix HT"
+              step="0.01"
+              value={currentLigne.prixUnitaire}
+              onChange={(e) => setCurrentLigne(prev => ({...prev, prixUnitaire: parseFloat(e.target.value) || 0}))}
+              min="0"
+              style={formStyles.input}
+            />
+            <button onClick={onAddLigne} type="button" style={formStyles.addButton}>
+              +
+            </button>
+          </div>
+
+          {devisForm.lignes.length > 0 && (
+            <div>
+              <table style={formStyles.table}>
+                <thead style={formStyles.tableHead}>
+                  <tr>
+                    <th style={formStyles.th}>Description</th>
+                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Qté</th>
+                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Prix HT</th>
+                    <th style={{ ...formStyles.th, textAlign: 'right' }}>Total</th>
+                    <th style={{ ...formStyles.th, width: '50px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {devisForm.lignes.map((ligne, index) => (
+                    <tr key={index}>
+                      <td style={formStyles.td}>{ligne.description}</td>
+                      <td style={{ ...formStyles.td, textAlign: 'right' }}>{ligne.quantite}</td>
+                      <td style={{ ...formStyles.td, textAlign: 'right' }}>{ligne.prixUnitaire.toFixed(2)}€</td>
+                      <td style={{ ...formStyles.td, textAlign: 'right', fontWeight: '600' }}>
+                        {ligne.montant.toFixed(2)}€
+                      </td>
+                      <td style={{ ...formStyles.td, textAlign: 'center' }}>
+                        <button 
+                          onClick={() => onDeleteLigne(index)} 
+                          type="button" 
+                          style={formStyles.deleteButton}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={formStyles.totaux}>
+                <div>Total HT: <strong>{totaux.totalHT.toFixed(2)}€</strong></div>
+                <div>TVA (20%): <strong>{totaux.tva.toFixed(2)}€</strong></div>
+                <div style={formStyles.totalTTC}>
+                  Total TTC: <strong>{totaux.totalTTC.toFixed(2)}€</strong>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={onSubmit}
+            disabled={!canSubmit}
+            style={canSubmit ? formStyles.submitButton : formStyles.submitButtonDisabled}
+          >
+            Créer le devis
+          </button>
+        </div>
       </div>
     );
   }
@@ -570,20 +776,18 @@ function DevisList({ devis, clients, transformerEnFacture, changerStatut }) {
   );
 }
 
-// SETTINGS PAGE
 function SettingsPage() {
   return (
     <div>
       <h2 style={styles.pageTitle}>Paramètres</h2>
-      <div style={styles.formCard}>
-        <h3 style={styles.sectionTitle}>Informations de l'entreprise</h3>
+      <div style={formStyles.container}>
+        <h3 style={formStyles.sectionTitle}>Informations de l'entreprise</h3>
         <p style={{ color: '#666' }}>Configuration à venir...</p>
       </div>
     </div>
   );
 }
 
-// EMPTY STATE COMPONENT
 function EmptyState({ icon, title, text, buttonText, onButtonClick }) {
   return (
     <div style={styles.emptyState}>
@@ -599,9 +803,11 @@ function EmptyState({ icon, title, text, buttonText, onButtonClick }) {
   );
 }
 
+// ============================================
 // STYLES
+// ============================================
+
 const styles = {
-  // Auth styles
   authContainer: {
     minHeight: '100vh',
     display: 'flex',
@@ -655,8 +861,6 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer'
   },
-  
-  // Layout styles
   app: {
     minHeight: '100vh',
     background: '#f9fafb'
@@ -751,8 +955,6 @@ const styles = {
     padding: '40px',
     maxWidth: '1400px'
   },
-  
-  // Page styles
   pageTitle: {
     fontSize: '28px',
     fontWeight: 'bold',
@@ -788,8 +990,6 @@ const styles = {
     marginBottom: '20px',
     fontSize: '14px'
   },
-  
-  // Dashboard styles
   statsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -840,8 +1040,6 @@ const styles = {
     opacity: 0.95,
     margin: 0
   },
-  
-  // Clients styles
   clientsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
@@ -905,8 +1103,6 @@ const styles = {
     fontSize: '14px',
     color: '#666'
   },
-  
-  // Table styles
   tableContainer: {
     background: '#fff',
     borderRadius: '12px',
@@ -954,8 +1150,6 @@ const styles = {
     fontSize: '14px',
     fontWeight: '500'
   },
-  
-  // Empty state
   emptyState: {
     background: '#fff',
     padding: '60px',
@@ -978,21 +1172,154 @@ const styles = {
     color: '#666',
     marginBottom: '20px',
     margin: '0 0 20px 0'
-  },
-  
-  // Form card
-  formCard: {
+  }
+};
+
+const formStyles = {
+  container: {
     background: '#fff',
     padding: '30px',
     borderRadius: '12px',
     border: '1px solid #e5e7eb',
-    maxWidth: '800px'
+    maxWidth: '1000px'
+  },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '20px',
+    marginBottom: '20px'
+  },
+  formGroup: {
+    marginBottom: '20px'
+  },
+  label: {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: '500',
+    marginBottom: '8px',
+    color: '#374151'
+  },
+  input: {
+    width: '100%',
+    padding: '12px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '16px',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  textarea: {
+    width: '100%',
+    padding: '12px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    resize: 'vertical',
+    fontSize: '16px',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  buttonRow: {
+    display: 'flex',
+    gap: '12px'
+  },
+  cancelButton: {
+    flex: 1,
+    padding: '14px',
+    background: '#f3f4f6',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: '500'
+  },
+  submitButton: {
+    flex: 1,
+    padding: '14px',
+    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    fontWeight: '600'
+  },
+  submitButtonDisabled: {
+    flex: 1,
+    padding: '14px',
+    background: '#d1d5db',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'not-allowed',
+    fontSize: '16px',
+    fontWeight: '600'
   },
   sectionTitle: {
     fontSize: '18px',
     fontWeight: 'bold',
-    marginBottom: '20px',
-    margin: '0 0 20px 0',
+    marginBottom: '16px',
     color: '#111'
+  },
+  ligneForm: {
+    background: '#f9fafb',
+    padding: '20px',
+    borderRadius: '8px',
+    marginBottom: '20px',
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr 1fr auto',
+    gap: '12px',
+    alignItems: 'end'
+  },
+  addButton: {
+    padding: '10px 20px',
+    background: '#f97316',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    fontSize: '18px'
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    marginBottom: '20px'
+  },
+  tableHead: {
+    background: '#f9fafb'
+  },
+  th: {
+    padding: '12px',
+    textAlign: 'left',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#666'
+  },
+  td: {
+    padding: '12px',
+    borderTop: '1px solid #e5e7eb'
+  },
+  deleteButton: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '18px'
+  },
+  totaux: {
+    background: '#f9fafb',
+    padding: '20px',
+    borderTop: '2px solid #e5e7eb',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '40px',
+    fontSize: '16px'
+  },
+  totalTTC: {
+    fontSize: '20px',
+    color: '#f97316',
+    fontWeight: 'bold'
   }
 };
