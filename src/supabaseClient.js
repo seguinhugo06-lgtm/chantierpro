@@ -18,9 +18,6 @@ if (!useMock) {
   }
 }
 
-// Variable pour stocker les listeners d'auth
-let authStateCallbacks = []
-
 export const auth = {
   async signUp(email, password, metadata) {
     if (useMock || !supabase) {
@@ -31,8 +28,6 @@ export const auth = {
         created_at: new Date().toISOString()
       }
       localStorage.setItem('cp_mock_user', JSON.stringify(mockUser))
-      // Notifier les listeners
-      authStateCallbacks.forEach(cb => cb('SIGNED_IN', { user: mockUser }))
       return { data: { user: mockUser }, error: null }
     }
     return await supabase.auth.signUp({ email, password, options: { data: metadata } })
@@ -40,7 +35,6 @@ export const auth = {
   
   async signIn(email, password) {
     if (useMock || !supabase) {
-      // Récupère l'utilisateur existant ou crée un nouveau
       let mockUser = localStorage.getItem('cp_mock_user')
       if (mockUser) {
         mockUser = JSON.parse(mockUser)
@@ -53,8 +47,6 @@ export const auth = {
         }
         localStorage.setItem('cp_mock_user', JSON.stringify(mockUser))
       }
-      // Notifier les listeners
-      authStateCallbacks.forEach(cb => cb('SIGNED_IN', { user: mockUser }))
       return { data: { user: mockUser, session: { user: mockUser } }, error: null }
     }
     return await supabase.auth.signInWithPassword({ email, password })
@@ -63,8 +55,6 @@ export const auth = {
   async signOut() {
     if (useMock || !supabase) {
       localStorage.removeItem('cp_mock_user')
-      // Notifier les listeners
-      authStateCallbacks.forEach(cb => cb('SIGNED_OUT', null))
       return { error: null }
     }
     return await supabase.auth.signOut()
@@ -75,36 +65,46 @@ export const auth = {
       const user = localStorage.getItem('cp_mock_user')
       return user ? JSON.parse(user) : null
     }
-    const { data: { user } } = await supabase.auth.getUser()
-    return user
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user
+    } catch (err) {
+      console.error('getCurrentUser error:', err)
+      return null
+    }
   },
   
   onAuthStateChange(callback) {
     if (useMock || !supabase) {
-      // Ajoute le callback à la liste
-      authStateCallbacks.push(callback)
-      
-      // Retourne immédiatement l'état actuel si l'utilisateur est connecté
-      const currentUser = localStorage.getItem('cp_mock_user')
-      if (currentUser) {
-        // Appelle le callback de manière asynchrone pour éviter les problèmes de timing
-        setTimeout(() => {
-          callback('INITIAL_SESSION', { user: JSON.parse(currentUser) })
-        }, 0)
-      }
-      
-      // Retourne un objet avec la même structure que Supabase
+      // Mode mock : retourne un objet vide mais valide
       return {
         data: {
           subscription: {
-            unsubscribe: () => {
-              authStateCallbacks = authStateCallbacks.filter(cb => cb !== callback)
-            }
+            unsubscribe: () => {}
           }
         }
       }
     }
-    return supabase.auth.onAuthStateChange(callback)
+    
+    // Mode Supabase réel : utilise la vraie fonction
+    // Wrapping pour éviter les erreurs
+    try {
+      return supabase.auth.onAuthStateChange((event, session) => {
+        // Ne pas appeler le callback pour INITIAL_SESSION pour éviter les doubles appels
+        if (event !== 'INITIAL_SESSION') {
+          callback(event, session)
+        }
+      })
+    } catch (err) {
+      console.error('onAuthStateChange setup error:', err)
+      return {
+        data: {
+          subscription: {
+            unsubscribe: () => {}
+          }
+        }
+      }
+    }
   }
 }
 
@@ -114,7 +114,12 @@ export const clientsDB = {
       const data = JSON.parse(localStorage.getItem('cp_clients') || '[]')
       return { data, error: null }
     }
-    return await supabase.from('clients').select('*').order('created_at', { ascending: false })
+    try {
+      return await supabase.from('clients').select('*').order('created_at', { ascending: false })
+    } catch (err) {
+      console.error('clientsDB.getAll error:', err)
+      return { data: [], error: err }
+    }
   },
   
   async create(client) {
@@ -129,9 +134,14 @@ export const clientsDB = {
       localStorage.setItem('cp_clients', JSON.stringify(clients))
       return { data: newClient, error: null }
     }
-    const user = await auth.getCurrentUser()
-    const { data, error } = await supabase.from('clients').insert([{ ...client, user_id: user.id }]).select()
-    return { data: data?.[0], error }
+    try {
+      const user = await auth.getCurrentUser()
+      const { data, error } = await supabase.from('clients').insert([{ ...client, user_id: user.id }]).select()
+      return { data: data?.[0], error }
+    } catch (err) {
+      console.error('clientsDB.create error:', err)
+      return { data: null, error: err }
+    }
   },
   
   async update(id, client) {
@@ -145,8 +155,13 @@ export const clientsDB = {
       }
       return { data: null, error: { message: 'Client not found' } }
     }
-    const { data, error } = await supabase.from('clients').update(client).eq('id', id).select()
-    return { data: data?.[0], error }
+    try {
+      const { data, error } = await supabase.from('clients').update(client).eq('id', id).select()
+      return { data: data?.[0], error }
+    } catch (err) {
+      console.error('clientsDB.update error:', err)
+      return { data: null, error: err }
+    }
   },
   
   async delete(id) {
@@ -156,7 +171,12 @@ export const clientsDB = {
       localStorage.setItem('cp_clients', JSON.stringify(filtered))
       return { error: null }
     }
-    return await supabase.from('clients').delete().eq('id', id)
+    try {
+      return await supabase.from('clients').delete().eq('id', id)
+    } catch (err) {
+      console.error('clientsDB.delete error:', err)
+      return { error: err }
+    }
   }
 }
 
@@ -166,7 +186,12 @@ export const devisDB = {
       const data = JSON.parse(localStorage.getItem('cp_devis') || '[]')
       return { data, error: null }
     }
-    return await supabase.from('devis').select('*').order('created_at', { ascending: false })
+    try {
+      return await supabase.from('devis').select('*').order('created_at', { ascending: false })
+    } catch (err) {
+      console.error('devisDB.getAll error:', err)
+      return { data: [], error: err }
+    }
   },
   
   async create(devis) {
@@ -181,9 +206,14 @@ export const devisDB = {
       localStorage.setItem('cp_devis', JSON.stringify(allDevis))
       return { data: newDevis, error: null }
     }
-    const user = await auth.getCurrentUser()
-    const { data, error } = await supabase.from('devis').insert([{ ...devis, user_id: user.id }]).select()
-    return { data: data?.[0], error }
+    try {
+      const user = await auth.getCurrentUser()
+      const { data, error } = await supabase.from('devis').insert([{ ...devis, user_id: user.id }]).select()
+      return { data: data?.[0], error }
+    } catch (err) {
+      console.error('devisDB.create error:', err)
+      return { data: null, error: err }
+    }
   },
   
   async update(id, devis) {
@@ -197,8 +227,13 @@ export const devisDB = {
       }
       return { data: null, error: { message: 'Devis not found' } }
     }
-    const { data, error } = await supabase.from('devis').update(devis).eq('id', id).select()
-    return { data: data?.[0], error }
+    try {
+      const { data, error } = await supabase.from('devis').update(devis).eq('id', id).select()
+      return { data: data?.[0], error }
+    } catch (err) {
+      console.error('devisDB.update error:', err)
+      return { data: null, error: err }
+    }
   }
 }
 
