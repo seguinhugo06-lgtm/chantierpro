@@ -33,7 +33,6 @@ export default function App() {
   });
   
   // CHECK AUTH ON MOUNT
-  // CHECK AUTH ON MOUNT
   useEffect(() => {
     let mounted = true;
     
