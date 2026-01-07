@@ -33,18 +33,28 @@ export default function App() {
   });
   
   // CHECK AUTH ON MOUNT
+  // CHECK AUTH ON MOUNT
   useEffect(() => {
+    let mounted = true;
+    
     auth.getCurrentUser().then(currentUser => {
-      setUser(currentUser);
-      setLoading(false);
+      if (mounted) {
+        setUser(currentUser);
+        setLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
     
-    const { data: authListener } = auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+    const result = auth.onAuthStateChange((event, session) => {
+      if (mounted && event !== 'INITIAL_SESSION') {
+        setUser(session?.user ?? null);
+      }
     });
     
     return () => {
-      authListener?.subscription?.unsubscribe();
+      mounted = false;
+      result?.data?.subscription?.unsubscribe();
     };
   }, []);
   
