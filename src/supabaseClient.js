@@ -3,12 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Vérifie si Supabase est configuré
 const useMock = !supabaseUrl || !supabaseAnonKey || supabaseUrl === 'undefined' || supabaseUrl.includes('test')
 
 let supabase = null
 if (!useMock) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey)
+  try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey)
+  } catch (e) {
+    console.warn('Supabase init failed, using LocalStorage')
+  }
 }
 
 export const auth = {
@@ -47,7 +50,15 @@ export const auth = {
   
   onAuthStateChange(callback) {
     if (useMock || !supabase) {
-      return { data: { subscription: { unsubscribe: () => {} } } }
+      // Format attendu par Supabase : retourne { data: { subscription } }
+      const mockSubscription = {
+        unsubscribe: () => {}
+      }
+      return {
+        data: {
+          subscription: mockSubscription
+        }
+      }
     }
     return supabase.auth.onAuthStateChange(callback)
   }
