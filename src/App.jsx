@@ -2,46 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { auth, clientsDB, devisDB } from './supabaseClient';
 
 // ============================================
-// CHANTIERPRO V2 - Application Artisan BTP
-// Design: Modern, Professional, Orange/Slate
+// CHANTIERPRO V3 - APP COMPLÈTE
 // ============================================
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Data
   const [clients, setClients] = useState([]);
   const [devis, setDevis] = useState([]);
+  const [chantiers, setChantiers] = useState([]);
   const [events, setEvents] = useState([]);
+  const [equipe, setEquipe] = useState([]);
+  const [stocks, setStocks] = useState([]);
   
-  // AUTH STATE
+  // Auth state
   const [showSignUp, setShowSignUp] = useState(false);
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '', prenom: '', entreprise: '' });
   const [authError, setAuthError] = useState('');
-  
-  // FORM STATES
+
+  // Forms state
   const [showClientForm, setShowClientForm] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
-  const [clientForm, setClientForm] = useState({ 
-    nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' 
-  });
-  
   const [showDevisForm, setShowDevisForm] = useState(false);
-  const [devisForm, setDevisForm] = useState({ 
-    clientId: '', date: new Date().toISOString().split('T')[0], type: 'devis', lignes: [], validite: 30, notes: ''
-  });
-  const [currentLigne, setCurrentLigne] = useState({ description: '', quantite: 1, prixUnitaire: 0, unite: 'unité' });
-
-  // CALENDAR STATE
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showChantierForm, setShowChantierForm] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
-  const [eventForm, setEventForm] = useState({ title: '', date: '', time: '09:00', type: 'rdv', clientId: '', notes: '' });
+  const [editingItem, setEditingItem] = useState(null);
 
-  // AUTH EFFECT
+  // ============================================
+  // AUTH & DATA LOADING
+  // ============================================
   useEffect(() => {
     let mounted = true;
-    auth.getCurrentUser().then(currentUser => {
-      if (mounted) { setUser(currentUser); setLoading(false); }
+    auth.getCurrentUser().then(u => {
+      if (mounted) { setUser(u); setLoading(false); }
     }).catch(() => { if (mounted) setLoading(false); });
     
     const result = auth.onAuthStateChange((event, session) => {
@@ -49,305 +45,313 @@ export default function App() {
     });
     return () => { mounted = false; result?.data?.subscription?.unsubscribe(); };
   }, []);
-  
-  // LOAD DATA
+
   useEffect(() => {
-    if (user) { loadClients(); loadDevis(); loadEvents(); }
+    if (user) loadAllData();
   }, [user]);
-  
-  const loadClients = async () => {
-    const { data, error } = await clientsDB.getAll();
-    if (!error && data) setClients(data);
-  };
-  
-  const loadDevis = async () => {
-    const { data, error } = await devisDB.getAll();
-    if (!error && data) setDevis(data);
+
+  const loadAllData = async () => {
+    const [clientsRes, devisRes] = await Promise.all([clientsDB.getAll(), devisDB.getAll()]);
+    if (clientsRes.data) setClients(clientsRes.data);
+    if (devisRes.data) setDevis(devisRes.data);
+    
+    const savedChantiers = localStorage.getItem('cp_chantiers');
+    const savedEvents = localStorage.getItem('cp_events');
+    const savedEquipe = localStorage.getItem('cp_equipe');
+    const savedStocks = localStorage.getItem('cp_stocks');
+    
+    if (savedChantiers) setChantiers(JSON.parse(savedChantiers));
+    if (savedEvents) setEvents(JSON.parse(savedEvents));
+    if (savedEquipe) setEquipe(JSON.parse(savedEquipe));
+    if (savedStocks) setStocks(JSON.parse(savedStocks));
   };
 
-  const loadEvents = () => {
-    const saved = localStorage.getItem('cp_events');
-    if (saved) setEvents(JSON.parse(saved));
+  // ============================================
+  // CRUD FUNCTIONS
+  // ============================================
+  const saveToLocal = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+
+  // Clients
+  const handleClientSubmit = async (data) => {
+    if (editingItem) await clientsDB.update(editingItem.id, data);
+    else await clientsDB.create(data);
+    const { data: updated } = await clientsDB.getAll();
+    if (updated) setClients(updated);
+    setShowClientForm(false);
+    setEditingItem(null);
   };
 
-  const saveEvents = (newEvents) => {
-    setEvents(newEvents);
-    localStorage.setItem('cp_events', JSON.stringify(newEvents));
+  // Devis
+  const handleDevisSubmit = async (data) => {
+    if (editingItem) await devisDB.update(editingItem.id, data);
+    else await devisDB.create(data);
+    const { data: updated } = await devisDB.getAll();
+    if (updated) setDevis(updated);
+    setShowDevisForm(false);
+    setEditingItem(null);
   };
-  
-  // AUTH HANDLERS
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setAuthError('');
-    const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom, prenom: authForm.prenom, entreprise: authForm.entreprise });
-    if (error) setAuthError(error.message);
-    else { alert('Compte créé ! Vérifiez votre email.'); setShowSignUp(false); }
+
+  const changerStatutDevis = async (id, statut) => {
+    await devisDB.update(id, { statut });
+    const { data: updated } = await devisDB.getAll();
+    if (updated) setDevis(updated);
   };
-  
+
+  // Chantiers
+  const handleChantierSubmit = (data) => {
+    let updated;
+    if (editingItem) {
+      updated = chantiers.map(c => c.id === editingItem.id ? { ...c, ...data } : c);
+    } else {
+      const newChantier = { id: Date.now().toString(), numero: `CH-${Date.now()}`, ...data };
+      updated = [...chantiers, newChantier];
+    }
+    setChantiers(updated);
+    saveToLocal('cp_chantiers', updated);
+    setShowChantierForm(false);
+    setEditingItem(null);
+  };
+
+  const updateChantierStatut = (id, statut) => {
+    const updated = chantiers.map(c => c.id === id ? { ...c, statut } : c);
+    setChantiers(updated);
+    saveToLocal('cp_chantiers', updated);
+  };
+
+  const deleteChantier = (id) => {
+    const updated = chantiers.filter(c => c.id !== id);
+    setChantiers(updated);
+    saveToLocal('cp_chantiers', updated);
+  };
+
+  // Events
+  const handleEventSubmit = (data) => {
+    let updated;
+    if (editingItem) {
+      updated = events.map(e => e.id === editingItem.id ? { ...e, ...data } : e);
+    } else {
+      updated = [...events, { id: Date.now().toString(), ...data }];
+    }
+    setEvents(updated);
+    saveToLocal('cp_events', updated);
+    setShowEventForm(false);
+    setEditingItem(null);
+  };
+
+  const deleteEvent = (id) => {
+    const updated = events.filter(e => e.id !== id);
+    setEvents(updated);
+    saveToLocal('cp_events', updated);
+  };
+
+  // Equipe
+  const handleEquipeSubmit = (data) => {
+    let updated;
+    if (editingItem) {
+      updated = equipe.map(e => e.id === editingItem.id ? { ...e, ...data } : e);
+    } else {
+      updated = [...equipe, { id: Date.now().toString(), ...data }];
+    }
+    setEquipe(updated);
+    saveToLocal('cp_equipe', updated);
+  };
+
+  // Stocks
+  const handleStockSubmit = (data) => {
+    let updated;
+    if (editingItem) {
+      updated = stocks.map(s => s.id === editingItem.id ? { ...s, ...data } : s);
+    } else {
+      updated = [...stocks, { id: Date.now().toString(), ...data }];
+    }
+    setStocks(updated);
+    saveToLocal('cp_stocks', updated);
+  };
+
+  // Auth
   const handleSignIn = async (e) => {
     e.preventDefault();
     setAuthError('');
     const { error } = await auth.signIn(authForm.email, authForm.password);
     if (error) setAuthError(error.message);
   };
-  
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    const { error } = await auth.signUp(authForm.email, authForm.password, {
+      nom: authForm.nom, prenom: authForm.prenom, entreprise: authForm.entreprise
+    });
+    if (error) setAuthError(error.message);
+    else { alert('Compte créé ! Vérifiez votre email.'); setShowSignUp(false); }
+  };
+
   const handleSignOut = async () => {
     await auth.signOut();
-    setClients([]); setDevis([]); setUser(null);
-  };
-  
-  // CLIENT HANDLERS
-  const handleClientSubmit = async (e) => {
-    e.preventDefault();
-    if (editingClient) await clientsDB.update(editingClient.id, clientForm);
-    else await clientsDB.create(clientForm);
-    loadClients();
-    resetClientForm();
-  };
-  
-  const resetClientForm = () => {
-    setClientForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
-    setEditingClient(null);
-    setShowClientForm(false);
+    setUser(null);
+    setClients([]);
+    setDevis([]);
   };
 
-  const handleClientEdit = (client) => {
-    setEditingClient(client);
-    setClientForm(client);
-    setShowClientForm(true);
-  };
-  
-  const handleClientDelete = async (id) => {
-    if (window.confirm('Supprimer ce client ?')) {
-      await clientsDB.delete(id);
-      loadClients();
-    }
-  };
-  
-  // DEVIS HANDLERS
-  const ajouterLigne = () => {
-    if (!currentLigne.description || currentLigne.prixUnitaire <= 0) {
-      alert('Remplissez description et prix'); return;
-    }
-    const montant = currentLigne.quantite * currentLigne.prixUnitaire;
-    setDevisForm(prev => ({ ...prev, lignes: [...prev.lignes, { ...currentLigne, montant }] }));
-    setCurrentLigne({ description: '', quantite: 1, prixUnitaire: 0, unite: 'unité' });
-  };
-  
-  const supprimerLigne = (index) => {
-    setDevisForm(prev => ({ ...prev, lignes: prev.lignes.filter((_, i) => i !== index) }));
-  };
-  
-  const calculerTotaux = (lignes) => {
-    const totalHT = lignes.reduce((sum, l) => sum + (l.montant || 0), 0);
-    const tva = totalHT * 0.2;
-    return { totalHT, tva, totalTTC: totalHT + tva };
-  };
-  
-  const handleDevisSubmit = async () => {
-    if (!devisForm.clientId || devisForm.lignes.length === 0) {
-      alert('Sélectionnez un client et ajoutez des lignes'); return;
-    }
-    const totaux = calculerTotaux(devisForm.lignes);
-    const prefix = devisForm.type === 'devis' ? 'DEV' : 'FACT';
-    const numero = `${prefix}-${new Date().getFullYear()}-${String(devis.length + 1).padStart(4, '0')}`;
-    
-    await devisDB.create({
-      client_id: devisForm.clientId, numero, date: devisForm.date, type: devisForm.type,
-      statut: 'brouillon', lignes: devisForm.lignes, total_ht: totaux.totalHT,
-      tva: totaux.tva, total_ttc: totaux.totalTTC, validite: devisForm.validite, notes: devisForm.notes
-    });
-    loadDevis();
-    setDevisForm({ clientId: '', date: new Date().toISOString().split('T')[0], type: 'devis', lignes: [], validite: 30, notes: '' });
-    setShowDevisForm(false);
-  };
-  
-  const transformerEnFacture = async (devisId) => {
-    const d = devis.find(x => x.id === devisId);
-    if (!d) return;
-    const numero = `FACT-${new Date().getFullYear()}-${String(devis.filter(x => x.type === 'facture').length + 1).padStart(4, '0')}`;
-    await devisDB.create({
-      client_id: d.client_id, numero, date: new Date().toISOString().split('T')[0],
-      type: 'facture', statut: 'envoyee', lignes: d.lignes,
-      total_ht: d.total_ht, tva: d.tva, total_ttc: d.total_ttc
-    });
-    await devisDB.update(devisId, { statut: 'accepte' });
-    loadDevis();
-  };
-  
-  const changerStatut = async (id, nouveauStatut) => {
-    await devisDB.update(id, { statut: nouveauStatut });
-    loadDevis();
-  };
-
-  // EVENT HANDLERS
-  const handleEventSubmit = (e) => {
-    e.preventDefault();
-    const newEvent = {
-      id: Date.now().toString(),
-      ...eventForm,
-      date: eventForm.date || selectedDate.toISOString().split('T')[0]
-    };
-    saveEvents([...events, newEvent]);
-    setEventForm({ title: '', date: '', time: '09:00', type: 'rdv', clientId: '', notes: '' });
-    setShowEventForm(false);
-  };
-
-  const deleteEvent = (id) => saveEvents(events.filter(e => e.id !== id));
-
-  // PDF HANDLER
-  const handleDownloadPDF = async (devisItem) => {
-    const client = clients.find(c => c.id === devisItem.client_id);
-    if (!client) { alert('Client introuvable'); return; }
-    
-    const entreprise = {
-      nom: String(user?.user_metadata?.entreprise || user?.user_metadata?.nom || 'Mon Entreprise'),
-      adresse: '123 rue de la Construction, 75000 Paris',
-      siret: '123 456 789 00010',
-      email: String(user?.email || ''),
-      telephone: '01 23 45 67 89',
-      tva_percent: 20
-    };
-    
-    try {
-      const { downloadDevisPDF } = await import('./components/DevisPDF');
-      await downloadDevisPDF(devisItem, client, entreprise);
-    } catch (error) {
-      console.error('Erreur PDF:', error);
-      window.print();
-    }
-  };
-
+  // ============================================
   // COMPUTED STATS
+  // ============================================
   const stats = {
-    caMois: devis.filter(d => d.type === 'facture' && d.statut === 'payee' && 
-      new Date(d.date).getMonth() === new Date().getMonth() &&
-      new Date(d.date).getFullYear() === new Date().getFullYear())
-      .reduce((sum, d) => sum + (d.total_ttc || 0), 0),
+    caMois: devis.filter(d => d.type === 'facture' && d.statut === 'payee' &&
+      new Date(d.date).getMonth() === new Date().getMonth()).reduce((s, d) => s + (d.total_ttc || 0), 0),
     caAnnee: devis.filter(d => d.type === 'facture' && d.statut === 'payee' &&
-      new Date(d.date).getFullYear() === new Date().getFullYear())
-      .reduce((sum, d) => sum + (d.total_ttc || 0), 0),
+      new Date(d.date).getFullYear() === new Date().getFullYear()).reduce((s, d) => s + (d.total_ttc || 0), 0),
     devisEnAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'brouillon'].includes(d.statut)),
-    montantEnAttente: devis.filter(d => d.type === 'devis' && d.statut === 'envoye')
-      .reduce((sum, d) => sum + (d.total_ttc || 0), 0),
+    montantEnAttente: devis.filter(d => d.type === 'devis' && d.statut === 'envoye').reduce((s, d) => s + (d.total_ttc || 0), 0),
     facturesImpayees: devis.filter(d => d.type === 'facture' && d.statut !== 'payee'),
-    montantImpaye: devis.filter(d => d.type === 'facture' && d.statut !== 'payee')
-      .reduce((sum, d) => sum + (d.total_ttc || 0), 0),
-    tauxConversion: devis.filter(d => d.type === 'devis').length > 0 
-      ? Math.round((devis.filter(d => d.type === 'devis' && d.statut === 'accepte').length / 
-          devis.filter(d => d.type === 'devis').length) * 100) : 0,
-    clientsActifs: clients.length
+    montantImpaye: devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0),
+    tauxConversion: devis.filter(d => d.type === 'devis').length > 0
+      ? Math.round((devis.filter(d => d.statut === 'accepte').length / devis.filter(d => d.type === 'devis').length) * 100) : 0,
+    clientsActifs: clients.length,
+    chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours').length,
+    stocksBas: stocks.filter(s => s.quantite <= s.seuil_alerte).length,
   };
 
   // ============================================
-  // RENDER
+  // LOADING SCREEN
   // ============================================
-  
-  // LOADING
   if (loading) {
     return (
-      <div style={styles.loadingScreen}>
-        <div style={styles.loadingLogo}>🏗️</div>
-        <p style={styles.loadingText}>Chargement...</p>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-bounce">🏗️</div>
+          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-white mt-4">Chargement...</p>
+        </div>
       </div>
     );
   }
-  
+
+  // ============================================
   // AUTH SCREEN
+  // ============================================
   if (!user) {
     return (
-      <div style={styles.authScreen}>
-        <div style={styles.authLeft}>
-          <div style={styles.authBranding}>
-            <div style={styles.authLogo}>🏗️</div>
-            <h1 style={styles.authBrandName}>ChantierPro</h1>
-            <p style={styles.authTagline}>La gestion simplifiée pour artisans du bâtiment</p>
-            <div style={styles.authFeatures}>
-              <div style={styles.authFeature}><span>📊</span> Tableau de bord intelligent</div>
-              <div style={styles.authFeature}><span>📄</span> Devis & Factures en 2 clics</div>
-              <div style={styles.authFeature}><span>📅</span> Calendrier & Planning</div>
-              <div style={styles.authFeature}><span>👥</span> Gestion clients complète</div>
+      <div className="min-h-screen bg-slate-900 flex">
+        <div className="hidden lg:flex flex-1 bg-gradient-to-br from-orange-500 to-orange-600 p-12 items-center">
+          <div className="max-w-md text-white">
+            <div className="text-6xl mb-6">🏗️</div>
+            <h1 className="text-4xl font-bold mb-4">ChantierPro</h1>
+            <p className="text-xl opacity-90 mb-8">La solution complète pour gérer vos chantiers, clients et équipes.</p>
+            <div className="space-y-3">
+              {['📊 Dashboard intelligent', '🏗️ Gestion chantiers', '📄 Devis & Factures', '👥 Planning équipe', '📦 Gestion stocks'].map((f, i) => (
+                <div key={i} className="flex items-center gap-3 text-lg">{f}</div>
+              ))}
             </div>
           </div>
         </div>
-        <div style={styles.authRight}>
-          <div style={styles.authBox}>
-            <h2 style={styles.authTitle}>{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-            <p style={styles.authSubtitle}>{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
-            
-            <form onSubmit={showSignUp ? handleSignUp : handleSignIn} style={styles.authForm}>
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <div className="lg:hidden text-center mb-8">
+              <div className="text-5xl mb-2">🏗️</div>
+              <h1 className="text-2xl font-bold text-white">ChantierPro</h1>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
+            <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+            <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
               {showSignUp && (
                 <>
-                  <div style={styles.inputRow}>
-                    <input type="text" placeholder="Nom" value={authForm.nom} onChange={(e) => setAuthForm(p => ({...p, nom: e.target.value}))} required style={styles.input} />
-                    <input type="text" placeholder="Prénom" value={authForm.prenom} onChange={(e) => setAuthForm(p => ({...p, prenom: e.target.value}))} style={styles.input} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" placeholder="Nom" value={authForm.nom} onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))} required className="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
+                    <input type="text" placeholder="Prénom" value={authForm.prenom} onChange={e => setAuthForm(p => ({...p, prenom: e.target.value}))} className="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
                   </div>
-                  <input type="text" placeholder="Nom de l'entreprise" value={authForm.entreprise} onChange={(e) => setAuthForm(p => ({...p, entreprise: e.target.value}))} style={styles.input} />
+                  <input type="text" placeholder="Entreprise" value={authForm.entreprise} onChange={e => setAuthForm(p => ({...p, entreprise: e.target.value}))} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
                 </>
               )}
-              <input type="email" placeholder="Email" value={authForm.email} onChange={(e) => setAuthForm(p => ({...p, email: e.target.value}))} required style={styles.input} />
-              <input type="password" placeholder="Mot de passe" value={authForm.password} onChange={(e) => setAuthForm(p => ({...p, password: e.target.value}))} required style={styles.input} />
-              {authError && <p style={styles.authError}>{authError}</p>}
-              <button type="submit" style={styles.authButton}>{showSignUp ? 'Créer mon compte' : 'Se connecter'}</button>
-            </form>
-            
-            <p style={styles.authSwitch}>
-              {showSignUp ? 'Déjà inscrit ?' : 'Pas encore de compte ?'}
-              <button onClick={() => setShowSignUp(!showSignUp)} style={styles.authSwitchBtn}>
-                {showSignUp ? 'Se connecter' : "S'inscrire"}
+              <input type="email" placeholder="Email" value={authForm.email} onChange={e => setAuthForm(p => ({...p, email: e.target.value}))} required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
+              <input type="password" placeholder="Mot de passe" value={authForm.password} onChange={e => setAuthForm(p => ({...p, password: e.target.value}))} required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" />
+              {authError && <p className="text-red-400 text-sm text-center">{authError}</p>}
+              <button type="submit" className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all">
+                {showSignUp ? 'Créer mon compte' : 'Se connecter'}
               </button>
+            </form>
+            <p className="text-center text-slate-400 mt-6">
+              {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}
+              <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 font-semibold ml-2">{showSignUp ? 'Se connecter' : "S'inscrire"}</button>
             </p>
           </div>
         </div>
       </div>
     );
   }
-  
+
+  // ============================================
   // MAIN APP
+  // ============================================
+  const navigation = [
+    { id: 'dashboard', icon: '📊', label: 'Tableau de bord' },
+    { id: 'chantiers', icon: '🏗️', label: 'Chantiers', badge: stats.chantiersEnCours },
+    { id: 'clients', icon: '👥', label: 'Clients' },
+    { id: 'devis', icon: '📄', label: 'Devis & Factures', badge: stats.facturesImpayees.length },
+    { id: 'planning', icon: '📅', label: 'Planning' },
+    { id: 'equipe', icon: '👷', label: 'Équipe' },
+    { id: 'stocks', icon: '📦', label: 'Stocks', badge: stats.stocksBas },
+    { id: 'settings', icon: '⚙️', label: 'Paramètres' },
+  ];
+
   return (
-    <div style={styles.app}>
-      {/* SIDEBAR */}
-      <aside style={styles.sidebar}>
-        <div style={styles.sidebarHeader}>
-          <div style={styles.sidebarLogo}>🏗️</div>
+    <div className="min-h-screen bg-slate-100">
+      {/* Mobile overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      
+      {/* Sidebar */}
+      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+          <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-xl">🏗️</div>
           <div>
-            <h1 style={styles.sidebarTitle}>ChantierPro</h1>
-            <p style={styles.sidebarSubtitle}>{String(user?.user_metadata?.entreprise || user?.email || '')}</p>
+            <h1 className="text-white font-bold">ChantierPro</h1>
+            <p className="text-slate-400 text-xs truncate max-w-[140px]">{String(user?.user_metadata?.entreprise || user?.email || '')}</p>
           </div>
         </div>
-        
-        <nav style={styles.nav}>
-          {[
-            { id: 'dashboard', icon: '📊', label: 'Tableau de bord' },
-            { id: 'calendar', icon: '📅', label: 'Calendrier' },
-            { id: 'clients', icon: '👥', label: 'Clients' },
-            { id: 'devis', icon: '📄', label: 'Devis & Factures' },
-            { id: 'settings', icon: '⚙️', label: 'Paramètres' }
-          ].map(item => (
-            <button key={item.id} onClick={() => setCurrentPage(item.id)}
-              style={{...styles.navItem, ...(currentPage === item.id ? styles.navItemActive : {})}}>
-              <span style={styles.navIcon}>{item.icon}</span>
-              <span>{item.label}</span>
-              {item.id === 'devis' && stats.facturesImpayees.length > 0 && (
-                <span style={styles.navBadge}>{stats.facturesImpayees.length}</span>
-              )}
+        <nav className="p-4 space-y-1">
+          {navigation.map(item => (
+            <button key={item.id} onClick={() => { setCurrentPage(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${currentPage === item.id ? 'bg-orange-500 text-white' : 'text-slate-300 hover:bg-slate-800'}`}>
+              <span>{item.icon}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.badge > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{item.badge}</span>}
             </button>
           ))}
         </nav>
-        
-        <div style={styles.sidebarFooter}>
-          <button onClick={handleSignOut} style={styles.logoutBtn}>🚪 Déconnexion</button>
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800">
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 text-sm">
+            <span>🚪</span> Déconnexion
+          </button>
         </div>
       </aside>
-      
-      {/* MAIN CONTENT */}
-      <main style={styles.main}>
-        {currentPage === 'dashboard' && <DashboardPage stats={stats} clients={clients} devis={devis} events={events} setCurrentPage={setCurrentPage} />}
-        {currentPage === 'calendar' && <CalendarPage events={events} clients={clients} selectedDate={selectedDate} setSelectedDate={setSelectedDate} showEventForm={showEventForm} setShowEventForm={setShowEventForm} eventForm={eventForm} setEventForm={setEventForm} onSubmit={handleEventSubmit} onDelete={deleteEvent} />}
-        {currentPage === 'clients' && <ClientsPage clients={clients} devis={devis} showClientForm={showClientForm} setShowClientForm={setShowClientForm} clientForm={clientForm} setClientForm={setClientForm} editingClient={editingClient} onSubmit={handleClientSubmit} onCancel={resetClientForm} onEdit={handleClientEdit} onDelete={handleClientDelete} />}
-        {currentPage === 'devis' && <DevisPage clients={clients} devis={devis} showDevisForm={showDevisForm} setShowDevisForm={setShowDevisForm} devisForm={devisForm} setDevisForm={setDevisForm} currentLigne={currentLigne} setCurrentLigne={setCurrentLigne} onAddLigne={ajouterLigne} onDeleteLigne={supprimerLigne} onSubmit={handleDevisSubmit} calculerTotaux={calculerTotaux} transformerEnFacture={transformerEnFacture} changerStatut={changerStatut} onDownloadPDF={handleDownloadPDF} />}
-        {currentPage === 'settings' && <SettingsPage user={user} />}
-      </main>
+
+      {/* Main */}
+      <div className="lg:pl-64">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200 px-4 lg:px-8 py-4">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 rounded-lg">☰</button>
+            <div className="flex-1">
+              <input type="text" placeholder="Rechercher..." className="w-full max-w-md px-4 py-2 bg-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-orange-500" />
+            </div>
+            <button className="relative p-2 hover:bg-slate-100 rounded-xl">🔔<span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span></button>
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">+ Nouveau</button>
+            <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">{(user?.email?.[0] || 'U').toUpperCase()}</div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="p-4 lg:p-8">
+          {currentPage === 'dashboard' && <DashboardPage stats={stats} clients={clients} devis={devis} chantiers={chantiers} events={events} setCurrentPage={setCurrentPage} />}
+          {currentPage === 'chantiers' && <ChantiersPage chantiers={chantiers} clients={clients} showForm={showChantierForm} setShowForm={setShowChantierForm} editingItem={editingItem} setEditingItem={setEditingItem} onSubmit={handleChantierSubmit} onUpdateStatut={updateChantierStatut} onDelete={deleteChantier} />}
+          {currentPage === 'clients' && <ClientsPage clients={clients} devis={devis} showForm={showClientForm} setShowForm={setShowClientForm} editingItem={editingItem} setEditingItem={setEditingItem} onSubmit={handleClientSubmit} />}
+          {currentPage === 'devis' && <DevisPage clients={clients} devis={devis} showForm={showDevisForm} setShowForm={setShowDevisForm} editingItem={editingItem} setEditingItem={setEditingItem} onSubmit={handleDevisSubmit} onChangeStatut={changerStatutDevis} />}
+          {currentPage === 'planning' && <PlanningPage events={events} clients={clients} chantiers={chantiers} showForm={showEventForm} setShowForm={setShowEventForm} editingItem={editingItem} setEditingItem={setEditingItem} onSubmit={handleEventSubmit} onDelete={deleteEvent} />}
+          {currentPage === 'equipe' && <EquipePage equipe={equipe} chantiers={chantiers} onSubmit={handleEquipeSubmit} />}
+          {currentPage === 'stocks' && <StocksPage stocks={stocks} onSubmit={handleStockSubmit} />}
+          {currentPage === 'settings' && <SettingsPage user={user} />}
+        </main>
+      </div>
     </div>
   );
 }
@@ -355,380 +359,122 @@ export default function App() {
 // ============================================
 // DASHBOARD PAGE
 // ============================================
-function DashboardPage({ stats, clients, devis, events, setCurrentPage }) {
+function DashboardPage({ stats, clients, devis, chantiers, events, setCurrentPage }) {
   const today = new Date().toISOString().split('T')[0];
   const todayEvents = events.filter(e => e.date === today);
+  const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours');
   const recentDevis = devis.slice(0, 5);
-  
+
   return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 style={styles.pageTitle}>Tableau de bord</h1>
-          <p style={styles.pageSubtitle}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h1 className="text-2xl font-bold text-slate-900">Tableau de bord</h1>
+          <p className="text-slate-500">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
       </div>
-      
-      {/* STATS */}
-      <div style={styles.statsGrid}>
-        <div style={{...styles.statCard, background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff'}}>
-          <div style={styles.statIcon}>💰</div>
-          <div>
-            <p style={styles.statLabel}>CA du mois</p>
-            <p style={styles.statValue}>{stats.caMois.toLocaleString('fr-FR')} €</p>
-            <p style={styles.statSub}>Année: {stats.caAnnee.toLocaleString('fr-FR')} €</p>
-          </div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statIcon}>📄</div>
-          <div>
-            <p style={styles.statLabel}>Devis en attente</p>
-            <p style={styles.statValue}>{stats.devisEnAttente.length}</p>
-            <p style={styles.statSub}>{stats.montantEnAttente.toLocaleString('fr-FR')} € potentiel</p>
-          </div>
-        </div>
-        <div style={{...styles.statCard, ...(stats.facturesImpayees.length > 0 ? {borderColor: '#f59e0b', background: '#fffbeb'} : {})}}>
-          <div style={styles.statIcon}>⚠️</div>
-          <div>
-            <p style={styles.statLabel}>Factures impayées</p>
-            <p style={styles.statValue}>{stats.facturesImpayees.length}</p>
-            <p style={styles.statSub}>{stats.montantImpaye.toLocaleString('fr-FR')} € à encaisser</p>
-          </div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statIcon}>📈</div>
-          <div>
-            <p style={styles.statLabel}>Taux conversion</p>
-            <p style={styles.statValue}>{stats.tauxConversion}%</p>
-            <p style={styles.statSub}>{stats.clientsActifs} clients</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* GRID */}
-      <div style={styles.dashGrid}>
-        <div style={styles.card}>
-          <div style={styles.cardHead}><h3>📅 Aujourd'hui</h3><button onClick={() => setCurrentPage('calendar')} style={styles.link}>Voir tout →</button></div>
-          {todayEvents.length === 0 ? (
-            <div style={styles.empty}><p>Aucun événement</p><button onClick={() => setCurrentPage('calendar')} style={styles.smallBtn}>+ Ajouter</button></div>
-          ) : (
-            <div style={styles.eventList}>{todayEvents.map(e => (
-              <div key={e.id} style={styles.eventRow}>
-                <span style={{...styles.dot, background: e.type === 'chantier' ? '#10b981' : '#3b82f6'}}></span>
-                <span style={styles.eventTime}>{e.time}</span>
-                <span>{e.title}</span>
-              </div>
-            ))}</div>
-          )}
-        </div>
-        
-        <div style={styles.card}>
-          <div style={styles.cardHead}><h3>📄 Documents récents</h3><button onClick={() => setCurrentPage('devis')} style={styles.link}>Voir tout →</button></div>
-          {recentDevis.length === 0 ? (
-            <div style={styles.empty}><p>Aucun document</p></div>
-          ) : (
-            <div style={styles.docList}>{recentDevis.map(doc => {
-              const client = clients.find(c => c.id === doc.client_id);
-              return (
-                <div key={doc.id} style={styles.docRow}>
-                  <div><strong>{doc.numero}</strong><br/><span style={{fontSize: '12px', color: '#64748b'}}>{client ? `${client.nom} ${client.prenom||''}` : '-'}</span></div>
-                  <div style={{textAlign: 'right'}}><span style={{...styles.badge, background: getStatusColor(doc.statut)}}>{getStatusLabel(doc.statut)}</span><br/><strong>{doc.total_ttc?.toFixed(0)} €</strong></div>
-                </div>
-              );
-            })}</div>
-          )}
-        </div>
-        
-        <div style={styles.card}>
-          <h3 style={{margin: '0 0 16px'}}>⚡ Actions rapides</h3>
-          <div style={styles.quickActions}>
-            <button onClick={() => setCurrentPage('devis')} style={styles.quickBtn}><span>📝</span> Nouveau devis</button>
-            <button onClick={() => setCurrentPage('clients')} style={styles.quickBtn}><span>👤</span> Ajouter client</button>
-            <button onClick={() => setCurrentPage('calendar')} style={styles.quickBtn}><span>📅</span> Planifier RDV</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// ============================================
-// CALENDAR PAGE
-// ============================================
-function CalendarPage({ events, clients, selectedDate, setSelectedDate, showEventForm, setShowEventForm, eventForm, setEventForm, onSubmit, onDelete }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear(), month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-    const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-    for (let i = 0; i < startDay; i++) days.push(null);
-    for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(year, month, i));
-    return days;
-  };
-  
-  const days = getDaysInMonth(currentMonth);
-  const today = new Date().toISOString().split('T')[0];
-  const selectedStr = selectedDate.toISOString().split('T')[0];
-  const selectedEvents = events.filter(e => e.date === selectedStr);
-  
-  if (showEventForm) {
-    return (
-      <div style={styles.page}>
-        <button onClick={() => setShowEventForm(false)} style={styles.backBtn}>← Retour</button>
-        <h1 style={styles.pageTitle}>Nouvel événement</h1>
-        <div style={styles.formCard}>
-          <form onSubmit={onSubmit}>
-            <div style={styles.formGrid}>
-              <div style={styles.field}><label>Titre *</label><input type="text" value={eventForm.title} onChange={e => setEventForm(p => ({...p, title: e.target.value}))} required style={styles.input} /></div>
-              <div style={styles.field}><label>Type</label><select value={eventForm.type} onChange={e => setEventForm(p => ({...p, type: e.target.value}))} style={styles.input}><option value="rdv">Rendez-vous</option><option value="chantier">Chantier</option><option value="relance">Relance</option></select></div>
-              <div style={styles.field}><label>Date</label><input type="date" value={eventForm.date || selectedStr} onChange={e => setEventForm(p => ({...p, date: e.target.value}))} style={styles.input} /></div>
-              <div style={styles.field}><label>Heure</label><input type="time" value={eventForm.time} onChange={e => setEventForm(p => ({...p, time: e.target.value}))} style={styles.input} /></div>
-              <div style={styles.field}><label>Client</label><select value={eventForm.clientId} onChange={e => setEventForm(p => ({...p, clientId: e.target.value}))} style={styles.input}><option value="">Aucun</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
-              <div style={{...styles.field, gridColumn: '1/-1'}}><label>Notes</label><textarea value={eventForm.notes} onChange={e => setEventForm(p => ({...p, notes: e.target.value}))} style={{...styles.input, minHeight: '80px'}} /></div>
-            </div>
-            <div style={styles.formActions}><button type="button" onClick={() => setShowEventForm(false)} style={styles.secondaryBtn}>Annuler</button><button type="submit" style={styles.primaryBtn}>Créer</button></div>
-          </form>
+      {/* Alertes */}
+      {stats.facturesImpayees.length > 0 && (
+        <div onClick={() => setCurrentPage('devis')} className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100">
+          <span className="text-2xl">⚠️</span>
+          <span className="font-medium">{stats.facturesImpayees.length} facture(s) impayée(s) - {stats.montantImpaye.toLocaleString('fr-FR')} €</span>
+          <span className="ml-auto">→</span>
         </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}><h1 style={styles.pageTitle}>Calendrier</h1><button onClick={() => setShowEventForm(true)} style={styles.primaryBtn}>+ Nouvel événement</button></div>
-      <div style={styles.calLayout}>
-        <div style={styles.calCard}>
-          <div style={styles.calHeader}>
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} style={styles.calNav}>←</button>
-            <h3 style={{margin: 0, textTransform: 'capitalize'}}>{currentMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h3>
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} style={styles.calNav}>→</button>
-          </div>
-          <div style={styles.weekdays}>{['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(d => <div key={d} style={styles.weekday}>{d}</div>)}</div>
-          <div style={styles.daysGrid}>{days.map((day, i) => {
-            if (!day) return <div key={i} style={styles.dayEmpty}></div>;
-            const dateStr = day.toISOString().split('T')[0];
-            const dayEvents = events.filter(e => e.date === dateStr);
-            const isToday = dateStr === today;
-            const isSelected = dateStr === selectedStr;
-            return (
-              <button key={i} onClick={() => setSelectedDate(day)} style={{...styles.day, ...(isToday ? styles.dayToday : {}), ...(isSelected ? styles.daySelected : {})}}>
-                {day.getDate()}
-                {dayEvents.length > 0 && <div style={styles.dayDots}>{dayEvents.slice(0,3).map((e,j) => <span key={j} style={{...styles.dayDot, background: e.type === 'chantier' ? '#10b981' : '#3b82f6'}}></span>)}</div>}
-              </button>
-            );
-          })}</div>
-        </div>
-        <div style={styles.calSidebar}>
-          <h3>{selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-          {selectedEvents.length === 0 ? (
-            <div style={styles.empty}><p>Aucun événement</p><button onClick={() => setShowEventForm(true)} style={styles.smallBtn}>+ Ajouter</button></div>
-          ) : (
-            <div>{selectedEvents.map(ev => (
-              <div key={ev.id} style={styles.eventCard}>
-                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
-                  <span style={{...styles.badge, background: ev.type === 'chantier' ? '#10b981' : '#3b82f6'}}>{ev.type}</span>
-                  <span style={{color: '#64748b'}}>{ev.time}</span>
-                </div>
-                <h4 style={{margin: '0 0 8px'}}>{ev.title}</h4>
-                {ev.notes && <p style={{fontSize: '13px', color: '#64748b', margin: '0 0 8px'}}>{ev.notes}</p>}
-                <button onClick={() => onDelete(ev.id)} style={styles.deleteBtn}>Supprimer</button>
-              </div>
-            ))}</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// CLIENTS PAGE
-// ============================================
-function ClientsPage({ clients, devis, showClientForm, setShowClientForm, clientForm, setClientForm, editingClient, onSubmit, onCancel, onEdit, onDelete }) {
-  const [search, setSearch] = useState('');
-  const filtered = clients.filter(c => c.nom.toLowerCase().includes(search.toLowerCase()) || (c.entreprise && c.entreprise.toLowerCase().includes(search.toLowerCase())));
-  
-  const getClientStats = (id) => {
-    const docs = devis.filter(d => d.client_id === id);
-    const ca = docs.filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0);
-    return { count: docs.length, ca };
-  };
-  
-  if (showClientForm) {
-    return (
-      <div style={styles.page}>
-        <button onClick={onCancel} style={styles.backBtn}>← Retour</button>
-        <h1 style={styles.pageTitle}>{editingClient ? 'Modifier' : 'Nouveau'} client</h1>
-        <div style={styles.formCard}>
-          <form onSubmit={onSubmit}>
-            <div style={styles.formGrid}>
-              <div style={styles.field}><label>Nom *</label><input type="text" value={clientForm.nom} onChange={e => setClientForm(p => ({...p, nom: e.target.value}))} required style={styles.input} /></div>
-              <div style={styles.field}><label>Prénom</label><input type="text" value={clientForm.prenom} onChange={e => setClientForm(p => ({...p, prenom: e.target.value}))} style={styles.input} /></div>
-              <div style={styles.field}><label>Entreprise</label><input type="text" value={clientForm.entreprise} onChange={e => setClientForm(p => ({...p, entreprise: e.target.value}))} style={styles.input} /></div>
-              <div style={styles.field}><label>Email *</label><input type="email" value={clientForm.email} onChange={e => setClientForm(p => ({...p, email: e.target.value}))} required style={styles.input} /></div>
-              <div style={styles.field}><label>Téléphone *</label><input type="tel" value={clientForm.telephone} onChange={e => setClientForm(p => ({...p, telephone: e.target.value}))} required style={styles.input} /></div>
-              <div style={{...styles.field, gridColumn: '1/-1'}}><label>Adresse *</label><textarea value={clientForm.adresse} onChange={e => setClientForm(p => ({...p, adresse: e.target.value}))} required style={{...styles.input, minHeight: '60px'}} /></div>
-              <div style={{...styles.field, gridColumn: '1/-1'}}><label>Notes</label><textarea value={clientForm.notes || ''} onChange={e => setClientForm(p => ({...p, notes: e.target.value}))} style={{...styles.input, minHeight: '60px'}} /></div>
-            </div>
-            <div style={styles.formActions}><button type="button" onClick={onCancel} style={styles.secondaryBtn}>Annuler</button><button type="submit" style={styles.primaryBtn}>{editingClient ? 'Enregistrer' : 'Créer'}</button></div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}><h1 style={styles.pageTitle}>Clients</h1><button onClick={() => setShowClientForm(true)} style={styles.primaryBtn}>+ Nouveau client</button></div>
-      <div style={styles.searchBar}><span>🔍</span><input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={styles.searchInput} /></div>
-      {filtered.length === 0 ? (
-        <div style={styles.emptyCard}><div style={{fontSize: '48px'}}>👥</div><h3>Aucun client</h3><button onClick={() => setShowClientForm(true)} style={styles.primaryBtn}>+ Ajouter</button></div>
-      ) : (
-        <div style={styles.clientsGrid}>{filtered.map(c => {
-          const cStats = getClientStats(c.id);
-          return (
-            <div key={c.id} style={styles.clientCard}>
-              <div style={styles.clientHead}>
-                <div style={styles.avatar}>{c.nom[0]}{c.prenom?.[0] || ''}</div>
-                <div style={{display: 'flex', gap: '8px'}}><button onClick={() => onEdit(c)} style={styles.iconBtn}>✏️</button><button onClick={() => onDelete(c.id)} style={styles.iconBtnDanger}>🗑️</button></div>
-              </div>
-              <h3 style={{margin: '0 0 4px'}}>{c.nom} {c.prenom}</h3>
-              {c.entreprise && <p style={{color: '#64748b', margin: '0 0 12px', fontSize: '14px'}}>{c.entreprise}</p>}
-              <p style={{fontSize: '13px', color: '#64748b', margin: '4px 0'}}>📧 {c.email}</p>
-              <p style={{fontSize: '13px', color: '#64748b', margin: '4px 0'}}>📱 {c.telephone}</p>
-              <div style={styles.clientStats}>
-                <div><strong>{cStats.count}</strong><br/><span style={{fontSize: '11px', color: '#64748b'}}>Documents</span></div>
-                <div><strong>{cStats.ca.toLocaleString('fr-FR')} €</strong><br/><span style={{fontSize: '11px', color: '#64748b'}}>CA total</span></div>
-              </div>
-            </div>
-          );
-        })}</div>
       )}
-    </div>
-  );
-}
 
-// ============================================
-// DEVIS PAGE
-// ============================================
-function DevisPage({ clients, devis, showDevisForm, setShowDevisForm, devisForm, setDevisForm, currentLigne, setCurrentLigne, onAddLigne, onDeleteLigne, onSubmit, calculerTotaux, transformerEnFacture, changerStatut, onDownloadPDF }) {
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  
-  const filtered = devis.filter(d => {
-    const matchFilter = filter === 'all' || (filter === 'devis' && d.type === 'devis') || (filter === 'factures' && d.type === 'facture') || (filter === 'impayees' && d.type === 'facture' && d.statut !== 'payee');
-    const client = clients.find(c => c.id === d.client_id);
-    const matchSearch = !search || d.numero.toLowerCase().includes(search.toLowerCase()) || (client && client.nom.toLowerCase().includes(search.toLowerCase()));
-    return matchFilter && matchSearch;
-  });
-  
-  if (showDevisForm) {
-    const totaux = calculerTotaux(devisForm.lignes);
-    return (
-      <div style={styles.page}>
-        <button onClick={() => { setShowDevisForm(false); setDevisForm({ clientId: '', date: new Date().toISOString().split('T')[0], type: 'devis', lignes: [], validite: 30, notes: '' }); }} style={styles.backBtn}>← Retour</button>
-        <h1 style={styles.pageTitle}>Nouveau {devisForm.type}</h1>
-        <div style={styles.formCard}>
-          <div style={styles.formGrid}>
-            <div style={styles.field}><label>Client *</label><select value={devisForm.clientId} onChange={e => setDevisForm(p => ({...p, clientId: e.target.value}))} required style={styles.input}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
-            <div style={styles.field}><label>Date</label><input type="date" value={devisForm.date} onChange={e => setDevisForm(p => ({...p, date: e.target.value}))} style={styles.input} /></div>
-            <div style={styles.field}><label>Type</label><select value={devisForm.type} onChange={e => setDevisForm(p => ({...p, type: e.target.value}))} style={styles.input}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
-            <div style={styles.field}><label>Validité (jours)</label><input type="number" value={devisForm.validite} onChange={e => setDevisForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} style={styles.input} /></div>
-          </div>
-          
-          <h3 style={{marginTop: '24px'}}>Lignes</h3>
-          <div style={styles.ligneForm}>
-            <input placeholder="Description" value={currentLigne.description} onChange={e => setCurrentLigne(p => ({...p, description: e.target.value}))} style={{...styles.input, flex: 3}} />
-            <input type="number" placeholder="Qté" value={currentLigne.quantite} onChange={e => setCurrentLigne(p => ({...p, quantite: parseFloat(e.target.value) || 1}))} min="1" style={{...styles.input, flex: 1}} />
-            <select value={currentLigne.unite} onChange={e => setCurrentLigne(p => ({...p, unite: e.target.value}))} style={{...styles.input, flex: 1}}><option value="unité">unité</option><option value="heure">heure</option><option value="jour">jour</option><option value="m²">m²</option><option value="ml">ml</option><option value="forfait">forfait</option></select>
-            <input type="number" placeholder="Prix HT" step="0.01" value={currentLigne.prixUnitaire || ''} onChange={e => setCurrentLigne(p => ({...p, prixUnitaire: parseFloat(e.target.value) || 0}))} style={{...styles.input, flex: 1}} />
-            <button onClick={onAddLigne} type="button" style={styles.addBtn}>+</button>
-          </div>
-          
-          {devisForm.lignes.length > 0 && (
-            <div style={styles.lignesTable}>
-              <div style={styles.lignesHead}><span style={{flex: 3}}>Description</span><span style={{flex: 1, textAlign: 'center'}}>Qté</span><span style={{flex: 1, textAlign: 'right'}}>Prix HT</span><span style={{flex: 1, textAlign: 'right'}}>Total</span><span style={{width: '40px'}}></span></div>
-              {devisForm.lignes.map((l, i) => (
-                <div key={i} style={styles.ligneRow}><span style={{flex: 3}}>{l.description}</span><span style={{flex: 1, textAlign: 'center'}}>{l.quantite} {l.unite}</span><span style={{flex: 1, textAlign: 'right'}}>{l.prixUnitaire.toFixed(2)} €</span><span style={{flex: 1, textAlign: 'right', fontWeight: '600'}}>{l.montant.toFixed(2)} €</span><button onClick={() => onDeleteLigne(i)} style={styles.delLigneBtn}>×</button></div>
-              ))}
-              <div style={styles.totaux}>
-                <div style={styles.totauxRow}><span>Total HT</span><span>{totaux.totalHT.toFixed(2)} €</span></div>
-                <div style={styles.totauxRow}><span>TVA (20%)</span><span>{totaux.tva.toFixed(2)} €</span></div>
-                <div style={{...styles.totauxRow, fontWeight: '700', fontSize: '18px', color: '#f97316', borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '8px'}}><span>Total TTC</span><span>{totaux.totalTTC.toFixed(2)} €</span></div>
-              </div>
-            </div>
-          )}
-          
-          <div style={{...styles.field, marginTop: '20px'}}><label>Notes</label><textarea value={devisForm.notes} onChange={e => setDevisForm(p => ({...p, notes: e.target.value}))} style={{...styles.input, minHeight: '60px'}} /></div>
-          <div style={styles.formActions}><button type="button" onClick={() => setShowDevisForm(false)} style={styles.secondaryBtn}>Annuler</button><button onClick={onSubmit} disabled={!devisForm.clientId || devisForm.lignes.length === 0} style={{...styles.primaryBtn, opacity: (!devisForm.clientId || devisForm.lignes.length === 0) ? 0.5 : 1}}>Créer</button></div>
-        </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon="💰" label="CA du mois" value={`${stats.caMois.toLocaleString('fr-FR')} €`} sub={`Année: ${stats.caAnnee.toLocaleString('fr-FR')} €`} color="orange" />
+        <StatCard icon="📄" label="Devis en attente" value={stats.devisEnAttente.length} sub={`${stats.montantEnAttente.toLocaleString('fr-FR')} € potentiel`} color="blue" />
+        <StatCard icon="🏗️" label="Chantiers en cours" value={stats.chantiersEnCours} sub={`${chantiers.length} au total`} color="green" />
+        <StatCard icon="📈" label="Taux conversion" value={`${stats.tauxConversion}%`} sub={`${stats.clientsActifs} clients`} color="purple" />
       </div>
-    );
-  }
-  
-  return (
-    <div style={styles.page}>
-      <div style={styles.pageHeader}><h1 style={styles.pageTitle}>Devis & Factures</h1><button onClick={() => setShowDevisForm(true)} disabled={clients.length === 0} style={{...styles.primaryBtn, opacity: clients.length === 0 ? 0.5 : 1}}>+ Nouveau</button></div>
-      
-      {clients.length === 0 ? (
-        <div style={styles.emptyCard}><div style={{fontSize: '48px'}}>📄</div><h3>Ajoutez d'abord un client</h3></div>
-      ) : (
-        <>
-          <div style={styles.filterBar}>
-            <div style={styles.tabs}>{['all', 'devis', 'factures', 'impayees'].map(f => <button key={f} onClick={() => setFilter(f)} style={{...styles.tab, ...(filter === f ? styles.tabActive : {})}}>{f === 'all' ? 'Tous' : f === 'devis' ? 'Devis' : f === 'factures' ? 'Factures' : 'Impayées'}</button>)}</div>
-            <div style={styles.searchBar}><span>🔍</span><input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={styles.searchInput} /></div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chantiers */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-slate-100">
+            <h3 className="font-semibold">🏗️ Chantiers en cours</h3>
+            <button onClick={() => setCurrentPage('chantiers')} className="text-sm text-orange-500 font-medium">Voir tout →</button>
           </div>
-          
-          {filtered.length === 0 ? (
-            <div style={styles.emptyCard}><div style={{fontSize: '48px'}}>📄</div><h3>Aucun document</h3><button onClick={() => setShowDevisForm(true)} style={styles.primaryBtn}>+ Créer</button></div>
+          {chantiersEnCours.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">
+              <p className="text-4xl mb-2">🏗️</p>
+              <p>Aucun chantier en cours</p>
+            </div>
           ) : (
-            <div style={styles.devisTable}>
-              <div style={styles.devisHead}><span style={{flex: 1}}>Numéro</span><span style={{flex: 2}}>Client</span><span style={{flex: 1}}>Date</span><span style={{flex: 1, textAlign: 'right'}}>Montant</span><span style={{flex: 1, textAlign: 'center'}}>Statut</span><span style={{flex: 1, textAlign: 'center'}}>Actions</span></div>
-              {filtered.map(doc => {
-                const client = clients.find(c => c.id === doc.client_id);
+            <div className="divide-y divide-slate-100">
+              {chantiersEnCours.slice(0, 4).map(c => {
+                const client = clients.find(cl => cl.id === c.client_id);
                 return (
-                  <div key={doc.id} style={styles.devisRow}>
-                    <span style={{flex: 1, fontWeight: '600'}}>{doc.numero}</span>
-                    <span style={{flex: 2}}>{client ? `${client.nom} ${client.prenom||''}` : '-'}</span>
-                    <span style={{flex: 1}}>{new Date(doc.date).toLocaleDateString('fr-FR')}</span>
-                    <span style={{flex: 1, textAlign: 'right', fontWeight: '700'}}>{doc.total_ttc?.toFixed(2)} €</span>
-                    <span style={{flex: 1, textAlign: 'center'}}><select value={doc.statut} onChange={e => changerStatut(doc.id, e.target.value)} style={{...styles.statusSelect, background: getStatusColor(doc.statut)}}><option value="brouillon">Brouillon</option><option value="envoye">Envoyé</option><option value="accepte">Accepté</option><option value="refuse">Refusé</option>{doc.type === 'facture' && <option value="payee">Payée</option>}</select></span>
-                    <span style={{flex: 1, textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center'}}>
-                      <button onClick={() => onDownloadPDF(doc)} style={styles.actionBtn}>📄</button>
-                      {doc.type === 'devis' && doc.statut === 'accepte' && <button onClick={() => transformerEnFacture(doc.id)} style={{...styles.actionBtn, background: '#10b981'}}>→💰</button>}
-                    </span>
+                  <div key={c.id} className="p-4 hover:bg-slate-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">{c.nom}</h4>
+                        <p className="text-sm text-slate-500">👤 {client?.nom || 'Client'} • 📍 {c.adresse || '-'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{(c.budget_prevu || 0).toLocaleString('fr-FR')} €</p>
+                        <p className="text-xs text-slate-500">Fin: {c.date_fin_prevue ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${c.progression || 0}%` }}></div>
+                      </div>
+                      <span className="text-sm font-medium">{c.progression || 0}%</span>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </>
-      )}
-    </div>
-  );
-}
+        </div>
 
-// ============================================
-// SETTINGS PAGE
-// ============================================
-function SettingsPage({ user }) {
-  return (
-    <div style={styles.page}>
-      <h1 style={styles.pageTitle}>Paramètres</h1>
-      <div style={styles.settingsCard}>
-        <h3>👤 Mon compte</h3>
-        <div style={styles.settingsRow}><span>Email</span><strong>{String(user?.email || '')}</strong></div>
-        <div style={styles.settingsRow}><span>Nom</span><strong>{String(user?.user_metadata?.nom || '-')}</strong></div>
-        <div style={styles.settingsRow}><span>Entreprise</span><strong>{String(user?.user_metadata?.entreprise || '-')}</strong></div>
-      </div>
-      <div style={styles.settingsCard}>
-        <h3>💳 Abonnements</h3>
-        <div style={styles.pricingGrid}>
-          <div style={styles.pricingCard}><h4>Solo</h4><p style={styles.price}>29€<span>/mois</span></p><ul><li>✅ Clients illimités</li><li>✅ Devis & Factures</li><li>✅ Calendrier</li></ul><button style={styles.primaryBtn}>Choisir</button></div>
-          <div style={{...styles.pricingCard, borderColor: '#10b981'}}><h4>Pro</h4><p style={styles.price}>59€<span>/mois</span></p><ul><li>✅ Tout du Solo</li><li>✅ Multi-utilisateurs</li><li>✅ Export comptable</li></ul><button style={{...styles.primaryBtn, background: '#10b981'}}>Choisir</button></div>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Aujourd'hui */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="font-semibold">📅 Aujourd'hui</h3>
+              <button onClick={() => setCurrentPage('planning')} className="text-sm text-orange-500 font-medium">Planning →</button>
+            </div>
+            <div className="p-4">
+              {todayEvents.length === 0 ? (
+                <p className="text-slate-500 text-sm text-center py-4">Aucun événement</p>
+              ) : (
+                <div className="space-y-3">
+                  {todayEvents.slice(0, 4).map(e => (
+                    <div key={e.id} className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${e.type === 'chantier' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                      <span className="text-sm font-medium text-slate-500 w-12">{e.time}</span>
+                      <span className="text-sm truncate">{e.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="font-semibold mb-4">⚡ Actions rapides</h3>
+            <div className="space-y-2">
+              {[
+                { icon: '📝', label: 'Créer un devis', page: 'devis' },
+                { icon: '👤', label: 'Ajouter client', page: 'clients' },
+                { icon: '🏗️', label: 'Nouveau chantier', page: 'chantiers' },
+                { icon: '📅', label: 'Planifier RDV', page: 'planning' },
+              ].map((a, i) => (
+                <button key={i} onClick={() => setCurrentPage(a.page)} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left">
+                  <span>{a.icon}</span>
+                  <span className="text-sm font-medium">{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -736,158 +482,211 @@ function SettingsPage({ user }) {
 }
 
 // ============================================
-// HELPERS
+// CHANTIERS PAGE (Liste + Kanban)
 // ============================================
-function getStatusColor(s) {
-  const c = { brouillon: '#94a3b8', envoye: '#3b82f6', envoyee: '#3b82f6', accepte: '#10b981', refuse: '#ef4444', payee: '#10b981', impayee: '#f59e0b' };
-  return c[s] || '#94a3b8';
-}
-function getStatusLabel(s) {
-  const l = { brouillon: 'Brouillon', envoye: 'Envoyé', envoyee: 'Envoyée', accepte: 'Accepté', refuse: 'Refusé', payee: 'Payée', impayee: 'Impayée' };
-  return l[s] || s;
+function ChantiersPage({ chantiers, clients, showForm, setShowForm, editingItem, setEditingItem, onSubmit, onUpdateStatut, onDelete }) {
+  const [view, setView] = useState('list');
+  const [filter, setFilter] = useState('all');
+  const [form, setForm] = useState({ nom: '', client_id: '', adresse: '', description: '', date_debut: '', date_fin_prevue: '', budget_prevu: '', statut: 'prospect', priorite: 'normale', progression: 0 });
+
+  useEffect(() => {
+    if (editingItem) setForm(editingItem);
+    else setForm({ nom: '', client_id: '', adresse: '', description: '', date_debut: new Date().toISOString().split('T')[0], date_fin_prevue: '', budget_prevu: '', statut: 'prospect', priorite: 'normale', progression: 0 });
+  }, [editingItem, showForm]);
+
+  const filtered = chantiers.filter(c => filter === 'all' || c.statut === filter);
+  const STATUTS = { prospect: '🎯 Prospect', devis: '📄 Devis', en_cours: '🔨 En cours', pause: '⏸️ Pause', termine: '✅ Terminé', annule: '❌ Annulé' };
+  const PRIORITES = { basse: 'Basse', normale: 'Normale', haute: 'Haute', urgente: 'Urgente' };
+  const COLORS = { prospect: 'slate', devis: 'blue', en_cours: 'green', pause: 'yellow', termine: 'emerald', annule: 'red' };
+
+  if (showForm) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button onClick={() => { setShowForm(false); setEditingItem(null); }} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button>
+          <h1 className="text-2xl font-bold">{editingItem ? 'Modifier' : 'Nouveau'} chantier</h1>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <form onSubmit={(e) => { e.preventDefault(); onSubmit({ ...form, budget_prevu: parseFloat(form.budget_prevu) || 0, progression: parseInt(form.progression) || 0 }); }} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Nom *</label><input type="text" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Client *</label><select value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))} required className="w-full px-4 py-2.5 border border-slate-200 rounded-xl"><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Adresse</label><input type="text" value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Date début</label><input type="date" value={form.date_debut} onChange={e => setForm(p => ({...p, date_debut: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Date fin prévue</label><input type="date" value={form.date_fin_prevue} onChange={e => setForm(p => ({...p, date_fin_prevue: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Budget (€)</label><input type="number" value={form.budget_prevu} onChange={e => setForm(p => ({...p, budget_prevu: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Progression (%)</label><input type="number" min="0" max="100" value={form.progression} onChange={e => setForm(p => ({...p, progression: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Statut</label><select value={form.statut} onChange={e => setForm(p => ({...p, statut: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl">{Object.entries(STATUTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">Priorité</label><select value={form.priorite} onChange={e => setForm(p => ({...p, priorite: e.target.value}))} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl">{Object.entries(PRIORITES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Description</label><textarea value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={3} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" /></div>
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button type="button" onClick={() => { setShowForm(false); setEditingItem(null); }} className="px-4 py-2 bg-slate-100 rounded-xl font-medium">Annuler</button>
+              <button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600">{editingItem ? 'Enregistrer' : 'Créer'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Chantiers</h1>
+          <p className="text-slate-500">{chantiers.length} chantiers • {chantiers.filter(c => c.statut === 'en_cours').length} en cours</p>
+        </div>
+        <button onClick={() => setShowForm(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600">+ Nouveau chantier</button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="px-4 py-2 bg-white border border-slate-200 rounded-xl">
+          <option value="all">Tous les statuts</option>
+          {Object.entries(STATUTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <div className="flex bg-slate-100 rounded-xl p-1">
+          <button onClick={() => setView('list')} className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'list' ? 'bg-white shadow' : ''}`}>☰ Liste</button>
+          <button onClick={() => setView('kanban')} className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'kanban' ? 'bg-white shadow' : ''}`}>▦ Kanban</button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border p-12 text-center">
+          <p className="text-5xl mb-4">🏗️</p>
+          <h3 className="text-lg font-semibold">Aucun chantier</h3>
+          <button onClick={() => setShowForm(true)} className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-xl">+ Créer un chantier</button>
+        </div>
+      ) : view === 'list' ? (
+        <div className="space-y-3">
+          {filtered.map(c => {
+            const client = clients.find(cl => cl.id === c.client_id);
+            return (
+              <div key={c.id} className="bg-white rounded-2xl border p-4 hover:shadow-md transition-shadow">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold">{c.nom}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium bg-${COLORS[c.statut]}-100 text-${COLORS[c.statut]}-700`}>{STATUTS[c.statut]}</span>
+                    </div>
+                    <p className="text-sm text-slate-500">👤 {client?.nom || '-'} • 📍 {c.adresse || '-'}</p>
+                  </div>
+                  <div className="w-40">
+                    <div className="flex justify-between text-sm mb-1"><span>Progression</span><span>{c.progression || 0}%</span></div>
+                    <div className="h-2 bg-slate-100 rounded-full"><div className="h-full bg-orange-500 rounded-full" style={{ width: `${c.progression || 0}%` }}></div></div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-lg">{(c.budget_prevu || 0).toLocaleString('fr-FR')} €</p>
+                    <p className="text-xs text-slate-500">Fin: {c.date_fin_prevue ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setEditingItem(c); setShowForm(true); }} className="p-2 hover:bg-slate-100 rounded-lg">✏️</button>
+                    <button onClick={() => { if(confirm('Supprimer ?')) onDelete(c.id); }} className="p-2 hover:bg-red-50 rounded-lg text-red-500">🗑️</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* KANBAN VIEW */
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {['prospect', 'devis', 'en_cours', 'pause', 'termine'].map(statut => {
+            const items = filtered.filter(c => c.statut === statut);
+            return (
+              <div key={statut} className="flex-shrink-0 w-72"
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('id'); if (id) onUpdateStatut(id, statut); }}>
+                <div className="flex items-center gap-2 mb-3 px-2">
+                  <span>{STATUTS[statut]}</span>
+                  <span className="ml-auto bg-slate-200 text-xs px-2 py-0.5 rounded-full">{items.length}</span>
+                </div>
+                <div className="bg-slate-100 rounded-xl p-3 min-h-[400px] space-y-3">
+                  {items.map(c => {
+                    const client = clients.find(cl => cl.id === c.client_id);
+                    return (
+                      <div key={c.id} draggable onDragStart={e => e.dataTransfer.setData('id', c.id)}
+                        onClick={() => { setEditingItem(c); setShowForm(true); }}
+                        className="bg-white rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md border">
+                        <h4 className="font-medium text-sm mb-1">{c.nom}</h4>
+                        <p className="text-xs text-slate-500 mb-2">👤 {client?.nom || '-'}</p>
+                        <div className="h-1.5 bg-slate-100 rounded-full mb-2"><div className="h-full bg-orange-500 rounded-full" style={{ width: `${c.progression || 0}%` }}></div></div>
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>📅 {c.date_fin_prevue ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR') : '-'}</span>
+                          <span className="font-semibold text-slate-900">{(c.budget_prevu || 0).toLocaleString('fr-FR')} €</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ============================================
-// STYLES
+// STAT CARD COMPONENT
 // ============================================
-const styles = {
-  // Loading & Auth
-  loadingScreen: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff' },
-  loadingLogo: { fontSize: '64px', marginBottom: '20px' },
-  loadingText: { fontSize: '18px', opacity: 0.7 },
-  
-  authScreen: { minHeight: '100vh', display: 'flex', background: '#0f172a' },
-  authLeft: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', padding: '60px' },
-  authBranding: { maxWidth: '400px', color: '#fff' },
-  authLogo: { width: '80px', height: '80px', background: 'rgba(255,255,255,0.2)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', marginBottom: '30px' },
-  authBrandName: { fontSize: '42px', fontWeight: '800', margin: '0 0 16px' },
-  authTagline: { fontSize: '20px', opacity: 0.9, marginBottom: '40px', lineHeight: 1.5 },
-  authFeatures: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  authFeature: { display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px' },
-  authRight: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px' },
-  authBox: { width: '100%', maxWidth: '400px' },
-  authTitle: { fontSize: '32px', fontWeight: '700', color: '#fff', margin: '0 0 8px' },
-  authSubtitle: { color: '#94a3b8', marginBottom: '32px' },
-  authForm: { display: 'flex', flexDirection: 'column', gap: '16px' },
-  authError: { color: '#ef4444', fontSize: '14px', textAlign: 'center' },
-  authButton: { padding: '16px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer' },
-  authSwitch: { textAlign: 'center', color: '#94a3b8', marginTop: '24px' },
-  authSwitchBtn: { background: 'none', border: 'none', color: '#f97316', fontWeight: '600', cursor: 'pointer', marginLeft: '8px' },
-  inputRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  
-  // App Layout
-  app: { display: 'flex', minHeight: '100vh', background: '#f8fafc' },
-  sidebar: { width: '260px', background: '#0f172a', color: '#fff', display: 'flex', flexDirection: 'column', position: 'fixed', height: '100vh', zIndex: 100 },
-  sidebarHeader: { display: 'flex', alignItems: 'center', gap: '12px', padding: '20px', borderBottom: '1px solid #1e293b' },
-  sidebarLogo: { width: '40px', height: '40px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' },
-  sidebarTitle: { fontSize: '18px', fontWeight: '700', margin: 0 },
-  sidebarSubtitle: { fontSize: '11px', color: '#64748b', margin: 0, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  nav: { flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', background: 'transparent', border: 'none', borderRadius: '8px', color: '#94a3b8', fontSize: '14px', fontWeight: '500', cursor: 'pointer', textAlign: 'left' },
-  navItemActive: { background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff' },
-  navIcon: { fontSize: '18px' },
-  navBadge: { background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '2px 6px', borderRadius: '8px', marginLeft: 'auto' },
-  sidebarFooter: { padding: '16px', borderTop: '1px solid #1e293b' },
-  logoutBtn: { width: '100%', padding: '10px', background: '#1e293b', border: 'none', borderRadius: '8px', color: '#94a3b8', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
-  
-  main: { flex: 1, marginLeft: '260px', minHeight: '100vh' },
-  page: { padding: '28px 36px' },
-  pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' },
-  pageTitle: { fontSize: '26px', fontWeight: '700', color: '#0f172a', margin: 0 },
-  pageSubtitle: { fontSize: '13px', color: '#64748b', marginTop: '4px' },
-  
-  // Buttons
-  primaryBtn: { padding: '12px 20px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-  secondaryBtn: { padding: '12px 20px', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-  smallBtn: { padding: '8px 14px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
-  backBtn: { display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontSize: '13px', cursor: 'pointer', marginBottom: '20px' },
-  iconBtn: { padding: '8px', background: '#f1f5f9', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-  iconBtnDanger: { padding: '8px', background: '#fee2e2', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' },
-  deleteBtn: { padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' },
-  link: { background: 'none', border: 'none', color: '#f97316', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
-  
-  // Stats
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' },
-  statCard: { background: '#fff', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  statIcon: { fontSize: '28px' },
-  statLabel: { fontSize: '13px', opacity: 0.8, margin: '0 0 4px' },
-  statValue: { fontSize: '24px', fontWeight: '700', margin: '0 0 4px' },
-  statSub: { fontSize: '12px', opacity: 0.7, margin: 0 },
-  
-  // Dashboard
-  dashGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' },
-  card: { background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  cardHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  empty: { textAlign: 'center', padding: '20px', color: '#64748b' },
-  emptyCard: { background: '#fff', borderRadius: '12px', padding: '60px', textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  eventList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  eventRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: '#f8fafc', borderRadius: '8px', fontSize: '13px' },
-  dot: { width: '8px', height: '8px', borderRadius: '50%' },
-  eventTime: { fontWeight: '600', color: '#64748b', width: '45px' },
-  docList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  docRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#f8fafc', borderRadius: '8px', fontSize: '13px' },
-  badge: { padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '600', color: '#fff' },
-  quickActions: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  quickBtn: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'left' },
-  
-  // Forms
-  formCard: { background: '#fff', borderRadius: '12px', padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
-  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  input: { padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', width: '100%' },
-  formActions: { display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' },
-  
-  // Devis Form
-  ligneForm: { display: 'flex', gap: '10px', marginBottom: '16px', alignItems: 'center' },
-  addBtn: { padding: '12px 18px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: '700', cursor: 'pointer' },
-  lignesTable: { border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' },
-  lignesHead: { display: 'flex', padding: '12px 14px', background: '#f8fafc', fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
-  ligneRow: { display: 'flex', alignItems: 'center', padding: '12px 14px', borderTop: '1px solid #e2e8f0', fontSize: '13px' },
-  delLigneBtn: { width: '28px', height: '28px', background: '#fee2e2', border: 'none', borderRadius: '6px', color: '#ef4444', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  totaux: { background: '#f8fafc', padding: '14px 16px' },
-  totauxRow: { display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px', color: '#64748b' },
-  
-  // Calendar
-  calLayout: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' },
-  calCard: { background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  calHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-  calNav: { width: '32px', height: '32px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-  weekdays: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '8px' },
-  weekday: { textAlign: 'center', fontSize: '11px', fontWeight: '600', color: '#64748b', padding: '8px' },
-  daysGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' },
-  dayEmpty: { aspectRatio: '1', background: 'transparent' },
-  day: { aspectRatio: '1', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: '500', position: 'relative' },
-  dayToday: { background: '#fff7ed', borderColor: '#f97316' },
-  daySelected: { background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff', borderColor: '#f97316' },
-  dayDots: { display: 'flex', gap: '2px', marginTop: '4px' },
-  dayDot: { width: '4px', height: '4px', borderRadius: '50%' },
-  calSidebar: { background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  eventCard: { background: '#f8fafc', borderRadius: '10px', padding: '14px', marginBottom: '12px' },
-  
-  // Clients
-  searchBar: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '20px' },
-  searchInput: { flex: 1, border: 'none', background: 'transparent', fontSize: '14px', outline: 'none' },
-  clientsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' },
-  clientCard: { background: '#fff', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  clientHead: { display: 'flex', justifyContent: 'space-between', marginBottom: '14px' },
-  avatar: { width: '44px', height: '44px', background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '16px', fontWeight: '700' },
-  clientStats: { display: 'flex', justifyContent: 'space-around', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' },
-  
-  // Devis List
-  filterBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '16px' },
-  tabs: { display: 'flex', gap: '8px' },
-  tab: { padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', color: '#64748b' },
-  tabActive: { background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)', color: '#fff' },
-  devisTable: { background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  devisHead: { display: 'flex', padding: '14px 16px', background: '#f8fafc', fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
-  devisRow: { display: 'flex', alignItems: 'center', padding: '14px 16px', borderTop: '1px solid #e2e8f0', fontSize: '13px' },
-  statusSelect: { padding: '6px 10px', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '600', color: '#fff', cursor: 'pointer' },
-  actionBtn: { width: '32px', height: '32px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' },
-  
-  // Settings
-  settingsCard: { background: '#fff', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #e2e8f0' },
-  settingsRow: { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f1f5f9' },
-  pricingGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' },
-  pricingCard: { border: '2px solid #e2e8f0', borderRadius: '12px', padding: '24px', textAlign: 'center' },
-  price: { fontSize: '36px', fontWeight: '700', color: '#f97316', margin: '12px 0 20px' },
-};
+function StatCard({ icon, label, value, sub, color }) {
+  const colors = { orange: 'from-orange-500 to-orange-600', blue: 'from-blue-500 to-blue-600', green: 'from-green-500 to-green-600', purple: 'from-purple-500 to-purple-600' };
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-slate-500">{label}</p>
+          <p className="text-2xl font-bold mt-1">{value}</p>
+          {sub && <p className="text-sm text-slate-500 mt-1">{sub}</p>}
+        </div>
+        <div className={`w-11 h-11 bg-gradient-to-br ${colors[color]} rounded-xl flex items-center justify-center text-xl text-white`}>{icon}</div>
+      </div>
+    </div>
+  );
+}
+
+// CLIENTS PAGE
+function ClientsPage({ clients, devis, showForm, setShowForm, editingItem, setEditingItem, onSubmit }) {
+  const [search, setSearch] = useState('');
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+  useEffect(() => { if (editingItem) setForm(editingItem); else setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }, [editingItem, showForm]);
+  const filtered = clients.filter(c => c.nom.toLowerCase().includes(search.toLowerCase()));
+  const getStats = (id) => { const docs = devis.filter(d => d.client_id === id); return { docs: docs.length, ca: docs.filter(d => d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0) }; };
+  if (showForm) return (<div className="space-y-6"><button onClick={() => { setShowForm(false); setEditingItem(null); }} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button><h1 className="text-2xl font-bold">{editingItem ? 'Modifier' : 'Nouveau'} client</h1><div className="bg-white rounded-2xl border p-6"><form onSubmit={e => { e.preventDefault(); onSubmit(form); }} className="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" placeholder="Nom *" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><input type="text" placeholder="Prénom" value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><input type="email" placeholder="Email *" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><input type="tel" placeholder="Téléphone *" value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><textarea placeholder="Adresse" value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} className="md:col-span-2 px-4 py-2.5 border rounded-xl" /><div className="md:col-span-2 flex justify-end gap-3"><button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-xl">Enregistrer</button></div></form></div></div>);
+  return (<div className="space-y-6"><div className="flex justify-between"><h1 className="text-2xl font-bold">Clients ({clients.length})</h1><button onClick={() => setShowForm(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div><input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2 border rounded-xl" />{filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">👥</p><h3>Aucun client</h3></div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{filtered.map(c => { const s = getStats(c.id); return (<div key={c.id} className="bg-white rounded-2xl border p-5"><div className="flex justify-between mb-3"><div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">{c.nom[0]}</div><button onClick={() => { setEditingItem(c); setShowForm(true); }} className="p-2 hover:bg-slate-100 rounded-lg">✏️</button></div><h3 className="font-semibold">{c.nom} {c.prenom}</h3><p className="text-sm text-slate-500">📧 {c.email}</p><p className="text-sm text-slate-500">📱 {c.telephone}</p><div className="flex justify-around mt-4 pt-4 border-t text-center"><div><p className="font-bold">{s.docs}</p><p className="text-xs text-slate-500">Docs</p></div><div><p className="font-bold">{s.ca.toLocaleString('fr-FR')} €</p><p className="text-xs text-slate-500">CA</p></div></div></div>); })}</div>}</div>);
+}
+
+// DEVIS PAGE
+function DevisPage({ clients, devis, showForm, setShowForm, onSubmit, onChangeStatut }) {
+  const [filter, setFilter] = useState('all');
+  const [form, setForm] = useState({ clientId: '', date: new Date().toISOString().split('T')[0], type: 'devis', lignes: [], validite: 30 });
+  const [ligne, setLigne] = useState({ description: '', quantite: 1, prixUnitaire: 0, unite: 'unité' });
+  const filtered = devis.filter(d => filter === 'all' || (filter === 'devis' && d.type === 'devis') || (filter === 'factures' && d.type === 'facture'));
+  const addLigne = () => { if (!ligne.description) return; setForm(p => ({ ...p, lignes: [...p.lignes, { ...ligne, montant: ligne.quantite * ligne.prixUnitaire }] })); setLigne({ description: '', quantite: 1, prixUnitaire: 0, unite: 'unité' }); };
+  const totaux = form.lignes.reduce((s, l) => s + (l.montant || 0), 0);
+  const handleSubmit = () => { if (!form.clientId || form.lignes.length === 0) return alert('Remplissez tous les champs'); onSubmit({ client_id: form.clientId, numero: `${form.type === 'devis' ? 'DEV' : 'FACT'}-${Date.now()}`, date: form.date, type: form.type, statut: 'brouillon', lignes: form.lignes, total_ht: totaux, tva: totaux * 0.2, total_ttc: totaux * 1.2 }); };
+  if (showForm) return (<div className="space-y-6"><button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button><h1 className="text-2xl font-bold">Nouveau {form.type}</h1><div className="bg-white rounded-2xl border p-6 space-y-4"><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><select value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))} className="px-4 py-2.5 border rounded-xl"><option value="">Client...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><input type="date" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><select value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))} className="px-4 py-2.5 border rounded-xl"><option value="devis">Devis</option><option value="facture">Facture</option></select></div><div className="flex gap-2"><input placeholder="Description" value={ligne.description} onChange={e => setLigne(p => ({...p, description: e.target.value}))} className="flex-1 px-3 py-2 border rounded-lg" /><input type="number" placeholder="Qté" value={ligne.quantite} onChange={e => setLigne(p => ({...p, quantite: parseFloat(e.target.value) || 1}))} className="w-20 px-3 py-2 border rounded-lg" /><input type="number" placeholder="Prix" value={ligne.prixUnitaire || ''} onChange={e => setLigne(p => ({...p, prixUnitaire: parseFloat(e.target.value) || 0}))} className="w-24 px-3 py-2 border rounded-lg" /><button onClick={addLigne} className="px-4 py-2 bg-orange-500 text-white rounded-lg">+</button></div>{form.lignes.length > 0 && <div className="border rounded-xl overflow-hidden">{form.lignes.map((l, i) => <div key={i} className="flex px-4 py-2 border-b"><span className="flex-1">{l.description}</span><span className="w-20">{l.quantite}</span><span className="w-24 text-right">{l.montant?.toFixed(2)} €</span></div>)}<div className="bg-slate-50 px-4 py-3 font-bold text-right text-orange-500">Total TTC: {(totaux * 1.2).toFixed(2)} €</div></div>}<div className="flex justify-end gap-3"><button onClick={() => setShowForm(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleSubmit} className="px-4 py-2 bg-orange-500 text-white rounded-xl">Créer</button></div></div></div>);
+  return (<div className="space-y-6"><div className="flex justify-between"><h1 className="text-2xl font-bold">Devis & Factures</h1><button onClick={() => setShowForm(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div><div className="flex gap-2">{['all', 'devis', 'factures'].map(f => <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl ${filter === f ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>{f === 'all' ? 'Tous' : f}</button>)}</div>{filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">📄</p><h3>Aucun document</h3></div> : <div className="bg-white rounded-2xl border">{filtered.map(d => <div key={d.id} className="flex items-center px-4 py-3 border-b"><span className="flex-1 font-semibold">{d.numero}</span><span className="flex-1">{clients.find(c => c.id === d.client_id)?.nom || '-'}</span><span className="w-28 text-right font-bold">{d.total_ttc?.toFixed(2)} €</span><select value={d.statut} onChange={e => onChangeStatut(d.id, e.target.value)} className="ml-4 px-2 py-1 border rounded-lg text-sm">{['brouillon', 'envoye', 'accepte', 'payee'].map(s => <option key={s} value={s}>{s}</option>)}</select></div>)}</div>}</div>);
+}
+
+// PLANNING PAGE
+function PlanningPage({ events, clients, showForm, setShowForm, onSubmit, onDelete }) {
+  const [month, setMonth] = useState(new Date());
+  const [selected, setSelected] = useState(new Date());
+  const [form, setForm] = useState({ title: '', date: '', time: '09:00', type: 'rdv' });
+  useEffect(() => { if (showForm) setForm(p => ({ ...p, date: selected.toISOString().split('T')[0] })); }, [showForm, selected]);
+  const getDays = () => { const y = month.getFullYear(), m = month.getMonth(); const days = []; const start = (new Date(y, m, 1).getDay() + 6) % 7; for (let i = 0; i < start; i++) days.push(null); for (let i = 1; i <= new Date(y, m + 1, 0).getDate(); i++) days.push(new Date(y, m, i)); return days; };
+  const selStr = selected.toISOString().split('T')[0];
+  const selEvents = events.filter(e => e.date === selStr);
+  if (showForm) return (<div className="space-y-6"><button onClick={() => setShowForm(false)} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button><h1 className="text-2xl font-bold">Nouvel événement</h1><div className="bg-white rounded-2xl border p-6"><form onSubmit={e => { e.preventDefault(); onSubmit(form); }} className="grid grid-cols-2 gap-4"><input type="text" placeholder="Titre *" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><select value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))} className="px-4 py-2.5 border rounded-xl"><option value="rdv">RDV</option><option value="chantier">Chantier</option></select><input type="date" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><input type="time" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><div className="col-span-2 flex justify-end gap-3"><button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-xl">Créer</button></div></form></div></div>);
+  return (<div className="space-y-6"><div className="flex justify-between"><h1 className="text-2xl font-bold">Planning</h1><button onClick={() => setShowForm(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><div className="lg:col-span-2 bg-white rounded-2xl border p-4"><div className="flex justify-between mb-4"><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1))} className="p-2">←</button><h3 className="font-semibold capitalize">{month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h3><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1))} className="p-2">→</button></div><div className="grid grid-cols-7 gap-1">{['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <div key={i} className="text-center text-xs text-slate-500 py-2">{d}</div>)}{getDays().map((d, i) => d ? <button key={i} onClick={() => setSelected(d)} className={`aspect-square rounded-lg flex items-center justify-center text-sm ${d.toISOString().split('T')[0] === selStr ? 'bg-orange-500 text-white' : 'hover:bg-slate-100'}`}>{d.getDate()}</button> : <div key={i} />)}</div></div><div className="bg-white rounded-2xl border p-4"><h3 className="font-semibold mb-4">{selected.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>{selEvents.length === 0 ? <p className="text-slate-500 text-center py-8">Aucun événement</p> : <div className="space-y-3">{selEvents.map(e => <div key={e.id} className="p-3 bg-slate-50 rounded-xl"><div className="flex justify-between"><span className="text-sm font-medium">{e.time}</span><button onClick={() => onDelete(e.id)} className="text-red-500 text-sm">×</button></div><h4 className="font-medium">{e.title}</h4></div>)}</div>}</div></div></div>);
+}
+
+// EQUIPE + STOCKS + SETTINGS
+function EquipePage({ equipe, onSubmit }) { const [show, setShow] = useState(false); const [form, setForm] = useState({ nom: '', prenom: '', role: 'ouvrier', telephone: '' }); if (show) return (<div className="space-y-6"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button><h1 className="text-2xl font-bold">Nouveau membre</h1><div className="bg-white rounded-2xl border p-6"><form onSubmit={e => { e.preventDefault(); onSubmit(form); setShow(false); }} className="grid grid-cols-2 gap-4"><input placeholder="Nom *" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><input placeholder="Prénom" value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><select value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))} className="px-4 py-2.5 border rounded-xl"><option value="ouvrier">Ouvrier</option><option value="chef">Chef</option></select><input placeholder="Téléphone" value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><div className="col-span-2 flex justify-end gap-3"><button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-xl">Ajouter</button></div></form></div></div>); return (<div className="space-y-6"><div className="flex justify-between"><h1 className="text-2xl font-bold">Équipe ({equipe.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div>{equipe.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">👷</p><h3>Aucun membre</h3></div> : <div className="grid grid-cols-1 md:grid-cols-3 gap-4">{equipe.map(m => <div key={m.id} className="bg-white rounded-2xl border p-5"><div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold mb-3">{m.nom[0]}</div><h3 className="font-semibold">{m.nom} {m.prenom}</h3><p className="text-sm text-slate-500">{m.role}</p>{m.telephone && <p className="text-sm text-slate-500">📱 {m.telephone}</p>}</div>)}</div>}</div>); }
+function StocksPage({ stocks, onSubmit }) { const [show, setShow] = useState(false); const [form, setForm] = useState({ nom: '', categorie: 'Autre', quantite: 0, seuil_alerte: 5, prix_unitaire: 0 }); if (show) return (<div className="space-y-6"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-lg">← Retour</button><h1 className="text-2xl font-bold">Nouveau matériau</h1><div className="bg-white rounded-2xl border p-6"><form onSubmit={e => { e.preventDefault(); onSubmit({ ...form, quantite: parseFloat(form.quantite), prix_unitaire: parseFloat(form.prix_unitaire) }); setShow(false); }} className="grid grid-cols-2 gap-4"><input placeholder="Nom *" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} required className="px-4 py-2.5 border rounded-xl" /><select value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))} className="px-4 py-2.5 border rounded-xl">{['Plomberie', 'Électricité', 'Maçonnerie', 'Autre'].map(c => <option key={c}>{c}</option>)}</select><input type="number" placeholder="Quantité" value={form.quantite} onChange={e => setForm(p => ({...p, quantite: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><input type="number" placeholder="Seuil alerte" value={form.seuil_alerte} onChange={e => setForm(p => ({...p, seuil_alerte: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><input type="number" placeholder="Prix €" value={form.prix_unitaire} onChange={e => setForm(p => ({...p, prix_unitaire: e.target.value}))} className="px-4 py-2.5 border rounded-xl" /><div className="col-span-2 flex justify-end"><button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-xl">Ajouter</button></div></form></div></div>); const alertes = stocks.filter(s => s.quantite <= s.seuil_alerte); return (<div className="space-y-6"><div className="flex justify-between"><h1 className="text-2xl font-bold">Stocks ({stocks.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div>{alertes.length > 0 && <div className="bg-amber-50 border border-amber-200 rounded-xl p-4"><h3 className="font-semibold text-amber-800">⚠️ Stocks bas</h3><div className="flex gap-2 mt-2 flex-wrap">{alertes.map(s => <span key={s.id} className="px-3 py-1 bg-amber-100 rounded-full text-sm">{s.nom}: {s.quantite}</span>)}</div></div>}{stocks.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">📦</p><h3>Aucun matériau</h3></div> : <div className="bg-white rounded-2xl border">{stocks.map(s => <div key={s.id} className={`flex items-center px-4 py-3 border-b ${s.quantite <= s.seuil_alerte ? 'bg-red-50' : ''}`}><span className="flex-1 font-medium">{s.nom}</span><span className="w-24">{s.categorie}</span><span className={`w-20 text-center font-semibold ${s.quantite <= s.seuil_alerte ? 'text-red-500' : ''}`}>{s.quantite}</span><span className="w-24 text-right">{s.prix_unitaire?.toFixed(2)} €</span></div>)}</div>}</div>); }
+function SettingsPage({ user }) { return (<div className="space-y-6"><h1 className="text-2xl font-bold">Paramètres</h1><div className="bg-white rounded-2xl border p-6"><h3 className="font-semibold mb-4">👤 Mon compte</h3><div className="space-y-3"><div className="flex justify-between py-2 border-b"><span className="text-slate-500">Email</span><span>{String(user?.email || '')}</span></div><div className="flex justify-between py-2 border-b"><span className="text-slate-500">Nom</span><span>{String(user?.user_metadata?.nom || '-')}</span></div><div className="flex justify-between py-2"><span className="text-slate-500">Entreprise</span><span>{String(user?.user_metadata?.entreprise || '-')}</span></div></div></div><div className="bg-white rounded-2xl border p-6"><h3 className="font-semibold mb-4">💳 Abonnement</h3><div className="grid grid-cols-2 gap-4"><div className="border-2 rounded-xl p-6 text-center"><h4 className="font-bold">Solo</h4><p className="text-3xl font-bold text-orange-500 my-3">29€<span className="text-sm text-slate-500">/mois</span></p><button className="w-full py-2 bg-orange-500 text-white rounded-xl">Choisir</button></div><div className="border-2 border-green-500 rounded-xl p-6 text-center"><h4 className="font-bold">Pro</h4><p className="text-3xl font-bold text-green-500 my-3">59€<span className="text-sm text-slate-500">/mois</span></p><button className="w-full py-2 bg-green-500 text-white rounded-xl">Choisir</button></div></div></div></div>); }
