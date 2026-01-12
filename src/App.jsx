@@ -398,3 +398,226 @@ function Settings({ user }) {
     </div>
   );
 }
+number" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={pForm.pause} onChange={e => setPForm(p => ({...p, pause: parseInt(e.target.value) || 0}))} /></div><div><label className="block text-sm font-medium mb-1">Début</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={pForm.heureDebut} onChange={e => setPForm(p => ({...p, heureDebut: e.target.value}))} /></div><div><label className="block text-sm font-medium mb-1">Fin</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={pForm.heureFin} onChange={e => setPForm(p => ({...p, heureFin: e.target.value}))} /></div></div><div className="mt-4 p-4 bg-orange-50 rounded-xl"><p className="text-sm text-orange-800">⏱️ Heures: <span className="font-bold">{calcHeures(pForm.heureDebut, pForm.heureFin, pForm.pause).toFixed(1)}h</span></p></div><div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShowPointage(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={submitPointage} className="px-6 py-2 bg-orange-500 text-white rounded-xl">Enregistrer</button></div></div></div>);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Équipe & Pointage</h1><div className="flex gap-2"><button onClick={() => setShowPointage(true)} className="px-4 py-2 bg-slate-100 rounded-xl">⏱️ Pointage</button><button onClick={() => setShow(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Membre</button></div></div>
+      <div className="flex gap-2 border-b pb-2">{[['liste', '👥 Équipe'], ['pointages', '⏱️ Pointages']].map(([k, v]) => <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`}>{v}</button>)}</div>
+      {tab === 'liste' ? (equipe.length === 0 ? <div className={`${bgCard} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4">👷</p><h3>Aucun membre</h3></div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{equipe.map(m => <div key={m.id} className={`${bgCard} rounded-2xl border p-5`}><div className="flex items-center gap-3 mb-4"><div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold">{m.nom?.[0]}{m.prenom?.[0]}</div><div><h3 className="font-semibold">{m.nom} {m.prenom}</h3><p className="text-sm text-slate-500">{ROLES[m.role] || m.role}</p></div></div>{m.telephone && <p className="text-sm text-slate-500">📱 {m.telephone}</p>}{m.tauxHoraire > 0 && <p className="text-sm text-slate-500">💰 {m.tauxHoraire} €/h</p>}<div className="mt-4 pt-4 border-t flex justify-between"><span className="text-sm text-slate-500">Ce mois</span><span className="font-bold text-orange-500">{getHeuresMois(m.id).toFixed(1)}h</span></div></div>)}</div>) : (<div className={`${bgCard} rounded-2xl border overflow-hidden`}>{pointages.length === 0 ? <p className="p-8 text-center text-slate-500">Aucun pointage</p> : [...pointages].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map(p => { const emp = equipe.find(e => e.id === p.employeId); const ch = chantiers.find(c => c.id === p.chantierId); return (<div key={p.id} className="flex items-center px-5 py-3 border-b gap-4"><span className="w-28 font-medium">{new Date(p.date).toLocaleDateString('fr-FR')}</span><span className="flex-1">{emp?.nom} {emp?.prenom}</span><span className="flex-1 text-slate-500">{ch?.nom || '-'}</span><span className="w-24 text-sm">{p.heureDebut} - {p.heureFin}</span><span className="w-20 text-right font-bold text-orange-500">{(p.heures || 0).toFixed(1)}h</span></div>); })}</div>)}
+    </div>
+  );
+}
+
+function Stocks({ stocks, setStocks, theme }) {
+  const [show, setShow] = useState(false);
+  const [search, setSearch] = useState('');
+  const [form, setForm] = useState({ nom: '', reference: '', categorie: 'Autre', quantite: 0, seuil: 5, prix: 0, emplacement: '' });
+  const bgCard = theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const CATS = ['Plomberie', 'Électricité', 'Maçonnerie', 'Peinture', 'Outillage', 'Autre'];
+  const lowStocks = stocks.filter(s => s.quantite <= (s.seuil || 5));
+  const filtered = stocks.filter(s => !search || s.nom?.toLowerCase().includes(search.toLowerCase()));
+  const totalValue = stocks.reduce((s, st) => s + (st.quantite || 0) * (st.prix || 0), 0);
+  const submit = () => { if (!form.nom) return; setStocks([...stocks, { id: Date.now().toString(), ...form, quantite: parseFloat(form.quantite) || 0, seuil: parseInt(form.seuil) || 5, prix: parseFloat(form.prix) || 0 }]); setShow(false); setForm({ nom: '', reference: '', categorie: 'Autre', quantite: 0, seuil: 5, prix: 0, emplacement: '' }); };
+  const updateQty = (id, delta) => setStocks(stocks.map(s => s.id === id ? { ...s, quantite: Math.max(0, (s.quantite || 0) + delta) } : s));
+
+  useEffect(() => { if (window.quickAddAction === 'new') { setShow(true); window.quickAddAction = null; } }, []);
+
+  if (show) return (<div className="space-y-6"><div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Nouveau matériau</h1></div><div className={`${bgCard} rounded-2xl border p-6`}><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div><div><label className="block text-sm font-medium mb-1">Référence</label><input className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.reference} onChange={e => setForm(p => ({...p, reference: e.target.value}))} /></div><div><label className="block text-sm font-medium mb-1">Catégorie</label><select className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}>{CATS.map(c => <option key={c}>{c}</option>)}</select></div><div><label className="block text-sm font-medium mb-1">Quantité</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.quantite} onChange={e => setForm(p => ({...p, quantite: e.target.value}))} /></div><div><label className="block text-sm font-medium mb-1">Seuil alerte</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.seuil} onChange={e => setForm(p => ({...p, seuil: e.target.value}))} /></div><div><label className="block text-sm font-medium mb-1">Prix unitaire (€)</label><input type="number" step="0.01" className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.prix} onChange={e => setForm(p => ({...p, prix: e.target.value}))} /></div><div className="col-span-2"><label className="block text-sm font-medium mb-1">Emplacement</label><input className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={form.emplacement} onChange={e => setForm(p => ({...p, emplacement: e.target.value}))} placeholder="Entrepôt A" /></div></div><div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShow(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={submit} className="px-6 py-2 bg-orange-500 text-white rounded-xl">Ajouter</button></div></div></div>);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Stocks ({stocks.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 bg-orange-500 text-white rounded-xl">+ Nouveau</button></div>
+      {lowStocks.length > 0 && <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4"><div className="flex items-center gap-3 mb-2"><span className="text-2xl">⚠️</span><h3 className="font-semibold text-amber-800">Stocks bas ({lowStocks.length})</h3></div><div className="flex flex-wrap gap-2">{lowStocks.map(s => <span key={s.id} className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">{s.nom}: {s.quantite}</span>)}</div></div>}
+      <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full max-w-md px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} />
+      {filtered.length === 0 ? <div className={`${bgCard} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4">📦</p><h3>Aucun matériau</h3></div> : <div className={`${bgCard} rounded-2xl border overflow-hidden`}>{filtered.map(s => <div key={s.id} className={`flex items-center px-5 py-4 border-b gap-4 ${s.quantite <= (s.seuil || 5) ? 'bg-red-50' : ''}`}><div className="flex-1"><p className="font-medium">{s.nom}</p><div className="flex gap-2 text-xs text-slate-500">{s.reference && <span>Réf: {s.reference}</span>}{s.emplacement && <span>📍 {s.emplacement}</span>}</div></div><span className="w-24 text-sm">{s.categorie}</span><div className="flex items-center gap-2"><button onClick={() => updateQty(s.id, -1)} className="w-8 h-8 bg-slate-100 rounded-lg font-bold">-</button><span className={`w-12 text-center font-semibold ${s.quantite <= (s.seuil || 5) ? 'text-red-600' : ''}`}>{s.quantite}</span><button onClick={() => updateQty(s.id, 1)} className="w-8 h-8 bg-slate-100 rounded-lg font-bold">+</button></div><span className="w-20 text-right">{(s.prix || 0).toFixed(2)} €</span><span className="w-24 text-right font-semibold">{((s.quantite || 0) * (s.prix || 0)).toFixed(2)} €</span></div>)}<div className={`px-5 py-4 ${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'} flex justify-between`}><span className="font-semibold">Valeur totale</span><span className="font-bold text-orange-500">{totalValue.toFixed(2)} €</span></div></div>}
+    </div>
+  );
+}
+
+function Settings({ user, settings, setSettings, equipe, devis, clients, chantiers, theme }) {
+  const [tab, setTab] = useState('compte');
+  const [users, setUsers] = useState([{ id: '1', email: user?.email, role: 'admin', nom: user?.user_metadata?.nom || 'Admin' }]);
+  const [newUser, setNewUser] = useState({ email: '', role: 'employe', nom: '' });
+  const bgCard = theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+
+  const exportData = (type) => {
+    let data, filename;
+    if (type === 'clients') { data = clients; filename = 'clients.json'; }
+    else if (type === 'devis') { data = devis; filename = 'devis_factures.json'; }
+    else if (type === 'chantiers') { data = chantiers; filename = 'chantiers.json'; }
+    else { data = { clients, devis, chantiers, equipe }; filename = 'export_complet.json'; }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  };
+
+  const addUser = () => {
+    if (!newUser.email || !newUser.nom) return;
+    setUsers([...users, { id: Date.now().toString(), ...newUser }]);
+    setNewUser({ email: '', role: 'employe', nom: '' });
+  };
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Paramètres</h1>
+      <div className="flex gap-2 border-b pb-2 flex-wrap">
+        {[['compte', '👤 Compte'], ['users', '👥 Utilisateurs'], ['preferences', '⚙️ Préférences'], ['integrations', '🔗 Intégrations'], ['security', '🔒 Sécurité'], ['export', '📤 Export']].map(([k, v]) => (
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium transition-all ${tab === k ? `${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} border border-b-white -mb-[3px] text-orange-500` : 'text-slate-500'}`}>{v}</button>
+        ))}
+      </div>
+
+      {tab === 'compte' && (
+        <div className={`${bgCard} rounded-2xl border p-6`}>
+          <h3 className="font-semibold mb-4">Informations du compte</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between py-3 border-b"><span className="text-slate-500">Email</span><span className="font-medium">{String(user?.email || '-')}</span></div>
+            <div className="flex justify-between py-3 border-b"><span className="text-slate-500">Nom</span><span className="font-medium">{String(user?.user_metadata?.nom || '-')}</span></div>
+            <div className="flex justify-between py-3"><span className="text-slate-500">Entreprise</span><span className="font-medium">{String(user?.user_metadata?.entreprise || '-')}</span></div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'users' && (
+        <div className="space-y-6">
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">👥 Gestion des utilisateurs</h3>
+            <div className="space-y-3 mb-6">
+              {users.map(u => (
+                <div key={u.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+                  <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">{u.nom?.[0]}</div>
+                  <div className="flex-1"><p className="font-medium">{u.nom}</p><p className="text-sm text-slate-500">{u.email}</p></div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{u.role}</span>
+                </div>
+              ))}
+            </div>
+            <h4 className="font-medium mb-3">Ajouter un utilisateur</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <input placeholder="Nom" className={`px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={newUser.nom} onChange={e => setNewUser(p => ({...p, nom: e.target.value}))} />
+              <input placeholder="Email" className={`px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={newUser.email} onChange={e => setNewUser(p => ({...p, email: e.target.value}))} />
+              <select className={`px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={newUser.role} onChange={e => setNewUser(p => ({...p, role: e.target.value}))}>
+                <option value="employe">Employé</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button onClick={addUser} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl">Inviter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'preferences' && (
+        <div className="space-y-6">
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">🎨 Apparence</h3>
+            <div className="flex items-center justify-between py-3 border-b">
+              <div><p className="font-medium">Thème</p><p className="text-sm text-slate-500">Choisir le mode d'affichage</p></div>
+              <div className="flex gap-2">
+                <button onClick={() => setSettings(p => ({...p, theme: 'light'}))} className={`px-4 py-2 rounded-xl ${settings.theme === 'light' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>☀️ Clair</button>
+                <button onClick={() => setSettings(p => ({...p, theme: 'dark'}))} className={`px-4 py-2 rounded-xl ${settings.theme === 'dark' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>🌙 Sombre</button>
+              </div>
+            </div>
+          </div>
+
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">💰 TVA & Unités</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Taux TVA par défaut</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={settings.tvaDefault} onChange={e => setSettings(p => ({...p, tvaDefault: parseFloat(e.target.value)}))}>
+                  {settings.tvaRates.map(r => <option key={r} value={r}>{r}%</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Devise</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} value={settings.currency} onChange={e => setSettings(p => ({...p, currency: e.target.value}))}>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="CHF">CHF (Fr.)</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-2">Taux TVA disponibles</label>
+              <div className="flex gap-2 flex-wrap">
+                {settings.tvaRates.map(r => <span key={r} className="px-3 py-1 bg-slate-100 rounded-full text-sm">{r}%</span>)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'integrations' && (
+        <div className="space-y-6">
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">🔗 Intégrations</h3>
+            <div className="space-y-4">
+              {[
+                { icon: '🏦', name: 'Banque', desc: 'Connectez votre compte bancaire', status: 'non connecté' },
+                { icon: '📧', name: 'Email', desc: 'Gmail, Outlook...', status: 'non connecté' },
+                { icon: '📊', name: 'Comptabilité', desc: 'QuickBooks, Sage...', status: 'non connecté' },
+                { icon: '📅', name: 'Calendrier', desc: 'Google Calendar, iCal...', status: 'non connecté' },
+              ].map((int, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border rounded-xl">
+                  <span className="text-2xl">{int.icon}</span>
+                  <div className="flex-1"><p className="font-medium">{int.name}</p><p className="text-sm text-slate-500">{int.desc}</p></div>
+                  <button className="px-4 py-2 bg-slate-100 rounded-xl text-sm">Connecter</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'security' && (
+        <div className="space-y-6">
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">🔒 Sécurité</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b">
+                <div><p className="font-medium">Authentification à deux facteurs (2FA)</p><p className="text-sm text-slate-500">Sécurisez votre compte avec un code SMS ou app</p></div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={settings.twoFA} onChange={e => setSettings(p => ({...p, twoFA: e.target.checked}))} />
+                  <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-orange-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b">
+                <div><p className="font-medium">Sauvegardes automatiques</p><p className="text-sm text-slate-500">Sauvegarde quotidienne de vos données</p></div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={settings.autoBackup} onChange={e => setSettings(p => ({...p, autoBackup: e.target.checked}))} />
+                  <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-orange-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div><p className="font-medium">Notifications de sécurité</p><p className="text-sm text-slate-500">Alertes en cas de connexion suspecte</p></div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={settings.notifications} onChange={e => setSettings(p => ({...p, notifications: e.target.checked}))} />
+                  <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-orange-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
+                </label>
+              </div>
+            </div>
+          </div>
+          <div className={`${bgCard} rounded-2xl border p-6`}>
+            <h3 className="font-semibold mb-4">🔐 Changer le mot de passe</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input type="password" placeholder="Mot de passe actuel" className={`px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} />
+              <input type="password" placeholder="Nouveau mot de passe" className={`px-4 py-2.5 border rounded-xl ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : ''}`} />
+            </div>
+            <button className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-xl">Mettre à jour</button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'export' && (
+        <div className={`${bgCard} rounded-2xl border p-6`}>
+          <h3 className="font-semibold mb-4">📤 Export des données</h3>
+          <p className="text-slate-500 mb-6">Téléchargez vos données pour audit fiscal ou sauvegarde</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button onClick={() => exportData('clients')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">👥</p><p className="text-sm font-medium">Clients</p><p className="text-xs text-slate-500">{clients.length} entrées</p></button>
+            <button onClick={() => exportData('devis')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">📄</p><p className="text-sm font-medium">Devis/Factures</p><p className="text-xs text-slate-500">{devis.length} entrées</p></button>
+            <button onClick={() => exportData('chantiers')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">🏗️</p><p className="text-sm font-medium">Chantiers</p><p className="text-xs text-slate-500">{chantiers.length} entrées</p></button>
+            <button onClick={() => exportData('all')} className="p-4 bg-orange-100 hover:bg-orange-200 rounded-xl text-center"><p className="text-2xl mb-2">📦</p><p className="text-sm font-medium text-orange-700">Export complet</p><p className="text-xs text-orange-600">Toutes les données</p></button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
