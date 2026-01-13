@@ -1,142 +1,186 @@
 import React, { useState } from 'react';
 
-export default function Settings({ user, settings, setSettings, clients, devis, chantiers, equipe }) {
-  const [tab, setTab] = useState('compte');
-  const [users, setUsers] = useState([{ id: '1', email: user?.email, role: 'admin', nom: user?.user_metadata?.nom || 'Admin' }]);
-  const [newUser, setNewUser] = useState({ email: '', role: 'employe', nom: '' });
+export default function Settings({ entreprise, setEntreprise, user }) {
+  const [tab, setTab] = useState('identite');
 
-  const exportData = (type) => {
-    let data = type === 'all' ? { clients, devis, chantiers, equipe } : type === 'clients' ? clients : type === 'devis' ? devis : chantiers;
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${type}.json`;
-    a.click();
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result }));
+    reader.readAsDataURL(file);
   };
 
-  const addUser = () => {
-    if (!newUser.email) return;
-    setUsers([...users, { id: Date.now().toString(), ...newUser }]);
-    setNewUser({ email: '', role: 'employe', nom: '' });
-  };
-
-  const tabs = [
-    ['compte', '👤 Compte'], ['users', '👥 Utilisateurs'], ['prefs', '⚙️ Préférences'],
-    ['integrations', '🔗 Intégrations'], ['security', '🔒 Sécurité'], ['export', '📤 Export']
-  ];
+  const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Paramètres</h1>
+      <h1 className="text-2xl font-bold">Mon entreprise</h1>
+
+      {/* Tabs */}
       <div className="flex gap-2 border-b pb-2 flex-wrap">
-        {tabs.map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium ${tab === k ? 'bg-white border border-b-white -mb-[3px] text-orange-500' : 'text-slate-500'}`}>{v}</button>
+        {[['identite', '🏢 Identité'], ['legal', '📋 Mentions légales'], ['banque', '🏦 Banque']].map(([k, v]) => (
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
       </div>
 
-      {tab === 'compte' && (
-        <div className="bg-white rounded-2xl border p-6">
-          <h3 className="font-semibold mb-4">Informations</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between py-3 border-b"><span className="text-slate-500">Email</span><span>{String(user?.email || '-')}</span></div>
-            <div className="flex justify-between py-3 border-b"><span className="text-slate-500">Nom</span><span>{String(user?.user_metadata?.nom || '-')}</span></div>
-            <div className="flex justify-between py-3"><span className="text-slate-500">Entreprise</span><span>{String(user?.user_metadata?.entreprise || '-')}</span></div>
-          </div>
-        </div>
-      )}
-
-      {tab === 'users' && (
-        <div className="bg-white rounded-2xl border p-6">
-          <h3 className="font-semibold mb-4">👥 Gestion des utilisateurs</h3>
-          <div className="space-y-3 mb-6">
-            {users.map(u => (
-              <div key={u.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
-                <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white font-bold">{u.nom?.[0]}</div>
-                <div className="flex-1"><p className="font-medium">{u.nom}</p><p className="text-sm text-slate-500">{u.email}</p></div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{u.role}</span>
-              </div>
-            ))}
-          </div>
-          <h4 className="font-medium mb-3">Ajouter</h4>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <input placeholder="Nom" className="px-4 py-2.5 border rounded-xl" value={newUser.nom} onChange={e => setNewUser(p => ({...p, nom: e.target.value}))} />
-            <input placeholder="Email" className="px-4 py-2.5 border rounded-xl" value={newUser.email} onChange={e => setNewUser(p => ({...p, email: e.target.value}))} />
-            <select className="px-4 py-2.5 border rounded-xl" value={newUser.role} onChange={e => setNewUser(p => ({...p, role: e.target.value}))}><option value="employe">Employé</option><option value="admin">Admin</option></select>
-            <button onClick={addUser} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl">Inviter</button>
-          </div>
-        </div>
-      )}
-
-      {tab === 'prefs' && (
+      {/* Identité */}
+      {tab === 'identite' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-semibold mb-4">🎨 Apparence</h3>
-            <div className="flex items-center justify-between py-3">
-              <div><p className="font-medium">Thème</p><p className="text-sm text-slate-500">Mode clair/sombre</p></div>
-              <div className="flex gap-2">
-                <button onClick={() => setSettings(p => ({...p, theme: 'light'}))} className={`px-4 py-2 rounded-xl ${settings.theme === 'light' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>☀️ Clair</button>
-                <button onClick={() => setSettings(p => ({...p, theme: 'dark'}))} className={`px-4 py-2 rounded-xl ${settings.theme === 'dark' ? 'bg-orange-500 text-white' : 'bg-slate-100'}`}>🌙 Sombre</button>
+            <h3 className="font-semibold mb-4">Logo & Couleur</h3>
+            <div className="flex gap-6 items-start flex-wrap">
+              {/* Logo */}
+              <div>
+                <p className="text-sm font-medium mb-2">Logo</p>
+                <div className="flex items-center gap-4">
+                  {entreprise.logo ? (
+                    <img src={entreprise.logo} className="w-20 h-20 object-contain rounded-xl border" alt="Logo" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl border-2 border-dashed flex items-center justify-center text-slate-400">
+                      <span className="text-3xl">🏢</span>
+                    </div>
+                  )}
+                  <div>
+                    <label className="px-4 py-2 rounded-xl cursor-pointer text-sm text-white" style={{background: entreprise.couleur}}>
+                      Choisir
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    </label>
+                    {entreprise.logo && <button onClick={() => setEntreprise(p => ({...p, logo: ''}))} className="block mt-2 text-sm text-red-500">Supprimer</button>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Couleur */}
+              <div>
+                <p className="text-sm font-medium mb-2">Couleur principale</p>
+                <div className="flex gap-2 flex-wrap">
+                  {COULEURS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setEntreprise(p => ({...p, couleur: c}))}
+                      className={`w-10 h-10 rounded-xl ${entreprise.couleur === c ? 'ring-2 ring-offset-2' : ''}`}
+                      style={{background: c, ringColor: c}}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
+
           <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-semibold mb-4">💰 TVA & Unités</h3>
+            <h3 className="font-semibold mb-4">Coordonnées</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium mb-1">TVA par défaut</label><select className="w-full px-4 py-2.5 border rounded-xl" value={settings.tvaDefault} onChange={e => setSettings(p => ({...p, tvaDefault: parseFloat(e.target.value)}))}>{settings.tvaRates.map(r => <option key={r} value={r}>{r}%</option>)}</select></div>
-              <div><label className="block text-sm font-medium mb-1">Devise</label><select className="w-full px-4 py-2.5 border rounded-xl" value={settings.currency} onChange={e => setSettings(p => ({...p, currency: e.target.value}))}><option value="EUR">EUR (€)</option><option value="CHF">CHF</option></select></div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Nom de l'entreprise</label>
+                <input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.nom} onChange={e => setEntreprise(p => ({...p, nom: e.target.value}))} placeholder="SARL Martin Plomberie" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Adresse</label>
+                <textarea className="w-full px-4 py-2.5 border rounded-xl" rows={2} value={entreprise.adresse} onChange={e => setEntreprise(p => ({...p, adresse: e.target.value}))} placeholder="12 rue des Artisans&#10;75001 Paris" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Téléphone</label>
+                <input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.tel} onChange={e => setEntreprise(p => ({...p, tel: e.target.value}))} placeholder="01 23 45 67 89" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input type="email" className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.email} onChange={e => setEntreprise(p => ({...p, email: e.target.value}))} placeholder="contact@martinplomberie.fr" />
+              </div>
             </div>
           </div>
+
+          <div className="bg-green-50 rounded-xl p-4 text-sm text-green-800">
+            ✅ Ces informations apparaîtront automatiquement sur vos devis et factures.
+          </div>
         </div>
       )}
 
-      {tab === 'integrations' && (
-        <div className="bg-white rounded-2xl border p-6">
-          <h3 className="font-semibold mb-4">🔗 Intégrations</h3>
-          <div className="space-y-4">
-            {[{icon:'🏦',name:'Banque',desc:'Synchronisation bancaire'},{icon:'📧',name:'Email',desc:'Gmail, Outlook'},{icon:'📊',name:'Comptabilité',desc:'QuickBooks, Sage'},{icon:'📅',name:'Calendrier',desc:'Google Calendar'}].map((int, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 border rounded-xl">
-                <span className="text-2xl">{int.icon}</span>
-                <div className="flex-1"><p className="font-medium">{int.name}</p><p className="text-sm text-slate-500">{int.desc}</p></div>
-                <button className="px-4 py-2 bg-slate-100 rounded-xl text-sm">Connecter</button>
+      {/* Mentions légales */}
+      {tab === 'legal' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border p-6">
+            <h3 className="font-semibold mb-4">Informations légales</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">SIRET</label>
+                <input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.siret} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} placeholder="123 456 789 00012" />
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'security' && (
-        <div className="bg-white rounded-2xl border p-6">
-          <h3 className="font-semibold mb-4">🔒 Sécurité</h3>
-          <div className="space-y-4">
-            {[
-              { key: 'twoFA', label: '2FA', desc: 'Authentification à deux facteurs' },
-              { key: 'autoBackup', label: 'Sauvegardes auto', desc: 'Sauvegarde quotidienne' },
-              { key: 'notifications', label: 'Notifications sécurité', desc: 'Alertes connexion' }
-            ].map(item => (
-              <div key={item.key} className="flex items-center justify-between py-3 border-b last:border-0">
-                <div><p className="font-medium">{item.label}</p><p className="text-sm text-slate-500">{item.desc}</p></div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={settings[item.key]} onChange={e => setSettings(p => ({...p, [item.key]: e.target.checked}))} />
-                  <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-orange-500 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full" />
-                </label>
+              <div>
+                <label className="block text-sm font-medium mb-1">N° TVA Intracommunautaire</label>
+                <input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.tvaIntra} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value}))} placeholder="FR12345678901" />
               </div>
-            ))}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">Assurance décennale</label>
+                <input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.assurance} onChange={e => setEntreprise(p => ({...p, assurance: e.target.value}))} placeholder="AXA - Police n°123456 - Valide jusqu'au 31/12/2025" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+            💡 <strong>Obligatoire :</strong> L'assurance décennale doit figurer sur vos devis pour les travaux de construction/rénovation.
           </div>
         </div>
       )}
 
-      {tab === 'export' && (
-        <div className="bg-white rounded-2xl border p-6">
-          <h3 className="font-semibold mb-4">📤 Export des données</h3>
-          <p className="text-slate-500 mb-6">Pour audits fiscaux ou sauvegardes</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button onClick={() => exportData('clients')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">👥</p><p className="text-sm font-medium">Clients</p><p className="text-xs text-slate-500">{clients.length} entrées</p></button>
-            <button onClick={() => exportData('devis')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">📄</p><p className="text-sm font-medium">Devis/Factures</p><p className="text-xs text-slate-500">{devis.length} entrées</p></button>
-            <button onClick={() => exportData('chantiers')} className="p-4 bg-slate-100 hover:bg-slate-200 rounded-xl text-center"><p className="text-2xl mb-2">🏗️</p><p className="text-sm font-medium">Chantiers</p><p className="text-xs text-slate-500">{chantiers.length} entrées</p></button>
-            <button onClick={() => exportData('all')} className="p-4 bg-orange-100 hover:bg-orange-200 rounded-xl text-center"><p className="text-2xl mb-2">📦</p><p className="text-sm font-medium text-orange-700">Export complet</p><p className="text-xs text-orange-600">Toutes données</p></button>
+      {/* Banque */}
+      {tab === 'banque' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border p-6">
+            <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
+            <div>
+              <label className="block text-sm font-medium mb-1">RIB / IBAN</label>
+              <input className="w-full px-4 py-2.5 border rounded-xl font-mono" value={entreprise.rib} onChange={e => setEntreprise(p => ({...p, rib: e.target.value}))} placeholder="FR76 1234 5678 9012 3456 7890 123" />
+            </div>
+          </div>
+
+          <div className="bg-green-50 rounded-xl p-4 text-sm text-green-800">
+            ✅ Le RIB sera automatiquement affiché sur vos factures pour faciliter le paiement.
           </div>
         </div>
       )}
+
+      {/* Compte utilisateur */}
+      <div className="bg-white rounded-2xl border p-6">
+        <h3 className="font-semibold mb-4">👤 Mon compte</h3>
+        <div className="space-y-3">
+          <div className="flex justify-between py-2 border-b">
+            <span className="text-slate-500">Email</span>
+            <span>{user?.email || '-'}</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="text-slate-500">Nom</span>
+            <span>{user?.user_metadata?.nom || '-'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Aperçu */}
+      <div className="bg-white rounded-2xl border p-6">
+        <h3 className="font-semibold mb-4">👁️ Aperçu en-tête devis</h3>
+        <div className="border rounded-xl p-6 bg-slate-50">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-4">
+              {entreprise.logo ? (
+                <img src={entreprise.logo} className="h-16 object-contain" alt="" />
+              ) : (
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}>🏢</div>
+              )}
+              <div>
+                <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
+                <p className="text-sm text-slate-500 whitespace-pre-line">{entreprise.adresse || 'Adresse'}</p>
+                <p className="text-sm text-slate-500">{entreprise.tel}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
+              <p className="text-slate-500">DEV-000001</p>
+            </div>
+          </div>
+          {entreprise.siret && <p className="text-xs text-slate-400 mt-4">SIRET: {entreprise.siret} {entreprise.tvaIntra && `• TVA: ${entreprise.tvaIntra}`}</p>}
+          {entreprise.assurance && <p className="text-xs text-slate-400">Assurance: {entreprise.assurance}</p>}
+        </div>
+      </div>
     </div>
   );
 }
