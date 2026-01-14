@@ -174,7 +174,7 @@ export default function Dashboard({ stats, devis, chantiers, depenses, pointages
               const ch = chantiers.find(c => c.id === p.chantierId);
               return (
                 <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                  <span className={p.approuve ? '✅' : '⏳'}</span>
+                  <span>{p.approuve ? '✅' : '⏳'}</span>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{emp?.nom} {emp?.prenom}</p>
                     <p className="text-xs text-slate-500 truncate">{ch?.nom}</p>
