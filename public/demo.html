@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChantierPro - Démo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .dark { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --border: #334155; }
+    .light { --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --border: #e2e8f0; }
+    body { background: var(--bg); color: var(--text); }
+    .card { background: var(--card); border-color: var(--border); }
+  </style>
+</head>
+<body class="light min-h-screen">
+  <div id="app"></div>
+  
+  <script>
+    // État global
+    const state = {
+      page: 'dashboard',
+      theme: 'light',
+      sidebarOpen: false,
+      signatureMode: false,
+      selectedDevis: null,
+      showNewDevis: false,
+      entreprise: {
+        nom: 'Martin Rénovation',
+        couleur: '#f97316',
+        siret: '123 456 789 00012',
+        tel: '01 23 45 67 89',
+        adresse: '25 rue du Commerce, 75015 Paris'
+      },
+      clients: [
+        { id: 'd1', nom: 'Dupont', prenom: 'Jean', telephone: '06 12 34 56 78', email: 'jean.dupont@email.fr' },
+        { id: 'd2', nom: 'Martin', prenom: 'Marie', telephone: '06 98 76 54 32', email: 'marie.martin@email.fr' },
+        { id: 'd3', nom: 'Bernard', prenom: 'Pierre', telephone: '07 11 22 33 44' }
+      ],
+      catalogue: [
+        { id: 'c1', nom: 'Pose carrelage sol', prix: 45, unite: 'm²', favori: true },
+        { id: 'c2', nom: 'Pose carrelage mural', prix: 55, unite: 'm²', favori: true },
+        { id: 'c3', nom: 'Peinture murs', prix: 25, unite: 'm²', favori: true },
+        { id: 'c4', nom: 'Plomberie MO', prix: 55, unite: 'h', favori: true },
+        { id: 'c5', nom: 'Forfait déplacement', prix: 50, unite: 'forfait', favori: true }
+      ],
+      devis: [
+        { id: 'dv1', numero: 'DEV-2024-001', client_id: 'd1', date: '2024-01-10', statut: 'accepte', total_ttc: 3135, lignes: [
+          { description: 'Démolition SDB', quantite: 8, unite: 'm²', prix: 35, total: 280 },
+          { description: 'Pose carrelage', quantite: 33, unite: 'm²', prix: 50, total: 1650 },
+          { description: 'Plomberie', quantite: 15, unite: 'h', prix: 55, total: 825 }
+        ], signature: true },
+        { id: 'dv2', numero: 'DEV-2024-002', client_id: 'd2', date: '2024-01-18', statut: 'envoye', total_ttc: 1650, lignes: [
+          { description: 'Peinture murs', quantite: 60, unite: 'm²', prix: 25, total: 1500 }
+        ] }
+      ],
+      chantiers: [
+        { id: 'ch1', nom: 'Rénovation SDB Dupont', statut: 'en_cours', client_id: 'd1', taches: [
+          { text: 'Démolition', done: true },
+          { text: 'Pose carrelage', done: false },
+          { text: 'Plomberie', done: false }
+        ] },
+        { id: 'ch2', nom: 'Peinture Martin', statut: 'en_cours', client_id: 'd2', taches: [] }
+      ],
+      newDevisLignes: []
+    };
+
+    // Fonctions utilitaires
+    const getClient = (id) => state.clients.find(c => c.id === id);
+    const formatDate = (d) => new Date(d).toLocaleDateString('fr-FR');
+    const formatMoney = (n) => (n || 0).toLocaleString('fr-FR') + ' €';
+
+    // Toggle theme
+    function toggleTheme() {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      document.body.className = state.theme + ' min-h-screen';
+      render();
+    }
+
+    // Navigation
+    function navigate(page) {
+      state.page = page;
+      state.sidebarOpen = false;
+      state.signatureMode = false;
+      state.selectedDevis = null;
+      state.showNewDevis = false;
+      render();
+    }
+
+    // Signature canvas
+    let isDrawing = false;
+    function setupCanvas() {
+      const canvas = document.getElementById('signatureCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000';
+
+      canvas.onmousedown = canvas.ontouchstart = (e) => {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      };
+
+      canvas.onmousemove = canvas.ontouchmove = (e) => {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      };
+
+      canvas.onmouseup = canvas.ontouchend = canvas.onmouseleave = () => {
+        isDrawing = false;
+      };
+    }
+
+    function clearSignature() {
+      const canvas = document.getElementById('signatureCanvas');
+      if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveSignature() {
+      const devis = state.devis.find(d => d.id === state.selectedDevis);
+      if (devis) {
+        devis.signature = true;
+        devis.statut = 'accepte';
+      }
+      state.signatureMode = false;
+      alert('✅ Signature enregistrée ! Devis accepté.');
+      render();
+    }
+
+    // WhatsApp
+    function sendWhatsApp(devis) {
+      const client = getClient(devis.client_id);
+      const msg = `Bonjour ${client?.prenom || ''},\n\nVoici votre devis ${devis.numero} d'un montant de ${formatMoney(devis.total_ttc)}.\n\nCordialement,\n${state.entreprise.nom}`;
+      const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      if (devis.statut === 'brouillon') devis.statut = 'envoye';
+      render();
+    }
+
+    // Nouveau devis
+    function addLigneFromCatalogue(item) {
+      state.newDevisLignes.push({
+        description: item.nom,
+        quantite: 1,
+        unite: item.unite,
+        prix: item.prix,
+        total: item.prix
+      });
+      render();
+    }
+
+    function updateLigneQty(index, qty) {
+      const ligne = state.newDevisLignes[index];
+      ligne.quantite = parseFloat(qty) || 0;
+      ligne.total = ligne.quantite * ligne.prix;
+      render();
+    }
+
+    function removeLigne(index) {
+      state.newDevisLignes.splice(index, 1);
+      render();
+    }
+
+    function createDevis() {
+      const clientId = document.getElementById('newDevisClient')?.value;
+      if (!clientId || state.newDevisLignes.length === 0) {
+        alert('Sélectionnez un client et ajoutez des lignes');
+        return;
+      }
+      const totalHT = state.newDevisLignes.reduce((s, l) => s + l.total, 0);
+      const newDevis = {
+        id: 'dv' + Date.now(),
+        numero: 'DEV-2024-' + String(state.devis.length + 1).padStart(3, '0'),
+        client_id: clientId,
+        date: new Date().toISOString().split('T')[0],
+        statut: 'brouillon',
+        total_ttc: Math.round(totalHT * 1.1),
+        lignes: [...state.newDevisLignes]
+      };
+      state.devis.unshift(newDevis);
+      state.newDevisLignes = [];
+      state.showNewDevis = false;
+      alert('✅ Devis créé : ' + newDevis.numero);
+      render();
+    }
+
+    // Render
+    function render() {
+      const couleur = state.entreprise.couleur;
+      const isDark = state.theme === 'dark';
+      
+      // Stats
+      const caMois = state.devis.filter(d => d.statut === 'accepte').reduce((s, d) => s + d.total_ttc, 0);
+      const enAttente = state.devis.filter(d => d.statut === 'envoye').length;
+      const chantiersActifs = state.chantiers.filter(c => c.statut === 'en_cours').length;
+
+      // Sidebar
+      const navItems = [
+        { id: 'dashboard', icon: '📊', label: 'Accueil' },
+        { id: 'devis', icon: '📄', label: 'Devis & Factures' },
+        { id: 'chantiers', icon: '🏗️', label: 'Chantiers' },
+        { id: 'clients', icon: '👥', label: 'Clients' },
+        { id: 'catalogue', icon: '📦', label: 'Catalogue' },
+        { id: 'bilan', icon: '💰', label: 'Rentabilité' }
+      ];
+
+      let content = '';
+
+      // Page content
+      if (state.signatureMode && state.selectedDevis) {
+        const devis = state.devis.find(d => d.id === state.selectedDevis);
+        content = `
+          <div class="space-y-6">
+            <div class="flex items-center gap-4">
+              <button onclick="state.signatureMode=false;render()" class="p-2 hover:bg-gray-200 rounded-xl text-xl">←</button>
+              <h1 class="text-2xl font-bold">Signature client</h1>
+            </div>
+            <div class="card rounded-2xl border p-6">
+              <p class="text-center mb-4">Le client signe ci-dessous pour accepter le devis <strong>${devis?.numero}</strong></p>
+              <p class="text-center text-2xl font-bold mb-4" style="color:${couleur}">${formatMoney(devis?.total_ttc)}</p>
+              <div class="flex justify-center">
+                <canvas id="signatureCanvas" width="350" height="180" class="border-2 border-dashed rounded-xl bg-white" style="touch-action:none"></canvas>
+              </div>
+              <div class="flex justify-center gap-4 mt-6">
+                <button onclick="clearSignature()" class="px-6 py-3 bg-gray-200 rounded-xl">Effacer</button>
+                <button onclick="saveSignature()" class="px-6 py-3 text-white rounded-xl" style="background:${couleur}">✅ Valider</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.showNewDevis) {
+        const totalHT = state.newDevisLignes.reduce((s, l) => s + l.total, 0);
+        const totalTTC = Math.round(totalHT * 1.1);
+        content = `
+          <div class="space-y-6">
+            <div class="flex items-center gap-4">
+              <button onclick="state.showNewDevis=false;state.newDevisLignes=[];render()" class="p-2 hover:bg-gray-200 rounded-xl text-xl">←</button>
+              <h1 class="text-2xl font-bold">Nouveau devis</h1>
+            </div>
+            <div class="card rounded-2xl border p-6 space-y-4">
+              <div>
+                <label class="block text-sm font-medium mb-1">Client *</label>
+                <select id="newDevisClient" class="w-full px-4 py-3 border rounded-xl">
+                  <option value="">Sélectionner...</option>
+                  ${state.clients.map(c => `<option value="${c.id}">${c.nom} ${c.prenom || ''}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-2">⭐ Catalogue rapide</label>
+                <div class="flex gap-2 flex-wrap">
+                  ${state.catalogue.filter(c => c.favori).map(c => `
+                    <button onclick="addLigneFromCatalogue(state.catalogue.find(x=>x.id==='${c.id}'))" class="px-3 py-2 bg-orange-50 hover:bg-orange-100 rounded-lg text-sm">
+                      ${c.nom} • ${c.prix}€
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+              <div class="space-y-2">
+                ${state.newDevisLignes.map((l, i) => `
+                  <div class="flex gap-2 items-center bg-gray-50 p-3 rounded-xl flex-wrap">
+                    <span class="flex-1 font-medium">${l.description}</span>
+                    <input type="number" value="${l.quantite}" onchange="updateLigneQty(${i}, this.value)" class="w-20 px-2 py-2 border rounded-lg text-center">
+                    <span class="text-gray-500">${l.unite}</span>
+                    <span class="w-20 text-right">${l.prix}€</span>
+                    <span class="w-24 text-right font-bold">${l.total}€</span>
+                    <button onclick="removeLigne(${i})" class="text-red-500 px-2">✕</button>
+                  </div>
+                `).join('')}
+                ${state.newDevisLignes.length === 0 ? '<p class="text-center text-gray-400 py-8">Cliquez sur un élément du catalogue pour l\'ajouter</p>' : ''}
+              </div>
+              ${state.newDevisLignes.length > 0 ? `
+                <div class="flex justify-end">
+                  <div class="w-64 space-y-2 bg-gray-50 p-4 rounded-xl">
+                    <div class="flex justify-between"><span>HT</span><span>${formatMoney(totalHT)}</span></div>
+                    <div class="flex justify-between"><span>TVA 10%</span><span>${formatMoney(totalHT * 0.1)}</span></div>
+                    <div class="flex justify-between font-bold text-lg pt-2 border-t" style="color:${couleur}"><span>TTC</span><span>${formatMoney(totalTTC)}</span></div>
+                  </div>
+                </div>
+              ` : ''}
+              <div class="flex justify-end gap-3 pt-4">
+                <button onclick="state.showNewDevis=false;state.newDevisLignes=[];render()" class="px-4 py-2 bg-gray-100 rounded-xl">Annuler</button>
+                <button onclick="createDevis()" class="px-6 py-3 text-white rounded-xl" style="background:${couleur}">Créer le devis</button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'dashboard') {
+        content = `
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">Tableau de bord</h1>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">CA accepté</p>
+                <p class="text-2xl font-bold" style="color:${couleur}">${formatMoney(caMois)}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Devis en attente</p>
+                <p class="text-2xl font-bold text-amber-500">${enAttente}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Chantiers actifs</p>
+                <p class="text-2xl font-bold text-blue-500">${chantiersActifs}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Clients</p>
+                <p class="text-2xl font-bold">${state.clients.length}</p>
+              </div>
+            </div>
+            <div class="card rounded-2xl border p-5">
+              <h3 class="font-semibold mb-4">📄 Derniers devis</h3>
+              <div class="space-y-2">
+                ${state.devis.slice(0, 3).map(d => {
+                  const client = getClient(d.client_id);
+                  const statusIcon = d.statut === 'accepte' ? '✅' : d.statut === 'envoye' ? '🟡' : '⚪';
+                  return `
+                    <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
+                      <span>${statusIcon}</span>
+                      <div class="flex-1">
+                        <p class="font-medium">${d.numero}</p>
+                        <p class="text-sm text-gray-500">${client?.nom || ''}</p>
+                      </div>
+                      <p class="font-bold">${formatMoney(d.total_ttc)}</p>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'devis') {
+        content = `
+          <div class="space-y-6">
+            <div class="flex justify-between items-center">
+              <h1 class="text-2xl font-bold">Devis & Factures</h1>
+              <button onclick="state.showNewDevis=true;render()" class="px-4 py-2.5 text-white rounded-xl" style="background:${couleur}">+ Nouveau</button>
+            </div>
+            <div class="space-y-3">
+              ${state.devis.map(d => {
+                const client = getClient(d.client_id);
+                const statusIcon = d.statut === 'accepte' ? '✅' : d.statut === 'envoye' ? '🟡' : '⚪';
+                const statusLabel = d.statut === 'accepte' ? 'Accepté' : d.statut === 'envoye' ? 'Envoyé' : 'Brouillon';
+                return `
+                  <div class="card rounded-xl border p-4">
+                    <div class="flex items-center gap-4 mb-3">
+                      <span class="text-2xl">${statusIcon}</span>
+                      <div class="flex-1">
+                        <p class="font-semibold">${d.numero}</p>
+                        <p class="text-sm text-gray-500">${client?.nom || ''} • ${formatDate(d.date)}</p>
+                      </div>
+                      <div class="text-right">
+                        <p class="font-bold text-lg">${formatMoney(d.total_ttc)}</p>
+                        <span class="text-xs px-2 py-1 rounded ${d.statut === 'accepte' ? 'bg-green-100 text-green-700' : d.statut === 'envoye' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100'}">${statusLabel}</span>
+                      </div>
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                      ${d.statut !== 'accepte' ? `<button onclick="state.selectedDevis='${d.id}';state.signatureMode=true;render();setTimeout(setupCanvas,100)" class="px-3 py-2 text-white rounded-lg text-sm" style="background:${couleur}">✍️ Signer</button>` : ''}
+                      <button onclick="sendWhatsApp(state.devis.find(x=>x.id==='${d.id}'))" class="px-3 py-2 bg-green-500 text-white rounded-lg text-sm">📱 WhatsApp</button>
+                      ${d.signature ? '<span class="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm">✅ Signé</span>' : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'chantiers') {
+        content = `
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">Chantiers</h1>
+            <div class="grid gap-4">
+              ${state.chantiers.map(ch => {
+                const client = getClient(ch.client_id);
+                const tasksDone = ch.taches?.filter(t => t.done).length || 0;
+                const tasksTotal = ch.taches?.length || 0;
+                return `
+                  <div class="card rounded-2xl border p-5">
+                    <div class="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 class="font-semibold text-lg">${ch.nom}</h3>
+                        <p class="text-sm text-gray-500">${client?.nom || ''}</p>
+                      </div>
+                      <span class="px-3 py-1 rounded-full text-sm ${ch.statut === 'en_cours' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100'}">${ch.statut === 'en_cours' ? 'En cours' : 'Prospect'}</span>
+                    </div>
+                    ${tasksTotal > 0 ? `
+                      <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                          <span>Avancement</span>
+                          <span class="font-medium">${tasksDone}/${tasksTotal}</span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div class="h-full rounded-full" style="width:${(tasksDone/tasksTotal)*100}%;background:${couleur}"></div>
+                        </div>
+                        <div class="space-y-1 mt-3">
+                          ${ch.taches.map(t => `
+                            <div class="flex items-center gap-2 text-sm ${t.done ? 'text-gray-400 line-through' : ''}">
+                              <span>${t.done ? '✅' : '⬜'}</span>
+                              <span>${t.text}</span>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    ` : '<p class="text-gray-400 text-sm">Aucune tâche</p>'}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'clients') {
+        content = `
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">Clients (${state.clients.length})</h1>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              ${state.clients.map(c => `
+                <div class="card rounded-2xl border p-5">
+                  <div class="flex gap-3 mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style="background:${couleur}">${c.nom[0]}</div>
+                    <div>
+                      <h3 class="font-semibold">${c.nom} ${c.prenom || ''}</h3>
+                      <p class="text-sm text-gray-500">${c.telephone || ''}</p>
+                    </div>
+                  </div>
+                  ${c.email ? `<p class="text-sm text-gray-500">📧 ${c.email}</p>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'catalogue') {
+        content = `
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">Catalogue (${state.catalogue.length})</h1>
+            <div class="card rounded-2xl border overflow-hidden">
+              ${state.catalogue.map(c => `
+                <div class="flex items-center gap-4 px-5 py-4 border-b last:border-0">
+                  <span class="text-xl">${c.favori ? '⭐' : '☆'}</span>
+                  <div class="flex-1">
+                    <p class="font-medium">${c.nom}</p>
+                  </div>
+                  <p class="font-bold" style="color:${couleur}">${c.prix}€<span class="text-gray-400 font-normal">/${c.unite}</span></p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (state.page === 'bilan') {
+        const revenus = state.devis.filter(d => d.statut === 'accepte').reduce((s, d) => s + d.total_ttc, 0);
+        const couts = 1200; // Simulation
+        const marge = revenus - couts;
+        const pct = revenus > 0 ? Math.round((marge / revenus) * 100) : 0;
+        content = `
+          <div class="space-y-6">
+            <h1 class="text-2xl font-bold">💰 Bilan Rentabilité</h1>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Revenus</p>
+                <p class="text-2xl font-bold text-green-600">${formatMoney(revenus)}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Coûts</p>
+                <p class="text-2xl font-bold text-red-500">${formatMoney(couts)}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Marge</p>
+                <p class="text-2xl font-bold ${marge >= 0 ? 'text-emerald-600' : 'text-red-600'}">${formatMoney(marge)}</p>
+              </div>
+              <div class="card rounded-2xl border p-5">
+                <p class="text-sm text-gray-500 mb-1">Rentabilité</p>
+                <p class="text-2xl font-bold ${pct >= 20 ? 'text-emerald-600' : 'text-amber-500'}">${pct}%</p>
+              </div>
+            </div>
+            <div class="card rounded-2xl border p-5">
+              <h3 class="font-semibold mb-4">Par chantier</h3>
+              ${state.chantiers.filter(c => c.statut === 'en_cours').map(ch => {
+                const chDevis = state.devis.filter(d => d.client_id === ch.client_id && d.statut === 'accepte');
+                const chRevenus = chDevis.reduce((s, d) => s + d.total_ttc, 0);
+                return `
+                  <div class="flex justify-between items-center py-3 border-b last:border-0">
+                    <span class="font-medium">${ch.nom}</span>
+                    <span class="font-bold" style="color:${couleur}">${formatMoney(chRevenus)}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Full HTML
+      document.getElementById('app').innerHTML = `
+        ${state.sidebarOpen ? '<div class="fixed inset-0 bg-black/50 z-40 lg:hidden" onclick="state.sidebarOpen=false;render()"></div>' : ''}
+        
+        <aside class="fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${state.sidebarOpen ? 'translate-x-0' : '-translate-x-full'}">
+          <div class="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style="background:${couleur}">🏗️</div>
+            <div>
+              <h1 class="text-white font-bold">${state.entreprise.nom}</h1>
+              <p class="text-slate-500 text-xs">🎮 Mode démo</p>
+            </div>
+          </div>
+          <nav class="p-3 space-y-1">
+            ${navItems.map(n => `
+              <button onclick="navigate('${n.id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${state.page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800'}" style="${state.page === n.id ? 'background:'+couleur : ''}">
+                <span class="text-lg">${n.icon}</span>
+                <span>${n.label}</span>
+              </button>
+            `).join('')}
+          </nav>
+          <div class="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800">
+            <button onclick="toggleTheme()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">
+              ${isDark ? '☀️ Mode clair' : '🌙 Mode sombre'}
+            </button>
+          </div>
+        </aside>
+
+        <div class="lg:pl-64">
+          <header class="sticky top-0 z-30 ${isDark ? 'bg-slate-800/95' : 'bg-white/95'} backdrop-blur border-b px-4 py-3 flex items-center gap-4">
+            <button onclick="state.sidebarOpen=true;render()" class="lg:hidden p-2 text-xl">☰</button>
+            <span class="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">🎮 Démo interactive</span>
+            <div class="flex-1"></div>
+            <button onclick="state.showNewDevis=true;render()" class="px-4 py-2 text-white rounded-xl text-sm" style="background:${couleur}">+ Nouveau</button>
+          </header>
+          <main class="p-4 lg:p-6">
+            ${content}
+          </main>
+        </div>
+      `;
+    }
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
