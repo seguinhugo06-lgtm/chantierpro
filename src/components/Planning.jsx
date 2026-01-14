@@ -1,72 +1,58 @@
-import React, { useState, useEffect } from 'react';
-
-const TYPES = { rdv: { label: 'RDV', color: '#3b82f6' }, chantier: { label: 'Chantier', color: '#22c55e' }, relance: { label: 'Relance', color: '#f59e0b' } };
+import React, { useState } from 'react';
 
 export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur }) {
-  const [month, setMonth] = useState(new Date());
-  const [selected, setSelected] = useState(new Date());
-  const [show, setShow] = useState(false);
-  const [form, setForm] = useState({ title: '', date: '', time: '09:00', type: 'rdv', employeId: '' });
+  const [view, setView] = useState('month');
+  const [date, setDate] = useState(new Date());
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'rdv' });
 
-  useEffect(() => { if (show) setForm(p => ({ ...p, date: selected.toISOString().split('T')[0] })); }, [show, selected]);
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days = [];
+  for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
-  const getDays = () => {
-    const y = month.getFullYear(), m = month.getMonth(), days = [];
-    const start = (new Date(y, m, 1).getDay() + 6) % 7;
-    for (let i = 0; i < start; i++) days.push(null);
-    for (let i = 1; i <= new Date(y, m + 1, 0).getDate(); i++) days.push(new Date(y, m, i));
-    return days;
+  const getEventsForDay = (day) => {
+    if (!day) return [];
+    const d = new Date(year, month, day).toISOString().split('T')[0];
+    return events.filter(e => e.date === d);
   };
 
   const submit = () => {
-    if (!form.title) return;
+    if (!form.title || !form.date) return;
     addEvent(form);
-    setShow(false);
-    setForm({ title: '', date: '', time: '09:00', type: 'rdv', employeId: '' });
+    setShowAdd(false);
+    setForm({ title: '', date: '', time: '', type: 'rdv' });
   };
 
-  const selStr = selected.toISOString().split('T')[0];
-  const todayStr = new Date().toISOString().split('T')[0];
-  const selEvents = events.filter(e => e.date === selStr);
+  const deleteEvent = (id) => {
+    if (confirm('Supprimer ?')) setEvents(events.filter(e => e.id !== id));
+  };
 
-  if (show) return (
+  const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+
+  const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', autre: '#8b5cf6' };
+
+  if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
+        <button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
         <h1 className="text-2xl font-bold">Nouvel événement</h1>
       </div>
       <div className="bg-white rounded-2xl border p-6">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Titre *</label>
-            <input className="w-full px-4 py-2.5 border rounded-xl" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Ex: RDV client Dupont" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}>
-                {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Employé</label>
-              <select className="w-full px-4 py-2.5 border rounded-xl" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
-                <option value="">Tous</option>
-                {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
-              <input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Heure</label>
-              <input type="time" className="w-full px-4 py-2.5 border rounded-xl" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} />
-            </div>
+          <div><label className="block text-sm font-medium mb-1">Titre *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
+          <div className="grid grid-cols-3 gap-4">
+            <div><label className="block text-sm font-medium mb-1">Date *</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
+            <div><label className="block text-sm font-medium mb-1">Heure</label><input type="time" className="w-full px-4 py-2.5 border rounded-xl" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
+            <div><label className="block text-sm font-medium mb-1">Type</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="chantier">Chantier</option><option value="relance">Relance</option><option value="autre">Autre</option></select></div>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <button onClick={() => setShow(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
+          <button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
           <button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button>
         </div>
       </div>
@@ -77,98 +63,56 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Planning</h1>
-        <button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Événement</button>
+        <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Événement</button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendrier */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border p-5">
-          <div className="flex justify-between items-center mb-4">
-            <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">←</button>
-            <h3 className="font-semibold capitalize">{month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h3>
-            <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">→</button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
-              <div key={i} className="text-center text-xs font-semibold text-slate-500 py-2">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {getDays().map((d, i) => {
-              if (!d) return <div key={i} />;
-              const dateStr = d.toISOString().split('T')[0];
-              const dayEvents = events.filter(e => e.date === dateStr);
-              const isToday = dateStr === todayStr;
-              const isSel = dateStr === selStr;
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected(d)}
-                  className={`min-h-[60px] p-1 rounded-xl text-sm flex flex-col items-center ${isSel ? 'text-white' : isToday ? 'bg-orange-50' : 'hover:bg-slate-50'}`}
-                  style={isSel ? {background: couleur} : {}}
-                >
-                  <span className="font-medium">{d.getDate()}</span>
-                  {dayEvents.length > 0 && (
-                    <div className="flex gap-0.5 mt-1">
-                      {dayEvents.slice(0, 3).map((e, j) => (
-                        <span key={j} className="w-1.5 h-1.5 rounded-full" style={{background: isSel ? 'white' : TYPES[e.type]?.color}} />
-                      ))}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+      <div className="bg-white rounded-2xl border">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
+          <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
+          <button onClick={() => setDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-xl">→</button>
         </div>
-
-        {/* Événements du jour */}
-        <div className="bg-white rounded-2xl border">
-          <div className="px-5 py-4 border-b">
-            <h3 className="font-semibold">{selected.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
-          </div>
-          <div className="p-4">
-            {selEvents.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">Aucun événement</p>
-            ) : (
-              <div className="space-y-3">
-                {selEvents.map(e => {
-                  const emp = equipe.find(x => x.id === e.employeId);
-                  return (
-                    <div key={e.id} className="p-3 rounded-xl bg-slate-50 border-l-4" style={{borderColor: TYPES[e.type]?.color}}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{e.title}</p>
-                          <p className="text-sm text-slate-500">{e.time} {emp && `• ${emp.nom}`}</p>
-                        </div>
-                        <button onClick={() => setEvents(events.filter(x => x.id !== e.id))} className="text-red-400 hover:text-red-600">✕</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        <div className="grid grid-cols-7 border-b">
+          {JOURS.map(j => <div key={j} className="py-2 text-center text-sm font-medium text-slate-500">{j}</div>)}
         </div>
-      </div>
-
-      {/* Vue semaine simplifiée */}
-      <div className="bg-white rounded-2xl border p-5">
-        <h3 className="font-semibold mb-4">📅 Cette semaine</h3>
-        <div className="grid grid-cols-7 gap-2">
-          {[...Array(7)].map((_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - d.getDay() + 1 + i);
-            const dateStr = d.toISOString().split('T')[0];
-            const dayEvents = events.filter(e => e.date === dateStr);
+        <div className="grid grid-cols-7">
+          {days.map((day, i) => {
+            const dayEvents = getEventsForDay(day);
+            const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
             return (
-              <div key={i} className={`p-3 rounded-xl text-center ${dateStr === todayStr ? 'bg-orange-50' : 'bg-slate-50'}`}>
-                <p className="text-xs text-slate-500">{d.toLocaleDateString('fr-FR', { weekday: 'short' })}</p>
-                <p className="font-bold">{d.getDate()}</p>
-                <p className="text-xs mt-1" style={{color: couleur}}>{dayEvents.length > 0 ? `${dayEvents.length} évt` : '-'}</p>
+              <div key={i} className={`min-h-[100px] p-2 border-r border-b ${!day ? 'bg-slate-50' : ''}`}>
+                {day && (
+                  <>
+                    <p className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : ''}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 3).map(e => (
+                        <div key={e.id} onClick={() => deleteEvent(e.id)} className="text-xs px-2 py-1 rounded truncate text-white cursor-pointer" style={{background: typeColors[e.type] || couleur}}>
+                          {e.time && <span className="opacity-75">{e.time} </span>}{e.title}
+                        </div>
+                      ))}
+                      {dayEvents.length > 3 && <p className="text-xs text-slate-500">+{dayEvents.length - 3}</p>}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border p-5">
+        <h3 className="font-semibold mb-4">📅 Prochains événements</h3>
+        {events.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5).map(e => (
+          <div key={e.id} className="flex items-center gap-4 py-3 border-b last:border-0">
+            <div className="w-3 h-3 rounded-full" style={{background: typeColors[e.type] || couleur}}></div>
+            <div className="flex-1">
+              <p className="font-medium">{e.title}</p>
+              <p className="text-sm text-slate-500">{new Date(e.date).toLocaleDateString('fr-FR')} {e.time && `à ${e.time}`}</p>
+            </div>
+            <button onClick={() => deleteEvent(e.id)} className="text-red-400 hover:text-red-600">🗑️</button>
+          </div>
+        ))}
+        {events.filter(e => new Date(e.date) >= new Date()).length === 0 && <p className="text-slate-500 text-center py-4">Aucun événement à venir</p>}
       </div>
     </div>
   );

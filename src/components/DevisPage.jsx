@@ -1,115 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const STATUTS = {
-  brouillon: { label: 'Brouillon', icon: '⚪', bg: 'bg-slate-100 text-slate-600' },
-  envoye: { label: 'Envoyé', icon: '🟡', bg: 'bg-amber-100 text-amber-700' },
-  vu: { label: 'Vu par client', icon: '👁️', bg: 'bg-blue-100 text-blue-700' },
-  accepte: { label: 'Accepté', icon: '✅', bg: 'bg-green-100 text-green-700' },
-  refuse: { label: 'Refusé', icon: '❌', bg: 'bg-red-100 text-red-700' },
-  facture: { label: 'Facturé', icon: '🧾', bg: 'bg-purple-100 text-purple-700' }
-};
-
-const TVA_RATES = [
-  { value: 20, label: '20% (Standard)' },
-  { value: 10, label: '10% (Travaux)' },
-  { value: 5.5, label: '5.5% (Rénovation énergétique)' },
-  { value: 0, label: '0% (Exonéré)' }
-];
-
-export default function DevisPage({ clients, devis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, setClients, clientsDB }) {
-  const [view, setView] = useState(null);
-  const [mode, setMode] = useState('list'); // list, create, edit, sign, preview
+export default function DevisPage({ clients, setClients, clientsDB, devis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret }) {
+  const [mode, setMode] = useState('list');
+  const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogueSearch, setCatalogueSearch] = useState('');
   const [showClientModal, setShowClientModal] = useState(false);
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
-  
-  // Form state
-  const [form, setForm] = useState({
-    type: 'devis',
-    clientId: '',
-    chantierId: '',
-    date: new Date().toISOString().split('T')[0],
-    validite: 30,
-    sections: [{ id: '1', titre: '', lignes: [] }],
-    photos: [],
-    tvaRate: 10,
-    remise: 0,
-    acompte: 0,
-    notes: '',
-    cgv: true,
-    showCertifications: true
-  });
-
-  // Signature
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Reset form
-  const resetForm = () => {
-    setForm({
-      type: 'devis',
-      clientId: '',
-      chantierId: '',
-      date: new Date().toISOString().split('T')[0],
-      validite: 30,
-      sections: [{ id: Date.now().toString(), titre: '', lignes: [] }],
-      photos: [],
-      tvaRate: 10,
-      remise: 0,
-      acompte: 0,
-      notes: '',
-      cgv: true,
-      showCertifications: true
-    });
+  const [form, setForm] = useState({
+    type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0],
+    validite: 30, sections: [{ id: '1', titre: '', lignes: [] }], photos: [],
+    tvaRate: 10, remise: 0, notes: '', cgv: true, showCertifications: true
+  });
+
+  const couleur = entreprise.couleur || '#f97316';
+  const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+
+  // Filtrage
+  const filtered = devis.filter(d => {
+    if (filter === 'devis' && d.type !== 'devis') return false;
+    if (filter === 'factures' && d.type !== 'facture') return false;
+    if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
+    if (filter === 'acceptes' && d.statut !== 'accepte') return false;
+    if (search && !d.numero?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // Stats
+  const stats = {
+    devisAttente: devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length,
+    acceptes: devis.filter(d => d.statut === 'accepte').length,
+    aEncaisser: devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0),
+    mois: devis.filter(d => new Date(d.date).getMonth() === new Date().getMonth()).reduce((s, d) => s + (d.total_ttc || 0), 0)
   };
 
   // Calculs
-  const calculateTotals = (sections, tvaRate, remise) => {
-    const totalHT = sections.reduce((sum, sec) => 
-      sum + sec.lignes.reduce((s, l) => s + (parseFloat(l.montant) || 0), 0), 0
-    );
-    const remiseAmount = totalHT * (remise / 100);
-    const htApresRemise = totalHT - remiseAmount;
-    const tva = htApresRemise * (tvaRate / 100);
-    const ttc = htApresRemise + tva;
-    return { totalHT, remiseAmount, htApresRemise, tva, ttc };
-  };
-
-  const totals = calculateTotals(form.sections, form.tvaRate, form.remise);
-
-  // Ajouter ligne
-  const addLigne = (sectionId, ligne = null) => {
-    const newLigne = ligne || {
-      id: Date.now().toString(),
-      description: '',
-      quantite: 1,
-      unite: 'unité',
-      prixUnitaire: 0,
-      montant: 0
-    };
-    setForm(p => ({
-      ...p,
-      sections: p.sections.map(s => 
-        s.id === sectionId 
-          ? { ...s, lignes: [...s.lignes, newLigne] }
-          : s
-      )
+  const calculateTotals = () => {
+    let totalHT = 0;
+    let totalAchat = 0;
+    form.sections.forEach(s => s.lignes.forEach(l => {
+      totalHT += l.montant || 0;
+      totalAchat += (l.prixAchat || 0) * (l.quantite || 0);
     }));
-    setCatalogSearch('');
+    const remiseAmount = totalHT * (form.remise / 100);
+    const htApresRemise = totalHT - remiseAmount;
+    const tva = htApresRemise * (form.tvaRate / 100);
+    const ttc = htApresRemise + tva;
+    const margeBrute = totalHT - totalAchat;
+    const tauxMarge = totalHT > 0 ? (margeBrute / totalHT) * 100 : 0;
+    return { totalHT, remiseAmount, htApresRemise, tva, ttc, margeBrute, tauxMarge };
   };
 
-  // Ajouter depuis catalogue
-  const addFromCatalog = (sectionId, item) => {
-    addLigne(sectionId, {
+  const totals = calculateTotals();
+
+  // Ajout ligne depuis catalogue
+  const addLigneFromCatalogue = (item, sectionId) => {
+    const ligne = {
       id: Date.now().toString(),
       description: item.nom,
       quantite: 1,
-      unite: item.unite || 'unité',
+      unite: item.unite,
       prixUnitaire: item.prix,
+      prixAchat: item.prixAchat || 0, // Figer le prix d'achat au moment du devis
       montant: item.prix
-    });
+    };
+    setForm(p => ({
+      ...p,
+      sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: [...s.lignes, ligne] } : s)
+    }));
+    setCatalogueSearch('');
   };
 
   // Mise à jour ligne
@@ -134,550 +97,335 @@ export default function DevisPage({ clients, devis, chantiers, catalogue, entrep
   };
 
   // Supprimer ligne
-  const deleteLigne = (sectionId, ligneId) => {
+  const removeLigne = (sectionId, ligneId) => {
     setForm(p => ({
       ...p,
-      sections: p.sections.map(s => 
-        s.id === sectionId 
-          ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) }
-          : s
-      )
+      sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s)
     }));
   };
 
   // Ajouter section
   const addSection = () => {
-    setForm(p => ({
-      ...p,
-      sections: [...p.sections, { id: Date.now().toString(), titre: '', lignes: [] }]
-    }));
+    setForm(p => ({ ...p, sections: [...p.sections, { id: Date.now().toString(), titre: '', lignes: [] }] }));
   };
 
-  // Supprimer section
-  const deleteSection = (sectionId) => {
-    if (form.sections.length <= 1) return;
-    setForm(p => ({
-      ...p,
-      sections: p.sections.filter(s => s.id !== sectionId)
-    }));
+  // Générer numéro
+  const generateNumero = (type) => {
+    const prefix = type === 'facture' ? 'FACT' : 'DEV';
+    const year = new Date().getFullYear();
+    const count = devis.filter(d => d.type === type && d.numero?.includes(year.toString())).length + 1;
+    return `${prefix}-${year}-${String(count).padStart(5, '0')}`;
   };
 
-  // Ajouter photo
-  const handlePhotoAdd = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm(p => ({
-        ...p,
-        photos: [...p.photos, { id: Date.now().toString(), src: reader.result, date: new Date().toISOString() }]
-      }));
-    };
-    reader.readAsDataURL(file);
-  };
+  // Créer devis
+  const handleCreate = () => {
+    const client = clients.find(c => c.id === form.clientId);
+    if (!client) return alert('Sélectionnez un client');
+    if (form.sections.every(s => s.lignes.length === 0)) return alert('Ajoutez des lignes');
 
-  // Supprimer photo
-  const deletePhoto = (photoId) => {
-    setForm(p => ({ ...p, photos: p.photos.filter(ph => ph.id !== photoId) }));
-  };
-
-  // Dupliquer devis
-  const duplicateDevis = (doc) => {
-    setForm({
-      ...form,
-      type: 'devis',
-      clientId: doc.client_id || '',
-      chantierId: doc.chantier_id || '',
-      sections: doc.sections || [{ id: '1', titre: '', lignes: doc.lignes || [] }],
-      photos: [],
-      tvaRate: doc.tvaRate || 10,
-      remise: doc.remise || 0,
-      notes: doc.notes || '',
-      cgv: true,
-      showCertifications: true
-    });
-    setMode('create');
-  };
-
-  // Créer client rapide
-  const quickCreateClient = async () => {
-    if (!newClient.nom) return;
-    if (clientsDB) {
-      await clientsDB.create(newClient);
-      const r = await clientsDB.getAll();
-      if (r.data && setClients) setClients(r.data);
-    }
-    setShowClientModal(false);
-    setNewClient({ nom: '', telephone: '' });
-  };
-
-  // Soumettre
-  const submitDevis = () => {
-    if (!form.clientId) return alert('Sélectionnez un client');
-    if (form.sections.every(s => s.lignes.length === 0)) return alert('Ajoutez au moins une ligne');
-    
-    const allLignes = form.sections.flatMap(s => s.lignes.map(l => ({ ...l, section: s.titre })));
     const data = {
+      numero: generateNumero(form.type),
+      type: form.type,
       client_id: form.clientId,
       chantier_id: form.chantierId,
-      numero: `${form.type === 'devis' ? 'DEV' : 'FACT'}-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
       date: form.date,
       validite: form.validite,
-      type: form.type,
       statut: 'brouillon',
       sections: form.sections,
-      lignes: allLignes,
-      photos: form.photos,
+      lignes: form.sections.flatMap(s => s.lignes),
       tvaRate: form.tvaRate,
       remise: form.remise,
-      total_ht: totals.totalHT,
-      remise_montant: totals.remiseAmount,
+      total_ht: totals.htApresRemise,
       tva: totals.tva,
       total_ttc: totals.ttc,
+      margePrevue: totals.tauxMarge,
       notes: form.notes,
       cgv: form.cgv,
       showCertifications: form.showCertifications
     };
-    
+
     onSubmit(data);
-    resetForm();
     setMode('list');
+    setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: 30, sections: [{ id: '1', titre: '', lignes: [] }], photos: [], tvaRate: 10, remise: 0, notes: '', cgv: true, showCertifications: true });
   };
 
   // Signature canvas
+  useEffect(() => {
+    if (mode === 'sign' && canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+    }
+  }, [mode]);
+
   const startDraw = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+    if (!canvasRef.current) return;
+    setIsDrawing(true);
+    const ctx = canvasRef.current.getContext('2d');
+    const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
     const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    const ctx = canvas.getContext('2d');
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000';
-    setIsDrawing(true);
   };
 
   const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+    if (!isDrawing || !canvasRef.current) return;
+    e.preventDefault();
+    const ctx = canvasRef.current.getContext('2d');
+    const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
     const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    const ctx = canvas.getContext('2d');
     ctx.lineTo(x, y);
     ctx.stroke();
   };
 
-  const stopDraw = () => setIsDrawing(false);
+  const endDraw = () => setIsDrawing(false);
 
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const clearCanvas = () => {
+    if (canvasRef.current) {
+      canvasRef.current.getContext('2d').clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     }
   };
 
-  const saveSignature = (docId) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const signature = canvas.toDataURL();
-    onUpdate(docId, { 
-      signature, 
-      statut: 'accepte',
-      signatureDate: new Date().toISOString()
-    });
+  const saveSignature = () => {
+    if (!canvasRef.current || !selected) return;
+    const signature = canvasRef.current.toDataURL();
+    onUpdate(selected.id, { signature, signatureDate: new Date().toISOString(), statut: 'accepte' });
     setMode('list');
-    setView(null);
+    setSelected(null);
+    alert('✅ Devis signé et accepté !');
   };
 
-  // Transformer en facture
-  const convertToFacture = (doc) => {
-    const factureData = {
-      ...doc,
-      numero: `FACT-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
+  // WhatsApp
+  const sendWhatsApp = (doc) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+    const msg = `Bonjour${client?.prenom ? ' ' + client.prenom : ''},\n\nVoici votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.\n\nCordialement,\n${entreprise.nom}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
+  };
+
+  // Acompte auto 30%
+  const createAcompte = (doc, pct = 30) => {
+    if (!confirm(`Créer une facture d'acompte de ${pct}% (${formatMoney(doc.total_ttc * pct / 100)}) ?`)) return;
+    const montantTTC = doc.total_ttc * pct / 100;
+    const montantHT = montantTTC / (1 + doc.tvaRate / 100);
+    const data = {
+      numero: generateNumero('facture'),
       type: 'facture',
-      statut: 'brouillon',
-      dateFacture: new Date().toISOString().split('T')[0],
-      devisOrigine: doc.numero
-    };
-    delete factureData.id;
-    delete factureData.created_at;
-    onSubmit(factureData);
-    onUpdate(doc.id, { statut: 'facture' });
-  };
-
-  // Générer acompte
-  const genererAcompte = (doc, pourcentage) => {
-    const montant = doc.total_ttc * (pourcentage / 100);
-    const acompteData = {
       client_id: doc.client_id,
       chantier_id: doc.chantier_id,
-      numero: `ACOMPTE-${Date.now().toString().slice(-5)}`,
       date: new Date().toISOString().split('T')[0],
-      type: 'facture',
-      statut: 'brouillon',
-      lignes: [{ description: `Acompte ${pourcentage}% - ${doc.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montant / (1 + doc.tvaRate/100), montant: montant / (1 + doc.tvaRate/100) }],
-      sections: [{ id: '1', titre: '', lignes: [{ description: `Acompte ${pourcentage}% - ${doc.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montant / (1 + doc.tvaRate/100), montant: montant / (1 + doc.tvaRate/100) }] }],
+      statut: 'envoye',
+      devisOrigine: doc.numero,
+      sections: [{ id: '1', titre: '', lignes: [{ id: '1', description: `Acompte ${pct}% - ${doc.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }] }],
+      lignes: [{ description: `Acompte ${pct}% - ${doc.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }],
       tvaRate: doc.tvaRate,
-      total_ht: montant / (1 + doc.tvaRate/100),
-      tva: montant - montant / (1 + doc.tvaRate/100),
-      total_ttc: montant,
+      remise: 0,
+      total_ht: montantHT,
+      tva: montantTTC - montantHT,
+      total_ttc: montantTTC
+    };
+    onSubmit(data);
+    alert('✅ Facture d\'acompte créée !');
+  };
+
+  // Convertir en facture
+  const convertToFacture = (doc) => {
+    if (!confirm('Convertir ce devis en facture ?')) return;
+    const data = {
+      ...doc,
+      id: undefined,
+      numero: generateNumero('facture'),
+      type: 'facture',
+      date: new Date().toISOString().split('T')[0],
+      statut: 'envoye',
       devisOrigine: doc.numero
     };
-    onSubmit(acompteData);
-    alert(`Facture d'acompte ${pourcentage}% créée: ${montant.toFixed(2)}€`);
+    onSubmit(data);
+    onUpdate(doc.id, { statut: 'facture' });
+    alert('✅ Facture créée !');
   };
 
-  // Générer PDF et partage
-  const generatePDFContent = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    const dateStr = new Date(doc.date).toLocaleDateString('fr-FR');
-    return `
-DOCUMENT: ${doc.type === 'devis' ? 'DEVIS' : 'FACTURE'} ${doc.numero}
-Date: ${dateStr}
-${doc.type === 'devis' ? `Validité: ${doc.validite || 30} jours` : ''}
-
-ÉMETTEUR:
-${entreprise.nom || 'Entreprise'}
-${entreprise.adresse || ''}
-${entreprise.tel || ''}
-${entreprise.siret ? 'SIRET: ' + entreprise.siret : ''}
-
-CLIENT:
-${client?.nom || ''} ${client?.prenom || ''}
-${client?.adresse || ''}
-${client?.telephone || ''}
-
-PRESTATIONS:
-${(doc.lignes || []).map(l => `- ${l.description}: ${l.quantite} ${l.unite} x ${l.prixUnitaire}€ = ${l.montant}€`).join('\n')}
-
-TOTAL HT: ${(doc.total_ht || 0).toFixed(2)}€
-${doc.remise_montant ? `Remise: -${doc.remise_montant.toFixed(2)}€` : ''}
-TVA (${doc.tvaRate || 10}%): ${(doc.tva || 0).toFixed(2)}€
-TOTAL TTC: ${(doc.total_ttc || 0).toFixed(2)}€
-
-${doc.signature ? 'BON POUR ACCORD - Signé le ' + new Date(doc.signatureDate).toLocaleDateString('fr-FR') : ''}
-${entreprise.rib && doc.type === 'facture' ? '\nRIB: ' + entreprise.rib : ''}
-    `.trim();
+  // Créer client rapide
+  const quickCreateClient = () => {
+    if (!newClient.nom) return;
+    const client = { id: Date.now().toString(), ...newClient };
+    setClients(prev => [...prev, client]);
+    setForm(p => ({ ...p, clientId: client.id }));
+    setShowClientModal(false);
+    setNewClient({ nom: '', telephone: '' });
   };
 
-  // Partage WhatsApp
-  const shareWhatsApp = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    const message = `Bonjour${client?.prenom ? ' ' + client.prenom : ''},\n\nVeuillez trouver ci-joint votre ${doc.type === 'devis' ? 'devis' : 'facture'} n°${doc.numero} d'un montant de ${(doc.total_ttc || 0).toFixed(2)}€.\n\nCordialement,\n${entreprise.nom || ''}`;
-    const phone = client?.telephone?.replace(/\s/g, '').replace(/^0/, '33') || '';
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
-    if (doc.statut === 'brouillon') {
-      onUpdate(doc.id, { statut: 'envoye', dateEnvoi: new Date().toISOString() });
-    }
-  };
-
-  // Partage Email
-  const shareEmail = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    const subject = `${doc.type === 'devis' ? 'Devis' : 'Facture'} ${doc.numero} - ${entreprise.nom || ''}`;
-    const body = generatePDFContent(doc);
-    window.open(`mailto:${client?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
-    if (doc.statut === 'brouillon') {
-      onUpdate(doc.id, { statut: 'envoye', dateEnvoi: new Date().toISOString() });
-    }
-  };
-
-  // Télécharger
-  const downloadDoc = (doc) => {
-    const content = generatePDFContent(doc);
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${doc.numero}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Filtrage
-  const filtered = devis.filter(d => {
-    if (filter === 'devis' && d.type !== 'devis') return false;
-    if (filter === 'factures' && d.type !== 'facture') return false;
-    if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
-    if (filter === 'acceptes' && d.statut !== 'accepte') return false;
-    if (search) {
-      const client = clients.find(c => c.id === d.client_id);
-      const searchLower = search.toLowerCase();
-      return d.numero?.toLowerCase().includes(searchLower) || client?.nom?.toLowerCase().includes(searchLower);
-    }
-    return true;
-  }).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-  // Catalogue filtré
-  const filteredCatalog = catalogSearch 
-    ? catalogue.filter(c => c.nom?.toLowerCase().includes(catalogSearch.toLowerCase()))
-    : catalogue.filter(c => c.favori);
-
-  const couleur = entreprise.couleur || '#f97316';
-
-  // ============ RENDU ============
-
-  // Mode signature
-  if (mode === 'sign' && view) {
-    const doc = devis.find(d => d.id === view);
-    if (!doc) { setMode('list'); return null; }
-    
+  // Vue signature
+  if (mode === 'sign' && selected) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl text-xl">←</button>
+          <button onClick={() => { setMode('preview'); }} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
           <h1 className="text-2xl font-bold">Signature client</h1>
         </div>
-        
-        <div className="bg-white rounded-2xl border p-6">
-          <p className="text-center text-slate-600 mb-4">Le client signe ci-dessous pour accepter le devis</p>
-          
-          <div className="flex justify-center">
-            <canvas
-              ref={canvasRef}
-              width={350}
-              height={200}
-              className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 touch-none"
-              onMouseDown={startDraw}
-              onMouseMove={draw}
-              onMouseUp={stopDraw}
-              onMouseLeave={stopDraw}
-              onTouchStart={startDraw}
-              onTouchMove={draw}
-              onTouchEnd={stopDraw}
-            />
+        <div className="bg-white rounded-2xl border p-6 text-center">
+          <p className="mb-4">Le client signe ci-dessous pour accepter le {selected.type} <strong>{selected.numero}</strong></p>
+          <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
+          <div className="flex justify-center mb-4">
+            <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl bg-slate-50" style={{touchAction: 'none'}} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
           </div>
-          
-          <p className="text-center text-xs text-slate-400 mt-2">Dessinez votre signature avec le doigt ou la souris</p>
-          
-          <div className="flex justify-center gap-4 mt-6">
-            <button onClick={clearSignature} className="px-6 py-3 bg-slate-100 rounded-xl font-medium">
-              Effacer
-            </button>
-            <button onClick={() => saveSignature(doc.id)} className="px-6 py-3 text-white rounded-xl font-medium" style={{background: couleur}}>
-              ✅ Valider - Bon pour accord
-            </button>
+          <div className="flex justify-center gap-4">
+            <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button>
+            <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>✅ Valider</button>
           </div>
-        </div>
-        
-        <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800">
-          ⚠️ En signant, le client accepte les conditions du devis {doc.numero} pour un montant de {(doc.total_ttc || 0).toFixed(2)}€ TTC
+          <p className="text-xs text-slate-500 mt-4">Bon pour accord - {new Date().toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
     );
   }
 
-  // Mode preview (voir le devis)
-  if (mode === 'preview' && view) {
-    const doc = devis.find(d => d.id === view);
-    if (!doc) { setMode('list'); return null; }
-    const client = clients.find(c => c.id === doc.client_id);
-    const chantier = chantiers.find(c => c.id === doc.chantier_id);
+  // Vue preview
+  if (mode === 'preview' && selected) {
+    const client = clients.find(c => c.id === selected.client_id);
+    const statusColors = { brouillon: 'bg-slate-100', envoye: 'bg-amber-100 text-amber-700', vu: 'bg-blue-100 text-blue-700', accepte: 'bg-emerald-100 text-emerald-700', refuse: 'bg-red-100 text-red-700', payee: 'bg-purple-100 text-purple-700' };
+    const statusLabels = { brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Accepté', refuse: 'Refusé', payee: 'Payée' };
 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => { setMode('list'); setView(null); }} className="p-2 hover:bg-slate-100 rounded-xl text-xl">←</button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">{doc.numero}</h1>
-            <p className="text-slate-500">{doc.type === 'devis' ? 'Devis' : 'Facture'}</p>
-          </div>
-          <span className={`px-4 py-2 rounded-xl text-sm font-medium ${STATUTS[doc.statut]?.bg}`}>
-            {STATUTS[doc.statut]?.icon} {STATUTS[doc.statut]?.label}
-          </span>
+          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
+          <h1 className="text-xl font-bold">{selected.numero}</h1>
+          <span className={`px-3 py-1 rounded-full text-sm ${statusColors[selected.statut]}`}>{statusLabels[selected.statut]}</span>
+          <div className="flex-1" />
+          <button onClick={() => onDelete(selected.id)} className="px-3 py-2 text-red-500">🗑️</button>
         </div>
 
-        {/* Actions rapides */}
+        {/* Actions */}
         <div className="flex gap-2 flex-wrap">
-          {doc.type === 'devis' && doc.statut !== 'accepte' && doc.statut !== 'facture' && (
-            <button onClick={() => setMode('sign')} className="px-4 py-2.5 text-white rounded-xl font-medium flex items-center gap-2" style={{background: couleur}}>
-              ✍️ Signer
-            </button>
+          {selected.type === 'devis' && selected.statut !== 'accepte' && (
+            <button onClick={() => setMode('sign')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>✍️ Signer</button>
           )}
-          <button onClick={() => shareWhatsApp(doc)} className="px-4 py-2.5 bg-green-500 text-white rounded-xl font-medium flex items-center gap-2">
-            📱 WhatsApp
-          </button>
-          <button onClick={() => shareEmail(doc)} className="px-4 py-2.5 bg-blue-500 text-white rounded-xl font-medium flex items-center gap-2">
-            📧 Email
-          </button>
-          <button onClick={() => downloadDoc(doc)} className="px-4 py-2.5 bg-slate-200 rounded-xl font-medium flex items-center gap-2">
-            ⬇️ Télécharger
-          </button>
-          {doc.type === 'devis' && doc.statut === 'accepte' && (
-            <button onClick={() => convertToFacture(doc)} className="px-4 py-2.5 bg-purple-500 text-white rounded-xl font-medium">
-              🧾 Facturer
-            </button>
+          <button onClick={() => sendWhatsApp(selected)} className="px-4 py-2 bg-green-500 text-white rounded-xl">📱 WhatsApp</button>
+          {selected.type === 'devis' && selected.statut === 'accepte' && (
+            <>
+              <button onClick={() => createAcompte(selected, 30)} className="px-4 py-2 bg-purple-500 text-white rounded-xl">💰 Acompte 30%</button>
+              <button onClick={() => convertToFacture(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">🧾 Facturer</button>
+            </>
           )}
         </div>
 
         {/* Document */}
-        <div className="bg-white rounded-2xl border p-6 print:shadow-none" id="devis-content">
+        <div className="bg-white rounded-2xl border p-6">
           {/* En-tête */}
-          <div className="flex justify-between items-start mb-8">
+          <div className="flex justify-between items-start mb-8 pb-6 border-b">
             <div className="flex items-center gap-4">
-              {entreprise.logo ? (
-                <img src={entreprise.logo} className="h-16 object-contain" alt="" />
-              ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${couleur}20`}}>🏢</div>
-              )}
+              {entreprise.logo ? <img src={entreprise.logo} className="h-16 object-contain" alt="" /> : <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${couleur}20`}}>🏢</div>}
               <div>
-                <p className="font-bold text-lg">{entreprise.nom || 'Mon Entreprise'}</p>
-                <p className="text-sm text-slate-500 whitespace-pre-line">{entreprise.adresse || ''}</p>
-                <p className="text-sm text-slate-500">{entreprise.tel || ''}</p>
+                <p className="font-bold text-lg">{entreprise.nom}</p>
+                <p className="text-sm text-slate-500 whitespace-pre-line">{entreprise.adresse}</p>
+                <p className="text-sm text-slate-500">{entreprise.tel}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold" style={{color: couleur}}>{doc.type === 'devis' ? 'DEVIS' : 'FACTURE'}</p>
-              <p className="font-mono text-slate-600">{doc.numero}</p>
-              <p className="text-slate-500">{new Date(doc.date).toLocaleDateString('fr-FR')}</p>
-              {doc.type === 'devis' && <p className="text-xs text-slate-400">Validité: {doc.validite || 30} jours</p>}
+              <p className="text-2xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
+              <p className="text-slate-500">{selected.numero}</p>
+              <p className="text-sm text-slate-500">{new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
           </div>
 
           {/* Client */}
-          <div className="mb-8 p-4 bg-slate-50 rounded-xl">
-            <p className="text-xs text-slate-500 mb-1">CLIENT</p>
-            <p className="font-bold">{client?.nom || ''} {client?.prenom || ''}</p>
-            {client?.entreprise && <p className="text-sm">{client.entreprise}</p>}
-            <p className="text-sm text-slate-600">{client?.adresse || ''}</p>
-            <p className="text-sm text-slate-600">{client?.telephone || ''} {client?.email ? '• ' + client.email : ''}</p>
+          <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+            <p className="text-sm text-slate-500 mb-1">Client</p>
+            <p className="font-semibold">{client?.nom} {client?.prenom}</p>
+            {client?.adresse && <p className="text-sm text-slate-500">{client.adresse}</p>}
           </div>
 
-          {/* Photos */}
-          {doc.photos && doc.photos.length > 0 && (
-            <div className="mb-6">
-              <p className="text-sm font-medium mb-2">📷 Photos du chantier</p>
-              <div className="flex gap-2 flex-wrap">
-                {doc.photos.map(p => (
-                  <img key={p.id} src={p.src} className="w-24 h-24 object-cover rounded-lg" alt="" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Prestations */}
-          <table className="w-full mb-6 text-sm">
+          {/* Lignes */}
+          <table className="w-full mb-6">
             <thead>
-              <tr className="border-b-2" style={{borderColor: couleur}}>
-                <th className="text-left py-3 font-semibold">Description</th>
-                <th className="text-center w-20 font-semibold">Qté</th>
-                <th className="text-right w-24 font-semibold">P.U. HT</th>
-                <th className="text-right w-28 font-semibold">Total HT</th>
+              <tr className="border-b">
+                <th className="text-left py-2">Description</th>
+                <th className="text-right py-2 w-20">Qté</th>
+                <th className="text-right py-2 w-20">Unité</th>
+                <th className="text-right py-2 w-24">PU HT</th>
+                <th className="text-right py-2 w-28">Total HT</th>
               </tr>
             </thead>
             <tbody>
-              {(doc.sections || [{ lignes: doc.lignes || [] }]).map((section, si) => (
-                <React.Fragment key={si}>
-                  {section.titre && (
-                    <tr><td colSpan={4} className="pt-4 pb-2 font-bold text-slate-700" style={{color: couleur}}>{section.titre}</td></tr>
-                  )}
-                  {section.lignes?.map((l, li) => (
-                    <tr key={li} className="border-b border-slate-100">
-                      <td className="py-2">{l.description}</td>
-                      <td className="text-center">{l.quantite} {l.unite}</td>
-                      <td className="text-right">{(parseFloat(l.prixUnitaire) || 0).toFixed(2)}€</td>
-                      <td className="text-right font-medium">{(parseFloat(l.montant) || 0).toFixed(2)}€</td>
-                    </tr>
-                  ))}
-                </React.Fragment>
+              {(selected.lignes || []).map((l, i) => (
+                <tr key={i} className="border-b">
+                  <td className="py-3">{l.description}</td>
+                  <td className="text-right">{l.quantite}</td>
+                  <td className="text-right">{l.unite}</td>
+                  <td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td>
+                  <td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td>
+                </tr>
               ))}
             </tbody>
           </table>
 
           {/* Totaux */}
-          <div className="flex justify-end mb-6">
-            <div className="w-64 space-y-2 text-sm">
-              <div className="flex justify-between py-1"><span>Total HT</span><span>{(doc.total_ht || 0).toFixed(2)}€</span></div>
-              {doc.remise_montant > 0 && (
-                <div className="flex justify-between py-1 text-green-600"><span>Remise</span><span>-{doc.remise_montant.toFixed(2)}€</span></div>
-              )}
-              <div className="flex justify-between py-1"><span>TVA ({doc.tvaRate || 10}%)</span><span>{(doc.tva || 0).toFixed(2)}€</span></div>
-              <div className="flex justify-between py-2 text-lg font-bold border-t-2" style={{borderColor: couleur, color: couleur}}>
-                <span>Total TTC</span><span>{(doc.total_ttc || 0).toFixed(2)}€</span>
-              </div>
+          <div className="flex justify-end">
+            <div className="w-64">
+              <div className="flex justify-between py-2"><span>Total HT</span><span>{formatMoney(selected.total_ht)}</span></div>
+              <div className="flex justify-between py-2"><span>TVA {selected.tvaRate}%</span><span>{formatMoney(selected.tva)}</span></div>
+              <div className="flex justify-between py-3 border-t font-bold text-lg" style={{color: couleur}}><span>Total TTC</span><span>{formatMoney(selected.total_ttc)}</span></div>
             </div>
           </div>
 
           {/* Signature */}
-          {doc.signature && (
-            <div className="border-t pt-4 mt-6">
-              <p className="text-sm font-medium text-green-700 mb-2">✅ BON POUR ACCORD</p>
-              <div className="flex items-end gap-4">
-                <img src={doc.signature} className="h-20 border rounded" alt="Signature" />
-                <p className="text-xs text-slate-500">Signé le {new Date(doc.signatureDate).toLocaleDateString('fr-FR')}</p>
+          {selected.signature && (
+            <div className="mt-6 pt-6 border-t">
+              <p className="text-sm text-slate-500 mb-2">Signature client - {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p>
+              <div className="inline-block border rounded-xl p-2 bg-slate-50">
+                {selected.signature !== 'signed' && <img src={selected.signature} className="h-16" alt="Signature" />}
+                {selected.signature === 'signed' && <span className="text-emerald-600 font-medium">✅ Signé électroniquement</span>}
               </div>
             </div>
           )}
 
           {/* Mentions légales */}
-          <div className="mt-8 pt-4 border-t text-xs text-slate-400 space-y-1">
-            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.tvaIntra && `• TVA Intra: ${entreprise.tvaIntra}`}</p>}
-            {entreprise.assurance && doc.showCertifications && <p>Assurance décennale: {entreprise.assurance}</p>}
-            {entreprise.rib && doc.type === 'facture' && <p>RIB: {entreprise.rib}</p>}
-            {doc.cgv && <p className="mt-2">Conditions: Paiement à réception de facture. Pénalités de retard: 3x taux légal.</p>}
+          <div className="mt-8 pt-6 border-t text-xs text-slate-400 space-y-1">
+            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.tvaIntra && `• TVA: ${entreprise.tvaIntra}`}</p>}
+            {entreprise.assurance && <p>Assurance décennale: {entreprise.assurance}</p>}
+            {entreprise.rib && selected.type === 'facture' && <p>RIB: {entreprise.rib}</p>}
+            {selected.type === 'devis' && <p>Devis valable {selected.validite || 30} jours</p>}
           </div>
         </div>
 
-        {/* Actions secondaires */}
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => duplicateDevis(doc)} className="px-4 py-2 bg-slate-100 rounded-xl text-sm">
-            📋 Dupliquer
-          </button>
-          {doc.type === 'devis' && doc.statut === 'accepte' && (
-            <>
-              <button onClick={() => genererAcompte(doc, 30)} className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-sm">
-                Acompte 30%
-              </button>
-              <button onClick={() => genererAcompte(doc, 40)} className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-sm">
-                Acompte 40%
-              </button>
-            </>
-          )}
-          <select 
-            value={doc.statut} 
-            onChange={e => onUpdate(doc.id, { statut: e.target.value })}
-            className="px-4 py-2 border rounded-xl text-sm"
-          >
-            {Object.entries(STATUTS).map(([k, v]) => (
-              <option key={k} value={k}>{v.icon} {v.label}</option>
-            ))}
+        {/* Statut */}
+        <div className="bg-white rounded-2xl border p-4">
+          <label className="text-sm font-medium mr-3">Statut:</label>
+          <select value={selected.statut} onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }} className="px-3 py-2 border rounded-xl">
+            <option value="brouillon">Brouillon</option>
+            <option value="envoye">Envoyé</option>
+            <option value="vu">Vu par client</option>
+            <option value="accepte">Accepté</option>
+            <option value="refuse">Refusé</option>
+            {selected.type === 'facture' && <option value="payee">Payée</option>}
           </select>
-          <button 
-            onClick={() => { if (confirm('Supprimer ce document ?')) { onDelete(doc.id); setMode('list'); setView(null); }}}
-            className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm"
-          >
-            🗑️ Supprimer
-          </button>
         </div>
       </div>
     );
   }
 
-  // Mode création/édition
+  // Vue création
   if (mode === 'create') {
+    const catalogueFiltered = catalogue.filter(c => !catalogueSearch || c.nom.toLowerCase().includes(catalogueSearch.toLowerCase()));
+    const favoris = catalogue.filter(c => c.favori);
+
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => { setMode('list'); resetForm(); }} className="p-2 hover:bg-slate-100 rounded-xl text-xl">←</button>
+          <button onClick={() => setMode('list')} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
           <h1 className="text-2xl font-bold">Nouveau {form.type}</h1>
         </div>
 
-        {/* Type + Client */}
-        <div className="bg-white rounded-2xl border p-5">
+        <div className="bg-white rounded-2xl border p-6 space-y-6">
+          {/* Type et client */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Type</label>
-              <select 
-                className="w-full px-4 py-2.5 border rounded-xl"
-                value={form.type}
-                onChange={e => setForm(p => ({...p, type: e.target.value}))}
-              >
+              <select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}>
                 <option value="devis">Devis</option>
                 <option value="facture">Facture</option>
               </select>
@@ -685,282 +433,147 @@ ${entreprise.rib && doc.type === 'facture' ? '\nRIB: ' + entreprise.rib : ''}
             <div>
               <label className="block text-sm font-medium mb-1">Client *</label>
               <div className="flex gap-2">
-                <select 
-                  className="flex-1 px-4 py-2.5 border rounded-xl"
-                  value={form.clientId}
-                  onChange={e => setForm(p => ({...p, clientId: e.target.value}))}
-                >
+                <select className="flex-1 px-4 py-2.5 border rounded-xl" value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}>
                   <option value="">Sélectionner...</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>
-                  ))}
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}
                 </select>
-                <button 
-                  onClick={() => setShowClientModal(true)}
-                  className="px-3 py-2.5 rounded-xl text-white"
-                  style={{background: couleur}}
-                >+</button>
+                <button onClick={() => setShowClientModal(true)} className="px-3 py-2 rounded-xl" style={{background: `${couleur}20`, color: couleur}}>+</button>
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Chantier</label>
-              <select 
-                className="w-full px-4 py-2.5 border rounded-xl"
-                value={form.chantierId}
-                onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}
-              >
+              <select className="w-full px-4 py-2.5 border rounded-xl" value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
                 <option value="">Aucun</option>
-                {chantiers.map(c => (
-                  <option key={c.id} value={c.id}>{c.nom}</option>
-                ))}
+                {chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Date</label>
-              <input 
-                type="date"
-                className="w-full px-4 py-2.5 border rounded-xl"
-                value={form.date}
-                onChange={e => setForm(p => ({...p, date: e.target.value}))}
-              />
+              <input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} />
             </div>
           </div>
-        </div>
 
-        {/* Photos */}
-        <div className="bg-white rounded-2xl border p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold">📷 Photos (optionnel)</h3>
-            <label className="px-4 py-2 text-white rounded-xl cursor-pointer text-sm" style={{background: couleur}}>
-              + Ajouter
-              <input type="file" accept="image/*" capture="environment" onChange={handlePhotoAdd} className="hidden" />
-            </label>
-          </div>
-          {form.photos.length > 0 ? (
-            <div className="flex gap-3 flex-wrap">
-              {form.photos.map(p => (
-                <div key={p.id} className="relative">
-                  <img src={p.src} className="w-24 h-24 object-cover rounded-xl" alt="" />
-                  <button 
-                    onClick={() => deletePhoto(p.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs"
-                  >✕</button>
-                </div>
-              ))}
+          {/* Catalogue rapide */}
+          {favoris.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-2">⭐ Favoris</p>
+              <div className="flex gap-2 flex-wrap">
+                {favoris.map(item => (
+                  <button key={item.id} onClick={() => addLigneFromCatalogue(item, form.sections[0].id)} className="px-3 py-2 bg-orange-50 hover:bg-orange-100 rounded-lg text-sm">
+                    {item.nom} <span className="text-slate-500">{item.prix}€</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <p className="text-slate-400 text-sm">Prenez une photo du problème ou du chantier</p>
           )}
-        </div>
 
-        {/* Sections et lignes */}
-        {form.sections.map((section, sIndex) => (
-          <div key={section.id} className="bg-white rounded-2xl border p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <input
-                placeholder={`Section ${sIndex + 1} (ex: Démolition, Pose...)`}
-                value={section.titre}
-                onChange={e => setForm(p => ({
-                  ...p,
-                  sections: p.sections.map(s => s.id === section.id ? {...s, titre: e.target.value} : s)
-                }))}
-                className="flex-1 px-4 py-2 border rounded-xl font-medium"
-              />
-              {form.sections.length > 1 && (
-                <button onClick={() => deleteSection(section.id)} className="p-2 text-red-500">🗑️</button>
-              )}
-            </div>
-
-            {/* Recherche catalogue */}
-            <div className="mb-4">
-              <input
-                placeholder="🔍 Rechercher dans le catalogue..."
-                value={catalogSearch}
-                onChange={e => setCatalogSearch(e.target.value)}
-                className="w-full px-4 py-2.5 border rounded-xl"
-              />
-              {filteredCatalog.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-2">
-                  {filteredCatalog.slice(0, 8).map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => addFromCatalog(section.id, item)}
-                      className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg text-sm"
-                    >
-                      {item.favori && '⭐'} {item.nom} • {item.prix}€
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Lignes */}
-            <div className="space-y-2">
-              {section.lignes.map(ligne => (
-                <div key={ligne.id} className="flex gap-2 items-center flex-wrap bg-slate-50 p-3 rounded-xl">
-                  <input
-                    placeholder="Description"
-                    value={ligne.description}
-                    onChange={e => updateLigne(section.id, ligne.id, 'description', e.target.value)}
-                    className="flex-1 min-w-[180px] px-3 py-2 border rounded-lg bg-white"
-                  />
-                  <input
-                    type="number"
-                    value={ligne.quantite}
-                    onChange={e => updateLigne(section.id, ligne.id, 'quantite', e.target.value)}
-                    className="w-16 px-2 py-2 border rounded-lg bg-white text-center"
-                  />
-                  <select
-                    value={ligne.unite}
-                    onChange={e => updateLigne(section.id, ligne.id, 'unite', e.target.value)}
-                    className="w-20 px-2 py-2 border rounded-lg bg-white text-sm"
-                  >
-                    <option>unité</option>
-                    <option>h</option>
-                    <option>m²</option>
-                    <option>ml</option>
-                    <option>forfait</option>
-                    <option>jour</option>
-                  </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Prix"
-                    value={ligne.prixUnitaire}
-                    onChange={e => updateLigne(section.id, ligne.id, 'prixUnitaire', e.target.value)}
-                    className="w-24 px-2 py-2 border rounded-lg bg-white text-right"
-                  />
-                  <span className="w-24 text-right font-bold">{(parseFloat(ligne.montant) || 0).toFixed(2)}€</span>
-                  <button onClick={() => deleteLigne(section.id, ligne.id)} className="text-red-400 px-2">✕</button>
-                </div>
-              ))}
-              <button
-                onClick={() => addLigne(section.id)}
-                className="w-full py-3 border-2 border-dashed rounded-xl text-slate-400 hover:bg-slate-50"
-              >
-                + Ajouter une ligne
-              </button>
-            </div>
+          {/* Recherche catalogue */}
+          <div>
+            <input placeholder="🔍 Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl" />
+            {catalogueSearch && (
+              <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">
+                {catalogueFiltered.map(item => (
+                  <button key={item.id} onClick={() => addLigneFromCatalogue(item, form.sections[0].id)} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 text-left border-b last:border-0">
+                    <span>{item.nom}</span>
+                    <span className="text-slate-500">{item.prix}€/{item.unite}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
 
-        <button onClick={addSection} className="w-full py-3 bg-slate-100 rounded-xl text-slate-600 font-medium">
-          + Ajouter une section
-        </button>
+          {/* Sections et lignes */}
+          {form.sections.map((section, si) => (
+            <div key={section.id} className="border rounded-xl p-4">
+              {form.sections.length > 1 && (
+                <input placeholder="Titre section (ex: Démolition)" value={section.titre} onChange={e => setForm(p => ({ ...p, sections: p.sections.map((s, i) => i === si ? {...s, titre: e.target.value} : s) }))} className="w-full px-3 py-2 border rounded-lg mb-3 font-medium" />
+              )}
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Description</th>
+                    <th className="w-20 text-right py-2">Qté</th>
+                    <th className="w-20 text-right py-2">Unité</th>
+                    <th className="w-24 text-right py-2">PU HT</th>
+                    <th className="w-28 text-right py-2">Total</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.lignes.map(l => (
+                    <tr key={l.id} className="border-b">
+                      <td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td>
+                      <td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td>
+                      <td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded text-right" /></td>
+                      <td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td>
+                      <td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td>
+                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400">✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button onClick={() => addLigneFromCatalogue({ nom: '', prix: 0, unite: 'unité', prixAchat: 0 }, section.id)} className="mt-2 text-sm" style={{color: couleur}}>+ Ligne libre</button>
+            </div>
+          ))}
+          <button onClick={addSection} className="text-sm" style={{color: couleur}}>+ Ajouter une section</button>
 
-        {/* TVA, Remise, Options */}
-        <div className="bg-white rounded-2xl border p-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {/* TVA et remise */}
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">TVA</label>
-              <select
-                className="w-full px-4 py-2.5 border rounded-xl"
-                value={form.tvaRate}
-                onChange={e => setForm(p => ({...p, tvaRate: parseFloat(e.target.value)}))}
-              >
-                {TVA_RATES.map(r => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
+              <select className="w-full px-4 py-2.5 border rounded-xl" value={form.tvaRate} onChange={e => setForm(p => ({...p, tvaRate: parseFloat(e.target.value)}))}>
+                <option value={20}>20% Standard</option>
+                <option value={10}>10% Travaux</option>
+                <option value={5.5}>5.5% Rénovation énergétique</option>
+                <option value={0}>0% Exonéré</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Remise (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={form.remise}
-                onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))}
-                className="w-full px-4 py-2.5 border rounded-xl"
-              />
+              <label className="block text-sm font-medium mb-1">Remise %</label>
+              <input type="number" min="0" max="100" className="w-full px-4 py-2.5 border rounded-xl" value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Validité (jours)</label>
-              <input
-                type="number"
-                value={form.validite}
-                onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))}
-                className="w-full px-4 py-2.5 border rounded-xl"
-              />
+              <input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} />
             </div>
           </div>
 
-          <div className="flex gap-6 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.cgv}
-                onChange={e => setForm(p => ({...p, cgv: e.target.checked}))}
-                className="w-5 h-5 rounded"
-              />
-              <span className="text-sm">Joindre CGV</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.showCertifications}
-                onChange={e => setForm(p => ({...p, showCertifications: e.target.checked}))}
-                className="w-5 h-5 rounded"
-              />
-              <span className="text-sm">Afficher certifications (RGE, assurance)</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Totaux */}
-        <div className="bg-slate-50 rounded-2xl p-5">
+          {/* Totaux */}
           <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between"><span>Total HT</span><span>{totals.totalHT.toFixed(2)}€</span></div>
-              {totals.remiseAmount > 0 && (
-                <div className="flex justify-between text-green-600"><span>Remise ({form.remise}%)</span><span>-{totals.remiseAmount.toFixed(2)}€</span></div>
-              )}
-              <div className="flex justify-between"><span>TVA ({form.tvaRate}%)</span><span>{totals.tva.toFixed(2)}€</span></div>
-              <div className="flex justify-between text-xl font-bold pt-2 border-t" style={{color: couleur}}>
-                <span>Total TTC</span><span>{totals.ttc.toFixed(2)}€</span>
-              </div>
+            <div className="w-72 space-y-2 bg-slate-50 p-4 rounded-xl">
+              <div className="flex justify-between"><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>
+              {form.remise > 0 && <div className="flex justify-between text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
+              <div className="flex justify-between"><span>TVA {form.tvaRate}%</span><span>{formatMoney(totals.tva)}</span></div>
+              <div className="flex justify-between font-bold text-lg pt-2 border-t" style={{color: couleur}}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
+              {!modeDiscret && <div className="flex justify-between text-xs text-emerald-600 pt-2"><span>Marge brute estimée</span><span>{totals.tauxMarge.toFixed(0)}%</span></div>}
             </div>
+          </div>
+
+          {/* Options */}
+          <div className="flex gap-4 flex-wrap">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.cgv} onChange={e => setForm(p => ({...p, cgv: e.target.checked}))} className="w-4 h-4" /><span className="text-sm">CGV</span></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.showCertifications} onChange={e => setForm(p => ({...p, showCertifications: e.target.checked}))} className="w-4 h-4" /><span className="text-sm">Mentions légales & assurance</span></label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-6 border-t">
+            <button onClick={() => setMode('list')} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
+            <button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <button onClick={() => { setMode('list'); resetForm(); }} className="px-6 py-3 bg-slate-100 rounded-xl font-medium">
-            Annuler
-          </button>
-          <button onClick={submitDevis} className="px-8 py-3 text-white rounded-xl font-medium" style={{background: couleur}}>
-            Créer le {form.type}
-          </button>
-        </div>
-
-        {/* Modal nouveau client */}
+        {/* Modal client rapide */}
         {showClientModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-              <h3 className="text-xl font-bold mb-4">Nouveau client rapide</h3>
+              <h3 className="text-lg font-bold mb-4">Client rapide</h3>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Nom *</label>
-                  <input
-                    className="w-full px-4 py-2.5 border rounded-xl"
-                    value={newClient.nom}
-                    onChange={e => setNewClient(p => ({...p, nom: e.target.value}))}
-                    placeholder="Dupont"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Téléphone</label>
-                  <input
-                    className="w-full px-4 py-2.5 border rounded-xl"
-                    value={newClient.telephone}
-                    onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))}
-                    placeholder="06 12 34 56 78"
-                  />
-                </div>
+                <div><label className="block text-sm mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /></div>
+                <div><label className="block text-sm mb-1">Téléphone</label><input className="w-full px-4 py-2.5 border rounded-xl" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button onClick={() => setShowClientModal(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
-                <button onClick={quickCreateClient} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button>
+                <button onClick={quickCreateClient} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button>
               </div>
             </div>
           </div>
@@ -969,113 +582,50 @@ ${entreprise.rib && doc.type === 'facture' ? '\nRIB: ' + entreprise.rib : ''}
     );
   }
 
-  // Liste des devis/factures
+  // Liste
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Devis & Factures</h1>
-        <div className="flex gap-2">
-          {devis.length > 0 && (
-            <select
-              onChange={e => { if (e.target.value) duplicateDevis(devis.find(d => d.id === e.target.value)); e.target.value = ''; }}
-              className="px-4 py-2.5 border rounded-xl text-sm"
-            >
-              <option value="">📋 Dupliquer...</option>
-              {devis.slice(0, 10).map(d => (
-                <option key={d.id} value={d.id}>{d.numero}</option>
-              ))}
-            </select>
-          )}
-          <button onClick={() => setMode('create')} className="px-4 py-2.5 text-white rounded-xl font-medium" style={{background: couleur}}>
-            + Nouveau
-          </button>
-        </div>
+        <button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis en attente</p><p className="text-2xl font-bold text-amber-500">{stats.devisAttente}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Acceptés</p><p className="text-2xl font-bold text-emerald-500">{stats.acceptes}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">À encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(stats.aEncaisser)}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Ce mois</p><p className="text-2xl font-bold" style={{color: couleur}}>{formatMoney(stats.mois)}</p></div>
       </div>
 
       {/* Filtres */}
-      <div className="flex gap-4 flex-wrap items-center">
-        <input
-          type="text"
-          placeholder="🔍 Rechercher..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 max-w-xs px-4 py-2.5 border rounded-xl"
-        />
-        <div className="flex gap-2 flex-wrap">
-          {[
-            ['all', 'Tous'],
-            ['devis', 'Devis'],
-            ['factures', 'Factures'],
-            ['attente', 'En attente'],
-            ['acceptes', 'Acceptés']
-          ].map(([k, v]) => (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium ${filter === k ? 'text-white' : 'bg-slate-100'}`}
-              style={filter === k ? {background: couleur} : {}}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border p-4 text-center">
-          <p className="text-2xl font-bold" style={{color: couleur}}>{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p>
-          <p className="text-xs text-slate-500">Devis en attente</p>
-        </div>
-        <div className="bg-white rounded-xl border p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{devis.filter(d => d.statut === 'accepte').length}</p>
-          <p className="text-xs text-slate-500">Acceptés</p>
-        </div>
-        <div className="bg-white rounded-xl border p-4 text-center">
-          <p className="text-2xl font-bold">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0).toLocaleString('fr-FR')}€</p>
-          <p className="text-xs text-slate-500">À encaisser</p>
-        </div>
-        <div className="bg-white rounded-xl border p-4 text-center">
-          <p className="text-2xl font-bold text-purple-600">{devis.filter(d => new Date(d.date).getMonth() === new Date().getMonth()).reduce((s, d) => s + (d.total_ttc || 0), 0).toLocaleString('fr-FR')}€</p>
-          <p className="text-xs text-slate-500">Ce mois</p>
-        </div>
+      <div className="flex gap-2 flex-wrap items-center">
+        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2 border rounded-xl" />
+        {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['acceptes', 'Acceptés']].map(([k, v]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-lg text-sm ${filter === k ? 'text-white' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>
+        ))}
       </div>
 
       {/* Liste */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border p-12 text-center">
-          <p className="text-5xl mb-4">📄</p>
-          <h3 className="font-semibold mb-2">Aucun document</h3>
-          <p className="text-slate-500 mb-4">Créez votre premier devis en 2 minutes</p>
-          <button onClick={() => setMode('create')} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>
-            + Nouveau devis
-          </button>
-        </div>
+        <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">📄</p><p className="text-slate-500">Aucun document</p></div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(doc => {
-            const client = clients.find(c => c.id === doc.client_id);
+          {filtered.map(d => {
+            const client = clients.find(c => c.id === d.client_id);
+            const statusIcon = { brouillon: '⚪', envoye: '🟡', vu: '👁️', accepte: '✅', refuse: '❌', payee: '💰', facture: '🧾' }[d.statut] || '📄';
             return (
-              <div
-                key={doc.id}
-                onClick={() => { setView(doc.id); setMode('preview'); }}
-                className="bg-white rounded-xl border p-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
-              >
-                <span className="text-2xl">{STATUTS[doc.statut]?.icon || '⚪'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold">{doc.numero}</p>
-                    <span className={`px-2 py-0.5 rounded text-xs ${STATUTS[doc.statut]?.bg}`}>
-                      {STATUTS[doc.statut]?.label}
-                    </span>
+              <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className="bg-white rounded-xl border p-4 cursor-pointer hover:shadow-md">
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl">{d.type === 'facture' ? '🧾' : '📄'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{d.numero}</p>
+                      <span className="text-sm">{statusIcon}</span>
+                    </div>
+                    <p className="text-sm text-slate-500 truncate">{client?.nom} • {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                   </div>
-                  <p className="text-sm text-slate-500 truncate">
-                    {client?.nom || 'Client'} • {new Date(doc.date).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">{(doc.total_ttc || 0).toFixed(2)}€</p>
-                  <p className="text-xs text-slate-400">{doc.type === 'devis' ? 'Devis' : 'Facture'}</p>
+                  <p className="text-lg font-bold" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
                 </div>
               </div>
             );
