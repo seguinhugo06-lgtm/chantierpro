@@ -10,8 +10,12 @@ import Catalogue from './components/Catalogue';
 import Settings from './components/Settings';
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Mode démo: ajouter ?demo=true à l'URL pour accéder sans login
+  const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+  const demoUser = { email: 'demo@chantierpro.test', user_metadata: { nom: 'Utilisateur Démo', entreprise: 'Démo Entreprise' } };
+  
+  const [user, setUser] = useState(isDemo ? demoUser : null);
+  const [loading, setLoading] = useState(!isDemo);
   const [page, setPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [clients, setClients] = useState([]);
@@ -43,6 +47,41 @@ export default function App() {
   }, []);
 
   useEffect(() => { if (user) loadData(); }, [user]);
+
+  // Données de démonstration
+  const loadDemoData = () => {
+    const demoClients = [
+      { id: 'd1', nom: 'Dupont', prenom: 'Jean', telephone: '06 12 34 56 78', email: 'jean.dupont@email.fr', adresse: '12 rue des Lilas, 75001 Paris' },
+      { id: 'd2', nom: 'Martin', prenom: 'Marie', telephone: '06 98 76 54 32', email: 'marie.martin@email.fr', adresse: '45 avenue Victor Hugo, 69001 Lyon' },
+      { id: 'd3', nom: 'Bernard', prenom: 'Pierre', entreprise: 'SCI Les Oliviers', telephone: '07 11 22 33 44', adresse: '8 place de la Mairie, 13001 Marseille' }
+    ];
+    const demoCatalogue = [
+      { id: 'c1', nom: 'Pose carrelage', prix: 45, unite: 'm²', categorie: 'Carrelage', favori: true },
+      { id: 'c2', nom: 'Peinture murs', prix: 25, unite: 'm²', categorie: 'Peinture', favori: true },
+      { id: 'c3', nom: 'Plomberie - Main d\'oeuvre', prix: 55, unite: 'h', categorie: 'Plomberie', favori: true },
+      { id: 'c4', nom: 'Électricité - Point lumineux', prix: 85, unite: 'unité', categorie: 'Électricité', favori: false },
+      { id: 'c5', nom: 'Forfait déplacement', prix: 50, unite: 'forfait', categorie: 'Autre', favori: true }
+    ];
+    const demoChantiers = [
+      { id: 'ch1', nom: 'Rénovation SDB Dupont', client_id: 'd1', adresse: '12 rue des Lilas', statut: 'en_cours', date_debut: '2024-01-15', photos: [], taches: [{ id: 't1', text: 'Démolition ancienne douche', done: true }, { id: 't2', text: 'Pose nouveau carrelage', done: false }] },
+      { id: 'ch2', nom: 'Peinture appartement Martin', client_id: 'd2', adresse: '45 avenue Victor Hugo', statut: 'en_cours', date_debut: '2024-01-20', photos: [], taches: [] }
+    ];
+    const demoEquipe = [
+      { id: 'e1', nom: 'Durand', prenom: 'Luc', telephone: '06 55 44 33 22', tauxHoraire: 35 },
+      { id: 'e2', nom: 'Petit', prenom: 'Marc', telephone: '06 11 22 33 44', tauxHoraire: 32 }
+    ];
+    setClients(demoClients);
+    setCatalogue(demoCatalogue);
+    setChantiers(demoChantiers);
+    setEquipe(demoEquipe);
+    setEntreprise({
+      nom: 'Martin Rénovation', couleur: '#f97316', siret: '123 456 789 00012', tvaIntra: 'FR12345678901',
+      assurance: 'AXA Décennale N°456789', adresse: '25 rue du Commerce\n75015 Paris', tel: '01 23 45 67 89',
+      email: 'contact@martin-renovation.fr', rib: 'FR76 1234 5678 9012 3456 7890 123', logo: ''
+    });
+  };
+
+  useEffect(() => { if (isDemo) loadDemoData(); }, []);
 
   const loadData = async () => {
     const [c, d] = await Promise.all([clientsDB.getAll(), devisDB.getAll()]);
