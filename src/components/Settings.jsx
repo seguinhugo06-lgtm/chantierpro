@@ -45,14 +45,12 @@ export default function Settings({ entreprise, setEntreprise, user }) {
       )}
 
       {tab === 'legal' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-semibold mb-4">Informations légales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium mb-1">SIRET</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.siret || ''} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} /></div>
-              <div><label className="block text-sm font-medium mb-1">TVA Intra</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value}))} /></div>
-              <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Assurance décennale</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.assurance || ''} onChange={e => setEntreprise(p => ({...p, assurance: e.target.value}))} placeholder="AXA - Police N°123456" /><p className="text-xs text-slate-500 mt-1">Apparaît sur tous les documents</p></div>
-            </div>
+        <div className="bg-white rounded-2xl border p-6">
+          <h3 className="font-semibold mb-4">Informations légales</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium mb-1">SIRET</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.siret || ''} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} /></div>
+            <div><label className="block text-sm font-medium mb-1">TVA Intra</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value}))} /></div>
+            <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Assurance décennale</label><input className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.assurance || ''} onChange={e => setEntreprise(p => ({...p, assurance: e.target.value}))} placeholder="AXA - Police N°123456" /></div>
           </div>
         </div>
       )}
@@ -65,21 +63,26 @@ export default function Settings({ entreprise, setEntreprise, user }) {
       )}
 
       {tab === 'rentabilite' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-semibold mb-4">💰 Calcul de Rentabilité</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
-                <input type="number" min="0" max="50" className="w-32 px-4 py-2.5 border rounded-xl" value={entreprise.tauxFraisStructure || 15} onChange={e => setEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
-                <p className="text-sm text-slate-500 mt-2">Couvre: loyer, assurances, carburant, comptable, téléphone...</p>
-              </div>
-              <div className="bg-slate-50 rounded-xl p-4 font-mono text-sm">
-                <p><strong>Marge</strong> = CA HT</p>
-                <p className="ml-4">- Matériaux</p>
-                <p className="ml-4">- MO (heures × coût chargé)</p>
-                <p className="ml-4">- Frais ({entreprise.tauxFraisStructure || 15}% du CA)</p>
-              </div>
+        <div className="bg-white rounded-2xl border p-6">
+          <h3 className="font-semibold mb-4">💰 Calcul de Rentabilité</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
+              <input type="number" min="0" max="50" className="w-32 px-4 py-2.5 border rounded-xl" value={entreprise.tauxFraisStructure || 15} onChange={e => setEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+              <p className="text-sm text-slate-500 mt-2">Loyer, assurances, carburant, comptable...</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4 font-mono text-sm">
+              <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
+              <p className="ml-4">- Matériaux</p>
+              <p className="ml-4">- MO (heures × coût chargé)</p>
+              <p className="ml-4">- Frais ({entreprise.tauxFraisStructure || 15}% du CA)</p>
+              <p className="ml-4">- Ajustements Dépenses</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
+              <p><strong>Code couleur marge:</strong></p>
+              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge négative (&lt;0%)</p>
+              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-500"></span> Orange: Marge faible (0-15%)</p>
+              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine (&gt;15%)</p>
             </div>
           </div>
         </div>

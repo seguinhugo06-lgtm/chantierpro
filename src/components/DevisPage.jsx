@@ -79,6 +79,7 @@ export default function DevisPage({ clients, setClients, devis, chantiers, catal
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
   const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); alert('✅ Signé !'); };
 
+  // Actions
   const sendWhatsApp = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
@@ -118,10 +119,7 @@ export default function DevisPage({ clients, setClients, devis, chantiers, catal
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto" style={{touchAction: 'none'}} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
-        <div className="flex justify-center gap-4 mt-4">
-          <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button>
-          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>✅ Valider</button>
-        </div>
+        <div className="flex justify-center gap-4 mt-4"><button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button><button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>✅ Valider</button></div>
       </div>
     </div>
   );
@@ -145,12 +143,7 @@ export default function DevisPage({ clients, setClients, devis, chantiers, catal
           <button onClick={() => sendWhatsApp(selected)} className="px-4 py-2 bg-green-500 text-white rounded-xl">📱 WhatsApp</button>
           <button onClick={() => sendEmail(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">📧 Email</button>
           <button onClick={() => downloadPDF(selected)} className="px-4 py-2 bg-slate-500 text-white rounded-xl">📥 Télécharger</button>
-          {selected.type === 'devis' && selected.statut === 'accepte' && (
-            <>
-              <button onClick={() => createAcompte(selected, 30)} className="px-4 py-2 bg-purple-500 text-white rounded-xl">💰 Acompte 30%</button>
-              <button onClick={() => convertToFacture(selected)} className="px-4 py-2 bg-indigo-500 text-white rounded-xl">🧾 Facturer</button>
-            </>
-          )}
+          {selected.type === 'devis' && selected.statut === 'accepte' && (<><button onClick={() => createAcompte(selected, 30)} className="px-4 py-2 bg-purple-500 text-white rounded-xl">💰 Acompte 30%</button><button onClick={() => convertToFacture(selected)} className="px-4 py-2 bg-indigo-500 text-white rounded-xl">🧾 Facturer</button></>)}
         </div>
 
         {/* Document */}
@@ -163,13 +156,9 @@ export default function DevisPage({ clients, setClients, devis, chantiers, catal
             <div className="text-right"><p className="text-xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p></div>
           </div>
           <div className="mb-6 p-4 bg-slate-50 rounded-xl"><p className="text-sm text-slate-500">Client</p><p className="font-semibold">{client?.nom} {client?.prenom}</p>{client?.adresse && <p className="text-sm text-slate-500">{client.adresse}</p>}</div>
-          <table className="w-full mb-6 text-sm">
-            <thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">Qté</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead>
-            <tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className="border-b"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody>
-          </table>
+          <table className="w-full mb-6 text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">Qté</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className="border-b"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
           <div className="flex justify-end"><div className="w-56"><div className="flex justify-between py-1"><span>HT</span><span>{formatMoney(selected.total_ht)}</span></div><div className="flex justify-between py-1"><span>TVA {selected.tvaRate}%</span><span>{formatMoney(selected.tva)}</span></div><div className="flex justify-between py-2 border-t font-bold" style={{color: couleur}}><span>TTC</span><span>{formatMoney(selected.total_ttc)}</span></div></div></div>
           {selected.signature && <div className="mt-6 pt-6 border-t"><p className="text-sm text-slate-500">Signé le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600">✅ Accepté</span></div>}
-          <div className="mt-6 pt-4 border-t text-xs text-slate-400">{entreprise.siret && <p>SIRET: {entreprise.siret}</p>}{entreprise.assurance && <p>Assurance: {entreprise.assurance}</p>}{entreprise.rib && selected.type === 'facture' && <p>RIB: {entreprise.rib}</p>}</div>
         </div>
         <div className="bg-white rounded-2xl border p-4"><label className="text-sm font-medium mr-3">Statut:</label><select value={selected.statut} onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }} className="px-3 py-2 border rounded-xl"><option value="brouillon">Brouillon</option><option value="envoye">Envoyé</option><option value="accepte">Accepté</option><option value="refuse">Refusé</option>{selected.type === 'facture' && <option value="payee">Payée</option>}</select></div>
       </div>
@@ -194,10 +183,7 @@ export default function DevisPage({ clients, setClients, devis, chantiers, catal
           <div><input placeholder="🔍 Catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl" />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 border-b last:border-0 text-left"><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
           {form.sections.map(section => (
             <div key={section.id} className="border rounded-xl p-4">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="w-20 text-right py-2">Qté</th><th className="w-20 text-right py-2">Unité</th><th className="w-24 text-right py-2">PU HT</th><th className="w-24 text-right py-2">Total</th><th className="w-10"></th></tr></thead>
-                <tbody>{section.lignes.map(l => <tr key={l.id} className="border-b"><td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td><td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400">✕</button></td></tr>)}</tbody>
-              </table>
+              <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="w-20 text-right py-2">Qté</th><th className="w-20 text-right py-2">Unité</th><th className="w-24 text-right py-2">PU HT</th><th className="w-24 text-right py-2">Total</th><th className="w-10"></th></tr></thead><tbody>{section.lignes.map(l => <tr key={l.id} className="border-b"><td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td><td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400">✕</button></td></tr>)}</tbody></table>
               <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-2 text-sm" style={{color: couleur}}>+ Ligne</button>
             </div>
           ))}

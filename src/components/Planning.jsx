@@ -17,40 +17,19 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-  const getChantierColor = (ch) => {
-    if (ch.statut === 'termine') return '#64748b';
-    if (ch.statut === 'en_cours') return '#22c55e';
-    return '#3b82f6';
-  };
-
+  const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; if (ch.statut === 'en_cours') return '#22c55e'; return '#3b82f6'; };
   const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', autre: '#8b5cf6' };
 
-  const getChantierEvents = () => {
-    return chantiers.filter(ch => ch.date_debut).map(ch => ({
-      id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier',
-      chantierId: ch.id, color: getChantierColor(ch), isChantier: true
-    }));
-  };
-
+  const getChantierEvents = () => chantiers.filter(ch => ch.date_debut).map(ch => ({ id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier', chantierId: ch.id, color: getChantierColor(ch), isChantier: true }));
   const allEvents = [...events, ...getChantierEvents()];
 
   const getEventsForDay = (day) => {
     if (!day) return [];
     const d = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return allEvents.filter(e => {
-      if (filterEmploye && e.employeId !== filterEmploye) return false;
-      if (e.dateEnd) return d >= e.date && d <= e.dateEnd;
-      return e.date === d;
-    });
+    return allEvents.filter(e => { if (filterEmploye && e.employeId !== filterEmploye) return false; if (e.dateEnd) return d >= e.date && d <= e.dateEnd; return e.date === d; });
   };
 
-  const handleEventClick = (e, ev) => {
-    e.stopPropagation();
-    if (ev.isChantier && ev.chantierId && setSelectedChantier && setPage) {
-      setSelectedChantier(ev.chantierId);
-      setPage('chantiers');
-    }
-  };
+  const handleEventClick = (e, ev) => { e.stopPropagation(); if (ev.isChantier && ev.chantierId && setSelectedChantier && setPage) { setSelectedChantier(ev.chantierId); setPage('chantiers'); } };
 
   const moveEvent = (eventId, newDate) => {
     const ev = allEvents.find(e => e.id === eventId);
@@ -64,24 +43,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     }
   };
 
-  const submit = () => {
-    if (!form.title || !form.date) return;
-    addEvent(form);
-    setShowAdd(false);
-    setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '' });
-  };
-
-  const deleteEvent = (id) => {
-    if (id.startsWith('ch_')) return;
-    if (confirm('Supprimer ?')) setEvents(events.filter(e => e.id !== id));
-  };
+  const submit = () => { if (!form.title || !form.date) return; addEvent(form); setShowAdd(false); setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '' }); };
+  const deleteEvent = (id) => { if (id.startsWith('ch_')) return; if (confirm('Supprimer ?')) setEvents(events.filter(e => e.id !== id)); };
 
   if (showAdd) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
-        <h1 className="text-2xl font-bold">Nouvel événement</h1>
-      </div>
+      <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Nouvel événement</h1></div>
       <div className="bg-white rounded-2xl border p-6">
         <div className="space-y-4">
           <div><label className="block text-sm font-medium mb-1">Titre *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
@@ -92,10 +59,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
             <div><label className="block text-sm font-medium mb-1">Employé</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
-          <button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button>
-        </div>
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div>
       </div>
     </div>
   );
@@ -105,10 +69,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-2xl font-bold">Planning</h1>
         <div className="flex gap-2">
-          <select className="px-4 py-2 border rounded-xl text-sm" value={filterEmploye} onChange={e => setFilterEmploye(e.target.value)}>
-            <option value="">Tous</option>
-            {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
-          </select>
+          <select className="px-4 py-2 border rounded-xl text-sm" value={filterEmploye} onChange={e => setFilterEmploye(e.target.value)}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
           <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Événement</button>
         </div>
       </div>
@@ -133,26 +94,20 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
             const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
             const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
             return (
-              <div key={i} className={`min-h-[100px] p-2 border-r border-b ${!day ? 'bg-slate-50' : ''}`}
-                onDragOver={e => e.preventDefault()}
-                onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }}>
-                {day && (
-                  <>
-                    <p className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : ''}`} style={isToday ? {background: couleur} : {}}>{day}</p>
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map(ev => (
-                        <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
-                          className="text-xs px-2 py-1 rounded truncate text-white cursor-pointer hover:opacity-80 flex items-center gap-1" 
-                          style={{background: ev.color || typeColors[ev.type] || couleur}}>
-                          {ev.time && <span className="opacity-75">{ev.time}</span>}
-                          <span className="truncate">{ev.title}</span>
-                          {ev.isChantier && <span className="ml-auto text-[10px]">→</span>}
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && <p className="text-xs text-slate-500">+{dayEvents.length - 3}</p>}
-                    </div>
-                  </>
-                )}
+              <div key={i} className={`min-h-[100px] p-2 border-r border-b ${!day ? 'bg-slate-50' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }}>
+                {day && (<>
+                  <p className={`text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : ''}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                  <div className="space-y-1">
+                    {dayEvents.slice(0, 3).map(ev => (
+                      <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} className="text-xs px-2 py-1 rounded truncate text-white cursor-pointer hover:opacity-80 flex items-center gap-1" style={{background: ev.color || typeColors[ev.type] || couleur}}>
+                        {ev.time && <span className="opacity-75">{ev.time}</span>}
+                        <span className="truncate">{ev.title}</span>
+                        {ev.isChantier && <span className="ml-auto text-[10px]">→</span>}
+                      </div>
+                    ))}
+                    {dayEvents.length > 3 && <p className="text-xs text-slate-500">+{dayEvents.length - 3}</p>}
+                  </div>
+                </>)}
               </div>
             );
           })}
@@ -164,14 +119,13 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         {allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 8).map(ev => (
           <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer hover:bg-slate-50 rounded-xl px-2">
             <div className="w-3 h-3 rounded-full" style={{background: ev.color || typeColors[ev.type] || couleur}}></div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{ev.title}</p>
-              <p className="text-sm text-slate-500">{new Date(ev.date).toLocaleDateString('fr-FR')} {ev.time && `à ${ev.time}`}</p>
-            </div>
+            <div className="flex-1 min-w-0"><p className="font-medium truncate">{ev.title}</p><p className="text-sm text-slate-500">{new Date(ev.date).toLocaleDateString('fr-FR')} {ev.time && `à ${ev.time}`}</p></div>
             {ev.isChantier ? <span className="text-slate-400">→</span> : <button onClick={(e) => { e.stopPropagation(); deleteEvent(ev.id); }} className="text-red-400">🗑️</button>}
           </div>
         ))}
       </div>
+
+      <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">💡 Glissez-déposez les blocs pour modifier les dates. Cliquez sur un chantier pour voir ses détails.</div>
     </div>
   );
 }
