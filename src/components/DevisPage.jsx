@@ -9,14 +9,25 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [showClientModal, setShowClientModal] = useState(false);
   const [showAcompteModal, setShowAcompteModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [acomptePct, setAcomptePct] = useState(30);
+  const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [form, setForm] = useState({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaRate: 10, remise: 0, notes: '' });
+  const [form, setForm] = useState({ 
+    type: 'devis', 
+    clientId: '', 
+    chantierId: '', 
+    date: new Date().toISOString().split('T')[0], 
+    validite: entreprise?.validiteDevis || 30, 
+    sections: [{ id: '1', titre: '', lignes: [] }], 
+    tvaDefaut: entreprise?.tvaDefaut || 10,
+    remise: 0, 
+    notes: '' 
+  });
 
   const couleur = entreprise?.couleur || '#f97316';
+  const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
@@ -29,18 +40,56 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     return true;
   }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
+  // Calcul des totaux avec multi-taux TVA
   const calculateTotals = () => {
     let totalHT = 0;
-    form.sections.forEach(s => s.lignes.forEach(l => { totalHT += l.montant || 0; }));
+    const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
+    
+    form.sections.forEach(s => s.lignes.forEach(l => {
+      const montant = l.montant || 0;
+      const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
+      totalHT += montant;
+      
+      if (!tvaParTaux[taux]) tvaParTaux[taux] = { base: 0, montant: 0 };
+      tvaParTaux[taux].base += montant;
+      tvaParTaux[taux].montant += montant * (taux / 100);
+    }));
+    
     const remiseAmount = totalHT * (form.remise / 100);
     const htApresRemise = totalHT - remiseAmount;
-    const tva = htApresRemise * (form.tvaRate / 100);
-    return { totalHT, remiseAmount, htApresRemise, tva, ttc: htApresRemise + tva };
+    
+    // Recalculer TVA après remise (proportionnel)
+    const ratioRemise = totalHT > 0 ? htApresRemise / totalHT : 1;
+    Object.keys(tvaParTaux).forEach(taux => {
+      tvaParTaux[taux].base *= ratioRemise;
+      tvaParTaux[taux].montant *= ratioRemise;
+    });
+    
+    const totalTVA = Object.values(tvaParTaux).reduce((s, t) => s + t.montant, 0);
+    
+    return { 
+      totalHT, 
+      remiseAmount, 
+      htApresRemise, 
+      tvaParTaux,
+      totalTVA: isMicro ? 0 : totalTVA,
+      ttc: htApresRemise + (isMicro ? 0 : totalTVA)
+    };
   };
   const totals = calculateTotals();
 
+  // Ajouter ligne avec TVA par défaut
   const addLigne = (item, sectionId) => {
-    const ligne = { id: Date.now().toString(), description: item.nom || '', quantite: 1, unite: item.unite || 'unité', prixUnitaire: item.prix || 0, prixAchat: item.prixAchat || 0, montant: item.prix || 0 };
+    const ligne = { 
+      id: Date.now().toString(), 
+      description: item.nom || '', 
+      quantite: 1, 
+      unite: item.unite || 'unité', 
+      prixUnitaire: item.prix || 0, 
+      prixAchat: item.prixAchat || 0, 
+      montant: item.prix || 0,
+      tva: form.tvaDefaut // TVA par ligne
+    };
     setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: [...s.lignes, ligne] } : s) }));
   };
 
@@ -58,19 +107,56 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
   const removeLigne = (sectionId, ligneId) => setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s) }));
 
+  // Génération numéro unique garanti
   const generateNumero = (type) => {
     const prefix = type === 'facture' ? 'FAC' : 'DEV';
     const year = new Date().getFullYear();
-    const count = devis.filter(d => d.type === type && d.numero?.includes(year.toString())).length + 1;
-    return `${prefix}-${year}-${String(count).padStart(5, '0')}`;
+    // Trouver le dernier numéro pour ce type et cette année
+    const existingNumbers = devis
+      .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
+      .map(d => parseInt(d.numero.split('-')[2]) || 0);
+    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
   };
 
   const handleCreate = () => {
     if (!form.clientId) return alert('Sélectionnez un client');
     if (form.sections.every(s => s.lignes.length === 0)) return alert('Ajoutez des lignes');
-    onSubmit({ numero: generateNumero(form.type), type: form.type, client_id: form.clientId, chantier_id: form.chantierId, date: form.date, validite: form.validite, statut: 'brouillon', sections: form.sections, lignes: form.sections.flatMap(s => s.lignes), tvaRate: form.tvaRate, remise: form.remise, total_ht: totals.htApresRemise, tva: totals.tva, total_ttc: totals.ttc, notes: form.notes });
+    
+    const client = clients.find(c => c.id === form.clientId);
+    
+    onSubmit({ 
+      numero: generateNumero(form.type), 
+      type: form.type, 
+      client_id: form.clientId, 
+      client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+      chantier_id: form.chantierId, 
+      date: form.date, 
+      validite: form.validite, 
+      statut: 'brouillon', 
+      sections: form.sections, 
+      lignes: form.sections.flatMap(s => s.lignes), 
+      tvaParTaux: totals.tvaParTaux,
+      tvaDetails: totals.tvaParTaux, // Pour affichage PDF
+      remise: form.remise, 
+      total_ht: totals.htApresRemise, 
+      tva: totals.totalTVA, 
+      total_ttc: totals.ttc, 
+      notes: form.notes 
+    });
+    
     setMode('list');
-    setForm({ type: 'devis', clientId: '', chantierId: '', date: new Date().toISOString().split('T')[0], validite: 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaRate: 10, remise: 0, notes: '' });
+    setForm({ 
+      type: 'devis', 
+      clientId: '', 
+      chantierId: '', 
+      date: new Date().toISOString().split('T')[0], 
+      validite: entreprise?.validiteDevis || 30, 
+      sections: [{ id: '1', titre: '', lignes: [] }], 
+      tvaDefaut: entreprise?.tvaDefaut || 10, 
+      remise: 0, 
+      notes: '' 
+    });
   };
 
   // Canvas signature
@@ -250,10 +336,16 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   <!-- TOTAUX -->
   <div class="totals">
     <div class="row sub"><span>Total HT</span><span>${(doc.total_ht||0).toFixed(2)} €</span></div>
-    ${!isMicro ? `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)} €</span></div>` : ''}
+    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${((doc.total_ht||0) * doc.remise / 100).toFixed(2)} €</span></div>` : ''}
+    ${!isMicro ? (doc.tvaDetails && Object.keys(doc.tvaDetails).length > 0 
+      ? Object.entries(doc.tvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => 
+        `<div class="row sub"><span>TVA ${taux}% (base: ${data.base.toFixed(2)} €)</span><span>${data.montant.toFixed(2)} €</span></div>`
+      ).join('')
+      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)} €</span></div>`
+    ) : ''}
     <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)} €</span></div>
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
     <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
     ` : ''}
   </div>
@@ -270,6 +362,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         • Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
         • Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
+        ${entreprise?.bic ? ` • <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
         <strong>Délai de paiement</strong><br>
@@ -297,7 +390,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\n')[0] || '[Adresse]'}
+    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
+  </div>
+  ` : ''}
+
+  ${entreprise?.cgv ? `
+  <!-- CGV PERSONNALISÉES -->
+  <div class="conditions" style="margin-top:10px">
+    <h4>CONDITIONS PARTICULIÈRES</h4>
+    ${entreprise.cgv}
   </div>
   ` : ''}
 
@@ -310,7 +411,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     </div>
     <div class="signature-box">
       <h4>Le Client</h4>
-      <p>Mention manuscrite: "Bon pour accord"<br>Date et signature</p>
+      <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
       ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✅ Signé électroniquement le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
@@ -322,12 +423,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     ${entreprise?.formeJuridique ? ` • ${entreprise.formeJuridique}` : ''}
     ${entreprise?.capital ? ` • Capital: ${entreprise.capital} €` : ''}<br>
     ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.rcs ? ` • RCS: ${entreprise.rcs}` : ''}
-    ${entreprise?.tvaIntra ? ` • TVA: ${entreprise.tvaIntra}` : ''}<br>
+    ${entreprise?.codeApe ? ` • APE: ${entreprise.codeApe}` : ''}
+    ${getRCSComplet() ? ` • ${getRCSComplet()}` : ''}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
     <div class="assurances">
-      ${entreprise?.rcProAssureur ? `RC Professionnelle: ${entreprise.rcProAssureur} - N°${entreprise.rcProNumero}` : ''}
-      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? ' • ' : ''}
-      ${entreprise?.decennaleAssureur ? `Garantie Décennale: ${entreprise.decennaleAssureur} - N°${entreprise.decennaleNumero}` : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
+      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
   </div>
 </body>
@@ -561,21 +663,85 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             <div><label className="block text-sm mb-1">Chantier</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
             <div><label className="block text-sm mb-1">Date</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
           </div>
+          
+          {/* TVA par défaut pour nouvelles lignes */}
+          <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+            <span className="text-sm text-slate-600">TVA par défaut pour les nouvelles lignes:</span>
+            <select className="px-3 py-1.5 border rounded-lg text-sm" value={form.tvaDefaut} onChange={e => setForm(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
+              <option value={20}>20% (normal)</option>
+              <option value={10}>10% (rénovation)</option>
+              <option value={5.5}>5,5% (éco-réno)</option>
+              <option value={0}>0% (exonéré)</option>
+            </select>
+            {isMicro && <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">TVA non applicable (micro)</span>}
+          </div>
+          
           {favoris.length >= 3 && <div className="bg-amber-50 border border-amber-100 rounded-xl p-4"><p className="text-sm font-medium mb-2">⭐ Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className="px-3 py-2 bg-white hover:bg-amber-100 border border-amber-200 rounded-lg text-sm">{item.nom} <span className="text-slate-500">{item.prix}€</span></button>)}</div></div>}
           <div><input placeholder="🔍 Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl" />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 border-b last:border-0 text-left"><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
+          
+          {/* Table avec TVA par ligne */}
           {form.sections.map(section => (
-            <div key={section.id} className="border rounded-xl p-4">
-              <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="w-20 text-right py-2">Qté</th><th className="w-20 text-right py-2">Unité</th><th className="w-24 text-right py-2">PU HT</th><th className="w-24 text-right py-2">Total</th><th className="w-10"></th></tr></thead><tbody>{section.lignes.map(l => <tr key={l.id} className="border-b"><td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded" /></td><td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td><td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td><td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400">✕</button></td></tr>)}</tbody></table>
-              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-2 text-sm" style={{color: couleur}}>+ Ajouter une ligne</button>
+            <div key={section.id} className="border rounded-xl p-4 overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Description</th>
+                    <th className="w-16 text-center py-2">Qté</th>
+                    <th className="w-20 text-center py-2">Unité</th>
+                    <th className="w-24 text-right py-2">PU HT</th>
+                    <th className="w-20 text-center py-2">TVA</th>
+                    <th className="w-24 text-right py-2">Total HT</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.lignes.map(l => (
+                    <tr key={l.id} className="border-b">
+                      <td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td>
+                      <td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-center" /></td>
+                      <td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded text-center" /></td>
+                      <td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-right" /></td>
+                      <td>
+                        <select value={l.tva !== undefined ? l.tva : form.tvaDefaut} onChange={e => updateLigne(section.id, l.id, 'tva', parseFloat(e.target.value))} className="w-full px-1 py-1 border rounded text-center text-xs">
+                          <option value={20}>20%</option>
+                          <option value={10}>10%</option>
+                          <option value={5.5}>5,5%</option>
+                          <option value={0}>0%</option>
+                        </select>
+                      </td>
+                      <td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td>
+                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600">✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-3 text-sm hover:underline" style={{color: couleur}}>+ Ajouter une ligne</button>
             </div>
           ))}
-          <div className="grid grid-cols-3 gap-4">
-            <div><label className="block text-sm mb-1">TVA</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.tvaRate} onChange={e => setForm(p => ({...p, tvaRate: parseFloat(e.target.value)}))}><option value={20}>20%</option><option value={10}>10%</option><option value={5.5}>5.5%</option><option value={0}>0%</option></select></div>
-            <div><label className="block text-sm mb-1">Remise %</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
-            <div><label className="block text-sm mb-1">Validité</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
+          
+          {/* Options */}
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-sm mb-1">Remise globale %</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
+            <div><label className="block text-sm mb-1">Validité (jours)</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
           </div>
-          <div className="flex justify-end"><div className="w-64 bg-slate-50 p-4 rounded-xl"><div className="flex justify-between py-1"><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>{form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}<div className="flex justify-between py-1"><span>TVA</span><span>{formatMoney(totals.tva)}</span></div><div className="flex justify-between py-2 border-t font-bold" style={{color: couleur}}><span>TTC</span><span>{formatMoney(totals.ttc)}</span></div></div></div>
-          <div className="flex justify-end gap-3 pt-6 border-t"><button onClick={() => setMode('list')} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div>
+          
+          {/* Totaux avec multi-TVA */}
+          <div className="flex justify-end">
+            <div className="w-72 bg-slate-50 p-4 rounded-xl">
+              <div className="flex justify-between py-1"><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>
+              {form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
+              {!isMicro && Object.entries(totals.tvaParTaux).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => (
+                <div key={taux} className="flex justify-between py-1 text-sm text-slate-600">
+                  <span>TVA {taux}%</span>
+                  <span>{formatMoney(data.montant)}</span>
+                </div>
+              ))}
+              {isMicro && <div className="text-xs text-blue-600 py-1">TVA non applicable (art. 293B CGI)</div>}
+              <div className="flex justify-between py-2 border-t font-bold mt-1" style={{color: couleur}}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-3 pt-6 border-t"><button onClick={() => setMode('list')} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer le {form.type}</button></div>
         </div>
         {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-6 w-full max-w-md"><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
         <Snackbar />

@@ -241,7 +241,7 @@ export default function App() {
             {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={handleClientSubmit} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} />}
             {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={c => { setCatalogue(c); save('catalogue', c); }} couleur={couleur} />}
             {page === 'equipe' && <Equipe equipe={equipe} setEquipe={e => { setEquipe(e); save('equipe', e); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} chantiers={chantiers} couleur={couleur} />}
-            {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} />}
+            {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} />}
           </>}
         </main>
       </div>
