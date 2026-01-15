@@ -261,7 +261,7 @@ export default function App() {
   const isDark = theme === 'dark';
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+    <div className={`min-h-screen ${isDark ? 'dark bg-slate-900' : 'bg-slate-100'}`}>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background: couleur}}>🏗️</div><div className="flex-1 min-w-0"><h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1><p className="text-slate-500 text-xs">{isDemo ? '🎮 Démo' : user?.email}</p></div></div>
@@ -291,7 +291,7 @@ export default function App() {
 
         <main className={`p-4 lg:p-6 ${isDark ? 'text-white' : ''}`}>
           {dataLoading ? <PageSkeleton /> : <>
-            {page === 'dashboard' && <Dashboard chantiers={chantiers} clients={clients} devis={devis} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} setActiveModule={setPage} setSelectedChantier={setSelectedChantier} setPage={setPage} />}
+            {page === 'dashboard' && <Dashboard chantiers={chantiers} clients={clients} devis={devis} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} setActiveModule={setPage} setSelectedChantier={setSelectedChantier} setPage={setPage} isDark={isDark} />}
             {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={handleDevisSubmit} onUpdate={handleDevisUpdate} onDelete={handleDevisDelete} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} />}
             {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={d => { setDepenses(d); save('depenses', d); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} />}
             {page === 'planning' && <Planning events={events} setEvents={e => { setEvents(e); save('events', e); }} addEvent={addEvent} chantiers={chantiers} equipe={equipe} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} />}

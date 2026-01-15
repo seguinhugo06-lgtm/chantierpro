@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, 
 const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
 const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, isDark }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
 
@@ -54,18 +54,23 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
   const formatMoney = (n) => modeDiscret ? '•••••' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
-  const pStyles = { urgent: { border: 'border-l-4 border-red-500', bg: 'bg-red-50 dark:bg-red-900/30', badge: 'bg-red-500 animate-pulse' }, high: { border: 'border-l-4 border-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/30', badge: 'bg-orange-500' }, normal: { border: 'border-l-4 border-slate-200', bg: 'bg-white dark:bg-slate-800', badge: '' } };
+
+  // Classes conditionnelles pour le thème
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
 
   const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
-    <div className="rounded-2xl border p-5 bg-white dark:bg-slate-800 dark:border-slate-700 hover:shadow-md transition-shadow">
+    <div className={`rounded-2xl border p-5 ${cardBg} hover:shadow-md transition-shadow`}>
       <div className="flex items-start justify-between">
         <div className="p-2.5 rounded-xl" style={{ background: `${color}20` }}><Icon size={22} style={{ color }} /></div>
-        {trend !== undefined && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${trend >= 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'}`}>{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%</div>}
+        {trend !== undefined && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${trend >= 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-800') : (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-800')}`}>{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%</div>}
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mt-3">{label}</p>
+      <p className={`text-sm ${textSecondary} mt-3`}>{label}</p>
       <p className="text-2xl font-bold mt-1" style={{ color }}>{value}</p>
-      {sub && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{sub}</p>}
-      {detail && <div className="mt-3 pt-3 border-t dark:border-slate-700 space-y-1 text-xs text-slate-500 dark:text-slate-400">{detail}</div>}
+      {sub && <p className={`text-xs ${textSecondary} mt-1`}>{sub}</p>}
+      {detail && <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} space-y-1 text-xs ${textSecondary}`}>{detail}</div>}
     </div>
   );
 
@@ -74,12 +79,12 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold dark:text-white">Tableau de bord</h1>
-          <p className="text-slate-500 dark:text-slate-400">Vue d'ensemble de votre activité</p>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
+          <p className={textSecondary}>Vue d'ensemble de votre activité</p>
         </div>
         <div className="flex items-center gap-3">
-          {!stats.hasRealData && <span className="px-3 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 rounded-full text-xs font-medium">🏗️ Données démo</span>}
-          <button onClick={() => setModeDiscret(!modeDiscret)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
+          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>🏗️ Données démo</span>}
+          <button onClick={() => setModeDiscret(!modeDiscret)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${btnBg}`}>{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
         </div>
       </div>
 
@@ -93,72 +98,78 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
       {/* Graphiques */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-5">
-          <h3 className="font-semibold mb-4 flex items-center gap-2 dark:text-white"><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
+        <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
           {!modeDiscret ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.caParMois}>
-                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }} />
+                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
+                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
                 <Bar dataKey="ca" radius={[8, 8, 0, 0]}>{stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className="h-[220px] flex items-center justify-center text-slate-400"><EyeOff size={32} className="mr-2" />Masqué</div>}
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>}
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-5">
-          <h3 className="font-semibold mb-4 flex items-center gap-2 dark:text-white"><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
+        <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
           {!modeDiscret && stats.margesChantiers.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.margesChantiers.slice(0, 8)} layout="vertical" margin={{ left: 90 }}>
-                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                <YAxis type="category" dataKey="nom" width={85} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }} />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                <YAxis type="category" dataKey="nom" width={85} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }} />
+                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
                 <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 8).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className="h-[220px] flex items-center justify-center text-slate-400">{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}>{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
         </div>
       </div>
 
       {/* Actions + Top/Flop */}
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-5">
+        <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold flex items-center gap-2 dark:text-white"><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
-            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : 'bg-slate-100 dark:bg-slate-700 dark:text-slate-300'}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
-            <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-8 text-center"><div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center"><CheckCircle size={32} className="text-emerald-600 dark:text-emerald-400" /></div><h4 className="text-lg font-semibold text-emerald-800 dark:text-emerald-300">Tout est à jour ! 🎉</h4></div>
+            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour ! 🎉</h4></div>
           ) : (
-            <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => (
-              <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all ${pStyles[a.priority].border} ${pStyles[a.priority].bg}`}>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/50' : a.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/50' : 'bg-slate-100 dark:bg-slate-700'}`}><a.icon size={20} className={a.priority === 'urgent' ? 'text-red-600 dark:text-red-400' : a.priority === 'high' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500'} /></div>
-                <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="font-medium truncate dark:text-white">{a.title}</p>{a.priority === 'urgent' && <span className={`px-2 py-0.5 text-xs font-bold text-white rounded ${pStyles.urgent.badge}`}>URGENT</span>}</div><p className="text-sm text-slate-500 dark:text-slate-400 truncate">{a.desc}</p></div>
-                {a.days !== undefined && <span className="text-xs text-slate-400">{a.days}j</span>}
-              </div>
-            ))}</div>
+            <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
+              const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
+              const pBorder = a.priority === 'urgent' ? 'border-l-4 border-red-500' : a.priority === 'high' ? 'border-l-4 border-orange-400' : 'border-l-4 border-slate-200';
+              const iconBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/50' : 'bg-red-100') : a.priority === 'high' ? (isDark ? 'bg-orange-900/50' : 'bg-orange-100') : (isDark ? 'bg-slate-700' : 'bg-slate-100');
+              const iconColor = a.priority === 'urgent' ? (isDark ? 'text-red-400' : 'text-red-600') : a.priority === 'high' ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-slate-500';
+              return (
+                <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all ${pBorder} ${pBg}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}><a.icon size={20} className={iconColor} /></div>
+                  <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className={`font-medium truncate ${textPrimary}`}>{a.title}</p>{a.priority === 'urgent' && <span className="px-2 py-0.5 text-xs font-bold text-white rounded bg-red-500 animate-pulse">URGENT</span>}</div><p className={`text-sm ${textSecondary} truncate`}>{a.desc}</p></div>
+                  {a.days !== undefined && <span className={`text-xs ${textSecondary}`}>{a.days}j</span>}
+                </div>
+              );
+            })}</div>
           )}
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-5">
-            <h3 className="font-bold mb-4 flex items-center gap-2 dark:text-white">🏆 Top Rentabilité</h3>
-            {top3.length === 0 ? <p className="text-center text-slate-400 py-4">Aucun chantier</p> : top3.map((ch, i) => (
-              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl cursor-pointer transition-colors">
-                <div className="flex items-center gap-3"><span className="text-xl">{['🥇', '🥈', '🥉'][i]}</span><p className="font-medium text-sm dark:text-white">{ch.nom}</p></div>
+          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>🏆 Top Rentabilité</h3>
+            {top3.length === 0 ? <p className={`text-center ${textSecondary} py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
+              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                <div className="flex items-center gap-3"><span className="text-xl">{['🥇', '🥈', '🥉'][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
                 <span className="font-bold" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
             ))}
           </div>
           {aSurveiller.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
-              <h3 className="font-bold mb-4 flex items-center gap-2 text-red-800 dark:text-red-300">⚠️ À surveiller</h3>
+            <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>⚠️ À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
-                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl mb-2 cursor-pointer hover:shadow-sm border border-red-100 dark:border-red-900">
-                  <p className="font-medium text-sm text-red-800 dark:text-red-300">{ch.nom}</p>
-                  <span className="text-xs font-bold text-red-600 dark:text-red-400">{ch.marge.toFixed(0)}%</span>
+                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
+                  <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>
+                  <span className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{ch.marge.toFixed(0)}%</span>
                 </div>
               ))}
             </div>
@@ -169,10 +180,10 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       {/* Actions rapides */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
-          <button key={b.target} onClick={() => setPage?.(b.target)} className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border dark:border-slate-700 hover:shadow-md transition-all">
+          <button key={b.target} onClick={() => setPage?.(b.target)} className={`flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all ${cardBg}`}>
             <b.icon size={24} style={{ color: b.color }} />
-            <span className="text-sm font-medium dark:text-white">{b.label}</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{b.sub}</span>
+            <span className={`text-sm font-medium ${textPrimary}`}>{b.label}</span>
+            <span className={`text-xs ${textSecondary}`}>{b.sub}</span>
           </button>
         ))}
       </div>
