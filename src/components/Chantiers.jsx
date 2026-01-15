@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
+
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock }) {
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
