@@ -497,15 +497,14 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 rounded-xl">←</button>
+          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">←</button>
           <h1 className="text-xl font-bold">{selected.numero}</h1>
           <span className={`px-3 py-1 rounded-full text-sm ${selected.statut === 'accepte' ? 'bg-emerald-100 text-emerald-700' : selected.statut === 'payee' ? 'bg-purple-100 text-purple-700' : selected.statut === 'acompte_facture' ? 'bg-blue-100 text-blue-700' : selected.statut === 'facture' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
             {{ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', acompte_facture: 'Acompte facturé', facture: 'Facturé', payee: 'Payée', refuse: 'Refusé' }[selected.statut] || selected.statut}
           </span>
           <div className="flex-1" />
-          <button onClick={() => setShowPreview(true)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center gap-2">👁️ <span className="hidden sm:inline">Aperçu</span></button>
-          <button onClick={() => downloadPDF(selected)} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2">📥 <span className="hidden sm:inline">PDF</span></button>
-          <button onClick={() => onDelete(selected.id)} className="text-red-500 hover:text-red-700 p-2">🗑️</button>
+          <button onClick={() => { downloadPDF(selected); }} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2">📥 <span className="hidden sm:inline">PDF</span></button>
+          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="p-2 hover:bg-red-100 text-red-500 rounded-xl">🗑️</button>
         </div>
 
         {/* Actions */}

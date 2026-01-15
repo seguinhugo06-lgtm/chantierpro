@@ -19,7 +19,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       caParMois.push({ mois: d.toLocaleDateString('fr-FR', { month: 'short' }), ca, fill: i === 0 ? couleur : '#94a3b8' });
     }
     const hasRealData = caParMois.some(m => m.ca > 0);
-    const margesChantiers = safeChantiers.map(ch => ({ nom: (ch.nom || '').substring(0, 12), marge: getChantierBilan?.(ch.id)?.tauxMarge || 0, id: ch.id })).filter(c => c.marge !== 0).sort((a, b) => b.marge - a.marge);
+    
+    // CORRECTION: Afficher TOUS les chantiers, même avec marge 0
+    const margesChantiers = safeChantiers.map(ch => ({ 
+      nom: (ch.nom || '').substring(0, 14), 
+      marge: getChantierBilan?.(ch.id)?.tauxMarge || 0, 
+      id: ch.id 
+    })).sort((a, b) => b.marge - a.marge);
+    
     const totalCA = safeDevis.filter(d => d.type === 'facture' || d.statut === 'accepte').reduce((s, d) => s + (d.total_ht || 0), 0);
     const totalDep = safeDepenses.reduce((s, d) => s + (d.montant || 0), 0);
     const totalMO = safePointages.reduce((s, p) => s + (p.heures * (safeEquipe.find(e => e.id === p.employeId)?.coutHoraireCharge || 28)), 0);
@@ -30,7 +37,20 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     const chantiersActifs = safeChantiers.filter(c => c.statut === 'en_cours').length;
     const devisEnAttente = safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
     const tendance = caParMois[4]?.ca > 0 ? ((caParMois[5]?.ca - caParMois[4]?.ca) / caParMois[4]?.ca) * 100 : 0;
-    return { caParMois: hasRealData ? caParMois : DEMO_CA.map((d, i) => ({ ...d, fill: i === 5 ? couleur : '#94a3b8' })), margesChantiers: margesChantiers.length > 0 ? margesChantiers : DEMO_MARGES, hasRealData, totalCA: hasRealData ? totalCA : 15200, marge: hasRealData ? marge : 8700, tauxMarge: hasRealData ? tauxMarge : 57.3, encaisse: hasRealData ? encaisse : 11390, enAttente: hasRealData ? enAttente : 3810, chantiersActifs, devisEnAttente, tendance: hasRealData ? tendance : 15 };
+    
+    return { 
+      caParMois: hasRealData ? caParMois : DEMO_CA.map((d, i) => ({ ...d, fill: i === 5 ? couleur : '#94a3b8' })), 
+      margesChantiers: margesChantiers.length > 0 ? margesChantiers : DEMO_MARGES, 
+      hasRealData, 
+      totalCA: hasRealData ? totalCA : 15200, 
+      marge: hasRealData ? marge : 8700, 
+      tauxMarge: hasRealData ? tauxMarge : 57.3, 
+      encaisse: hasRealData ? encaisse : 11390, 
+      enAttente: hasRealData ? enAttente : 3810,
+      chantiersActifs, 
+      devisEnAttente, 
+      tendance: hasRealData ? tendance : 15 
+    };
   }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, getChantierBilan, couleur]);
 
   const actions = useMemo(() => {
@@ -51,21 +71,23 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   }, [safeDevis, safeClients, safeChantiers, getChantierBilan, setActiveModule, setSelectedChantier, setPage]);
 
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
-  const top3 = stats.margesChantiers.slice(0, 3), aSurveiller = stats.margesChantiers.filter(c => c.marge < 15).slice(0, 3);
+  const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
+  const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
   const formatMoney = (n) => modeDiscret ? '•••••' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
-  const pStyles = { urgent: { border: 'border-l-4 border-red-500', bg: 'bg-red-50', badge: 'bg-red-500 animate-pulse' }, high: { border: 'border-l-4 border-orange-400', bg: 'bg-orange-50', badge: 'bg-orange-500' }, normal: { border: 'border-l-4 border-slate-200', bg: 'bg-white', badge: '' } };
+  const pStyles = { urgent: { border: 'border-l-4 border-red-500', bg: 'bg-red-50 dark:bg-red-900/20', badge: 'bg-red-500 animate-pulse' }, high: { border: 'border-l-4 border-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', badge: 'bg-orange-500' }, normal: { border: 'border-l-4 border-slate-200 dark:border-slate-600', bg: 'bg-white dark:bg-slate-800', badge: '' } };
 
+  // ACCESSIBILITÉ: Contraste minimum 4.5:1 selon WCAG 2.1 AA
   const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
-    <div className="rounded-2xl border p-5 bg-white hover:shadow-md transition-shadow">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-5 bg-white dark:bg-slate-800 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
-        <div className="p-2.5 rounded-xl" style={{ background: `${color}15` }}><Icon size={22} style={{ color }} /></div>
-        {trend !== undefined && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${trend >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%</div>}
+        <div className="p-2.5 rounded-xl" style={{ background: `${color}20` }}><Icon size={22} style={{ color }} /></div>
+        {trend !== undefined && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${trend >= 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%</div>}
       </div>
-      <p className="text-sm text-slate-500 mt-3">{label}</p>
-      <p className="text-2xl font-bold mt-1" style={{ color }}>{value}</p>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
-      {detail && <div className="mt-3 pt-3 border-t space-y-1 text-xs text-slate-500">{detail}</div>}
+      <p className="text-sm text-slate-600 dark:text-slate-400 mt-3">{label}</p>
+      <p className="text-2xl font-bold mt-1 text-slate-900 dark:text-white" style={{ color }}>{value}</p>
+      {sub && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{sub}</p>}
+      {detail && <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 space-y-1 text-xs text-slate-600 dark:text-slate-400">{detail}</div>}
     </div>
   );
 
@@ -73,10 +95,13 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div><h1 className="text-2xl font-bold">Tableau de bord</h1><p className="text-slate-500">Vue d'ensemble de votre activité</p></div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tableau de bord</h1>
+          <p className="text-slate-600 dark:text-slate-400">Vue d'ensemble de votre activité</p>
+        </div>
         <div className="flex items-center gap-3">
-          {!stats.hasRealData && <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">🏗️ Données démo</span>}
-          <button onClick={() => setModeDiscret(!modeDiscret)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200">{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
+          {!stats.hasRealData && <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-full text-xs font-medium">🏗️ Données démo</span>}
+          <button onClick={() => setModeDiscret(!modeDiscret)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200">{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
         </div>
       </div>
 
@@ -90,72 +115,72 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
       {/* Graphiques */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border p-5">
-          <h3 className="font-semibold mb-4 flex items-center gap-2"><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white"><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
           {!modeDiscret ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stats.caParMois}>
-                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
+                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: '#fff' }} />
                 <Bar dataKey="ca" radius={[8, 8, 0, 0]}>{stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className="h-[220px] flex items-center justify-center text-slate-400"><EyeOff size={32} className="mr-2" />Masqué</div>}
+          ) : <div className="h-[220px] flex items-center justify-center text-slate-500 dark:text-slate-400"><EyeOff size={32} className="mr-2" />Masqué</div>}
         </div>
 
-        <div className="bg-white rounded-2xl border p-5">
-          <h3 className="font-semibold mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900 dark:text-white"><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
           {!modeDiscret && stats.margesChantiers.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stats.margesChantiers.slice(0, 6)} layout="vertical" margin={{ left: 80 }}>
-                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                <YAxis type="category" dataKey="nom" width={75} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 6).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
+              <BarChart data={stats.margesChantiers.slice(0, 8)} layout="vertical" margin={{ left: 90 }}>
+                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis type="category" dataKey="nom" width={85} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: '#fff' }} />
+                <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 8).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className="h-[220px] flex items-center justify-center text-slate-400">{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
+          ) : <div className="h-[220px] flex items-center justify-center text-slate-500 dark:text-slate-400">{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
         </div>
       </div>
 
       {/* Actions + Top/Flop */}
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border p-5">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold flex items-center gap-2"><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
-            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : 'bg-slate-100'}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
+            <h3 className="font-semibold flex items-center gap-2 text-slate-900 dark:text-white"><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center"><div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 flex items-center justify-center"><CheckCircle size={32} className="text-emerald-500" /></div><h4 className="text-lg font-semibold text-emerald-700">Tout est à jour ! 🎉</h4></div>
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-8 text-center"><div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center"><CheckCircle size={32} className="text-emerald-600 dark:text-emerald-400" /></div><h4 className="text-lg font-semibold text-emerald-800 dark:text-emerald-300">Tout est à jour ! 🎉</h4></div>
           ) : (
             <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => (
-              <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:shadow-md transition-all ${pStyles[a.priority].border} ${pStyles[a.priority].bg}`}>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.priority === 'urgent' ? 'bg-red-100' : a.priority === 'high' ? 'bg-orange-100' : 'bg-slate-100'}`}><a.icon size={20} className={a.priority === 'urgent' ? 'text-red-500' : a.priority === 'high' ? 'text-orange-500' : 'text-slate-400'} /></div>
-                <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="font-medium truncate">{a.title}</p>{a.priority === 'urgent' && <span className={`px-2 py-0.5 text-xs font-bold text-white rounded ${pStyles.urgent.badge}`}>URGENT</span>}</div><p className="text-sm text-slate-500 truncate">{a.desc}</p></div>
-                {a.days && <span className="text-xs text-slate-400">{a.days}j</span>}
+              <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-600 cursor-pointer hover:shadow-md transition-all ${pStyles[a.priority].border} ${pStyles[a.priority].bg}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/40' : a.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/40' : 'bg-slate-100 dark:bg-slate-700'}`}><a.icon size={20} className={a.priority === 'urgent' ? 'text-red-600 dark:text-red-400' : a.priority === 'high' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'} /></div>
+                <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="font-medium truncate text-slate-900 dark:text-white">{a.title}</p>{a.priority === 'urgent' && <span className={`px-2 py-0.5 text-xs font-bold text-white rounded ${pStyles.urgent.badge}`}>URGENT</span>}</div><p className="text-sm text-slate-600 dark:text-slate-400 truncate">{a.desc}</p></div>
+                {a.days !== undefined && <span className="text-xs text-slate-500 dark:text-slate-400">{a.days}j</span>}
               </div>
             ))}</div>
           )}
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border p-5">
-            <h3 className="font-bold mb-4 flex items-center gap-2">🏆 Top Rentabilité</h3>
-            {top3.map((ch, i) => (
-              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
-                <div className="flex items-center gap-3"><span className="text-xl">{['🥇', '🥈', '🥉'][i]}</span><p className="font-medium text-sm">{ch.nom}</p></div>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">🏆 Top Rentabilité</h3>
+            {top3.length === 0 ? <p className="text-center text-slate-500 dark:text-slate-400 py-4">Aucun chantier</p> : top3.map((ch, i) => (
+              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl cursor-pointer transition-colors">
+                <div className="flex items-center gap-3"><span className="text-xl">{['🥇', '🥈', '🥉'][i]}</span><p className="font-medium text-sm text-slate-900 dark:text-white">{ch.nom}</p></div>
                 <span className="font-bold" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
             ))}
           </div>
           {aSurveiller.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-              <h3 className="font-bold mb-4 flex items-center gap-2 text-red-700">⚠️ À surveiller</h3>
-              {aSurveiller.map(ch => (
-                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 bg-white rounded-xl mb-2 cursor-pointer hover:shadow-sm">
-                  <p className="font-medium text-sm text-red-700">{ch.nom}</p>
-                  <button className="px-3 py-1 bg-red-600 text-white text-xs rounded-lg">Analyser</button>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
+              <h3 className="font-bold mb-4 flex items-center gap-2 text-red-800 dark:text-red-300">⚠️ À surveiller</h3>
+              {aSurveiller.slice(0, 3).map(ch => (
+                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl mb-2 cursor-pointer hover:shadow-sm border border-red-100 dark:border-red-900">
+                  <p className="font-medium text-sm text-red-800 dark:text-red-300">{ch.nom}</p>
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400">{ch.marge.toFixed(0)}%</span>
                 </div>
               ))}
             </div>
@@ -163,13 +188,22 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
         </div>
       </div>
 
-      {/* Actions rapides */}
+      {/* Actions rapides - CORRIGÉ: onClick fonctionne */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', page: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, page: 'chantiers' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', page: 'clients' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', page: 'planning' }].map(b => (
-          <button key={b.page} onClick={() => setPage?.(b.page)} className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border hover:shadow-md transition-all">
+        {[
+          { icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis' }, 
+          { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers' }, 
+          { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients' }, 
+          { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }
+        ].map(b => (
+          <button 
+            key={b.target} 
+            onClick={() => { if (setPage) setPage(b.target); }}
+            className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+          >
             <b.icon size={24} style={{ color: b.color }} />
-            <span className="text-sm font-medium">{b.label}</span>
-            <span className="text-xs text-slate-500">{b.sub}</span>
+            <span className="text-sm font-medium text-slate-900 dark:text-white">{b.label}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{b.sub}</span>
           </button>
         ))}
       </div>
