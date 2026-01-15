@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier }) {
+export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis }) {
   const [show, setShow] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);
@@ -28,6 +28,14 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
   const deleteClient = (id) => { if (confirm('Supprimer ce client ?')) setClients(clients.filter(c => c.id !== id)); };
+  
+  // Ouvrir un document (devis/facture)
+  const openDocument = (doc) => {
+    if (setSelectedDevis && setPage) {
+      setSelectedDevis(doc);
+      setPage('devis');
+    }
+  };
 
   // Vue détail
   if (viewId) {
@@ -93,7 +101,20 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
             {clientDevis.length === 0 ? <p className="text-center text-slate-400 py-8">Aucun document</p> : (
               <div className="space-y-2">{clientDevis.map(d => {
                 const statusIcon = { brouillon: '⚪', envoye: '🟡', accepte: '✅', payee: '💰', refuse: '❌' }[d.statut] || '📄';
-                return (<div key={d.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl"><span>{statusIcon}</span><div className="flex-1"><p className="font-medium">{d.numero}</p><p className="text-xs text-slate-500">{new Date(d.date).toLocaleDateString('fr-FR')}</p></div><p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString()}€</p></div>);
+                return (
+                  <div key={d.id} onClick={() => openDocument(d)} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 hover:shadow-sm transition-all">
+                    <span className="text-xl">{d.type === 'facture' ? '🧾' : '📄'}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{d.numero}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200">{statusIcon}</span>
+                      </div>
+                      <p className="text-xs text-slate-500">{new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    <p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString()}€</p>
+                    <span className="text-slate-400">→</span>
+                  </div>
+                );
               })}</div>
             )}
           </div>

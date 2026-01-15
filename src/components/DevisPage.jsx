@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret }) {
-  const [mode, setMode] = useState('list');
-  const [selected, setSelected] = useState(null);
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis }) {
+  const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
+  const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [catalogueSearch, setCatalogueSearch] = useState('');
@@ -14,6 +14,17 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  
+  // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
+  useEffect(() => {
+    if (selectedDevis) {
+      setSelected(selectedDevis);
+      setMode('preview');
+      // Nettoyer après utilisation
+      if (setSelectedDevis) setSelectedDevis(null);
+    }
+  }, [selectedDevis, setSelectedDevis]);
+  
   const [form, setForm] = useState({ 
     type: 'devis', 
     clientId: '', 

@@ -104,8 +104,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <p className="text-xl font-bold" style={{color: couleur}}>{formatMoney(bilan.caHT)}</p>
               {bilan.adjRevenus > 0 && <p className="text-xs text-emerald-600">+{formatMoney(bilan.adjRevenus)} ajustés</p>}
             </div>
-            <div className="bg-white rounded-xl p-4 cursor-pointer hover:shadow-md" onClick={() => setActiveTab('finances')}>
-              <p className="text-xs text-slate-500 mb-1">Matériaux</p>
+            <div className="bg-white rounded-xl p-4 cursor-pointer hover:shadow-md transition-all group" onClick={() => { setActiveTab('finances'); }}>
+              <div className="flex justify-between mb-1">
+                <p className="text-xs text-slate-500">Matériaux</p>
+                <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">+ Ajouter</span>
+              </div>
               <p className="text-xl font-bold text-red-500">{formatMoney(bilan.coutMateriaux)}</p>
               {devisMateriaux > 0 && <p className={`text-xs ${bilan.coutMateriaux > devisMateriaux ? 'text-red-600' : 'text-emerald-600'}`}>{bilan.coutMateriaux > devisMateriaux ? '↑' : '↓'} vs devis {formatMoney(devisMateriaux)}</p>}
             </div>
