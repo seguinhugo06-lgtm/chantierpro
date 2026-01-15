@@ -47,7 +47,18 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [theme, setTheme] = useState('light');
   const [modeDiscret, setModeDiscret] = useState(false);
-  const [entreprise, setEntreprise] = useState({ nom: '', logo: '', couleur: '#f97316', siret: '', tvaIntra: '', assurance: '', rib: '', adresse: '', tel: '', email: '', tauxFraisStructure: 15 });
+  const [entreprise, setEntreprise] = useState({ 
+    nom: '', logo: '', couleur: '#f97316', 
+    formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
+    siret: '', codeApe: '', rcs: '', tvaIntra: '',
+    rge: '', rgeOrganisme: '', cartePro: '',
+    rcProAssureur: '', rcProNumero: '', rcProZone: 'France entière',
+    decennaleAssureur: '', decennaleNumero: '', decennaleValidite: '', decennaleActivites: '',
+    banque: '', titulaireBanque: '', iban: '', bic: '',
+    validiteDevis: 30, tvaDefaut: 10, delaiPaiement: 30, acompteDefaut: 30,
+    notesDefaut: '', mentionRetractation: true, mentionGaranties: true,
+    tauxFraisStructure: 15 
+  });
 
   useEffect(() => { try { const e = localStorage.getItem('cp_entreprise'); if (e) setEntreprise(JSON.parse(e)); const t = localStorage.getItem('cp_theme'); if (t) setTheme(t); const m = localStorage.getItem('cp_mode_discret'); if (m) setModeDiscret(JSON.parse(m)); } catch (err) {} }, []);
   useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) {} }, [entreprise]);

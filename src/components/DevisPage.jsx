@@ -116,12 +116,223 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     setSnackbar({ type: 'success', message: `✅ Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir la facture →', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  // PDF Generation
+  // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
   const downloadPDF = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
+    const chantier = chantiers.find(c => c.id === doc.chantier_id);
     const isFacture = doc.type === 'facture';
-    const lignesHTML = (doc.lignes || []).map(l => `<tr><td style="padding:12px;border-bottom:1px solid #e2e8f0">${l.description}</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right">${l.quantite} ${l.unite||''}</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)}€</td><td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${l.montant<0?'color:#ef4444;':''}">${(l.montant||0).toFixed(2)}€</td></tr>`).join('');
-    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${isFacture?'Facture':'Devis'} ${doc.numero}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1e293b;padding:40px}.header{display:flex;justify-content:space-between;margin-bottom:40px;padding-bottom:20px;border-bottom:2px solid ${couleur}}.logo{font-size:18pt;font-weight:bold;color:${couleur}}.doc-type{text-align:right}.doc-type h1{font-size:24pt;color:${couleur};margin-bottom:5px}.info-block{background:#f8fafc;padding:15px;border-radius:8px;margin-bottom:20px}.info-block h3{font-size:10pt;color:#64748b;margin-bottom:8px;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin:20px 0}thead{background:${couleur};color:white}th{padding:12px;text-align:left;font-weight:600}th:not(:first-child){text-align:right}.totals{margin-left:auto;width:280px}.totals .row{display:flex;justify-content:space-between;padding:8px 0}.totals .total{background:${couleur};color:white;padding:12px;border-radius:8px;font-size:14pt;font-weight:bold}.footer{margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:9pt;color:#64748b}.mentions{background:#f1f5f9;padding:15px;border-radius:8px;margin-top:30px;font-size:8pt}@media print{body{padding:20px}}</style></head><body><div class="header"><div><div class="logo">${entreprise?.nom||'Mon Entreprise'}</div><div style="margin-top:10px;font-size:9pt;color:#64748b">${entreprise?.adresse||''}<br>${entreprise?.telephone||''}</div><div style="margin-top:10px;font-size:8pt;color:#94a3b8">${entreprise?.siret?'SIRET: '+entreprise.siret:''}</div></div><div class="doc-type"><h1>${isFacture?'FACTURE':'DEVIS'}</h1><div style="color:#64748b">N° ${doc.numero}<br>Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>${!isFacture?'Validité: '+(doc.validite||30)+' jours':''}</div></div></div><div class="info-block"><h3>Client</h3><div style="font-weight:600">${client?.nom||''} ${client?.prenom||''}</div><div>${client?.adresse||''}</div><div>${client?.code_postal||''} ${client?.ville||''}</div></div><table><thead><tr><th style="width:50%">Description</th><th style="width:15%">Quantité</th><th style="width:15%">PU HT</th><th style="width:20%">Total HT</th></tr></thead><tbody>${lignesHTML}</tbody></table><div class="totals"><div class="row"><span>Total HT</span><span>${(doc.total_ht||0).toFixed(2)}€</span></div><div class="row"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)}€</span></div><div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)}€</span></div></div><div class="mentions"><strong>Conditions générales</strong><br>Paiement: Virement, Chèque, Espèces (max 1000€)<br>Délai: 30 jours à réception<br>Pénalités: 10% + indemnité 40€<br>${!isFacture?'<span style="color:#dc2626">Droit de rétractation: 14 jours (art. L221-18)</span>':''}</div><div class="footer">${entreprise?.nom||''} ${entreprise?.siret?'- SIRET '+entreprise.siret:''}</div></body></html>`;
+    const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
+    const dateValidite = new Date(doc.date);
+    dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
+    
+    const lignesHTML = (doc.lignes || []).map(l => `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (doc.tvaRate||10)+'%'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${l.montant<0?'color:#dc2626;':''}">${(l.montant||0).toFixed(2)} €</td>
+      </tr>
+    `).join('');
+
+    const content = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>${isFacture?'Facture':'Devis'} ${doc.numero}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
+    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${couleur}; }
+    .logo-section { max-width: 55%; }
+    .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
+    .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
+    .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+    .doc-type { text-align: right; }
+    .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
+    .doc-info { font-size: 9pt; color: #64748b; }
+    .doc-info strong { color: #1e293b; }
+    .client-section { display: flex; gap: 20px; margin-bottom: 20px; }
+    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${couleur}; }
+    .info-block h3 { font-size: 8pt; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-block .name { font-weight: 600; font-size: 11pt; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 9pt; }
+    thead { background: ${couleur}; color: white; }
+    th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; }
+    th:not(:first-child) { text-align: center; }
+    th:last-child { text-align: right; }
+    .totals { margin-left: auto; width: 260px; margin-top: 15px; }
+    .totals .row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 10pt; }
+    .totals .row.sub { background: #f8fafc; border-radius: 4px; margin-bottom: 2px; }
+    .totals .total { background: ${couleur}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
+    .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 7.5pt; line-height: 1.6; }
+    .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
+    .conditions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .garanties { background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: 6px; margin-top: 15px; font-size: 7.5pt; }
+    .garanties h4 { color: #065f46; margin-bottom: 6px; }
+    .retractation { background: #fef3c7; border: 1px solid #fcd34d; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 7.5pt; color: #92400e; }
+    .signature-section { display: flex; justify-content: space-between; margin-top: 25px; gap: 20px; }
+    .signature-box { width: 48%; border: 1px solid #cbd5e1; padding: 12px; min-height: 90px; border-radius: 6px; }
+    .signature-box h4 { font-size: 9pt; margin-bottom: 4px; }
+    .signature-box p { font-size: 7pt; color: #64748b; }
+    .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
+    .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
+    .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
+    @media print { body { padding: 15px; } }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-section">
+      <div class="logo">${entreprise?.nom || 'Mon Entreprise'}</div>
+      <div class="entreprise-info">
+        ${entreprise?.formeJuridique ? `<strong>${entreprise.formeJuridique}</strong>${entreprise?.capital ? ` - Capital: ${entreprise.capital} €` : ''}<br>` : ''}
+        ${entreprise?.adresse?.replace(/\n/g, '<br>') || ''}<br>
+        ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `• ${entreprise.email}` : ''}
+      </div>
+      <div class="entreprise-legal">
+        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
+        ${entreprise?.codeApe ? ` • APE: ${entreprise.codeApe}` : ''}
+        ${entreprise?.rcs ? `<br>RCS: ${entreprise.rcs}` : ''}
+        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
+        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+      </div>
+    </div>
+    <div class="doc-type">
+      <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <div class="doc-info">
+        <strong>N° ${doc.numero}</strong><br>
+        Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT & CHANTIER -->
+  <div class="client-section">
+    <div class="info-block">
+      <h3>Client</h3>
+      <div class="name">${client?.prenom || ''} ${client?.nom || ''}</div>
+      ${client?.entreprise ? `<div style="font-size:9pt;color:#64748b">${client.entreprise}</div>` : ''}
+      <div style="font-size:9pt">${client?.adresse || ''}</div>
+      <div style="font-size:9pt">${client?.code_postal || ''} ${client?.ville || ''}</div>
+      ${client?.telephone ? `<div style="font-size:8pt;color:#64748b;margin-top:4px">Tél: ${client.telephone}</div>` : ''}
+      ${client?.email ? `<div style="font-size:8pt;color:#64748b">${client.email}</div>` : ''}
+    </div>
+    ${chantier ? `
+    <div class="info-block">
+      <h3>Lieu d'exécution</h3>
+      <div class="name">${chantier.nom}</div>
+      <div style="font-size:9pt">${chantier.adresse || client?.adresse || ''}</div>
+    </div>
+    ` : ''}
+  </div>
+
+  <!-- TABLEAU PRESTATIONS -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40%">Description</th>
+        <th style="width:10%">Qté</th>
+        <th style="width:10%">Unité</th>
+        <th style="width:15%">PU HT</th>
+        <th style="width:10%">TVA</th>
+        <th style="width:15%">Total HT</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lignesHTML}
+    </tbody>
+  </table>
+
+  <!-- TOTAUX -->
+  <div class="totals">
+    <div class="row sub"><span>Total HT</span><span>${(doc.total_ht||0).toFixed(2)} €</span></div>
+    ${!isMicro ? `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)} €</span></div>` : ''}
+    <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)} €</span></div>
+    ${doc.acompte_pct ? `
+    <div class="row sub" style="margin-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
+    <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
+    ` : ''}
+  </div>
+
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  <!-- CONDITIONS -->
+  <div class="conditions">
+    <h4>CONDITIONS GÉNÉRALES</h4>
+    <div class="conditions-grid">
+      <div>
+        <strong>Modalités de paiement</strong><br>
+        • Virement bancaire<br>
+        • Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
+        • Espèces (max 1 000 € pour particulier)<br>
+        ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
+      </div>
+      <div>
+        <strong>Délai de paiement</strong><br>
+        ${entreprise?.delaiPaiement || 30} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
+        <strong>Pénalités de retard</strong><br>
+        Taux BCE + 10 points (soit ~13% annuel).<br>
+        Indemnité forfaitaire de recouvrement: 40 €
+      </div>
+    </div>
+  </div>
+
+  ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
+  <!-- GARANTIES LÉGALES -->
+  <div class="garanties">
+    <h4>🛡️ GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
+    <strong>1. Garantie de parfait achèvement</strong> - 1 an à compter de la réception des travaux<br>
+    <strong>2. Garantie de bon fonctionnement</strong> - 2 ans (équipements dissociables)<br>
+    <strong>3. Garantie décennale</strong> - 10 ans (solidité de l'ouvrage)
+  </div>
+  ` : ''}
+
+  ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
+  <!-- DROIT DE RÉTRACTATION -->
+  <div class="retractation">
+    <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
+    Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
+    Le délai court à compter de la signature du présent devis.
+    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\n')[0] || '[Adresse]'}
+  </div>
+  ` : ''}
+
+  ${!isFacture ? `
+  <!-- SIGNATURES -->
+  <div class="signature-section">
+    <div class="signature-box">
+      <h4>L'Entreprise</h4>
+      <p>Bon pour accord<br>Date et signature</p>
+    </div>
+    <div class="signature-box">
+      <h4>Le Client</h4>
+      <p>Mention manuscrite: "Bon pour accord"<br>Date et signature</p>
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✅ Signé électroniquement le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <strong>${entreprise?.nom || ''}</strong>
+    ${entreprise?.formeJuridique ? ` • ${entreprise.formeJuridique}` : ''}
+    ${entreprise?.capital ? ` • Capital: ${entreprise.capital} €` : ''}<br>
+    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
+    ${entreprise?.rcs ? ` • RCS: ${entreprise.rcs}` : ''}
+    ${entreprise?.tvaIntra ? ` • TVA: ${entreprise.tvaIntra}` : ''}<br>
+    <div class="assurances">
+      ${entreprise?.rcProAssureur ? `RC Professionnelle: ${entreprise.rcProAssureur} - N°${entreprise.rcProNumero}` : ''}
+      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? ' • ' : ''}
+      ${entreprise?.decennaleAssureur ? `Garantie Décennale: ${entreprise.decennaleAssureur} - N°${entreprise.decennaleNumero}` : ''}
+    </div>
+  </div>
+</body>
+</html>`;
+
     const w = window.open('', '_blank');
     w.document.write(content);
     w.document.close();
