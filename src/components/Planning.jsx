@@ -79,54 +79,54 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     setEditMode(true);
   };
 
-  // Modal détail/édition - ACCESSIBILITÉ: fond blanc explicite
+  // Modal détail/édition
   if (showDetail) return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowDetail(null)}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetail(null)}>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="p-6 border-b dark:border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 rounded-full" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }} />
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Événement')}</h2>
+              <h2 className="font-bold text-lg dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Événement')}</h2>
             </div>
-            <button onClick={() => setShowDetail(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-500 dark:text-slate-400">✕</button>
+            <button onClick={() => setShowDetail(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-slate-400">✕</button>
           </div>
         </div>
         
         <div className="p-6">
           {editMode ? (
             <div className="space-y-4">
-              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Titre *</label><input className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
+              <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Titre *</label><input className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Date *</label><input type="date" className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
-                <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Heure</label><input type="time" className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
+                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Date *</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
+                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Heure</label><input type="time" className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Type</label><select className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
-                <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Employé</label><select className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Type</label><select className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
+                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Employé</label><select className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
               </div>
-              <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Description</label><textarea className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
+              <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Description</label><textarea className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
             </div>
           ) : (
             <div className="space-y-4">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">{showDetail.title}</h3>
+              <h3 className="text-xl font-bold dark:text-white">{showDetail.title}</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">📅 Date</span><span className="font-medium text-slate-900 dark:text-white">{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span></div>
-                {showDetail.time && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">🕐 Heure</span><span className="font-medium text-slate-900 dark:text-white">{showDetail.time}</span></div>}
-                {showDetail.employeId && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">👤 Assigné</span><span className="font-medium text-slate-900 dark:text-white">{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span></div>}
+                <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">📅 Date</span><span className="font-medium dark:text-white">{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span></div>
+                {showDetail.time && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">🕐 Heure</span><span className="font-medium dark:text-white">{showDetail.time}</span></div>}
+                {showDetail.employeId && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">👤 Assigné</span><span className="font-medium dark:text-white">{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span></div>}
               </div>
-              {showDetail.description && <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-xl"><p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{showDetail.description}</p></div>}
+              {showDetail.description && <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{showDetail.description}</p></div>}
             </div>
           )}
         </div>
         
-        <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-b-2xl flex gap-3">
+        <div className="p-4 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-b-2xl flex gap-3">
           {showDetail.isChantier ? (
-            <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium" style={{ background: couleur }}>🏗️ Voir le chantier</button>
+            <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>🏗️ Voir le chantier</button>
           ) : editMode ? (
-            <><button onClick={() => setEditMode(false)} className="flex-1 px-4 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl">Annuler</button><button onClick={updateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium" style={{ background: couleur }}>Enregistrer</button></>
+            <><button onClick={() => setEditMode(false)} className="flex-1 px-4 py-2.5 bg-slate-200 dark:bg-slate-700 dark:text-slate-300 rounded-xl">Annuler</button><button onClick={updateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>Enregistrer</button></>
           ) : (
-            <><button onClick={() => deleteEvent(showDetail.id)} className="px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-900/50">🗑️</button><button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl font-medium" style={{ background: couleur }}>✏️ Modifier</button></>
+            <><button onClick={() => deleteEvent(showDetail.id)} className="px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200">🗑️</button><button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>✏️ Modifier</button></>
           )}
         </div>
       </div>
@@ -136,8 +136,8 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   // Formulaire création
   if (showAdd) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-900 dark:text-white">←</button><h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nouvel événement</h1></div>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-white">←</button><h1 className="text-2xl font-bold dark:text-white">Nouvel événement</h1></div>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-6">
         <div className="space-y-4">
           <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Titre *</label><input className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
