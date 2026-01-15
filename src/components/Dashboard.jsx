@@ -54,7 +54,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
   const formatMoney = (n) => modeDiscret ? '•••••' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
-  const pStyles = { urgent: { border: 'border-l-4 border-red-500', bg: 'bg-red-50 dark:bg-red-900/30', badge: 'bg-red-500 animate-pulse' }, high: { border: 'border-l-4 border-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/30', badge: 'bg-orange-500' }, normal: { border: 'border-l-4 border-slate-200 dark:border-slate-600', bg: 'bg-white dark:bg-slate-800', badge: '' } };
+  const pStyles = { urgent: { border: 'border-l-4 border-red-500', bg: 'bg-red-50 dark:bg-red-900/30', badge: 'bg-red-500 animate-pulse' }, high: { border: 'border-l-4 border-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/30', badge: 'bg-orange-500' }, normal: { border: 'border-l-4 border-slate-200', bg: 'bg-white dark:bg-slate-800', badge: '' } };
 
   const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
     <div className="rounded-2xl border p-5 bg-white dark:bg-slate-800 dark:border-slate-700 hover:shadow-md transition-shadow">
@@ -134,7 +134,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           ) : (
             <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => (
               <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all ${pStyles[a.priority].border} ${pStyles[a.priority].bg}`}>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/50' : a.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/50' : 'bg-slate-100 dark:bg-slate-700'}`}><a.icon size={20} className={a.priority === 'urgent' ? 'text-red-600 dark:text-red-400' : a.priority === 'high' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500 dark:text-slate-400'} /></div>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${a.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/50' : a.priority === 'high' ? 'bg-orange-100 dark:bg-orange-900/50' : 'bg-slate-100 dark:bg-slate-700'}`}><a.icon size={20} className={a.priority === 'urgent' ? 'text-red-600 dark:text-red-400' : a.priority === 'high' ? 'text-orange-600 dark:text-orange-400' : 'text-slate-500'} /></div>
                 <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="font-medium truncate dark:text-white">{a.title}</p>{a.priority === 'urgent' && <span className={`px-2 py-0.5 text-xs font-bold text-white rounded ${pStyles.urgent.badge}`}>URGENT</span>}</div><p className="text-sm text-slate-500 dark:text-slate-400 truncate">{a.desc}</p></div>
                 {a.days !== undefined && <span className="text-xs text-slate-400">{a.days}j</span>}
               </div>
@@ -153,7 +153,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
             ))}
           </div>
           {aSurveiller.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-2xl p-5">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-5">
               <h3 className="font-bold mb-4 flex items-center gap-2 text-red-800 dark:text-red-300">⚠️ À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
                 <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl mb-2 cursor-pointer hover:shadow-sm border border-red-100 dark:border-red-900">
