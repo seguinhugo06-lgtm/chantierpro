@@ -2,8 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, ChevronRight, Eye, EyeOff } from 'lucide-react';
 
-export default function Dashboard({ chantiers, clients, devis, depenses, pointages, equipe, getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier }) {
   const [todoFilter, setTodoFilter] = useState('all');
+
+  // Gardes pour éviter les erreurs sur undefined
+  const safeChantiers = chantiers || [];
+  const safeClients = clients || [];
+  const safeDevis = devis || [];
+  const safeDepenses = depenses || [];
+  const safePointages = pointages || [];
+  const safeEquipe = equipe || [];
 
   // Calculs KPI
   const stats = useMemo(() => {
@@ -16,7 +24,7 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
     for (let i = 5; i >= 0; i--) {
       const d = new Date(thisYear, thisMonth - i, 1);
       const moisLabel = d.toLocaleDateString('fr-FR', { month: 'short' });
-      const devisMois = devis.filter(dv => {
+      const devisMois = safeDevis.filter(dv => {
         const dd = new Date(dv.date || dv.created_at);
         return dd.getMonth() === d.getMonth() && dd.getFullYear() === d.getFullYear() && dv.statut !== 'brouillon';
       });
@@ -25,28 +33,28 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
     }
 
     // Marge par chantier
-    const margesChantiers = chantiers.map(ch => {
-      const bilan = getChantierBilan(ch.id);
-      return { nom: ch.nom.substring(0, 15), marge: bilan.tauxMarge, id: ch.id };
+    const margesChantiers = safeChantiers.map(ch => {
+      const bilan = getChantierBilan ? getChantierBilan(ch.id) : { tauxMarge: 0 };
+      return { nom: (ch.nom || '').substring(0, 15), marge: bilan.tauxMarge, id: ch.id };
     }).sort((a, b) => b.marge - a.marge);
 
     // Totaux
-    const totalCA = devis.filter(d => d.type === 'facture' || d.statut === 'accepte').reduce((s, d) => s + (d.total_ht || 0), 0);
-    const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0);
-    const totalMO = pointages.reduce((s, p) => {
-      const emp = equipe.find(e => e.id === p.employeId);
+    const totalCA = safeDevis.filter(d => d.type === 'facture' || d.statut === 'accepte').reduce((s, d) => s + (d.total_ht || 0), 0);
+    const totalDepenses = safeDepenses.reduce((s, d) => s + (d.montant || 0), 0);
+    const totalMO = safePointages.reduce((s, p) => {
+      const emp = safeEquipe.find(e => e.id === p.employeId);
       return s + (p.heures * (emp?.coutHoraireCharge || 28));
     }, 0);
     const marge = totalCA - totalDepenses - totalMO;
     const tauxMarge = totalCA > 0 ? (marge / totalCA) * 100 : 0;
 
     // Encaissé vs En attente
-    const factures = devis.filter(d => d.type === 'facture');
+    const factures = safeDevis.filter(d => d.type === 'facture');
     const encaisse = factures.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0);
     const enAttente = factures.filter(f => f.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0);
 
     // Chantiers actifs
-    const chantiersActifs = chantiers.filter(c => c.statut === 'en_cours').length;
+    const chantiersActifs = safeChantiers.filter(c => c.statut === 'en_cours').length;
 
     // Tendance (vs mois précédent)
     const caMoisActuel = caParMois[5]?.ca || 0;
@@ -54,15 +62,15 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
     const tendance = caMoisPrecedent > 0 ? ((caMoisActuel - caMoisPrecedent) / caMoisPrecedent) * 100 : 0;
 
     return { caParMois, margesChantiers, totalCA, marge, tauxMarge, encaisse, enAttente, chantiersActifs, tendance };
-  }, [chantiers, devis, depenses, pointages, equipe, getChantierBilan, couleur]);
+  }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, getChantierBilan, couleur]);
 
   // Actions du jour
   const actions = useMemo(() => {
     const items = [];
     
     // Devis en attente
-    devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
-      const client = clients.find(c => c.id === d.client_id);
+    safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
+      const client = safeClients.find(c => c.id === d.client_id);
       items.push({
         id: `devis-${d.id}`,
         type: 'devis',
@@ -70,13 +78,13 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
         title: `Relancer devis ${d.numero}`,
         description: client ? `${client.nom} - ${(d.total_ttc || 0).toLocaleString()}€` : `${(d.total_ttc || 0).toLocaleString()}€`,
         urgent: new Date(d.date) < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        action: () => { setActiveModule('devis'); }
+        action: () => { setActiveModule && setActiveModule('devis'); }
       });
     });
 
     // Factures impayées
-    devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
-      const client = clients.find(c => c.id === f.client_id);
+    safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
+      const client = safeClients.find(c => c.id === f.client_id);
       const age = Math.floor((Date.now() - new Date(f.date).getTime()) / (1000 * 60 * 60 * 24));
       items.push({
         id: `facture-${f.id}`,
@@ -85,15 +93,15 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
         title: `Facture ${f.numero} impayée`,
         description: client ? `${client.nom} - ${age}j` : `${age} jours`,
         urgent: age > 30,
-        action: () => { setActiveModule('devis'); }
+        action: () => { setActiveModule && setActiveModule('devis'); }
       });
     });
 
     // Chantiers sans pointage cette semaine
     const now = new Date();
     const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1));
-    chantiers.filter(c => c.statut === 'en_cours').forEach(ch => {
-      const pointagesSemaine = pointages.filter(p => p.chantierId === ch.id && new Date(p.date) >= weekStart);
+    safeChantiers.filter(c => c.statut === 'en_cours').forEach(ch => {
+      const pointagesSemaine = safePointages.filter(p => p.chantierId === ch.id && new Date(p.date) >= weekStart);
       if (pointagesSemaine.length === 0) {
         items.push({
           id: `pointage-${ch.id}`,
@@ -102,14 +110,14 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
           title: `Pointer heures: ${ch.nom}`,
           description: 'Aucun pointage cette semaine',
           urgent: false,
-          action: () => { setSelectedChantier(ch.id); setActiveModule('chantiers'); }
+          action: () => { setSelectedChantier && setSelectedChantier(ch.id); setActiveModule && setActiveModule('chantiers'); }
         });
       }
     });
 
     // Chantiers à marge négative
-    chantiers.forEach(ch => {
-      const bilan = getChantierBilan(ch.id);
+    safeChantiers.forEach(ch => {
+      const bilan = getChantierBilan ? getChantierBilan(ch.id) : { tauxMarge: 0 };
       if (bilan.tauxMarge < 0 && ch.statut === 'en_cours') {
         items.push({
           id: `marge-${ch.id}`,
@@ -118,13 +126,13 @@ export default function Dashboard({ chantiers, clients, devis, depenses, pointag
           title: `Marge négative: ${ch.nom}`,
           description: `${bilan.tauxMarge.toFixed(1)}% - Analyser les coûts`,
           urgent: true,
-          action: () => { setSelectedChantier(ch.id); setActiveModule('chantiers'); }
+          action: () => { setSelectedChantier && setSelectedChantier(ch.id); setActiveModule && setActiveModule('chantiers'); }
         });
       }
     });
 
     return items;
-  }, [devis, clients, chantiers, pointages, getChantierBilan, setActiveModule, setSelectedChantier]);
+  }, [safeDevis, safeClients, safeChantiers, safePointages, getChantierBilan, setActiveModule, setSelectedChantier]);
 
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
 
