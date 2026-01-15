@@ -67,10 +67,15 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) {} }, [modeDiscret]);
 
   const loadDemoData = () => {
+    const today = new Date();
+    const formatDate = (d) => d.toISOString().split('T')[0];
+    const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
+    
     setClients([
       { id: 'c1', nom: 'Dupont', prenom: 'Jean', telephone: '06 12 34 56 78', email: 'jean.dupont@email.fr', adresse: '12 rue des Lilas, 75001 Paris', notes: 'Code portail: 1234' },
       { id: 'c2', nom: 'Martin', prenom: 'Marie', telephone: '06 98 76 54 32', email: 'marie.martin@email.fr', adresse: '45 avenue Victor Hugo, 69001 Lyon' },
       { id: 'c3', nom: 'Bernard', prenom: 'Pierre', entreprise: 'SCI Les Oliviers', telephone: '07 11 22 33 44', adresse: '8 place de la Mairie, 13001 Marseille' },
+      { id: 'c4', nom: 'Leroy', prenom: 'Sophie', telephone: '06 77 88 99 00', email: 'sophie.leroy@gmail.com', adresse: '23 boulevard Pasteur, 33000 Bordeaux' },
     ]);
     setCatalogue([
       { id: 'cat1', nom: 'Pose carrelage sol', prix: 45, prixAchat: 12, unite: 'm²', categorie: 'Carrelage', favori: true, stock_actuel: 50, stock_seuil_alerte: 20 },
@@ -80,34 +85,85 @@ export default function App() {
       { id: 'cat5', nom: 'Remplacement WC', prix: 450, prixAchat: 180, unite: 'forfait', categorie: 'Plomberie', favori: true, stock_actuel: 3, stock_seuil_alerte: 2 },
       { id: 'cat6', nom: 'Électricité point', prix: 85, prixAchat: 25, unite: 'unité', categorie: 'Électricité', favori: false, stock_actuel: 25, stock_seuil_alerte: 10 },
       { id: 'cat7', nom: 'Déplacement', prix: 50, prixAchat: 15, unite: 'forfait', categorie: 'Autre', favori: true },
+      { id: 'cat8', nom: 'Sac ciment 35kg', prix: 8.50, prixAchat: 5.20, unite: 'unité', categorie: 'Matériaux', favori: false, stock_actuel: 15, stock_seuil_alerte: 5 },
     ]);
     setChantiers([
-      { id: 'ch1', nom: 'Rénovation SDB Dupont', client_id: 'c1', adresse: '12 rue des Lilas, Paris', statut: 'en_cours', date_debut: '2024-01-15', date_fin: '2024-02-15', fraisFixes: 10, margePrevisionnelle: 25, photos: [], taches: [{ id: 't1', text: 'Démolition', done: true }, { id: 't2', text: 'Pose carrelage', done: false }], notes: '' },
-      { id: 'ch2', nom: 'Peinture T3 Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, Lyon', statut: 'en_cours', date_debut: '2024-01-20', date_fin: '2024-01-25', fraisFixes: 8, margePrevisionnelle: 30, photos: [], taches: [], notes: '' },
+      { id: 'ch1', nom: 'Rénovation SDB Dupont', client_id: 'c1', adresse: '12 rue des Lilas, Paris', statut: 'en_cours', date_debut: formatDate(addDays(today, -10)), date_fin: formatDate(addDays(today, 10)), fraisFixes: 10, avancement: 65, photos: [], taches: [{ id: 't1', text: 'Démolition', done: true }, { id: 't2', text: 'Pose carrelage sol', done: true }, { id: 't3', text: 'Pose carrelage mur', done: false }, { id: 't4', text: 'Plomberie', done: false }], notes: 'Client très sympa, prévoir café' },
+      { id: 'ch2', nom: 'Peinture T3 Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, Lyon', statut: 'en_cours', date_debut: formatDate(addDays(today, -3)), date_fin: formatDate(addDays(today, 4)), fraisFixes: 8, avancement: 40, photos: [], taches: [{ id: 't5', text: 'Lessivage murs', done: true }, { id: 't6', text: 'Sous-couche', done: false }, { id: 't7', text: 'Peinture finition', done: false }], notes: '' },
+      { id: 'ch3', nom: 'Cuisine moderne Bernard', client_id: 'c3', adresse: '8 place de la Mairie, Marseille', statut: 'prospect', date_debut: formatDate(addDays(today, 15)), date_fin: formatDate(addDays(today, 45)), fraisFixes: 12, avancement: 0, photos: [], taches: [], notes: 'Attente validation devis' },
     ]);
     setDevis([
-      { id: 'dv1', numero: 'DEV-2024-001', client_id: 'c1', chantier_id: 'ch1', date: '2024-01-10', type: 'devis', statut: 'accepte', tvaRate: 10, total_ht: 2850, tva: 285, total_ttc: 3135, margePrevue: 712, lignes: [{ description: 'Démolition SDB', quantite: 8, unite: 'm²', prixUnitaire: 35, montant: 280 }, { description: 'Pose carrelage', quantite: 33, unite: 'm²', prixUnitaire: 50, montant: 1650 }, { description: 'Plomberie', quantite: 15, unite: 'h', prixUnitaire: 55, montant: 825 }], signature: 'signed', signatureDate: '2024-01-12' },
-      { id: 'dv2', numero: 'DEV-2024-002', client_id: 'c2', chantier_id: 'ch2', date: '2024-01-18', type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 1500, tva: 150, total_ttc: 1650, margePrevue: 480, lignes: [{ description: 'Peinture murs', quantite: 60, unite: 'm²', prixUnitaire: 25, montant: 1500 }]},
-      { id: 'dv3', numero: 'FACT-2024-001', client_id: 'c1', chantier_id: 'ch1', date: '2024-01-25', type: 'facture', statut: 'payee', tvaRate: 10, total_ht: 1035, tva: 103.5, total_ttc: 1138.5, lignes: [{ description: 'Acompte 33%', quantite: 1, unite: 'forfait', prixUnitaire: 1035, montant: 1035 }]}
+      { id: 'dv1', numero: 'DEV-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', date: formatDate(addDays(today, -15)), type: 'devis', statut: 'accepte', tvaRate: 10, total_ht: 2850, tva: 285, total_ttc: 3135, lignes: [{ id: 'l1', description: 'Démolition SDB', quantite: 8, unite: 'm²', prixUnitaire: 35, montant: 280, tva: 10 }, { id: 'l2', description: 'Pose carrelage sol + mur', quantite: 33, unite: 'm²', prixUnitaire: 50, montant: 1650, tva: 10 }, { id: 'l3', description: 'Plomberie complète', quantite: 15, unite: 'h', prixUnitaire: 55, montant: 825, tva: 10 }, { id: 'l4', description: 'Fournitures sanitaires', quantite: 1, unite: 'lot', prixUnitaire: 95, montant: 95, tva: 20 }], signature: 'signed', signatureDate: formatDate(addDays(today, -12)) },
+      { id: 'dv2', numero: 'DEV-2024-002', client_id: 'c2', client_nom: 'Marie Martin', chantier_id: 'ch2', date: formatDate(addDays(today, -5)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 1500, tva: 150, total_ttc: 1650, lignes: [{ id: 'l5', description: 'Peinture murs 3 pièces', quantite: 60, unite: 'm²', prixUnitaire: 25, montant: 1500, tva: 10 }]},
+      { id: 'dv3', numero: 'DEV-2024-003', client_id: 'c3', client_nom: 'Pierre Bernard', chantier_id: 'ch3', date: formatDate(addDays(today, -2)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 8500, tva: 850, total_ttc: 9350, lignes: [{ id: 'l6', description: 'Cuisine complète pose + fournitures', quantite: 1, unite: 'forfait', prixUnitaire: 8500, montant: 8500, tva: 10 }]},
+      { id: 'dv4', numero: 'FACT-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', devis_source: 'dv1', date: formatDate(addDays(today, -8)), type: 'facture', statut: 'payee', tvaRate: 10, total_ht: 1035, tva: 103.5, total_ttc: 1138.5, acompte_pct: 33, lignes: [{ id: 'l7', description: 'Acompte 33% - Rénovation SDB', quantite: 1, unite: 'forfait', prixUnitaire: 1035, montant: 1035, tva: 10 }]},
+      { id: 'dv5', numero: 'FACT-2024-002', client_id: 'c4', client_nom: 'Sophie Leroy', date: formatDate(addDays(today, -20)), type: 'facture', statut: 'envoye', tvaRate: 10, total_ht: 850, tva: 85, total_ttc: 935, lignes: [{ id: 'l8', description: 'Dépannage plomberie', quantite: 1, unite: 'forfait', prixUnitaire: 850, montant: 850, tva: 10 }]},
     ]);
     setEquipe([
-      { id: 'e1', nom: 'Durand', prenom: 'Luc', telephone: '06 55 44 33 22', tauxHoraire: 45, coutHoraireCharge: 28 },
-      { id: 'e2', nom: 'Petit', prenom: 'Marc', telephone: '06 11 22 33 44', tauxHoraire: 40, coutHoraireCharge: 25 }
+      { id: 'e1', nom: 'Durand', prenom: 'Luc', telephone: '06 55 44 33 22', email: 'luc.durand@email.fr', tauxHoraire: 45, coutHoraireCharge: 28, couleur: '#3b82f6' },
+      { id: 'e2', nom: 'Petit', prenom: 'Marc', telephone: '06 11 22 33 44', email: 'marc.petit@email.fr', tauxHoraire: 40, coutHoraireCharge: 25, couleur: '#10b981' }
     ]);
     setPointages([
-      { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: '2024-01-15', heures: 8, approuve: true, verrouille: true },
-      { id: 'p2', employeId: 'e1', chantierId: 'ch1', date: '2024-01-16', heures: 7.5, approuve: true, verrouille: false },
-      { id: 'p3', employeId: 'e2', chantierId: 'ch1', date: '2024-01-16', heures: 8, approuve: false, verrouille: false },
-      { id: 'p4', employeId: 'e1', chantierId: 'ch2', date: '2024-01-20', heures: 6, approuve: true, verrouille: false }
+      { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -10)), heures: 8, approuve: true, verrouille: true },
+      { id: 'p2', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -9)), heures: 7.5, approuve: true, verrouille: true },
+      { id: 'p3', employeId: 'e2', chantierId: 'ch1', date: formatDate(addDays(today, -9)), heures: 8, approuve: true, verrouille: false },
+      { id: 'p4', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -8)), heures: 8, approuve: true, verrouille: false },
+      { id: 'p5', employeId: 'e1', chantierId: 'ch2', date: formatDate(addDays(today, -3)), heures: 6, approuve: true, verrouille: false },
+      { id: 'p6', employeId: 'e2', chantierId: 'ch2', date: formatDate(addDays(today, -2)), heures: 7, approuve: false, verrouille: false }
     ]);
     setDepenses([
-      { id: 'dep1', chantierId: 'ch1', description: 'Carrelage Leroy Merlin', montant: 450, date: '2024-01-14', categorie: 'Matériaux' },
-      { id: 'dep2', chantierId: 'ch1', description: 'Colle + joints', montant: 85, date: '2024-01-14', categorie: 'Matériaux' },
-      { id: 'dep3', chantierId: 'ch2', description: 'Peinture Tollens', montant: 320, date: '2024-01-19', categorie: 'Matériaux' }
+      { id: 'dep1', chantierId: 'ch1', description: 'Carrelage Leroy Merlin', montant: 450, date: formatDate(addDays(today, -12)), categorie: 'Matériaux' },
+      { id: 'dep2', chantierId: 'ch1', description: 'Colle + joints', montant: 85, date: formatDate(addDays(today, -12)), categorie: 'Matériaux' },
+      { id: 'dep3', chantierId: 'ch1', description: 'Robinetterie Grohe', montant: 280, date: formatDate(addDays(today, -7)), categorie: 'Matériaux' },
+      { id: 'dep4', chantierId: 'ch2', description: 'Peinture Tollens 20L', montant: 320, date: formatDate(addDays(today, -4)), categorie: 'Matériaux' },
+      { id: 'dep5', chantierId: 'ch2', description: 'Bâches + scotch', montant: 45, date: formatDate(addDays(today, -4)), categorie: 'Matériaux' }
     ]);
-    setAjustements([{ id: 'adj1', chantierId: 'ch1', type: 'REVENU', libelle: 'Supplément faïence plafond', montant_ht: 350 }]);
-    setEvents([{ id: 'ev1', title: 'RDV Bernard', date: '2024-01-22', type: 'rdv', time: '10:00' }]);
-    setEntreprise({ nom: 'Martin Rénovation', couleur: '#f97316', siret: '123 456 789 00012', tvaIntra: 'FR12345678901', assurance: 'AXA Décennale N°456789', adresse: '25 rue du Commerce\n75015 Paris', tel: '01 23 45 67 89', email: 'contact@martin-renovation.fr', rib: 'FR76 1234 5678 9012 3456 7890 123', logo: '', tauxFraisStructure: 15 });
+    setAjustements([
+      { id: 'adj1', chantierId: 'ch1', type: 'REVENU', libelle: 'Supplément faïence plafond', montant_ht: 350 },
+      { id: 'adj2', chantierId: 'ch1', type: 'DEPENSE', libelle: 'Location perforateur', montant_ht: 45 }
+    ]);
+    // ÉVÉNEMENTS PLANNING - Données démo complètes
+    setEvents([
+      { id: 'ev1', title: 'RDV Devis Bernard', date: formatDate(addDays(today, 1)), type: 'rdv', time: '10:00', description: 'Visite appartement pour devis cuisine. Apporter catalogue.' },
+      { id: 'ev2', title: 'Relance devis Martin', date: formatDate(addDays(today, 2)), type: 'relance', time: '14:00', description: 'Appeler Mme Martin pour relancer le devis peinture T3' },
+      { id: 'ev3', title: 'Livraison carrelage', date: formatDate(addDays(today, 3)), type: 'autre', time: '08:00', description: 'Livraison Leroy Merlin - Carrelage SDB Dupont', employeId: 'e1' },
+      { id: 'ev4', title: 'RDV Nouveau prospect', date: formatDate(addDays(today, 5)), type: 'rdv', time: '11:00', description: 'M. Durand - Rénovation complète maison 120m²' },
+      { id: 'ev5', title: 'Urgence fuite Leroy', date: formatDate(today), type: 'urgence', time: '09:00', description: 'Fuite sous évier cuisine - intervention urgente', employeId: 'e2' },
+      { id: 'ev6', title: 'Formation sécurité', date: formatDate(addDays(today, 7)), type: 'autre', time: '09:00', description: 'Formation annuelle sécurité chantier - équipe complète' },
+      { id: 'ev7', title: 'Réception chantier Dupont', date: formatDate(addDays(today, 12)), type: 'rdv', time: '16:00', description: 'Visite finale avec le client pour réception travaux' },
+    ]);
+    setEntreprise({ 
+      nom: 'Martin Rénovation', 
+      couleur: '#f97316', 
+      formeJuridique: 'SARL',
+      capital: '10000',
+      siret: '123 456 789 00012', 
+      codeApe: '4339Z',
+      rcsVille: 'Paris',
+      rcsNumero: '123456789',
+      tvaIntra: 'FR12345678901', 
+      adresse: '25 rue du Commerce\n75015 Paris', 
+      tel: '01 23 45 67 89', 
+      email: 'contact@martin-renovation.fr', 
+      siteWeb: 'www.martin-renovation.fr',
+      iban: 'FR76 1234 5678 9012 3456 7890 123',
+      bic: 'BNPAFRPP',
+      banque: 'BNP Paribas',
+      rcProAssureur: 'AXA',
+      rcProNumero: 'RC-456789',
+      rcProValidite: formatDate(addDays(today, 180)),
+      decennaleAssureur: 'SMABTP',
+      decennaleNumero: 'DEC-123456',
+      decennaleValidite: formatDate(addDays(today, 250)),
+      validiteDevis: 30,
+      tvaDefaut: 10,
+      acompteDefaut: 30,
+      delaiPaiement: 30,
+      tauxFraisStructure: 15,
+      mentionRetractation: true,
+      mentionGaranties: true,
+      logo: '' 
+    });
     setLoading(false);
   };
 

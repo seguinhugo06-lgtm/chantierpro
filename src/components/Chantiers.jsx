@@ -12,6 +12,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
   const [showAddMO, setShowAddMO] = useState(false);
+  const [showQuickMateriau, setShowQuickMateriau] = useState(false); // Modal ajout rapide matériau
   const [adjForm, setAdjForm] = useState({ libelle: '', montant_ht: '' });
   const [moForm, setMoForm] = useState({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
 
@@ -27,7 +28,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
   const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: Date.now().toString(), text: newTache, done: false }] }); setNewTache(''); } };
   const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
-  const addDepenseToChantier = () => { if (!newDepense.description || !newDepense.montant) return; setDepenses([...depenses, { id: Date.now().toString(), chantierId: view, ...newDepense, montant: parseFloat(newDepense.montant), date: new Date().toISOString().split('T')[0] }]); if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, 1); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' }); };
+  const addDepenseToChantier = () => { if (!newDepense.description || !newDepense.montant) return; setDepenses([...depenses, { id: Date.now().toString(), chantierId: view, ...newDepense, montant: parseFloat(newDepense.montant), date: new Date().toISOString().split('T')[0] }]); if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, 1); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' }); setShowQuickMateriau(false); };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
   const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) return; setPointages([...pointages, { id: Date.now().toString(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
   const handleEditPointage = (id, field, value) => setPointages(pointages.map(p => p.id === id ? { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value } : p));
@@ -104,10 +105,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <p className="text-xl font-bold" style={{color: couleur}}>{formatMoney(bilan.caHT)}</p>
               {bilan.adjRevenus > 0 && <p className="text-xs text-emerald-600">+{formatMoney(bilan.adjRevenus)} ajustés</p>}
             </div>
-            <div className="bg-white rounded-xl p-4 cursor-pointer hover:shadow-md transition-all group" onClick={() => { setActiveTab('finances'); }}>
+            <div className="bg-white rounded-xl p-4 cursor-pointer hover:shadow-md transition-all group" onClick={() => setShowQuickMateriau(true)}>
               <div className="flex justify-between mb-1">
                 <p className="text-xs text-slate-500">Matériaux</p>
-                <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">+ Ajouter</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">+ Ajouter</span>
               </div>
               <p className="text-xl font-bold text-red-500">{formatMoney(bilan.coutMateriaux)}</p>
               {devisMateriaux > 0 && <p className={`text-xs ${bilan.coutMateriaux > devisMateriaux ? 'text-red-600' : 'text-emerald-600'}`}>{bilan.coutMateriaux > devisMateriaux ? '↑' : '↓'} vs devis {formatMoney(devisMateriaux)}</p>}
@@ -236,6 +237,60 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <input type="number" className="w-full px-4 py-2.5 border rounded-xl" placeholder="Montant HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
               </div>
               <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowAjustement(null); setAdjForm({ libelle: '', montant_ht: '' }); }} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleAddAjustement} className="px-4 py-2 text-white rounded-xl" style={{background: showAjustement === 'REVENU' ? '#22c55e' : '#ef4444'}}>Ajouter</button></div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Ajout Rapide Matériau */}
+        {showQuickMateriau && (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setShowQuickMateriau(false)}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold mb-2">🧱 Ajouter un matériau</h3>
+              <p className="text-sm text-slate-500 mb-4">Ajout rapide de dépense matériau</p>
+              
+              {/* Sélection depuis catalogue */}
+              {catalogue && catalogue.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Depuis le catalogue</label>
+                  <select 
+                    className="w-full px-4 py-2.5 border rounded-xl" 
+                    value={newDepense.catalogueId} 
+                    onChange={e => { 
+                      const item = catalogue.find(c => c.id === e.target.value); 
+                      if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: (item.prixAchat || item.prix || 0).toString() })); 
+                    }}
+                  >
+                    <option value="">Choisir un article...</option>
+                    {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}€)</option>)}
+                  </select>
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description *</label>
+                  <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Montant TTC *</label>
+                  <input type="number" className="w-full px-4 py-2.5 border rounded-xl" placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Catégorie</label>
+                  <select className="w-full px-4 py-2.5 border rounded-xl" value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
+                    <option value="Matériaux">Matériaux</option>
+                    <option value="Outillage">Outillage</option>
+                    <option value="Location">Location</option>
+                    <option value="Sous-traitance">Sous-traitance</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' }); }} className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl">Annuler</button>
+                <button onClick={addDepenseToChantier} disabled={!newDepense.description || !newDepense.montant} className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50" style={{background: couleur}}>Ajouter</button>
+              </div>
             </div>
           </div>
         )}
