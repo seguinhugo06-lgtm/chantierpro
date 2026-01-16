@@ -163,7 +163,7 @@ const DevisForm = memo(({
             required 
             style={styles.input}
           >
-            <option value="">Sélectionner...</option>
+            <option value="">SÃ©lectionner...</option>
             {clients.map(c => (
               <option key={c.id} value={c.id}>
                 {c.nom} {c.prenom}
@@ -192,7 +192,7 @@ const DevisForm = memo(({
         />
         <input
           type="number"
-          placeholder="Qté"
+          placeholder="QtÃ©"
           value={currentLigne.quantite}
           onChange={handleLigneChange('quantite')}
           min="1"
@@ -218,7 +218,7 @@ const DevisForm = memo(({
             <thead style={styles.tableHead}>
               <tr>
                 <th style={styles.th}>Description</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Qté</th>
+                <th style={{ ...styles.th, textAlign: 'right' }}>QtÃ©</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>Prix HT</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>Total</th>
                 <th style={{ ...styles.th, width: '50px' }}></th>
@@ -229,9 +229,9 @@ const DevisForm = memo(({
                 <tr key={index}>
                   <td style={styles.td}>{ligne.description}</td>
                   <td style={{ ...styles.td, textAlign: 'right' }}>{ligne.quantite}</td>
-                  <td style={{ ...styles.td, textAlign: 'right' }}>{ligne.prixUnitaire.toFixed(2)}€</td>
+                  <td style={{ ...styles.td, textAlign: 'right' }}>{ligne.prixUnitaire.toFixed(2)}â‚¬</td>
                   <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600' }}>
-                    {ligne.montant.toFixed(2)}€
+                    {ligne.montant.toFixed(2)}â‚¬
                   </td>
                   <td style={{ ...styles.td, textAlign: 'center' }}>
                     <button 
@@ -239,7 +239,7 @@ const DevisForm = memo(({
                       type="button" 
                       style={styles.deleteButton}
                     >
-                      🗑️
+                      ðŸ—‘ï¸
                     </button>
                   </td>
                 </tr>
@@ -247,10 +247,10 @@ const DevisForm = memo(({
             </tbody>
           </table>
           <div style={styles.totaux}>
-            <div>Total HT: <strong>{totaux.totalHT.toFixed(2)}€</strong></div>
-            <div>TVA (20%): <strong>{totaux.tva.toFixed(2)}€</strong></div>
+            <div>Total HT: <strong>{totaux.totalHT.toFixed(2)}â‚¬</strong></div>
+            <div>TVA (20%): <strong>{totaux.tva.toFixed(2)}â‚¬</strong></div>
             <div style={styles.totalTTC}>
-              Total TTC: <strong>{totaux.totalTTC.toFixed(2)}€</strong>
+              Total TTC: <strong>{totaux.totalTTC.toFixed(2)}â‚¬</strong>
             </div>
           </div>
         </div>
@@ -261,7 +261,7 @@ const DevisForm = memo(({
         disabled={!canSubmit}
         style={canSubmit ? styles.submitButton : styles.submitButtonDisabled}
       >
-        Créer le devis
+        CrÃ©er le devis
       </button>
     </div>
   );

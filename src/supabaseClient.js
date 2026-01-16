@@ -1,19 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Mode démo détection
+// Mode dÃ©mo dÃ©tection
 const isDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'true';
 
-// En mode démo, on utilise des URLs factices pour éviter les erreurs 401
+// En mode dÃ©mo, on utilise des URLs factices pour Ã©viter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 
-// Client Supabase (null en mode démo)
+// Client Supabase (null en mode dÃ©mo)
 const supabase = isDemo ? null : (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null);
 
 // Auth wrapper
 export const auth = {
   signUp: async (email, password, metadata) => {
-    if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
+    if (isDemo || !supabase) return { data: null, error: { message: 'Mode dÃ©mo actif' } };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -22,7 +22,7 @@ export const auth = {
     return { data, error };
   },
   signIn: async (email, password) => {
-    if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
+    if (isDemo || !supabase) return { data: null, error: { message: 'Mode dÃ©mo actif' } };
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     return { data, error };
   },
@@ -42,7 +42,7 @@ export const auth = {
   }
 };
 
-// DB helpers avec fallback mode démo
+// DB helpers avec fallback mode dÃ©mo
 const createDBHelper = (table) => ({
   getAll: async () => {
     if (isDemo || !supabase) return { data: [], error: null };

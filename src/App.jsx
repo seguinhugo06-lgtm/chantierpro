@@ -23,7 +23,7 @@ const safeApiCall = async (fn, fallback = null) => {
 };
 
 export default function App() {
-  const demoUser = { email: 'demo@chantierpro.test', user_metadata: { nom: 'Artisan Démo' } };
+  const demoUser = { email: 'demo@chantierpro.test', user_metadata: { nom: 'Artisan DÃ©mo' } };
   const [user, setUser] = useState(isDemo ? demoUser : null);
   const [loading, setLoading] = useState(!isDemo);
   const [dataLoading, setDataLoading] = useState(false);
@@ -53,7 +53,7 @@ export default function App() {
     formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
     siret: '', codeApe: '', rcs: '', tvaIntra: '',
     rge: '', rgeOrganisme: '', cartePro: '',
-    rcProAssureur: '', rcProNumero: '', rcProZone: 'France entière',
+    rcProAssureur: '', rcProNumero: '', rcProZone: 'France entiÃ¨re',
     decennaleAssureur: '', decennaleNumero: '', decennaleValidite: '', decennaleActivites: '',
     banque: '', titulaireBanque: '', iban: '', bic: '',
     validiteDevis: 30, tvaDefaut: 10, delaiPaiement: 30, acompteDefaut: 30,
@@ -78,26 +78,26 @@ export default function App() {
       { id: 'c4', nom: 'Leroy', prenom: 'Sophie', telephone: '06 77 88 99 00', email: 'sophie.leroy@gmail.com', adresse: '23 boulevard Pasteur, 33000 Bordeaux' },
     ]);
     setCatalogue([
-      { id: 'cat1', nom: 'Pose carrelage sol', prix: 45, prixAchat: 12, unite: 'm²', categorie: 'Carrelage', favori: true, stock_actuel: 50, stock_seuil_alerte: 20 },
-      { id: 'cat2', nom: 'Pose carrelage mural', prix: 55, prixAchat: 15, unite: 'm²', categorie: 'Carrelage', favori: true, stock_actuel: 30, stock_seuil_alerte: 10 },
-      { id: 'cat3', nom: 'Peinture murs', prix: 25, prixAchat: 8, unite: 'm²', categorie: 'Peinture', favori: true, stock_actuel: 8, stock_seuil_alerte: 15 },
+      { id: 'cat1', nom: 'Pose carrelage sol', prix: 45, prixAchat: 12, unite: 'mÂ²', categorie: 'Carrelage', favori: true, stock_actuel: 50, stock_seuil_alerte: 20 },
+      { id: 'cat2', nom: 'Pose carrelage mural', prix: 55, prixAchat: 15, unite: 'mÂ²', categorie: 'Carrelage', favori: true, stock_actuel: 30, stock_seuil_alerte: 10 },
+      { id: 'cat3', nom: 'Peinture murs', prix: 25, prixAchat: 8, unite: 'mÂ²', categorie: 'Peinture', favori: true, stock_actuel: 8, stock_seuil_alerte: 15 },
       { id: 'cat4', nom: 'Plomberie MO', prix: 55, prixAchat: 0, unite: 'h', categorie: 'Plomberie', favori: true },
       { id: 'cat5', nom: 'Remplacement WC', prix: 450, prixAchat: 180, unite: 'forfait', categorie: 'Plomberie', favori: true, stock_actuel: 3, stock_seuil_alerte: 2 },
-      { id: 'cat6', nom: 'Électricité point', prix: 85, prixAchat: 25, unite: 'unité', categorie: 'Électricité', favori: false, stock_actuel: 25, stock_seuil_alerte: 10 },
-      { id: 'cat7', nom: 'Déplacement', prix: 50, prixAchat: 15, unite: 'forfait', categorie: 'Autre', favori: true },
-      { id: 'cat8', nom: 'Sac ciment 35kg', prix: 8.50, prixAchat: 5.20, unite: 'unité', categorie: 'Matériaux', favori: false, stock_actuel: 15, stock_seuil_alerte: 5 },
+      { id: 'cat6', nom: 'Ã‰lectricitÃ© point', prix: 85, prixAchat: 25, unite: 'unitÃ©', categorie: 'Ã‰lectricitÃ©', favori: false, stock_actuel: 25, stock_seuil_alerte: 10 },
+      { id: 'cat7', nom: 'DÃ©placement', prix: 50, prixAchat: 15, unite: 'forfait', categorie: 'Autre', favori: true },
+      { id: 'cat8', nom: 'Sac ciment 35kg', prix: 8.50, prixAchat: 5.20, unite: 'unitÃ©', categorie: 'MatÃ©riaux', favori: false, stock_actuel: 15, stock_seuil_alerte: 5 },
     ]);
     setChantiers([
-      { id: 'ch1', nom: 'Rénovation SDB Dupont', client_id: 'c1', adresse: '12 rue des Lilas, Paris', statut: 'en_cours', date_debut: formatDate(addDays(today, -10)), date_fin: formatDate(addDays(today, 10)), fraisFixes: 10, avancement: 65, photos: [], taches: [{ id: 't1', text: 'Démolition', done: true }, { id: 't2', text: 'Pose carrelage sol', done: true }, { id: 't3', text: 'Pose carrelage mur', done: false }, { id: 't4', text: 'Plomberie', done: false }], notes: 'Client très sympa, prévoir café' },
+      { id: 'ch1', nom: 'RÃ©novation SDB Dupont', client_id: 'c1', adresse: '12 rue des Lilas, Paris', statut: 'en_cours', date_debut: formatDate(addDays(today, -10)), date_fin: formatDate(addDays(today, 10)), fraisFixes: 10, avancement: 65, photos: [], taches: [{ id: 't1', text: 'DÃ©molition', done: true }, { id: 't2', text: 'Pose carrelage sol', done: true }, { id: 't3', text: 'Pose carrelage mur', done: false }, { id: 't4', text: 'Plomberie', done: false }], notes: 'Client trÃ¨s sympa, prÃ©voir cafÃ©' },
       { id: 'ch2', nom: 'Peinture T3 Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, Lyon', statut: 'en_cours', date_debut: formatDate(addDays(today, -3)), date_fin: formatDate(addDays(today, 4)), fraisFixes: 8, avancement: 40, photos: [], taches: [{ id: 't5', text: 'Lessivage murs', done: true }, { id: 't6', text: 'Sous-couche', done: false }, { id: 't7', text: 'Peinture finition', done: false }], notes: '' },
       { id: 'ch3', nom: 'Cuisine moderne Bernard', client_id: 'c3', adresse: '8 place de la Mairie, Marseille', statut: 'prospect', date_debut: formatDate(addDays(today, 15)), date_fin: formatDate(addDays(today, 45)), fraisFixes: 12, avancement: 0, photos: [], taches: [], notes: 'Attente validation devis' },
     ]);
     setDevis([
-      { id: 'dv1', numero: 'DEV-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', date: formatDate(addDays(today, -15)), type: 'devis', statut: 'accepte', tvaRate: 10, total_ht: 2850, tva: 285, total_ttc: 3135, lignes: [{ id: 'l1', description: 'Démolition SDB', quantite: 8, unite: 'm²', prixUnitaire: 35, montant: 280, tva: 10 }, { id: 'l2', description: 'Pose carrelage sol + mur', quantite: 33, unite: 'm²', prixUnitaire: 50, montant: 1650, tva: 10 }, { id: 'l3', description: 'Plomberie complète', quantite: 15, unite: 'h', prixUnitaire: 55, montant: 825, tva: 10 }, { id: 'l4', description: 'Fournitures sanitaires', quantite: 1, unite: 'lot', prixUnitaire: 95, montant: 95, tva: 20 }], signature: 'signed', signatureDate: formatDate(addDays(today, -12)) },
-      { id: 'dv2', numero: 'DEV-2024-002', client_id: 'c2', client_nom: 'Marie Martin', chantier_id: 'ch2', date: formatDate(addDays(today, -5)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 1500, tva: 150, total_ttc: 1650, lignes: [{ id: 'l5', description: 'Peinture murs 3 pièces', quantite: 60, unite: 'm²', prixUnitaire: 25, montant: 1500, tva: 10 }]},
-      { id: 'dv3', numero: 'DEV-2024-003', client_id: 'c3', client_nom: 'Pierre Bernard', chantier_id: 'ch3', date: formatDate(addDays(today, -2)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 8500, tva: 850, total_ttc: 9350, lignes: [{ id: 'l6', description: 'Cuisine complète pose + fournitures', quantite: 1, unite: 'forfait', prixUnitaire: 8500, montant: 8500, tva: 10 }]},
-      { id: 'dv4', numero: 'FACT-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', devis_source: 'dv1', date: formatDate(addDays(today, -8)), type: 'facture', statut: 'payee', tvaRate: 10, total_ht: 1035, tva: 103.5, total_ttc: 1138.5, acompte_pct: 33, lignes: [{ id: 'l7', description: 'Acompte 33% - Rénovation SDB', quantite: 1, unite: 'forfait', prixUnitaire: 1035, montant: 1035, tva: 10 }]},
-      { id: 'dv5', numero: 'FACT-2024-002', client_id: 'c4', client_nom: 'Sophie Leroy', date: formatDate(addDays(today, -20)), type: 'facture', statut: 'envoye', tvaRate: 10, total_ht: 850, tva: 85, total_ttc: 935, lignes: [{ id: 'l8', description: 'Dépannage plomberie', quantite: 1, unite: 'forfait', prixUnitaire: 850, montant: 850, tva: 10 }]},
+      { id: 'dv1', numero: 'DEV-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', date: formatDate(addDays(today, -15)), type: 'devis', statut: 'accepte', tvaRate: 10, total_ht: 2850, tva: 285, total_ttc: 3135, lignes: [{ id: 'l1', description: 'DÃ©molition SDB', quantite: 8, unite: 'mÂ²', prixUnitaire: 35, montant: 280, tva: 10 }, { id: 'l2', description: 'Pose carrelage sol + mur', quantite: 33, unite: 'mÂ²', prixUnitaire: 50, montant: 1650, tva: 10 }, { id: 'l3', description: 'Plomberie complÃ¨te', quantite: 15, unite: 'h', prixUnitaire: 55, montant: 825, tva: 10 }, { id: 'l4', description: 'Fournitures sanitaires', quantite: 1, unite: 'lot', prixUnitaire: 95, montant: 95, tva: 20 }], signature: 'signed', signatureDate: formatDate(addDays(today, -12)) },
+      { id: 'dv2', numero: 'DEV-2024-002', client_id: 'c2', client_nom: 'Marie Martin', chantier_id: 'ch2', date: formatDate(addDays(today, -5)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 1500, tva: 150, total_ttc: 1650, lignes: [{ id: 'l5', description: 'Peinture murs 3 piÃ¨ces', quantite: 60, unite: 'mÂ²', prixUnitaire: 25, montant: 1500, tva: 10 }]},
+      { id: 'dv3', numero: 'DEV-2024-003', client_id: 'c3', client_nom: 'Pierre Bernard', chantier_id: 'ch3', date: formatDate(addDays(today, -2)), type: 'devis', statut: 'envoye', tvaRate: 10, total_ht: 8500, tva: 850, total_ttc: 9350, lignes: [{ id: 'l6', description: 'Cuisine complÃ¨te pose + fournitures', quantite: 1, unite: 'forfait', prixUnitaire: 8500, montant: 8500, tva: 10 }]},
+      { id: 'dv4', numero: 'FACT-2024-001', client_id: 'c1', client_nom: 'Jean Dupont', chantier_id: 'ch1', devis_source: 'dv1', date: formatDate(addDays(today, -8)), type: 'facture', statut: 'payee', tvaRate: 10, total_ht: 1035, tva: 103.5, total_ttc: 1138.5, acompte_pct: 33, lignes: [{ id: 'l7', description: 'Acompte 33% - RÃ©novation SDB', quantite: 1, unite: 'forfait', prixUnitaire: 1035, montant: 1035, tva: 10 }]},
+      { id: 'dv5', numero: 'FACT-2024-002', client_id: 'c4', client_nom: 'Sophie Leroy', date: formatDate(addDays(today, -20)), type: 'facture', statut: 'envoye', tvaRate: 10, total_ht: 850, tva: 85, total_ttc: 935, lignes: [{ id: 'l8', description: 'DÃ©pannage plomberie', quantite: 1, unite: 'forfait', prixUnitaire: 850, montant: 850, tva: 10 }]},
     ]);
     setEquipe([
       { id: 'e1', nom: 'Durand', prenom: 'Luc', telephone: '06 55 44 33 22', email: 'luc.durand@email.fr', tauxHoraire: 45, coutHoraireCharge: 28, couleur: '#3b82f6' },
@@ -112,28 +112,28 @@ export default function App() {
       { id: 'p6', employeId: 'e2', chantierId: 'ch2', date: formatDate(addDays(today, -2)), heures: 7, approuve: false, verrouille: false }
     ]);
     setDepenses([
-      { id: 'dep1', chantierId: 'ch1', description: 'Carrelage Leroy Merlin', montant: 450, date: formatDate(addDays(today, -12)), categorie: 'Matériaux' },
-      { id: 'dep2', chantierId: 'ch1', description: 'Colle + joints', montant: 85, date: formatDate(addDays(today, -12)), categorie: 'Matériaux' },
-      { id: 'dep3', chantierId: 'ch1', description: 'Robinetterie Grohe', montant: 280, date: formatDate(addDays(today, -7)), categorie: 'Matériaux' },
-      { id: 'dep4', chantierId: 'ch2', description: 'Peinture Tollens 20L', montant: 320, date: formatDate(addDays(today, -4)), categorie: 'Matériaux' },
-      { id: 'dep5', chantierId: 'ch2', description: 'Bâches + scotch', montant: 45, date: formatDate(addDays(today, -4)), categorie: 'Matériaux' }
+      { id: 'dep1', chantierId: 'ch1', description: 'Carrelage Leroy Merlin', montant: 450, date: formatDate(addDays(today, -12)), categorie: 'MatÃ©riaux' },
+      { id: 'dep2', chantierId: 'ch1', description: 'Colle + joints', montant: 85, date: formatDate(addDays(today, -12)), categorie: 'MatÃ©riaux' },
+      { id: 'dep3', chantierId: 'ch1', description: 'Robinetterie Grohe', montant: 280, date: formatDate(addDays(today, -7)), categorie: 'MatÃ©riaux' },
+      { id: 'dep4', chantierId: 'ch2', description: 'Peinture Tollens 20L', montant: 320, date: formatDate(addDays(today, -4)), categorie: 'MatÃ©riaux' },
+      { id: 'dep5', chantierId: 'ch2', description: 'BÃ¢ches + scotch', montant: 45, date: formatDate(addDays(today, -4)), categorie: 'MatÃ©riaux' }
     ]);
     setAjustements([
-      { id: 'adj1', chantierId: 'ch1', type: 'REVENU', libelle: 'Supplément faïence plafond', montant_ht: 350 },
+      { id: 'adj1', chantierId: 'ch1', type: 'REVENU', libelle: 'SupplÃ©ment faÃ¯ence plafond', montant_ht: 350 },
       { id: 'adj2', chantierId: 'ch1', type: 'DEPENSE', libelle: 'Location perforateur', montant_ht: 45 }
     ]);
-    // ÉVÉNEMENTS PLANNING - Données démo complètes
+    // Ã‰VÃ‰NEMENTS PLANNING - DonnÃ©es dÃ©mo complÃ¨tes
     setEvents([
       { id: 'ev1', title: 'RDV Devis Bernard', date: formatDate(addDays(today, 1)), type: 'rdv', time: '10:00', description: 'Visite appartement pour devis cuisine. Apporter catalogue.' },
       { id: 'ev2', title: 'Relance devis Martin', date: formatDate(addDays(today, 2)), type: 'relance', time: '14:00', description: 'Appeler Mme Martin pour relancer le devis peinture T3' },
       { id: 'ev3', title: 'Livraison carrelage', date: formatDate(addDays(today, 3)), type: 'autre', time: '08:00', description: 'Livraison Leroy Merlin - Carrelage SDB Dupont', employeId: 'e1' },
-      { id: 'ev4', title: 'RDV Nouveau prospect', date: formatDate(addDays(today, 5)), type: 'rdv', time: '11:00', description: 'M. Durand - Rénovation complète maison 120m²' },
-      { id: 'ev5', title: 'Urgence fuite Leroy', date: formatDate(today), type: 'urgence', time: '09:00', description: 'Fuite sous évier cuisine - intervention urgente', employeId: 'e2' },
-      { id: 'ev6', title: 'Formation sécurité', date: formatDate(addDays(today, 7)), type: 'autre', time: '09:00', description: 'Formation annuelle sécurité chantier - équipe complète' },
-      { id: 'ev7', title: 'Réception chantier Dupont', date: formatDate(addDays(today, 12)), type: 'rdv', time: '16:00', description: 'Visite finale avec le client pour réception travaux' },
+      { id: 'ev4', title: 'RDV Nouveau prospect', date: formatDate(addDays(today, 5)), type: 'rdv', time: '11:00', description: 'M. Durand - RÃ©novation complÃ¨te maison 120mÂ²' },
+      { id: 'ev5', title: 'Urgence fuite Leroy', date: formatDate(today), type: 'urgence', time: '09:00', description: 'Fuite sous Ã©vier cuisine - intervention urgente', employeId: 'e2' },
+      { id: 'ev6', title: 'Formation sÃ©curitÃ©', date: formatDate(addDays(today, 7)), type: 'autre', time: '09:00', description: 'Formation annuelle sÃ©curitÃ© chantier - Ã©quipe complÃ¨te' },
+      { id: 'ev7', title: 'RÃ©ception chantier Dupont', date: formatDate(addDays(today, 12)), type: 'rdv', time: '16:00', description: 'Visite finale avec le client pour rÃ©ception travaux' },
     ]);
     setEntreprise({ 
-      nom: 'Martin Rénovation', 
+      nom: 'Martin RÃ©novation', 
       couleur: '#f97316', 
       formeJuridique: 'SARL',
       capital: '10000',
@@ -187,9 +187,9 @@ export default function App() {
 
   useEffect(() => {
     const notifs = [];
-    devis.filter(d => d.type === 'facture' && ['envoyee', 'envoye'].includes(d.statut)).forEach(d => { const days = Math.floor((Date.now() - new Date(d.date)) / 86400000); if (days > 30) notifs.push({ id: 'r'+d.id, icon: '🔴', msg: `Retard: ${d.numero}`, action: () => setPage('devis') }); else if (days > 15) notifs.push({ id: 'a'+d.id, icon: '🟡', msg: `Relance: ${d.numero}`, action: () => setPage('devis') }); });
-    chantiers.filter(c => c.statut === 'en_cours').forEach(ch => { const bilan = getChantierBilan(ch.id); if (bilan.marge < 0) notifs.push({ id: 'marge'+ch.id, icon: '🔴', msg: `Marge: ${ch.nom} (${bilan.tauxMarge.toFixed(1)}%)`, action: () => { setSelectedChantier(ch.id); setPage('chantiers'); } }); else if (bilan.tauxMarge < 15 && bilan.tauxMarge > 0) notifs.push({ id: 'margelow'+ch.id, icon: '🟠', msg: `Marge faible: ${ch.nom} (${bilan.tauxMarge.toFixed(1)}%)`, action: () => { setSelectedChantier(ch.id); setPage('chantiers'); } }); });
-    catalogue.filter(c => c.stock_actuel !== undefined && c.stock_seuil_alerte !== undefined && c.stock_actuel < c.stock_seuil_alerte).forEach(c => notifs.push({ id: 'stock'+c.id, icon: '📦', msg: `Stock: ${c.nom} (${c.stock_actuel}/${c.stock_seuil_alerte})`, action: () => setPage('catalogue') }));
+    devis.filter(d => d.type === 'facture' && ['envoyee', 'envoye'].includes(d.statut)).forEach(d => { const days = Math.floor((Date.now() - new Date(d.date)) / 86400000); if (days > 30) notifs.push({ id: 'r'+d.id, icon: 'ðŸ”´', msg: `Retard: ${d.numero}`, action: () => setPage('devis') }); else if (days > 15) notifs.push({ id: 'a'+d.id, icon: 'ðŸŸ¡', msg: `Relance: ${d.numero}`, action: () => setPage('devis') }); });
+    chantiers.filter(c => c.statut === 'en_cours').forEach(ch => { const bilan = getChantierBilan(ch.id); if (bilan.marge < 0) notifs.push({ id: 'marge'+ch.id, icon: 'ðŸ”´', msg: `Marge: ${ch.nom} (${bilan.tauxMarge.toFixed(1)}%)`, action: () => { setSelectedChantier(ch.id); setPage('chantiers'); } }); else if (bilan.tauxMarge < 15 && bilan.tauxMarge > 0) notifs.push({ id: 'margelow'+ch.id, icon: 'ðŸŸ ', msg: `Marge faible: ${ch.nom} (${bilan.tauxMarge.toFixed(1)}%)`, action: () => { setSelectedChantier(ch.id); setPage('chantiers'); } }); });
+    catalogue.filter(c => c.stock_actuel !== undefined && c.stock_seuil_alerte !== undefined && c.stock_actuel < c.stock_seuil_alerte).forEach(c => notifs.push({ id: 'stock'+c.id, icon: 'ðŸ“¦', msg: `Stock: ${c.nom} (${c.stock_actuel}/${c.stock_seuil_alerte})`, action: () => setPage('catalogue') }));
     setNotifications(notifs);
   }, [devis, chantiers, pointages, depenses, catalogue, ajustements]);
 
@@ -231,14 +231,14 @@ export default function App() {
 
   const stats = getStatsGlobales();
   const handleSignIn = async (e) => { e.preventDefault(); setAuthError(''); try { const { error } = await auth.signIn(authForm.email, authForm.password); if (error) setAuthError(error.message); } catch (e) { setAuthError('Erreur de connexion'); } };
-  const handleSignUp = async (e) => { e.preventDefault(); setAuthError(''); try { const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }); if (error) setAuthError(error.message); else { alert('Compte créé !'); setShowSignUp(false); } } catch (e) { setAuthError('Erreur'); } };
+  const handleSignUp = async (e) => { e.preventDefault(); setAuthError(''); try { const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }); if (error) setAuthError(error.message); else { alert('Compte crÃ©Ã© !'); setShowSignUp(false); } } catch (e) { setAuthError('Erreur'); } };
   const handleSignOut = async () => { try { await auth.signOut(); } catch (e) {} setUser(null); if (isDemo) window.location.href = window.location.pathname; };
 
-  if (loading) return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><div className="text-center"><div className="text-6xl animate-bounce mb-4">🏗️</div><p className="text-slate-500">Chargement...</p></div></div>;
+  if (loading) return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><div className="text-center"><div className="text-6xl animate-bounce mb-4">ðŸ—ï¸</div><p className="text-slate-500">Chargement...</p></div></div>;
 
   if (!user && !isDemo) return (
     <div className="min-h-screen bg-slate-900 flex">
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-orange-500 to-orange-600 p-12 items-center"><div className="max-w-md text-white"><div className="text-6xl mb-6">🏗️</div><h1 className="text-4xl font-bold mb-4">ChantierPro</h1><p className="text-xl opacity-90">Pilotez votre rentabilité.</p><ul className="mt-6 space-y-2 opacity-80"><li>✓ Marge temps réel</li><li>✓ Gestion équipe</li><li>✓ Devis & Factures</li><li>✓ Planning interactif</li></ul></div></div>
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-orange-500 to-orange-600 p-12 items-center"><div className="max-w-md text-white"><div className="text-6xl mb-6">ðŸ—ï¸</div><h1 className="text-4xl font-bold mb-4">ChantierPro</h1><p className="text-xl opacity-90">Pilotez votre rentabilitÃ©.</p><ul className="mt-6 space-y-2 opacity-80"><li>âœ“ Marge temps rÃ©el</li><li>âœ“ Gestion Ã©quipe</li><li>âœ“ Devis & Factures</li><li>âœ“ Planning interactif</li></ul></div></div>
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold text-white mb-6">{showSignUp ? 'Inscription' : 'Connexion'}</h2>
@@ -247,16 +247,16 @@ export default function App() {
             <input type="email" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="Email" value={authForm.email} onChange={e => setAuthForm(p => ({...p, email: e.target.value}))} required />
             <input type="password" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="Mot de passe" value={authForm.password} onChange={e => setAuthForm(p => ({...p, password: e.target.value}))} required />
             {authError && <p className="text-red-400 text-sm">{authError}</p>}
-            <button type="submit" className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl">{showSignUp ? 'Créer' : 'Connexion'}</button>
+            <button type="submit" className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl">{showSignUp ? 'CrÃ©er' : 'Connexion'}</button>
           </form>
-          <p className="text-center text-slate-400 mt-6">{showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}<button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 ml-2">{showSignUp ? 'Connexion' : "S'inscrire"}</button></p>
-          <div className="mt-8 pt-6 border-t border-slate-700"><a href="?demo=true" className="block w-full py-3 bg-slate-700 text-white rounded-xl text-center">🎮 Démo</a></div>
+          <p className="text-center text-slate-400 mt-6">{showSignUp ? 'DÃ©jÃ  inscrit ?' : 'Pas de compte ?'}<button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 ml-2">{showSignUp ? 'Connexion' : "S'inscrire"}</button></p>
+          <div className="mt-8 pt-6 border-t border-slate-700"><a href="?demo=true" className="block w-full py-3 bg-slate-700 text-white rounded-xl text-center">ðŸŽ® DÃ©mo</a></div>
         </div>
       </div>
     </div>
   );
 
-  const nav = [{ id: 'dashboard', icon: '📊', label: 'Accueil' }, { id: 'devis', icon: '📄', label: 'Devis & Factures', badge: stats.devisAttente }, { id: 'chantiers', icon: '🏗️', label: 'Chantiers', badge: stats.chantiersEnCours }, { id: 'planning', icon: '📅', label: 'Planning' }, { id: 'clients', icon: '👥', label: 'Clients' }, { id: 'catalogue', icon: '📦', label: 'Catalogue' }, { id: 'equipe', icon: '👷', label: 'Équipe' }, { id: 'settings', icon: '⚙️', label: 'Paramètres' }];
+  const nav = [{ id: 'dashboard', icon: 'ðŸ“Š', label: 'Accueil' }, { id: 'devis', icon: 'ðŸ“„', label: 'Devis & Factures', badge: stats.devisAttente }, { id: 'chantiers', icon: 'ðŸ—ï¸', label: 'Chantiers', badge: stats.chantiersEnCours }, { id: 'planning', icon: 'ðŸ“…', label: 'Planning' }, { id: 'clients', icon: 'ðŸ‘¥', label: 'Clients' }, { id: 'catalogue', icon: 'ðŸ“¦', label: 'Catalogue' }, { id: 'equipe', icon: 'ðŸ‘·', label: 'Ã‰quipe' }, { id: 'settings', icon: 'âš™ï¸', label: 'ParamÃ¨tres' }];
   const couleur = entreprise.couleur || '#f97316';
   const isDark = theme === 'dark';
 
@@ -264,26 +264,26 @@ export default function App() {
     <div className={`min-h-screen ${isDark ? 'dark bg-slate-900' : 'bg-slate-100'}`}>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background: couleur}}>🏗️</div><div className="flex-1 min-w-0"><h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1><p className="text-slate-500 text-xs">{isDemo ? '🎮 Démo' : user?.email}</p></div></div>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{background: couleur}}>ðŸ—ï¸</div><div className="flex-1 min-w-0"><h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1><p className="text-slate-500 text-xs">{isDemo ? 'ðŸŽ® DÃ©mo' : user?.email}</p></div></div>
         <nav className="p-3 space-y-1">{nav.map(n => <button key={n.id} onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800'}`} style={page === n.id ? {background: couleur} : {}}><span className="text-lg">{n.icon}</span><span className="flex-1 text-left">{n.label}</span>{n.badge > 0 && <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{n.badge}</span>}</button>)}</nav>
-        <div className="absolute bottom-28 left-0 right-0 px-3"><button onClick={() => setModeDiscret(!modeDiscret)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>{modeDiscret ? '👁️‍🗨️ Discret ON' : '👁️ Mode discret'}</button></div>
-        <div className="absolute bottom-16 left-0 right-0 px-3"><button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">{isDark ? '☀️ Clair' : '🌙 Sombre'}</button></div>
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800"><button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">🚪 {isDemo ? 'Quitter' : 'Déconnexion'}</button></div>
+        <div className="absolute bottom-28 left-0 right-0 px-3"><button onClick={() => setModeDiscret(!modeDiscret)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>{modeDiscret ? 'ðŸ‘ï¸â€ðŸ—¨ï¸ Discret ON' : 'ðŸ‘ï¸ Mode discret'}</button></div>
+        <div className="absolute bottom-16 left-0 right-0 px-3"><button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">{isDark ? 'â˜€ï¸ Clair' : 'ðŸŒ™ Sombre'}</button></div>
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800"><button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">ðŸšª {isDemo ? 'Quitter' : 'DÃ©connexion'}</button></div>
       </aside>
 
       <div className="lg:pl-64">
         <header className={`sticky top-0 z-30 ${isDark ? 'bg-slate-800/95' : 'bg-white/95'} backdrop-blur border-b px-4 py-3 flex items-center gap-4`}>
-          <button onClick={() => setSidebarOpen(true)} className={`lg:hidden p-2 text-xl ${isDark ? 'text-white' : ''}`}>☰</button>
-          {isDemo && <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">🎮 Démo</span>}
-          {modeDiscret && <span className="px-3 py-1 bg-slate-700 text-white rounded-full text-xs font-medium">👁️‍🗨️</span>}
+          <button onClick={() => setSidebarOpen(true)} className={`lg:hidden p-2 text-xl ${isDark ? 'text-white' : ''}`}>â˜°</button>
+          {isDemo && <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">ðŸŽ® DÃ©mo</span>}
+          {modeDiscret && <span className="px-3 py-1 bg-slate-700 text-white rounded-full text-xs font-medium">ðŸ‘ï¸â€ðŸ—¨ï¸</span>}
           <div className="flex-1" />
           <div className="relative">
-            <button onClick={() => setShowNotifs(!showNotifs)} className={`relative p-2.5 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><span className="text-xl">🔔</span>{notifications.length > 0 && <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{notifications.length}</span>}</button>
-            {showNotifs && <div className={`absolute top-full right-0 mt-2 w-80 ${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-xl border z-50 max-h-80 overflow-y-auto`}><div className={`px-4 py-3 border-b font-semibold ${isDark ? 'text-white' : ''}`}>Alertes ({notifications.length})</div>{notifications.length === 0 ? <p className="p-4 text-center text-slate-500">✅ RAS</p> : notifications.map(n => <div key={n.id} onClick={() => { n.action?.(); setShowNotifs(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm border-b last:border-0 cursor-pointer ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'hover:bg-slate-50'}`}><span>{n.icon}</span><span className="flex-1">{n.msg}</span><span className="text-slate-400">→</span></div>)}</div>}
+            <button onClick={() => setShowNotifs(!showNotifs)} className={`relative p-2.5 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><span className="text-xl">ðŸ””</span>{notifications.length > 0 && <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{notifications.length}</span>}</button>
+            {showNotifs && <div className={`absolute top-full right-0 mt-2 w-80 ${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-xl border z-50 max-h-80 overflow-y-auto`}><div className={`px-4 py-3 border-b font-semibold ${isDark ? 'text-white' : ''}`}>Alertes ({notifications.length})</div>{notifications.length === 0 ? <p className="p-4 text-center text-slate-500">âœ… RAS</p> : notifications.map(n => <div key={n.id} onClick={() => { n.action?.(); setShowNotifs(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm border-b last:border-0 cursor-pointer ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'hover:bg-slate-50'}`}><span>{n.icon}</span><span className="flex-1">{n.msg}</span><span className="text-slate-400">â†’</span></div>)}</div>}
           </div>
           <div className="relative">
             <button onClick={() => setShowQuickAdd(!showQuickAdd)} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium" style={{background: couleur}}>+ Nouveau</button>
-            {showQuickAdd && <div className={`absolute top-full right-0 mt-2 w-48 ${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-xl border z-50`}>{[{icon:'📄',label:'Devis',p:'devis'},{icon:'🏗️',label:'Chantier',p:'chantiers'},{icon:'👤',label:'Client',p:'clients'},{icon:'📅',label:'Événement',p:'planning'}].map((item, i) => <button key={i} onClick={() => { setPage(item.p); setShowQuickAdd(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b last:border-0 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50'}`}><span>{item.icon}</span>{item.label}</button>)}</div>}
+            {showQuickAdd && <div className={`absolute top-full right-0 mt-2 w-48 ${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl shadow-xl border z-50`}>{[{icon:'ðŸ“„',label:'Devis',p:'devis'},{icon:'ðŸ—ï¸',label:'Chantier',p:'chantiers'},{icon:'ðŸ‘¤',label:'Client',p:'clients'},{icon:'ðŸ“…',label:'Ã‰vÃ©nement',p:'planning'}].map((item, i) => <button key={i} onClick={() => { setPage(item.p); setShowQuickAdd(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b last:border-0 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50'}`}><span>{item.icon}</span>{item.label}</button>)}</div>}
           </div>
           {showQuickAdd && <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />}
           {showNotifs && <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />}
@@ -292,13 +292,13 @@ export default function App() {
         <main className={`p-4 lg:p-6 ${isDark ? 'text-white' : ''}`}>
           {dataLoading ? <PageSkeleton /> : <>
             {page === 'dashboard' && <Dashboard chantiers={chantiers} clients={clients} devis={devis} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} setActiveModule={setPage} setSelectedChantier={setSelectedChantier} setPage={setPage} isDark={isDark} />}
-            {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={handleDevisSubmit} onUpdate={handleDevisUpdate} onDelete={handleDevisDelete} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} />}
-            {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={d => { setDepenses(d); save('depenses', d); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} />}
-            {page === 'planning' && <Planning events={events} setEvents={e => { setEvents(e); save('events', e); }} addEvent={addEvent} chantiers={chantiers} equipe={equipe} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} />}
-            {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={handleClientSubmit} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} />}
-            {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={c => { setCatalogue(c); save('catalogue', c); }} couleur={couleur} />}
-            {page === 'equipe' && <Equipe equipe={equipe} setEquipe={e => { setEquipe(e); save('equipe', e); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} chantiers={chantiers} couleur={couleur} />}
-            {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} />}
+            {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={handleDevisSubmit} onUpdate={handleDevisUpdate} onDelete={handleDevisDelete} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} />}
+            {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={d => { setDepenses(d); save('depenses', d); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} />}
+            {page === 'planning' && <Planning events={events} setEvents={e => { setEvents(e); save('events', e); }} addEvent={addEvent} chantiers={chantiers} equipe={equipe} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} isDark={isDark} />}
+            {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={handleClientSubmit} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} />}
+            {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={c => { setCatalogue(c); save('catalogue', c); }} couleur={couleur} isDark={isDark} />}
+            {page === 'equipe' && <Equipe equipe={equipe} setEquipe={e => { setEquipe(e); save('equipe', e); }} pointages={pointages} setPointages={p => { setPointages(p); save('pointages', p); }} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
+            {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} />}
           </>}
         </main>
       </div>

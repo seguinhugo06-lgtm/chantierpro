@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis }) {
+export default function DevisPage({ clients, isDark, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis }) {
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
@@ -15,12 +15,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   
-  // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
+  // Si selectedDevis change depuis l'extÃ©rieur (ex: depuis Clients), mettre Ã  jour
   useEffect(() => {
     if (selectedDevis) {
       setSelected(selectedDevis);
       setMode('preview');
-      // Nettoyer après utilisation
+      // Nettoyer aprÃ¨s utilisation
       if (setSelectedDevis) setSelectedDevis(null);
     }
   }, [selectedDevis, setSelectedDevis]);
@@ -38,6 +38,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   });
 
   const couleur = entreprise?.couleur || '#f97316';
+
+  // Variables thème
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
@@ -69,7 +76,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const remiseAmount = totalHT * (form.remise / 100);
     const htApresRemise = totalHT - remiseAmount;
     
-    // Recalculer TVA après remise (proportionnel)
+    // Recalculer TVA aprÃ¨s remise (proportionnel)
     const ratioRemise = totalHT > 0 ? htApresRemise / totalHT : 1;
     Object.keys(tvaParTaux).forEach(taux => {
       tvaParTaux[taux].base *= ratioRemise;
@@ -89,13 +96,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   };
   const totals = calculateTotals();
 
-  // Ajouter ligne avec TVA par défaut
+  // Ajouter ligne avec TVA par dÃ©faut
   const addLigne = (item, sectionId) => {
     const ligne = { 
       id: Date.now().toString(), 
       description: item.nom || '', 
       quantite: 1, 
-      unite: item.unite || 'unité', 
+      unite: item.unite || 'unitÃ©', 
       prixUnitaire: item.prix || 0, 
       prixAchat: item.prixAchat || 0, 
       montant: item.prix || 0,
@@ -118,11 +125,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
   const removeLigne = (sectionId, ligneId) => setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s) }));
 
-  // Génération numéro unique garanti
+  // GÃ©nÃ©ration numÃ©ro unique garanti
   const generateNumero = (type) => {
     const prefix = type === 'facture' ? 'FAC' : 'DEV';
     const year = new Date().getFullYear();
-    // Trouver le dernier numéro pour ce type et cette année
+    // Trouver le dernier numÃ©ro pour ce type et cette annÃ©e
     const existingNumbers = devis
       .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
       .map(d => parseInt(d.numero.split('-')[2]) || 0);
@@ -131,7 +138,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   };
 
   const handleCreate = () => {
-    if (!form.clientId) return alert('Sélectionnez un client');
+    if (!form.clientId) return alert('SÃ©lectionnez un client');
     if (form.sections.every(s => s.lignes.length === 0)) return alert('Ajoutez des lignes');
     
     const client = clients.find(c => c.id === form.clientId);
@@ -176,7 +183,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const draw = (e) => { if (!isDrawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); ctx.stroke(); };
   const endDraw = () => setIsDrawing(false);
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
-  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSnackbar({ type: 'success', message: '✅ Devis signé et accepté !' }); };
+  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSnackbar({ type: 'success', message: 'âœ… Devis signÃ© et acceptÃ© !' }); };
 
   // Workflow facturation
   const getAcompteFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
@@ -184,8 +191,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
 
   const createAcompte = () => {
-    if (!selected || selected.statut !== 'accepte') return alert('Le devis doit être accepté');
-    if (getAcompteFacture(selected.id)) return alert('Un acompte existe déjà');
+    if (!selected || selected.statut !== 'accepte') return alert('Le devis doit Ãªtre acceptÃ©');
+    if (getAcompteFacture(selected.id)) return alert('Un acompte existe dÃ©jÃ ');
     const montantHT = selected.total_ht * (acomptePct / 100);
     const tva = montantHT * (selected.tvaRate / 100);
     const ttc = montantHT + tva;
@@ -194,7 +201,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
     setSelected({ ...selected, statut: 'acompte_facture', acompte_pct: acomptePct });
-    setSnackbar({ type: 'success', message: `✅ Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir la facture →', onClick: () => { setSelected(facture); setSnackbar(null); } } });
+    setSnackbar({ type: 'success', message: `âœ… Facture d'acompte ${facture.numero} crÃ©Ã©e`, action: { label: 'Voir la facture â†’', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
   const createSolde = () => {
@@ -205,15 +212,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const tva = montantSoldeHT * (selected.tvaRate / 100);
     const ttc = montantSoldeHT + tva;
     const lignes = [...(selected.lignes || [])];
-    if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
+    if (acompte) lignes.push({ id: 'acompte', description: `Acompte dÃ©jÃ  facturÃ© (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
     const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate: selected.tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
     onSubmit(facture);
     onUpdate(selected.id, { statut: 'facture' });
     setSelected({ ...selected, statut: 'facture' });
-    setSnackbar({ type: 'success', message: `✅ Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir la facture →', onClick: () => { setSelected(facture); setSnackbar(null); } } });
+    setSnackbar({ type: 'success', message: `âœ… Facture ${acompte ? 'de solde' : ''} ${facture.numero} crÃ©Ã©e`, action: { label: 'Voir la facture â†’', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
+  // PDF Generation - CONFORME LÃ‰GISLATION FRANÃ‡AISE
   const downloadPDF = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
@@ -226,7 +233,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       <tr>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unitÃ©'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (doc.tvaRate||10)+'%'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${l.montant<0?'color:#dc2626;':''}">${(l.montant||0).toFixed(2)} €</td>
@@ -287,11 +294,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       <div class="entreprise-info">
         ${entreprise?.formeJuridique ? `<strong>${entreprise.formeJuridique}</strong>${entreprise?.capital ? ` - Capital: ${entreprise.capital} €` : ''}<br>` : ''}
         ${entreprise?.adresse?.replace(/\n/g, '<br>') || ''}<br>
-        ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `• ${entreprise.email}` : ''}
+        ${entreprise?.tel ? `TÃ©l: ${entreprise.tel}` : ''} ${entreprise?.email ? `â€¢ ${entreprise.email}` : ''}
       </div>
       <div class="entreprise-legal">
         ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-        ${entreprise?.codeApe ? ` • APE: ${entreprise.codeApe}` : ''}
+        ${entreprise?.codeApe ? ` â€¢ APE: ${entreprise.codeApe}` : ''}
         ${entreprise?.rcs ? `<br>RCS: ${entreprise.rcs}` : ''}
         ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
@@ -300,7 +307,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <div class="doc-type">
       <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
-        <strong>N° ${doc.numero}</strong><br>
+        <strong>NÂ° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
@@ -315,12 +322,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       ${client?.entreprise ? `<div style="font-size:9pt;color:#64748b">${client.entreprise}</div>` : ''}
       <div style="font-size:9pt">${client?.adresse || ''}</div>
       <div style="font-size:9pt">${client?.code_postal || ''} ${client?.ville || ''}</div>
-      ${client?.telephone ? `<div style="font-size:8pt;color:#64748b;margin-top:4px">Tél: ${client.telephone}</div>` : ''}
+      ${client?.telephone ? `<div style="font-size:8pt;color:#64748b;margin-top:4px">TÃ©l: ${client.telephone}</div>` : ''}
       ${client?.email ? `<div style="font-size:8pt;color:#64748b">${client.email}</div>` : ''}
     </div>
     ${chantier ? `
     <div class="info-block">
-      <h3>Lieu d'exécution</h3>
+      <h3>Lieu d'exÃ©cution</h3>
       <div class="name">${chantier.nom}</div>
       <div style="font-size:9pt">${chantier.adresse || client?.adresse || ''}</div>
     </div>
@@ -332,8 +339,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <thead>
       <tr>
         <th style="width:40%">Description</th>
-        <th style="width:10%">Qté</th>
-        <th style="width:10%">Unité</th>
+        <th style="width:10%">QtÃ©</th>
+        <th style="width:10%">UnitÃ©</th>
         <th style="width:15%">PU HT</th>
         <th style="width:10%">TVA</th>
         <th style="width:15%">Total HT</th>
@@ -357,58 +364,58 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)} €</span></div>
     ${doc.acompte_pct ? `
     <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
+    <div class="row sub"><span>Solde Ã  rÃ©gler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code GÃ©nÃ©ral des ImpÃ´ts</div>' : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">
-    <h4>CONDITIONS GÉNÉRALES</h4>
+    <h4>CONDITIONS GÃ‰NÃ‰RALES</h4>
     <div class="conditions-grid">
       <div>
-        <strong>Modalités de paiement</strong><br>
-        • Virement bancaire<br>
-        • Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
-        • Espèces (max 1 000 € pour particulier)<br>
+        <strong>ModalitÃ©s de paiement</strong><br>
+        â€¢ Virement bancaire<br>
+        â€¢ ChÃ¨que Ã  l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
+        â€¢ EspÃ¨ces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
-        ${entreprise?.bic ? ` • <strong>BIC:</strong> ${entreprise.bic}` : ''}
+        ${entreprise?.bic ? ` â€¢ <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
-        <strong>Délai de paiement</strong><br>
-        ${entreprise?.delaiPaiement || 30} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
-        <strong>Pénalités de retard</strong><br>
+        <strong>DÃ©lai de paiement</strong><br>
+        ${entreprise?.delaiPaiement || 30} jours Ã  compter de la date ${isFacture ? 'de facture' : 'de rÃ©ception des travaux'}.<br><br>
+        <strong>PÃ©nalitÃ©s de retard</strong><br>
         Taux BCE + 10 points (soit ~13% annuel).<br>
-        Indemnité forfaitaire de recouvrement: 40 €
+        IndemnitÃ© forfaitaire de recouvrement: 40 €
       </div>
     </div>
   </div>
 
   ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
-  <!-- GARANTIES LÉGALES -->
+  <!-- GARANTIES LÃ‰GALES -->
   <div class="garanties">
-    <h4>🛡️ GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
-    <strong>1. Garantie de parfait achèvement</strong> - 1 an à compter de la réception des travaux<br>
-    <strong>2. Garantie de bon fonctionnement</strong> - 2 ans (équipements dissociables)<br>
-    <strong>3. Garantie décennale</strong> - 10 ans (solidité de l'ouvrage)
+    <h4>ðŸ›¡ï¸ GARANTIES LÃ‰GALES (Code civil & Code de la construction)</h4>
+    <strong>1. Garantie de parfait achÃ¨vement</strong> - 1 an Ã  compter de la rÃ©ception des travaux<br>
+    <strong>2. Garantie de bon fonctionnement</strong> - 2 ans (Ã©quipements dissociables)<br>
+    <strong>3. Garantie dÃ©cennale</strong> - 10 ans (soliditÃ© de l'ouvrage)
   </div>
   ` : ''}
 
   ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
-  <!-- DROIT DE RÉTRACTATION -->
+  <!-- DROIT DE RÃ‰TRACTATION -->
   <div class="retractation">
-    <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
-    Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
-    Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
+    <strong>âš ï¸ DROIT DE RÃ‰TRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
+    Vous disposez d'un dÃ©lai de <strong>14 jours</strong> pour exercer votre droit de rÃ©tractation sans justification ni pÃ©nalitÃ©.
+    Le dÃ©lai court Ã  compter de la signature du prÃ©sent devis.
+    Pour l'exercer, envoyez une lettre recommandÃ©e AR Ã : ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
   </div>
   ` : ''}
 
   ${entreprise?.cgv ? `
-  <!-- CGV PERSONNALISÉES -->
+  <!-- CGV PERSONNALISÃ‰ES -->
   <div class="conditions" style="margin-top:10px">
-    <h4>CONDITIONS PARTICULIÈRES</h4>
+    <h4>CONDITIONS PARTICULIÃˆRES</h4>
     ${entreprise.cgv}
   </div>
   ` : ''}
@@ -422,8 +429,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     </div>
     <div class="signature-box">
       <h4>Le Client</h4>
-      <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✅ Signé électroniquement le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      <p>Signature prÃ©cÃ©dÃ©e de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">âœ… SignÃ© Ã©lectroniquement le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
   ` : ''}
@@ -431,16 +438,16 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   <!-- FOOTER -->
   <div class="footer">
     <strong>${entreprise?.nom || ''}</strong>
-    ${entreprise?.formeJuridique ? ` • ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` • Capital: ${entreprise.capital} €` : ''}<br>
+    ${entreprise?.formeJuridique ? ` â€¢ ${entreprise.formeJuridique}` : ''}
+    ${entreprise?.capital ? ` â€¢ Capital: ${entreprise.capital} €` : ''}<br>
     ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.codeApe ? ` • APE: ${entreprise.codeApe}` : ''}
-    ${getRCSComplet() ? ` • ${getRCSComplet()}` : ''}<br>
+    ${entreprise?.codeApe ? ` â€¢ APE: ${entreprise.codeApe}` : ''}
+    ${getRCSComplet() ? ` â€¢ ${getRCSComplet()}` : ''}<br>
     ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
     <div class="assurances">
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} NÂ°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
-      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `DÃ©cennale: ${entreprise.decennaleAssureur} NÂ°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
   </div>
 </body>
@@ -460,7 +467,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       <div className={`flex items-center gap-4 px-5 py-3 rounded-xl shadow-2xl ${snackbar.type === 'success' ? 'bg-emerald-600' : 'bg-slate-800'} text-white`}>
         <span>{snackbar.message}</span>
         {snackbar.action && <button onClick={snackbar.action.onClick} className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium">{snackbar.action.label}</button>}
-        <button onClick={() => setSnackbar(null)} className="hover:bg-white/20 rounded-full p-1">✕</button>
+        <button onClick={() => setSnackbar(null)} className="hover:bg-white/20 rounded-full p-1">âœ•</button>
       </div>
     </div>
   );
@@ -468,15 +475,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
-      <div className="bg-white rounded-2xl border p-6 text-center">
+      <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className="p-2 ${hoverBg} rounded-xl">â†</button><h1 className={`text-2xl font-bold ${textPrimary}`}>Signature Client</h1></div>
+      <div className={`rounded-2xl border ${cardBg} p-6 text-center`}>
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
         <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
           <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button>
-          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>✅ Valider</button>
+          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>âœ… Valider</button>
         </div>
       </div>
       <Snackbar />
@@ -497,43 +504,43 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">←</button>
-          <h1 className="text-xl font-bold">{selected.numero}</h1>
+          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 ${hoverBg} dark:hover:bg-slate-700 rounded-xl">â†</button>
+          <h1 className={`text-xl font-bold ${textPrimary}`}>{selected.numero}</h1>
           <span className={`px-3 py-1 rounded-full text-sm ${selected.statut === 'accepte' ? 'bg-emerald-100 text-emerald-700' : selected.statut === 'payee' ? 'bg-purple-100 text-purple-700' : selected.statut === 'acompte_facture' ? 'bg-blue-100 text-blue-700' : selected.statut === 'facture' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-            {{ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', acompte_facture: 'Acompte facturé', facture: 'Facturé', payee: 'Payée', refuse: 'Refusé' }[selected.statut] || selected.statut}
+            {{ brouillon: 'Brouillon', envoye: 'EnvoyÃ©', accepte: 'AcceptÃ©', acompte_facture: 'Acompte facturÃ©', facture: 'FacturÃ©', payee: 'PayÃ©e', refuse: 'RefusÃ©' }[selected.statut] || selected.statut}
           </span>
           <div className="flex-1" />
-          <button onClick={() => { downloadPDF(selected); }} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2">📥 <span className="hidden sm:inline">PDF</span></button>
-          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="p-2 hover:bg-red-100 text-red-500 rounded-xl">🗑️</button>
+          <button onClick={() => { downloadPDF(selected); }} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2">ðŸ“¥ <span className="hidden sm:inline">PDF</span></button>
+          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="p-2 hover:bg-red-100 text-red-500 rounded-xl">ðŸ—‘ï¸</button>
         </div>
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap">
-          {isDevis && selected.statut === 'envoye' && <button onClick={() => setMode('sign')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>✍️ Faire signer</button>}
-          {canAcompte && <button onClick={() => setShowAcompteModal(true)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl">💰 Demander un acompte</button>}
+          {isDevis && selected.statut === 'envoye' && <button onClick={() => setMode('sign')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>âœï¸ Faire signer</button>}
+          {canAcompte && <button onClick={() => setShowAcompteModal(true)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl">ðŸ’° Demander un acompte</button>}
           {canFacturer && (
             <div className="relative group">
               <button onClick={createSolde} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">
-                🧾 {acompteFacture ? `Facturer le solde (${formatMoney(resteAFacturer)})` : 'Facturer intégralement'}
+                ðŸ§¾ {acompteFacture ? `Facturer le solde (${formatMoney(resteAFacturer)})` : 'Facturer intÃ©gralement'}
               </button>
               <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10">
                 <div className="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg max-w-xs">
-                  {acompteFacture ? 'Créer la facture finale avec déduction de l\'acompte' : 'Créer une facture unique pour le montant total sans acompte'}
+                  {acompteFacture ? 'CrÃ©er la facture finale avec dÃ©duction de l\'acompte' : 'CrÃ©er une facture unique pour le montant total sans acompte'}
                 </div>
               </div>
             </div>
           )}
-          {isDevis && selected.statut === 'facture' && <span className="px-4 py-2 bg-green-100 text-green-700 rounded-xl">✅ Entièrement facturé</span>}
-          <button onClick={() => sendWhatsApp(selected)} className="px-4 py-2 bg-green-500 text-white rounded-xl">📱 WhatsApp</button>
-          <button onClick={() => sendEmail(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">📧 Email</button>
+          {isDevis && selected.statut === 'facture' && <span className="px-4 py-2 bg-green-100 text-green-700 rounded-xl">âœ… EntiÃ¨rement facturÃ©</span>}
+          <button onClick={() => sendWhatsApp(selected)} className="px-4 py-2 bg-green-500 text-white rounded-xl">ðŸ“± WhatsApp</button>
+          <button onClick={() => sendEmail(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">ðŸ“§ Email</button>
         </div>
 
         {/* Info workflow */}
         {isDevis && selected.statut === 'accepte' && !acompteFacture && (
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">💡</span>
-              <div><p className="font-medium text-amber-800">Prochaine étape : Facturation</p><p className="text-sm text-amber-700 mt-1">Vous pouvez <strong>demander un acompte</strong> (recommandé pour les gros montants) ou <strong>facturer intégralement</strong>.</p></div>
+              <span className="text-2xl">ðŸ’¡</span>
+              <div><p className="font-medium text-amber-800">Prochaine Ã©tape : Facturation</p><p className="text-sm text-amber-700 mt-1">Vous pouvez <strong>demander un acompte</strong> (recommandÃ© pour les gros montants) ou <strong>facturer intÃ©gralement</strong>.</p></div>
             </div>
           </div>
         )}
@@ -543,42 +550,42 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">💰</span>
-                <div><p className="font-medium">Acompte facturé</p><button onClick={() => setSelected(acompteFacture)} className="text-sm text-blue-600 hover:underline">{acompteFacture.numero} • {formatMoney(acompteFacture.total_ttc)} →</button></div>
+                <span className="text-2xl">ðŸ’°</span>
+                <div><p className="font-medium">Acompte facturÃ©</p><button onClick={() => setSelected(acompteFacture)} className="text-sm text-blue-600 hover:underline">{acompteFacture.numero} â€¢ {formatMoney(acompteFacture.total_ttc)} â†’</button></div>
               </div>
-              <div className="text-right"><p className="text-sm text-slate-500">Reste à facturer</p><p className="font-bold text-lg">{formatMoney(resteAFacturer)}</p></div>
+              <div className="text-right"><p className="text-sm text-slate-500">Reste Ã  facturer</p><p className="font-bold text-lg">{formatMoney(resteAFacturer)}</p></div>
             </div>
             <div className="mt-3 h-2 bg-blue-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${selected.acompte_pct}%` }} /></div>
           </div>
         )}
 
         {/* Document */}
-        <div className="bg-white rounded-2xl border p-6">
+        <div className={`rounded-2xl border ${cardBg} p-6`}>
           <div className="flex justify-between items-start mb-6 pb-6 border-b">
             <div className="flex items-center gap-4">
-              {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}>🏢</div>}
+              {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}>ðŸ¢</div>}
               <div><p className="font-bold">{entreprise?.nom}</p><p className="text-sm text-slate-500">{entreprise?.adresse}</p></div>
             </div>
-            <div className="text-right"><p className="text-xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p><p className="text-sm text-slate-400">{new Date(selected.date).toLocaleDateString('fr-FR')}</p></div>
+            <div className="text-right"><p className={`text-xl font-bold ${textPrimary}`} style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p><p className="text-sm text-slate-400">{new Date(selected.date).toLocaleDateString('fr-FR')}</p></div>
           </div>
           <div className="mb-6 p-4 bg-slate-50 rounded-xl"><p className="text-sm text-slate-500">Client</p><p className="font-semibold">{client?.nom} {client?.prenom}</p>{client?.adresse && <p className="text-sm text-slate-500">{client.adresse}</p>}</div>
-          <table className="w-full mb-6 text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">Qté</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className="border-b"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : ''}`}>{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
+          <table className="w-full mb-6 text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">QtÃ©</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className="border-b"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : ''}`}>{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
           <div className="flex justify-end"><div className="w-56"><div className="flex justify-between py-1"><span>HT</span><span>{formatMoney(selected.total_ht)}</span></div><div className="flex justify-between py-1"><span>TVA {selected.tvaRate}%</span><span>{formatMoney(selected.tva)}</span></div><div className="flex justify-between py-2 border-t font-bold" style={{color: couleur}}><span>TTC</span><span>{formatMoney(selected.total_ttc)}</span></div></div></div>
-          {selected.signature && <div className="mt-6 pt-6 border-t"><p className="text-sm text-slate-500">Signé le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600 font-medium">✅ Accepté par le client</span></div>}
+          {selected.signature && <div className="mt-6 pt-6 border-t"><p className="text-sm text-slate-500">SignÃ© le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600 font-medium">âœ… AcceptÃ© par le client</span></div>}
         </div>
 
         {/* Timeline */}
         {isDevis && facturesLiees.length > 0 && (
-          <div className="bg-white rounded-2xl border p-6">
-            <h3 className="font-semibold mb-4">📊 Historique Facturation</h3>
+          <div className={`rounded-2xl border ${cardBg} p-6`}>
+            <h3 className="font-semibold mb-4">ðŸ“Š Historique Facturation</h3>
             <div className="space-y-3">
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p></div></div>
-              {selected.signatureDate && <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepté ✅</p></div></div>}
+              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis crÃ©Ã©</p></div></div>
+              {selected.signatureDate && <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - AcceptÃ© âœ…</p></div></div>}
               {facturesLiees.map(f => (
                 <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 rounded-lg p-2 -m-2" onClick={() => setSelected(f)}>
                   <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  <div className="flex-1"><p className="text-sm">{new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}</p><p className="text-xs text-slate-500">{f.numero} • {formatMoney(f.total_ttc)}</p></div>
-                  <span className="text-slate-400">→</span>
+                  <div className="flex-1"><p className="text-sm">{new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}</p><p className="text-xs text-slate-500">{f.numero} â€¢ {formatMoney(f.total_ttc)}</p></div>
+                  <span className="text-slate-400">â†’</span>
                 </div>
               ))}
             </div>
@@ -589,19 +596,19 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         {selected.type === 'facture' && selected.devis_source_id && (
           <div className="bg-slate-50 rounded-xl p-4">
             <p className="text-sm text-slate-500 mb-1">Devis source</p>
-            <button onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }} className="text-sm font-medium hover:underline" style={{ color: couleur }}>← Voir le devis</button>
+            <button onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }} className="text-sm font-medium hover:underline" style={{ color: couleur }}>â† Voir le devis</button>
           </div>
         )}
 
         {/* Statut */}
-        <div className="bg-white rounded-2xl border p-4">
+        <div className={`rounded-2xl border ${cardBg} p-4`}>
           <label className="text-sm font-medium mr-3">Statut:</label>
           <select value={selected.statut} onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }} className="px-3 py-2 border rounded-xl">
             <option value="brouillon">Brouillon</option>
-            <option value="envoye">Envoyé</option>
-            {isDevis && <option value="accepte">Accepté</option>}
-            {isDevis && <option value="refuse">Refusé</option>}
-            {selected.type === 'facture' && <option value="payee">Payée</option>}
+            <option value="envoye">EnvoyÃ©</option>
+            {isDevis && <option value="accepte">AcceptÃ©</option>}
+            {isDevis && <option value="refuse">RefusÃ©</option>}
+            {selected.type === 'facture' && <option value="payee">PayÃ©e</option>}
           </select>
         </div>
 
@@ -609,8 +616,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         {showAcompteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-              <h3 className="font-bold text-lg mb-2">💰 Facture d'acompte</h3>
-              <p className="text-slate-500 mb-4 text-sm">Sécurisez votre engagement avant les travaux</p>
+              <h3 className="font-bold text-lg mb-2">ðŸ’° Facture d'acompte</h3>
+              <p className="text-slate-500 mb-4 text-sm">SÃ©curisez votre engagement avant les travaux</p>
               <div className="space-y-3 mb-4">
                 {[20, 30, 40, 50].map(pct => (
                   <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? 'border-purple-500 bg-purple-50' : 'border-slate-200'}`}>
@@ -624,10 +631,10 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800">💡 Pour travaux > 1500€ chez particulier, acompte max 30%</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800">ðŸ’¡ Pour travaux > 1500€ chez particulier, acompte max 30%</div>
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-xl">Créer</button>
+                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-xl">CrÃ©er</button>
               </div>
             </div>
           </div>
@@ -638,16 +645,16 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-bold">Aperçu {selected.type === 'facture' ? 'Facture' : 'Devis'}</h3>
+                <h3 className="font-bold">AperÃ§u {selected.type === 'facture' ? 'Facture' : 'Devis'}</h3>
                 <div className="flex gap-2">
-                  <button onClick={() => downloadPDF(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">📥 Télécharger</button>
-                  <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-xl">✕</button>
+                  <button onClick={() => downloadPDF(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl">ðŸ“¥ TÃ©lÃ©charger</button>
+                  <button onClick={() => setShowPreview(false)} className="p-2 ${hoverBg} rounded-xl">âœ•</button>
                 </div>
               </div>
               <div className="flex-1 overflow-auto p-6 bg-slate-100">
                 <div className="bg-white shadow-lg rounded-lg p-8 max-w-2xl mx-auto">
-                  <div className="text-center mb-6"><p className="text-2xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p></div>
-                  <p className="text-sm text-slate-500">Ceci est un aperçu. Cliquez sur "Télécharger" pour obtenir le PDF complet.</p>
+                  <div className="text-center mb-6"><p className={`text-2xl font-bold ${textPrimary}`} style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p></div>
+                  <p className="text-sm text-slate-500">Ceci est un aperÃ§u. Cliquez sur "TÃ©lÃ©charger" pour obtenir le PDF complet.</p>
                 </div>
               </div>
             </div>
@@ -665,29 +672,29 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const catalogueFiltered = catalogue?.filter(c => !catalogueSearch || c.nom?.toLowerCase().includes(catalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Nouveau {form.type}</h1></div>
-        <div className="bg-white rounded-2xl border p-6 space-y-6">
+        <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className="p-2 ${hoverBg} rounded-xl">â†</button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
+        <div className={`rounded-2xl border ${cardBg} p-6 space-y-6`}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div><label className="block text-sm mb-1">Type</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
+            <div><label className="block text-sm mb-1">Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
             <div><label className="block text-sm mb-1">Client *</label><div className="flex gap-2"><select className="flex-1 px-4 py-2.5 border rounded-xl" value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} className="px-3 rounded-xl" style={{background: `${couleur}20`, color: couleur}}>+</button></div></div>
-            <div><label className="block text-sm mb-1">Chantier</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
-            <div><label className="block text-sm mb-1">Date</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
+            <div><label className="block text-sm mb-1">Chantier</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
+            <div><label className="block text-sm mb-1">Date</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
           </div>
           
-          {/* TVA par défaut pour nouvelles lignes */}
+          {/* TVA par dÃ©faut pour nouvelles lignes */}
           <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
-            <span className="text-sm text-slate-600">TVA par défaut pour les nouvelles lignes:</span>
+            <span className="text-sm text-slate-600">TVA par dÃ©faut pour les nouvelles lignes:</span>
             <select className="px-3 py-1.5 border rounded-lg text-sm" value={form.tvaDefaut} onChange={e => setForm(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
               <option value={20}>20% (normal)</option>
-              <option value={10}>10% (rénovation)</option>
-              <option value={5.5}>5,5% (éco-réno)</option>
-              <option value={0}>0% (exonéré)</option>
+              <option value={10}>10% (rÃ©novation)</option>
+              <option value={5.5}>5,5% (Ã©co-rÃ©no)</option>
+              <option value={0}>0% (exonÃ©rÃ©)</option>
             </select>
             {isMicro && <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">TVA non applicable (micro)</span>}
           </div>
           
-          {favoris.length >= 3 && <div className="bg-amber-50 border border-amber-100 rounded-xl p-4"><p className="text-sm font-medium mb-2">⭐ Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className="px-3 py-2 bg-white hover:bg-amber-100 border border-amber-200 rounded-lg text-sm">{item.nom} <span className="text-slate-500">{item.prix}€</span></button>)}</div></div>}
-          <div><input placeholder="🔍 Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl" />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 border-b last:border-0 text-left"><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
+          {favoris.length >= 3 && <div className="bg-amber-50 border border-amber-100 rounded-xl p-4"><p className="text-sm font-medium mb-2">â­ Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className="px-3 py-2 bg-white hover:bg-amber-100 border border-amber-200 rounded-lg text-sm">{item.nom} <span className="text-slate-500">{item.prix}€</span></button>)}</div></div>}
+          <div><input placeholder="ðŸ” Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 border-b last:border-0 text-left"><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
           
           {/* Table avec TVA par ligne */}
           {form.sections.map(section => (
@@ -696,8 +703,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Description</th>
-                    <th className="w-16 text-center py-2">Qté</th>
-                    <th className="w-20 text-center py-2">Unité</th>
+                    <th className="w-16 text-center py-2">QtÃ©</th>
+                    <th className="w-20 text-center py-2">UnitÃ©</th>
                     <th className="w-24 text-right py-2">PU HT</th>
                     <th className="w-20 text-center py-2">TVA</th>
                     <th className="w-24 text-right py-2">Total HT</th>
@@ -720,19 +727,19 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                         </select>
                       </td>
                       <td className="text-right font-medium">{(l.montant || 0).toFixed(2)}€</td>
-                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600">✕</button></td>
+                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600">âœ•</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-3 text-sm hover:underline" style={{color: couleur}}>+ Ajouter une ligne</button>
+              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unitÃ©' }, section.id)} className="mt-3 text-sm hover:underline" style={{color: couleur}}>+ Ajouter une ligne</button>
             </div>
           ))}
           
           {/* Options */}
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm mb-1">Remise globale %</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
-            <div><label className="block text-sm mb-1">Validité (jours)</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
+            <div><label className="block text-sm mb-1">Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
+            <div><label className="block text-sm mb-1">ValiditÃ© (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
           </div>
           
           {/* Totaux avec multi-TVA */}
@@ -751,9 +758,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </div>
           </div>
           
-          <div className="flex justify-end gap-3 pt-6 border-t"><button onClick={() => setMode('list')} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer le {form.type}</button></div>
+          <div className="flex justify-end gap-3 pt-6 border-t"><button onClick={() => setMode('list')} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>CrÃ©er le {form.type}</button></div>
         </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-6 w-full max-w-md"><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className="bg-white rounded-2xl p-6 w-full max-w-md"><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="TÃ©lÃ©phone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>CrÃ©er</button></div></div></div>}
         <Snackbar />
       </div>
     );
@@ -762,37 +769,37 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === LIST VIEW ===
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Devis & Factures</h1><button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
+      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className={`text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1><button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
-        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">À encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis acceptÃ©s</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Factures non payÃ©es</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Ã€ encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
       </div>
       <div className="flex gap-2 flex-wrap items-center">
-        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2 border rounded-xl" />
+        <input placeholder="ðŸ” Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2 border rounded-xl" />
         {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-lg text-sm ${filter === k ? 'text-white' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">📄</p><p className="text-slate-500">Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
+      {filtered.length === 0 ? <div className={`rounded-2xl border ${cardBg} p-12 text-center`}><p className="text-5xl mb-4">ðŸ“„</p><p className="text-slate-500">Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>CrÃ©er un devis</button></div> : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
-          const icon = { brouillon: '⚪', envoye: '🟡', accepte: '✅', acompte_facture: '💰', facture: '🧾', payee: '💚', refuse: '❌' }[d.statut] || '📄';
+          const icon = { brouillon: 'âšª', envoye: 'ðŸŸ¡', accepte: 'âœ…', acompte_facture: 'ðŸ’°', facture: 'ðŸ§¾', payee: 'ðŸ’š', refuse: 'âŒ' }[d.statut] || 'ðŸ“„';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           return (
             <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className="bg-white rounded-xl border p-4 cursor-pointer hover:shadow-md transition-all">
               <div className="flex items-center gap-4">
-                <span className="text-2xl">{d.type === 'facture' ? '🧾' : '📄'}</span>
+                <span className="text-2xl">{d.type === 'facture' ? 'ðŸ§¾' : 'ðŸ“„'}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium">{d.numero}</p><span>{icon}</span>
                     {hasAcompte && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Acompte</span>}
                     {d.facture_type === 'acompte' && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">Acompte</span>}
                     {d.facture_type === 'solde' && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Solde</span>}
-                    {d.facture_type === 'totale' && <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">Complète</span>}
+                    {d.facture_type === 'totale' && <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">ComplÃ¨te</span>}
                   </div>
-                  <p className="text-sm text-slate-500">{client?.nom} • {new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-sm text-slate-500">{client?.nom} â€¢ {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF">📥</button>
+                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className="p-2 ${hoverBg} rounded-lg" title="PDF">ðŸ“¥</button>
                 <p className="text-lg font-bold" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
