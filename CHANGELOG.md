@@ -1,27 +1,23 @@
-# ChantierPro v18.2 - Thème Sombre Stable
+# ChantierPro v18.3 - Corrections Complètes
 
-## Corrections
-- Repartir des fichiers originaux pour éviter les corruptions
-- Ajout propre de isDark et variables thème
-- Remplacements simples et sûrs (pas de regex complexes)
-- Tous les bg-white convertis en ${cardBg} conditionnel
-- Modals avec thème sombre
-- Onglets avec thème sombre
+## Corrections v18.3
+- Suppression des paramètres en double (couleur dans Planning et Chantiers)
+- Ajout de couleur à DevisPage dans App.jsx
+- Correction des props passés à Planning (setEvents, updateChantier)
+- Correction des props passés à Clients (setClients, onSubmit, setSelectedChantier)
+- Correction des props passés à Equipe (setPointages)
 
-## Variables thème dans tous les composants:
-- cardBg: fond des cartes
-- inputBg: fond des inputs
-- textPrimary: texte principal
-- textSecondary: texte secondaire
-- hoverBg: hover states
-- btnSecondary: boutons secondaires
+## Thème sombre
+- Variables thème dans tous les composants
+- Tous les bg-white convertis en ${cardBg}
+- Modals et onglets avec thème sombre
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v18.2-stable.zip
+unzip -o ~/Downloads/chantierpro-v18.3-complete.zip
 npm run build
-git add . && git commit -m "v18.2 - Thème sombre stable" && git push
+git add . && git commit -m "v18.3 - Corrections complètes" && git push
 npx vercel --prod
 ```

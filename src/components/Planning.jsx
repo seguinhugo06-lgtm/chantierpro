@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark, couleur }) {
+export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
   // Variables thème
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
