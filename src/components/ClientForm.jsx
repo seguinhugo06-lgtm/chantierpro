@@ -99,7 +99,7 @@ const ClientForm = memo(({
             />
           </div>
           <div>
-            <label style={styles.label}>PrÃ©nom</label>
+            <label style={styles.label}>Prénom</label>
             <input
               type="text"
               value={clientForm.prenom}
@@ -134,7 +134,7 @@ const ClientForm = memo(({
             />
           </div>
           <div>
-            <label style={styles.label}>TÃ©lÃ©phone *</label>
+            <label style={styles.label}>Téléphone *</label>
             <input
               type="tel"
               value={clientForm.telephone}
@@ -162,7 +162,7 @@ const ClientForm = memo(({
             Annuler
           </button>
           <button type="submit" style={styles.submitButton}>
-            {editingClient ? 'Modifier' : 'CrÃ©er'}
+            {editingClient ? 'Modifier' : 'Créer'}
           </button>
         </div>
       </form>

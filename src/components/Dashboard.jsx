@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff } from 'lucide-react';
 
-const DEMO_CA = [{ mois: 'aoÃ»t', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'dÃ©c.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
-const DEMO_MARGES = [{ nom: 'RÃ©novation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
+const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
+const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
 
 export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, isDark }) {
   const [todoFilter, setTodoFilter] = useState('all');
@@ -55,7 +55,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const formatMoney = (n) => modeDiscret ? 'â€¢â€¢â€¢â€¢â€¢' : `${(n || 0).toLocaleString('fr-FR')} â‚¬`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
 
-  // Classes conditionnelles pour le thÃ¨me
+  // Classes conditionnelles pour le thème
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -80,10 +80,10 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
-          <p className={textSecondary}>Vue d'ensemble de votre activitÃ©</p>
+          <p className={textSecondary}>Vue d'ensemble de votre activité</p>
         </div>
         <div className="flex items-center gap-3">
-          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>ðŸ—ï¸ DonnÃ©es dÃ©mo</span>}
+          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>ðŸ—ï¸ Données démo</span>}
           <button onClick={() => setModeDiscret(!modeDiscret)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${btnBg}`}>{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} />
         <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? 'â€¢â€¢%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
-        <KPICard icon={CheckCircle} label="EncaissÃ©" value={formatMoney(stats.encaisse)} color="#10b981" />
+        <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} color="#10b981" />
         <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>â€¢ {stats.chantiersActifs} chantiers en cours</p><p>â€¢ {stats.devisEnAttente} devis en attente</p></>} />
       </div>
 
@@ -109,7 +109,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
                 <Bar dataKey="ca" radius={[8, 8, 0, 0]}>{stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />MasquÃ©</div>}
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>}
         </div>
 
         <div className={`rounded-2xl border p-5 ${cardBg}`}>
@@ -123,7 +123,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
                 <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 8).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}>{modeDiscret ? <><EyeOff size={32} className="mr-2" />MasquÃ©</> : 'Aucun chantier'}</div>}
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}>{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
         </div>
       </div>
 
@@ -131,7 +131,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       <div className="grid lg:grid-cols-3 gap-6">
         <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />Ã€ faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
             <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
@@ -155,7 +155,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
         <div className="space-y-4">
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
-            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>ðŸ† Top RentabilitÃ©</h3>
+            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>ðŸ† Top Rentabilité</h3>
             {top3.length === 0 ? <p className={`text-center ${textSecondary} py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
               <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
                 <div className="flex items-center gap-3"><span className="text-xl">{['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
@@ -165,7 +165,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           </div>
           {aSurveiller.length > 0 && (
             <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš ï¸ Ã€ surveiller</h3>
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš ï¸ À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
                 <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
                   <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>

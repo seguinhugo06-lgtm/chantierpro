@@ -163,7 +163,7 @@ const DevisForm = memo(({
             required 
             style={styles.input}
           >
-            <option value="">SÃ©lectionner...</option>
+            <option value="">Sélectionner...</option>
             {clients.map(c => (
               <option key={c.id} value={c.id}>
                 {c.nom} {c.prenom}
@@ -192,7 +192,7 @@ const DevisForm = memo(({
         />
         <input
           type="number"
-          placeholder="QtÃ©"
+          placeholder="Qté"
           value={currentLigne.quantite}
           onChange={handleLigneChange('quantite')}
           min="1"
@@ -218,7 +218,7 @@ const DevisForm = memo(({
             <thead style={styles.tableHead}>
               <tr>
                 <th style={styles.th}>Description</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>QtÃ©</th>
+                <th style={{ ...styles.th, textAlign: 'right' }}>Qté</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>Prix HT</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>Total</th>
                 <th style={{ ...styles.th, width: '50px' }}></th>
@@ -261,7 +261,7 @@ const DevisForm = memo(({
         disabled={!canSubmit}
         style={canSubmit ? styles.submitButton : styles.submitButtonDisabled}
       >
-        CrÃ©er le devis
+        Créer le devis
       </button>
     </div>
   );

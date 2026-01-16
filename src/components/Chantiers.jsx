@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
-export default function Chantiers({ chantiers, isDark, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock }) {
+export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark }) {
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
   const [activeTab, setActiveTab] = useState('finances');
@@ -18,17 +18,10 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
 
-  const formatMoney = (n) => modeDiscret ? 'â€¢â€¢â€¢â€¢â€¢' : (n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €';
+  const formatMoney = (n) => modeDiscret ? 'â€¢â€¢â€¢â€¢â€¢' : (n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' â‚¬';
   const formatPct = (n) => modeDiscret ? 'â€¢â€¢%' : (n || 0).toFixed(1) + '%';
   const getMargeColor = (t) => t < 0 ? 'text-red-500' : t < 15 ? 'text-amber-500' : 'text-emerald-500';
   const getMargeBg = (t) => t < 0 ? 'bg-red-50' : t < 15 ? 'bg-amber-50' : 'bg-emerald-50';
-
-  // Variables thème
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
 
   // Handlers
   const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: Date.now().toString(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
@@ -77,7 +70,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="p-2 ${hoverBg} rounded-xl text-xl">â†</button>
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†</button>
           <div className="flex-1 min-w-0"><h1 className="text-2xl font-bold truncate">{ch.nom}</h1><p className="text-slate-500">{client?.nom} â€¢ {ch.adresse}</p></div>
           <select value={ch.statut} onChange={e => updateChantier(ch.id, { statut: e.target.value })} className="px-4 py-2 border rounded-xl">
             <option value="prospect">Prospect</option><option value="en_cours">En cours</option><option value="termine">Terminé</option>
@@ -159,7 +152,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
             <div className="bg-white rounded-xl p-4 mt-4">
               <h4 className="font-medium mb-3">ðŸ“Š Devis vs Réel</h4>
               <table className="w-full text-sm">
-                <thead><tr className="border-b"><th className="text-left py-2">Poste</th><th className="text-right py-2">Devis</th><th className="text-right py-2">Réel</th><th className="text-right py-2">Ã‰cart</th></tr></thead>
+                <thead><tr className="border-b"><th className="text-left py-2">Poste</th><th className="text-right py-2">Devis</th><th className="text-right py-2">Réel</th><th className="text-right py-2">Écart</th></tr></thead>
                 <tbody>
                   <tr className="border-b"><td className="py-2">CA HT</td><td className="text-right">{formatMoney(devisHT)}</td><td className="text-right">{formatMoney(bilan.caHT)}</td><td className={`text-right ${bilan.caHT >= devisHT ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.caHT >= devisHT ? '+' : ''}{formatMoney(bilan.caHT - devisHT)}</td></tr>
                   <tr className="border-b"><td className="py-2">Matériaux</td><td className="text-right">{formatMoney(devisMateriaux)}</td><td className="text-right">{formatMoney(bilan.coutMateriaux)}</td><td className={`text-right ${bilan.coutMateriaux <= devisMateriaux ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.coutMateriaux <= devisMateriaux ? '' : '+'}{formatMoney(bilan.coutMateriaux - devisMateriaux)}</td></tr>
@@ -181,22 +174,22 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
         {activeTab === 'finances' && (
           <div className="space-y-4">
             {adjRevenus.length > 0 && (
-              <div className={`rounded-2xl border ${cardBg} p-5`}>
+              <div className="bg-white rounded-2xl border p-5">
                 <h3 className="font-semibold mb-3 text-emerald-600">ðŸ“ˆ Ajustements Revenus</h3>
                 {adjRevenus.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-emerald-600">+{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
             {adjDepenses.length > 0 && (
-              <div className={`rounded-2xl border ${cardBg} p-5`}>
+              <div className="bg-white rounded-2xl border p-5">
                 <h3 className="font-semibold mb-3 text-red-600">ðŸ“‰ Ajustements Dépenses</h3>
                 {adjDepenses.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-red-600">-{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
-            <div className={`rounded-2xl border ${cardBg} p-5`}>
+            <div className="bg-white rounded-2xl border p-5">
               <h3 className="font-semibold mb-4">ðŸ§¾ Dépenses Matériaux</h3>
               <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><span className="text-slate-500 text-sm w-24">{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className="flex-1">{d.description}</span><span className="text-xs bg-slate-200 px-2 py-1 rounded">{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className="text-center text-slate-400 py-4">Aucune dépense</p>}</div>
               <div className="flex gap-2 flex-wrap">
-                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className="px-3 py-2.5 border rounded-xl text-sm"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
+                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className="px-3 py-2.5 border rounded-xl text-sm"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}â‚¬)</option>)}</select>
                 <input placeholder="Description" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className="flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl" />
                 <input type="number" placeholder="Montant" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className="w-28 px-4 py-2.5 border rounded-xl" />
                 <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button>
@@ -206,16 +199,16 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
         )}
 
         {activeTab === 'taches' && (
-          <div className={`rounded-2xl border ${cardBg} p-5`}>
+          <div className="bg-white rounded-2xl border p-5">
             <h3 className="font-semibold mb-4">ðŸ“‹ Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
             {tasksTotal > 0 && <div className="w-full h-2 bg-slate-100 rounded-full mb-4 overflow-hidden"><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
             <div className="space-y-2 mb-4">{ch.taches?.map(t => (<div key={t.id} onClick={() => toggleTache(t.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${t.done ? 'bg-emerald-50' : 'bg-slate-50'}`}><span className="text-xl">{t.done ? 'âœ…' : 'â¬œ'}</span><span className={t.done ? 'line-through text-slate-400' : ''}>{t.text}</span></div>))}</div>
-            <div className="flex gap-2"><input placeholder="Nouvelle tâche..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} /><button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button></div>
+            <div className="flex gap-2"><input placeholder="Nouvelle tâche..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className="flex-1 px-4 py-2.5 border rounded-xl" /><button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button></div>
           </div>
         )}
 
         {activeTab === 'photos' && (
-          <div className={`rounded-2xl border ${cardBg} p-5`}>
+          <div className="bg-white rounded-2xl border p-5">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
               <h3 className="font-semibold">ðŸ“¸ Carnet Photos</h3>
               <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
@@ -227,7 +220,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
         )}
 
         {activeTab === 'notes' && (
-          <div className={`rounded-2xl border ${cardBg} p-5`}>
+          <div className="bg-white rounded-2xl border p-5">
             <h3 className="font-semibold mb-4">ðŸ“ Notes</h3>
             <textarea className="w-full px-4 py-3 border rounded-xl" rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Notes internes..." />
           </div>
@@ -240,8 +233,8 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
               <h3 className="text-lg font-bold mb-4">{showAjustement === 'REVENU' ? 'ðŸ“ˆ Ajustement Revenu' : 'ðŸ“‰ Ajustement Dépense'}</h3>
               <p className="text-sm text-slate-500 mb-4">{showAjustement === 'REVENU' ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</p>
               <div className="space-y-4">
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Libellé" value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
-                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Montant HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
+                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Libellé" value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
+                <input type="number" className="w-full px-4 py-2.5 border rounded-xl" placeholder="Montant HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
               </div>
               <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowAjustement(null); setAdjForm({ libelle: '', montant_ht: '' }); }} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleAddAjustement} className="px-4 py-2 text-white rounded-xl" style={{background: showAjustement === 'REVENU' ? '#22c55e' : '#ef4444'}}>Ajouter</button></div>
             </div>
@@ -260,7 +253,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">Depuis le catalogue</label>
                   <select 
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} 
+                    className="w-full px-4 py-2.5 border rounded-xl" 
                     value={newDepense.catalogueId} 
                     onChange={e => { 
                       const item = catalogue.find(c => c.id === e.target.value); 
@@ -268,7 +261,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
                     }}
                   >
                     <option value="">Choisir un article...</option>
-                    {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}€)</option>)}
+                    {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}â‚¬)</option>)}
                   </select>
                 </div>
               )}
@@ -276,15 +269,15 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Description *</label>
-                  <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
+                  <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Montant TTC *</label>
-                  <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                  <input type="number" className="w-full px-4 py-2.5 border rounded-xl" placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Catégorie</label>
-                  <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
+                  <select className="w-full px-4 py-2.5 border rounded-xl" value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
                     <option value="Matériaux">Matériaux</option>
                     <option value="Outillage">Outillage</option>
                     <option value="Location">Location</option>
@@ -325,9 +318,9 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
             <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md">
               <h3 className="text-lg font-bold mb-4">+ Ajouter des heures</h3>
               <div className="space-y-4">
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.employeId} onChange={e => setMoForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
+                <select className="w-full px-4 py-2.5 border rounded-xl" value={moForm.employeId} onChange={e => setMoForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
                 <div className="grid grid-cols-2 gap-4"><input type="date" className="px-4 py-2.5 border rounded-xl" value={moForm.date} onChange={e => setMoForm(p => ({...p, date: e.target.value}))} /><input type="number" step="0.5" placeholder="Heures *" className="px-4 py-2.5 border rounded-xl" value={moForm.heures} onChange={e => setMoForm(p => ({...p, heures: e.target.value}))} /></div>
-                <input placeholder="Note (optionnel)" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.note} onChange={e => setMoForm(p => ({...p, note: e.target.value}))} />
+                <input placeholder="Note (optionnel)" className="w-full px-4 py-2.5 border rounded-xl" value={moForm.note} onChange={e => setMoForm(p => ({...p, note: e.target.value}))} />
               </div>
               <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowAddMO(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={handleAddMO} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Ajouter</button></div>
             </div>
@@ -340,14 +333,14 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
   // Formulaire création
   if (show) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 ${hoverBg} rounded-xl">â†</button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
-      <div className={`rounded-2xl border ${cardBg} p-6`}>
+      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
+      <div className="bg-white rounded-2xl border p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
-          <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Adresse</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Date début</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_debut} onChange={e => setForm(p => ({...p, date_debut: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Date fin</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_fin} onChange={e => setForm(p => ({...p, date_fin: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Client</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
+          <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Adresse</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Date début</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date_debut} onChange={e => setForm(p => ({...p, date_debut: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Date fin</label><input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={form.date_fin} onChange={e => setForm(p => ({...p, date_fin: e.target.value}))} /></div>
         </div>
         <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShow(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div>
       </div>
@@ -358,7 +351,7 @@ export default function Chantiers({ chantiers, isDark, addChantier, updateChanti
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Chantiers ({chantiers.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      {chantiers.length === 0 ? <div className={`rounded-2xl border ${cardBg} p-12 text-center`}><p className="text-5xl mb-4">ðŸ—ï¸</p><p className="text-slate-500">Aucun chantier</p></div> : (
+      {chantiers.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ—ï¸</p><p className="text-slate-500">Aucun chantier</p></div> : (
         <div className="grid gap-4">
           {chantiers.map(ch => {
             const client = clients.find(c => c.id === ch.client_id);

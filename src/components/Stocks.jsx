@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const CATS = ['Plomberie', 'Ã‰lectricitÃ©', 'MaÃ§onnerie', 'Peinture', 'Outillage', 'Autre'];
+const CATS = ['Plomberie', 'Électricité', 'Maçonnerie', 'Peinture', 'Outillage', 'Autre'];
 
 export default function Stocks({ stocks, setStocks }) {
   const [show, setShow] = useState(false);
@@ -24,14 +24,14 @@ export default function Stocks({ stocks, setStocks }) {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">â†</button>
-        <h1 className="text-2xl font-bold">Nouveau matÃ©riau</h1>
+        <h1 className="text-2xl font-bold">Nouveau matériau</h1>
       </div>
       <div className="bg-white rounded-2xl border p-6">
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">RÃ©fÃ©rence</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.reference} onChange={e => setForm(p => ({...p, reference: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">CatÃ©gorie</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}>{CATS.map(c => <option key={c}>{c}</option>)}</select></div>
-          <div><label className="block text-sm font-medium mb-1">QuantitÃ©</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.quantite} onChange={e => setForm(p => ({...p, quantite: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Référence</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.reference} onChange={e => setForm(p => ({...p, reference: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Catégorie</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}>{CATS.map(c => <option key={c}>{c}</option>)}</select></div>
+          <div><label className="block text-sm font-medium mb-1">Quantité</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.quantite} onChange={e => setForm(p => ({...p, quantite: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Seuil alerte</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.seuil} onChange={e => setForm(p => ({...p, seuil: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Prix (â‚¬)</label><input type="number" step="0.01" className="w-full px-4 py-2.5 border rounded-xl" value={form.prix} onChange={e => setForm(p => ({...p, prix: e.target.value}))} /></div>
           <div className="col-span-2"><label className="block text-sm font-medium mb-1">Emplacement</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.emplacement} onChange={e => setForm(p => ({...p, emplacement: e.target.value}))} /></div>
@@ -58,14 +58,14 @@ export default function Stocks({ stocks, setStocks }) {
       )}
       <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2.5 border rounded-xl" />
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ“¦</p><h3>Aucun matÃ©riau</h3></div>
+        <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ“¦</p><h3>Aucun matériau</h3></div>
       ) : (
         <div className="bg-white rounded-2xl border overflow-hidden">
           {filtered.map(s => (
             <div key={s.id} className={`flex items-center px-5 py-4 border-b gap-4 ${s.quantite <= (s.seuil || 5) ? 'bg-red-50' : ''}`}>
               <div className="flex-1">
                 <p className="font-medium">{s.nom}</p>
-                {s.reference && <p className="text-xs text-slate-500">RÃ©f: {s.reference}</p>}
+                {s.reference && <p className="text-xs text-slate-500">Réf: {s.reference}</p>}
               </div>
               <span className="w-24 text-sm">{s.categorie}</span>
               <div className="flex items-center gap-2">
