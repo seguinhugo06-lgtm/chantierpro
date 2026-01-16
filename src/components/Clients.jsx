@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 
 export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark }) {
+  // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-white" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-400" : "text-slate-500";
+  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
+  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
+  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
   const [show, setShow] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);
@@ -58,7 +61,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
         </div>
 
         {/* Actions rapides */}
-        <div className={`rounded-2xl border p-5 ${cardBg}`}>
+        <div className={`rounded-2xl border ${cardBg}`} p-5">
           <div className="flex gap-3 flex-wrap mb-4">
             {client.telephone && (<><button onClick={() => callPhone(client.telephone)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Appeler</button><button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm"> WhatsApp</button></>)}
             {client.adresse && <button onClick={() => openGPS(client.adresse)} className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl text-sm"> Itinéraire</button>}
@@ -73,10 +76,10 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold" style={{color: couleur}}>{stats.chantiers}</p><p className="text-xs text-slate-500">Chantiers</p></div>
-          <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-blue-500">{stats.devis}</p><p className="text-xs text-slate-500">Devis</p></div>
-          <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-purple-500">{stats.factures}</p><p className="text-xs text-slate-500">Factures</p></div>
-          <div className="bg-white rounded-xl border p-4 text-center"><p className="text-2xl font-bold text-emerald-500">{stats.ca.toLocaleString()}€</p><p className="text-xs text-slate-500">CA Total</p></div>
+          <div className={`rounded-xl border ${cardBg}`} p-4 text-center"><p className="text-2xl font-bold" style={{color: couleur}}>{stats.chantiers}</p><p className="text-xs text-slate-500">Chantiers</p></div>
+          <div className={`rounded-xl border ${cardBg}`} p-4 text-center"><p className="text-2xl font-bold text-blue-500">{stats.devis}</p><p className="text-xs text-slate-500">Devis</p></div>
+          <div className={`rounded-xl border ${cardBg}`} p-4 text-center"><p className="text-2xl font-bold text-purple-500">{stats.factures}</p><p className="text-xs text-slate-500">Factures</p></div>
+          <div className={`rounded-xl border ${cardBg}`} p-4 text-center"><p className="text-2xl font-bold text-emerald-500">{stats.ca.toLocaleString()}€</p><p className="text-xs text-slate-500">CA Total</p></div>
         </div>
 
         {/* Onglets Historique */}
@@ -87,7 +90,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
         </div>
 
         {activeTab === 'chantiers' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             {clientChantiers.length === 0 ? <p className="text-center text-slate-400 py-8">Aucun chantier</p> : (
               <div className="space-y-2">{clientChantiers.map(ch => (
                 <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100">
@@ -101,7 +104,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
         )}
 
         {activeTab === 'documents' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             {clientDevis.length === 0 ? <p className="text-center text-slate-400 py-8">Aucun document</p> : (
               <div className="space-y-2">{clientDevis.map(d => {
                 const statusIcon = { brouillon: 'âšª', envoye: '', accepte: 'âœ…', payee: '', refuse: 'âŒ' }[d.statut] || '';
@@ -125,7 +128,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
         )}
 
         {activeTab === 'photos' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             {(() => {
               const allPhotos = clientChantiers.flatMap(ch => (ch.photos || []).map(p => ({ ...p, chantierNom: ch.nom })));
               if (allPhotos.length === 0) return <p className="text-center text-slate-400 py-8">Aucune photo</p>;
@@ -141,7 +144,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouveau'} client</h1></div>
-      <div className={`rounded-2xl border p-6 ${cardBg}`}>
+      <div className={`rounded-2xl border ${cardBg}`} p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Prénom</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
@@ -161,12 +164,12 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
     <div className="space-y-6">
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Clients ({clients.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
       <input type="text" placeholder=" Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2.5 border rounded-xl" />
-      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun client</p></div> : (
+      {filtered.length === 0 ? <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun client</p></div> : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(c => {
             const s = getClientStats(c.id);
             return (
-              <div key={c.id} className="bg-white rounded-2xl border p-5 hover:shadow-lg transition">
+              <div key={c.id} className={`rounded-2xl border ${cardBg}`} p-5 hover:shadow-lg transition">
                 <div className="flex gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold cursor-pointer" style={{background: couleur}} onClick={() => setViewId(c.id)}>{c.nom?.[0]}</div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setViewId(c.id)}><h3 className="font-semibold truncate">{c.nom} {c.prenom}</h3>{c.entreprise && <p className="text-sm text-slate-500 truncate">{c.entreprise}</p>}</div>

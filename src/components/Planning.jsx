@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 
 export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
+  // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-white" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-400" : "text-slate-500";
+  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
+  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
+  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
   const [date, setDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
@@ -174,7 +177,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span> Urgence</span>
       </div>
 
-      <div className="bg-white rounded-2xl border overflow-hidden">
+      <div className={`rounded-2xl border ${cardBg} overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†</button>
           <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
@@ -206,7 +209,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         </div>
       </div>
 
-      <div className={`rounded-2xl border p-5 ${cardBg}`}>
+      <div className={`rounded-2xl border ${cardBg}`} p-5">
         <h3 className="font-semibold mb-4"> Prochains événements</h3>
         {allEvents.filter(e => new Date(e.date) >= new Date()).length === 0 ? (
           <p className="text-center text-slate-400 py-4">Aucun événement Ã  venir</p>

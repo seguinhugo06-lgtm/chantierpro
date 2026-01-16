@@ -3,10 +3,13 @@ import React, { useState, useEffect } from 'react';
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark }) {
+  // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-white" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-400" : "text-slate-500";
+  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
+  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
+  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
   const [activeTab, setActiveTab] = useState('finances');
@@ -178,18 +181,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {activeTab === 'finances' && (
           <div className="space-y-4">
             {adjRevenus.length > 0 && (
-              <div className={`rounded-2xl border p-5 ${cardBg}`}>
+              <div className={`rounded-2xl border ${cardBg}`} p-5">
                 <h3 className="font-semibold mb-3 text-emerald-600"> Ajustements Revenus</h3>
                 {adjRevenus.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-emerald-600">+{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
             {adjDepenses.length > 0 && (
-              <div className={`rounded-2xl border p-5 ${cardBg}`}>
+              <div className={`rounded-2xl border ${cardBg}`} p-5">
                 <h3 className="font-semibold mb-3 text-red-600"> Ajustements Dépenses</h3>
                 {adjDepenses.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-red-600">-{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
-            <div className={`rounded-2xl border p-5 ${cardBg}`}>
+            <div className={`rounded-2xl border ${cardBg}`} p-5">
               <h3 className="font-semibold mb-4"> Dépenses Matériaux</h3>
               <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><span className="text-slate-500 text-sm w-24">{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className="flex-1">{d.description}</span><span className="text-xs bg-slate-200 px-2 py-1 rounded">{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className="text-center text-slate-400 py-4">Aucune dépense</p>}</div>
               <div className="flex gap-2 flex-wrap">
@@ -203,7 +206,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'taches' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             <h3 className="font-semibold mb-4"> Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
             {tasksTotal > 0 && <div className="w-full h-2 bg-slate-100 rounded-full mb-4 overflow-hidden"><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
             <div className="space-y-2 mb-4">{ch.taches?.map(t => (<div key={t.id} onClick={() => toggleTache(t.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${t.done ? 'bg-emerald-50' : 'bg-slate-50'}`}><span className="text-xl">{t.done ? 'âœ…' : 'â¬œ'}</span><span className={t.done ? 'line-through text-slate-400' : ''}>{t.text}</span></div>))}</div>
@@ -212,7 +215,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'photos' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
               <h3 className="font-semibold"> Carnet Photos</h3>
               <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
@@ -224,7 +227,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'notes' && (
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <div className={`rounded-2xl border ${cardBg}`} p-5">
             <h3 className="font-semibold mb-4"> Notes</h3>
             <textarea className="w-full px-4 py-3 border rounded-xl" rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Notes internes..." />
           </div>
@@ -338,7 +341,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
-      <div className={`rounded-2xl border p-6 ${cardBg}`}>
+      <div className={`rounded-2xl border ${cardBg}`} p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Client</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
@@ -355,7 +358,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Chantiers ({chantiers.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      {chantiers.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun chantier</p></div> : (
+      {chantiers.length === 0 ? <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun chantier</p></div> : (
         <div className="grid gap-4">
           {chantiers.map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
