@@ -631,7 +631,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800"> Pour travaux > 1500€ chez particulier, acompte max 30%</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800">Pour travaux supérieurs à 1500€ chez particulier, acompte max 30%</div>
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
                 <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-xl">Créer</button>
