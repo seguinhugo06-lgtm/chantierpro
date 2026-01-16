@@ -45,7 +45,6 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     notes: '' 
   });
 
-  const couleur = entreprise?.couleur || '#f97316';
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
