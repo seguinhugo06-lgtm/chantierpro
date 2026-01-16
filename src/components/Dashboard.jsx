@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Building2, Calendar, Users, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff } from 'lucide-react';
 
 const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
 const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
@@ -8,13 +8,6 @@ const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cu
 export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, isDark }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
-
-  // Variables thème
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
 
   const stats = useMemo(() => {
     const now = new Date(), thisMonth = now.getMonth(), thisYear = now.getFullYear();
@@ -43,11 +36,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     const items = [], now = new Date();
     safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString()} €`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} â€¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString()} €`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} â€¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeChantiers.filter(ch => ch.statut === 'en_cours').forEach(ch => {
       const bilan = getChantierBilan?.(ch.id);
@@ -59,8 +52,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
   const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
   const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
-  const formatMoney = (n) => modeDiscret ? '•••••' : `${(n || 0).toLocaleString('fr-FR')} €`;
+  const formatMoney = (n) => modeDiscret ? 'â€¢â€¢â€¢â€¢â€¢' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
+
+  // Classes conditionnelles pour le thème
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
 
   const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
     <div className={`rounded-2xl border p-5 ${cardBg} hover:shadow-md transition-shadow`}>
@@ -77,117 +76,114 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setModeDiscret?.(!modeDiscret)} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${modeDiscret ? 'bg-amber-100 text-amber-700' : btnBg}`}>
-            {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
-            <span className="hidden sm:inline">{modeDiscret ? 'Discret' : 'Visible'}</span>
-          </button>
+        <div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
+          <p className={textSecondary}>Vue d'ensemble de votre activité</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>ðŸ—ï¸ Données démo</span>}
+          <button onClick={() => setModeDiscret(!modeDiscret)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${btnBg}`}>{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
         </div>
       </div>
 
-      {!stats.hasRealData && (
-        <div className={`rounded-xl p-4 flex items-center gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
-          <AlertCircle size={20} className="text-amber-500" />
-          <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Données de démonstration. Créez vos premiers devis pour voir vos vraies statistiques.</p>
-        </div>
-      )}
-
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard icon={DollarSign} label="CA Total" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} sub={`dont ${formatMoney(stats.encaisse)} encaissé`} />
-        <KPICard icon={TrendingUp} label="Marge globale" value={modeDiscret ? '••%' : `${stats.tauxMarge.toFixed(0)}%`} color={getMargeColor(stats.tauxMarge)} sub={`${formatMoney(stats.marge)} de bénéfice`} />
-        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" sub={`${stats.devisEnAttente} devis à relancer`} />
-        <KPICard icon={Building2} label="Chantiers actifs" value={stats.chantiersActifs} color="#3b82f6" sub={`${safeChantiers.filter(c => c.statut === 'planifie').length} planifiés`} />
+        <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} />
+        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? 'â€¢â€¢%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
+        <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} color="#10b981" />
+        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>â€¢ {stats.chantiersActifs} chantiers en cours</p><p>â€¢ {stats.devisEnAttente} devis en attente</p></>} />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-semibold ${textPrimary}`}>CA sur 6 mois</h3>
-          </div>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.caParMois} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                <XAxis dataKey="mois" tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ background: isDark ? '#1e293b' : '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="ca" radius={[6, 6, 0, 0]}>{stats.caParMois.map((entry, i) => <Cell key={i} fill={entry.fill} />)}</Bar>
+      {/* Graphiques */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className={`rounded-2xl border p-5 ${cardBg}`}>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
+          {!modeDiscret ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.caParMois}>
+                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
+                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
+                <Bar dataKey="ca" radius={[8, 8, 0, 0]}>{stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>}
         </div>
 
         <div className={`rounded-2xl border p-5 ${cardBg}`}>
-          <h3 className={`font-semibold mb-4 ${textPrimary}`}>Marges par chantier</h3>
-          <div className="space-y-3">
-            {top3.map((ch, i) => (
-              <div key={ch.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${hoverBg}`} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-amber-100 text-amber-700' : i === 1 ? 'bg-slate-200 text-slate-600' : 'bg-orange-100 text-orange-600'}`}>{i + 1}</div>
-                <div className="flex-1 min-w-0"><p className={`font-medium truncate ${textPrimary}`}>{ch.nom}</p></div>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
+          {!modeDiscret && stats.margesChantiers.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.margesChantiers.slice(0, 8)} layout="vertical" margin={{ left: 90 }}>
+                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                <YAxis type="category" dataKey="nom" width={85} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }} />
+                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
+                <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 8).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}>{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
+        </div>
+      </div>
+
+      {/* Actions + Top/Flop */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
+          </div>
+          {filteredActions.length === 0 ? (
+            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est Ã  jour ! ðŸŽ‰</h4></div>
+          ) : (
+            <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
+              const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
+              const pBorder = a.priority === 'urgent' ? 'border-l-4 border-red-500' : a.priority === 'high' ? 'border-l-4 border-orange-400' : 'border-l-4 border-slate-200';
+              const iconBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/50' : 'bg-red-100') : a.priority === 'high' ? (isDark ? 'bg-orange-900/50' : 'bg-orange-100') : (isDark ? 'bg-slate-700' : 'bg-slate-100');
+              const iconColor = a.priority === 'urgent' ? (isDark ? 'text-red-400' : 'text-red-600') : a.priority === 'high' ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-slate-500';
+              return (
+                <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all ${pBorder} ${pBg}`}>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}><a.icon size={20} className={iconColor} /></div>
+                  <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className={`font-medium truncate ${textPrimary}`}>{a.title}</p>{a.priority === 'urgent' && <span className="px-2 py-0.5 text-xs font-bold text-white rounded bg-red-500 animate-pulse">URGENT</span>}</div><p className={`text-sm ${textSecondary} truncate`}>{a.desc}</p></div>
+                  {a.days !== undefined && <span className={`text-xs ${textSecondary}`}>{a.days}j</span>}
+                </div>
+              );
+            })}</div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div className={`rounded-2xl border p-5 ${cardBg}`}>
+            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>ðŸ† Top Rentabilité</h3>
+            {top3.length === 0 ? <p className={`text-center ${textSecondary} py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
+              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                <div className="flex items-center gap-3"><span className="text-xl">{['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
                 <span className="font-bold" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
             ))}
-            {aSurveiller.length > 0 && (
-              <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                <p className={`text-xs ${textSecondary} mb-2 flex items-center gap-2`}><AlertCircle size={14} /> À surveiller</p>
-                {aSurveiller.slice(0, 2).map(ch => (
-                  <div key={ch.id} className={`flex items-center justify-between py-2 ${textSecondary}`}>
-                    <span className="truncate text-sm">{ch.nom}</span>
-                    <span className="text-red-500 font-medium">{ch.marge.toFixed(0)}%</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
-      </div>
-
-      <div className={`rounded-2xl border p-5 ${cardBg}`}>
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Clock size={18} /> À faire aujourd'hui <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{actions.length}</span></h3>
-          <div className="flex gap-1">
-            {[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => (
-              <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>
-            ))}
-          </div>
-        </div>
-        {filteredActions.length === 0 ? (
-          <div className="text-center py-8">
-            <CheckCircle size={40} className="mx-auto mb-2 text-emerald-500" />
-            <p className={textSecondary}>Aucune action en attente</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredActions.slice(0, 5).map(action => (
-              <div key={action.id} onClick={action.action} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer ${hoverBg}`}>
-                <div className={`p-2 rounded-lg ${action.priority === 'urgent' ? 'bg-red-100 text-red-600' : action.priority === 'high' ? 'bg-amber-100 text-amber-600' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                  <action.icon size={18} />
+          {aSurveiller.length > 0 && (
+            <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš ï¸ À surveiller</h3>
+              {aSurveiller.slice(0, 3).map(ch => (
+                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
+                  <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>
+                  <span className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{ch.marge.toFixed(0)}%</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${textPrimary}`}>{action.title}</p>
-                  <p className={`text-sm ${textSecondary}`}>{action.desc}</p>
-                </div>
-                {action.days !== undefined && <span className={`text-xs px-2 py-1 rounded-full ${action.priority === 'urgent' ? 'bg-red-100 text-red-700' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{action.days}j</span>}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Nouveau devis', icon: FileText, page: 'devis', color: couleur, sub: `${stats.devisEnAttente} en attente` },
-          { label: 'Nouveau chantier', icon: Building2, page: 'chantiers', color: '#3b82f6', sub: `${stats.chantiersActifs} actifs` },
-          { label: 'Nouveau client', icon: Users, page: 'clients', color: '#10b981', sub: `${safeClients.length} clients` },
-          { label: 'Planning', icon: Calendar, page: 'planning', color: '#8b5cf6', sub: 'Voir agenda' },
-        ].map(item => (
-          <button key={item.label} onClick={() => setPage?.(item.page)} className={`rounded-2xl border p-5 text-left ${cardBg} hover:shadow-md transition-all group`}>
-            <div className="p-2.5 rounded-xl w-fit mb-3 group-hover:scale-110 transition-transform" style={{ background: `${item.color}20` }}>
-              <item.icon size={22} style={{ color: item.color }} />
+              ))}
             </div>
-            <p className={`font-medium ${textPrimary}`}>{item.label}</p>
-            <p className={`text-sm ${textSecondary}`}>{item.sub}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Actions rapides */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
+          <button key={b.target} onClick={() => setPage?.(b.target)} className={`flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all ${cardBg}`}>
+            <b.icon size={24} style={{ color: b.color }} />
+            <span className={`text-sm font-medium ${textPrimary}`}>{b.label}</span>
+            <span className={`text-xs ${textSecondary}`}>{b.sub}</span>
           </button>
         ))}
       </div>
