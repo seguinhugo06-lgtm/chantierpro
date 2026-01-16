@@ -180,9 +180,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
 
       <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 ${hoverBg} rounded-xl text-xl"></button>
+          <button onClick={() => setDate(new Date(year, month - 1))} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
           <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
-          <button onClick={() => setDate(new Date(year, month + 1))} className="p-2 ${hoverBg} rounded-xl text-xl"></button>
+          <button onClick={() => setDate(new Date(year, month + 1))} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
         </div>
         <div className="grid grid-cols-7 border-b">{JOURS.map(j => <div key={j} className="py-2 text-center text-sm font-medium text-slate-500">{j}</div>)}</div>
         <div className="grid grid-cols-7">
@@ -215,7 +215,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         {allEvents.filter(e => new Date(e.date) >= new Date()).length === 0 ? (
           <p className="text-center text-slate-400 py-4">Aucun événement Ã  venir</p>
         ) : allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 8).map(ev => (
-          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer ${hoverBg} rounded-xl px-2 transition-colors">
+          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer ${hoverBg} rounded-xl px-2 transition-colors`}>
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{background: ev.color || typeColors[ev.type] || couleur}}></div>
             <div className="flex-1 min-w-0"><p className="font-medium truncate">{ev.title}</p><p className="text-sm text-slate-500">{new Date(ev.date).toLocaleDateString('fr-FR')} {ev.time && `Ã  ${ev.time}`}</p></div>
             <span className="text-slate-400 text-sm">{ev.isChantier ? '' : ''}</span>

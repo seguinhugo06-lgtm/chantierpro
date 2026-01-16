@@ -83,7 +83,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
   if (showAdd) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className="p-2 ${hoverBg} rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className={`p-2 ${hoverBg} rounded-xl`}></button><h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
       <div className={`rounded-2xl border p-6 ${cardBg}`}>
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>

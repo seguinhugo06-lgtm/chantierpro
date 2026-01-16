@@ -78,7 +78,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="p-2 ${hoverBg} rounded-xl text-xl"></button>
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
           <div className="flex-1 min-w-0"><h1 className="text-2xl font-bold truncate">{ch.nom}</h1><p className="text-slate-500">{client?.nom} • {ch.adresse}</p></div>
           <select value={ch.statut} onChange={e => updateChantier(ch.id, { statut: e.target.value })} className="px-4 py-2 border rounded-xl">
             <option value="prospect">Prospect</option><option value="en_cours">En cours</option><option value="termine">Terminé</option>
@@ -341,7 +341,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Formulaire création
   if (show) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 ${hoverBg} rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau chantier</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className={`p-2 ${hoverBg} rounded-xl`}></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau chantier</h1></div>
       <div className={`rounded-2xl border p-6 ${cardBg}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
