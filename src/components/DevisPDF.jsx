@@ -266,7 +266,7 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
           </Text>
           {devis.type === 'facture' && (
             <Text style={{ marginTop: 5 }}>
-              Facture Ã  régler sous 30 jours. En cas de retard, pénalités de 3 fois le taux d'intérêt légal.
+              Facture à régler sous 30 jours. En cas de retard, pénalités de 3 fois le taux d'intérêt légal.
             </Text>
           )}
         </View>

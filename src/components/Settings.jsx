@@ -76,7 +76,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     });
 
     // Créer CSV (compatible Excel)
-    const headers = ['NÂ° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
+    const headers = ['N° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
     const rows = devisYear.map(d => {
       const tva55 = d.tvaRate === 5.5 ? d.tva : 0;
       const tva10 = d.tvaRate === 10 ? d.tva : 0;
@@ -159,10 +159,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {completude < 80 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <span className="text-xl">âš ï¸</span>
+          <span className="text-xl">âš </span>
           <div>
             <p className="font-medium text-amber-800">Profil incomplet</p>
-            <p className="text-sm text-amber-700">Complétez vos informations pour générer des devis et factures conformes Ã  la loi française.</p>
+            <p className="text-sm text-amber-700">Complétez vos informations pour générer des devis et factures conformes à la loi française.</p>
           </div>
         </div>
       )}
@@ -172,7 +172,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         {[
           ['identite', ' Identité'],
           ['legal', ' Légal'],
-          ['assurances', ` Assurances${hasAssuranceAlerts ? ' âš ï¸' : ''}`],
+          ['assurances', ` Assurances${hasAssuranceAlerts ? ' âš ' : ''}`],
           ['banque', ' Banque'],
           ['documents', ' Documents'],
           ['rentabilite', ' Rentabilité']
@@ -290,7 +290,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
                 )}
                 {entreprise.siret && validateSIRET(entreprise.siret) && (
-                  <p className="text-xs text-green-600 mt-1">âœ“ Format valide</p>
+                  <p className="text-xs text-green-600 mt-1">“ Format valide</p>
                 )}
               </div>
               <div>
@@ -327,7 +327,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             {getRCSComplet() && (
               <div className="mt-4 p-3 bg-green-50 rounded-xl">
-                <p className="text-sm text-green-700">âœ“ Sera affiché: <strong>{getRCSComplet()}</strong></p>
+                <p className="text-sm text-green-700">“ Sera affiché: <strong>{getRCSComplet()}</strong></p>
               </div>
             )}
           </div>
@@ -339,7 +339,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : ''}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
-                <p className="text-xs text-green-600 mt-1">âœ“ Format valide</p>
+                <p className="text-xs text-green-600 mt-1">“ Format valide</p>
               )}
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
                   'bg-blue-50 border border-blue-200'
                 }`}>
-                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? 'âš ï¸' : 'â„¹ï¸'}</span>
+                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? 'âš ' : 'â„¹'}</span>
                   <div className="flex-1">
                     <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
                       {alert.message}
@@ -401,7 +401,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           )}
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="font-medium text-amber-800">âš ï¸ Obligatoire pour les artisans du BTP</p>
+            <p className="font-medium text-amber-800">âš  Obligatoire pour les artisans du BTP</p>
             <p className="text-sm text-amber-700 mt-1">L'assurance RC Pro et la garantie décennale doivent figurer sur tous vos devis et factures (Article L243-1 du Code des assurances).</p>
           </div>
 
@@ -409,7 +409,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
               {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">âœ“ Valide</span>
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -436,7 +436,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Garantie Décennale</h3>
               {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">âœ“ Valide</span>
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
               )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -581,7 +581,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="bg-slate-50 rounded-xl p-4 font-mono text-sm">
               <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
               <p className="ml-4">- Matériaux (achats)</p>
-              <p className="ml-4">- Main d'Å“uvre (heures Ã— coût chargé)</p>
+              <p className="ml-4">- Main d'œuvre (heures × coût chargé)</p>
               <p className="ml-4">- Frais structure ({entreprise.tauxFraisStructure || 15}% du CA)</p>
               <p className="ml-4">- Ajustements Dépenses</p>
             </div>
@@ -595,7 +595,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* APERÃ‡U DOCUMENT */}
+      {/* APERÇU DOCUMENT */}
       <div className="bg-white rounded-2xl border p-6">
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
         <div className="border rounded-xl p-6 bg-slate-50">
@@ -610,7 +610,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
                 {entreprise.slogan && <p className="text-xs text-slate-500 italic">{entreprise.slogan}</p>}
                 {entreprise.formeJuridique && (
-                  <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` â€¢ Capital: ${entreprise.capital} €`}</p>
+                  <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` "¢ Capital: ${entreprise.capital} €`}</p>
                 )}
                 <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse'}</p>
               </div>
@@ -618,15 +618,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
           </div>
           <div className="text-xs text-slate-500 space-y-0.5 border-t pt-3 mt-3">
-            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `â€¢ APE: ${entreprise.codeApe}`}</p>}
+            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `"¢ APE: ${entreprise.codeApe}`}</p>}
             {getRCSComplet() && <p>{getRCSComplet()}</p>}
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
-            {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `â€¢ ${entreprise.email}`}</p>}
+            {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `"¢ ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
               <p className="pt-1 text-[10px]">
-                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} NÂ°${entreprise.rcProNumero}`}
-                {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' â€¢ '}
-                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} NÂ°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
+                {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' "¢ '}
+                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
           </div>
@@ -640,14 +640,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <h3 className="font-bold text-lg mb-4"> Export pour comptable</h3>
             <p className="text-slate-500 mb-4">Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Année Ã  exporter</label>
+              <label className="block text-sm font-medium mb-2">Année à exporter</label>
               <select className="w-full px-4 py-2.5 border rounded-xl" value={exportYear} onChange={e => setExportYear(parseInt(e.target.value))}>
                 {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             <div className="bg-slate-50 rounded-xl p-4 mb-6 text-sm">
               <p className="font-medium mb-2">Colonnes exportées:</p>
-              <p className="text-slate-600">NÂ° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
+              <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowExportModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>

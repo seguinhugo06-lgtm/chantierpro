@@ -54,9 +54,9 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <button onClick={() => setViewId(null)} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†</button>
+          <button onClick={() => setViewId(null)} className="p-2 hover:bg-slate-100 rounded-xl text-xl">←</button>
           <div className="flex-1"><h1 className="text-2xl font-bold">{client.nom} {client.prenom}</h1>{client.entreprise && <p className="text-slate-500">{client.entreprise}</p>}</div>
-          <button onClick={() => startEdit(client)} className="px-4 py-2 text-sm rounded-xl" style={{background: `${couleur}20`, color: couleur}}>âœï¸ Modifier</button>
+          <button onClick={() => startEdit(client)} className="px-4 py-2 text-sm rounded-xl" style={{background: `${couleur}20`, color: couleur}}> Modifier</button>
         </div>
 
         {/* Actions rapides */}
@@ -95,7 +95,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
                 <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100">
                   <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`}></span>
                   <div className="flex-1"><p className="font-medium">{ch.nom}</p><p className="text-xs text-slate-500">{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</p></div>
-                  <span className="text-slate-400">â†’</span>
+                  <span className="text-slate-400">←’</span>
                 </div>
               ))}</div>
             )}
@@ -106,7 +106,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
           <div className="bg-white rounded-2xl border p-5">
             {clientDevis.length === 0 ? <p className="text-center text-slate-400 py-8">Aucun document</p> : (
               <div className="space-y-2">{clientDevis.map(d => {
-                const statusIcon = { brouillon: 'âšª', envoye: '', accepte: 'âœ…', payee: '', refuse: 'âŒ' }[d.statut] || '';
+                const statusIcon = { brouillon: 'âšª', envoye: '', accepte: '[OK]', payee: '', refuse: 'âŒ' }[d.statut] || '';
                 return (
                   <div key={d.id} onClick={() => openDocument(d)} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 hover:shadow-sm transition-all">
                     <span className="text-xl">{d.type === 'facture' ? '' : ''}</span>
@@ -118,7 +118,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
                       <p className="text-xs text-slate-500">{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                     </div>
                     <p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString()}€</p>
-                    <span className="text-slate-400">â†’</span>
+                    <span className="text-slate-400">←’</span>
                   </div>
                 );
               })}</div>
@@ -142,7 +142,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
   // Formulaire
   if (show) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouveau'} client</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouveau'} client</h1></div>
       <div className="bg-white rounded-2xl border p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
@@ -172,7 +172,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
                 <div className="flex gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold cursor-pointer" style={{background: couleur}} onClick={() => setViewId(c.id)}>{c.nom?.[0]}</div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setViewId(c.id)}><h3 className="font-semibold truncate">{c.nom} {c.prenom}</h3>{c.entreprise && <p className="text-sm text-slate-500 truncate">{c.entreprise}</p>}</div>
-                  <button onClick={() => startEdit(c)} className="text-slate-400 hover:text-slate-600 p-1">âœï¸</button>
+                  <button onClick={() => startEdit(c)} className="text-slate-400 hover:text-slate-600 p-1"></button>
                 </div>
                 {c.telephone && (<div className="flex gap-2 mb-3"><button onClick={() => callPhone(c.telephone)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm"> {c.telephone}</button><button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className="py-2 px-3 bg-green-50 text-green-600 rounded-lg text-sm"></button></div>)}
                 {c.adresse && <button onClick={() => openGPS(c.adresse)} className="w-full py-2 bg-purple-50 text-purple-600 rounded-lg text-sm mb-3"> Itinéraire</button>}

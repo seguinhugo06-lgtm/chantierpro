@@ -37,11 +37,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     const items = [], now = new Date();
     safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} â€¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} "¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} â€¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} "¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeChantiers.filter(ch => ch.statut === 'en_cours').forEach(ch => {
       const bilan = getChantierBilan?.(ch.id);
@@ -53,7 +53,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
   const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
   const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
-  const formatMoney = (n) => modeDiscret ? 'â€¢â€¢â€¢â€¢â€¢' : `${(n || 0).toLocaleString('fr-FR')} €`;
+  const formatMoney = (n) => modeDiscret ? '"¢"¢"¢"¢"¢' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
 
   // Classes conditionnelles pour le thème
@@ -92,9 +92,9 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} />
-        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? 'â€¢â€¢%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
+        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '"¢"¢%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
         <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} color="#10b981" />
-        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>â€¢ {stats.chantiersActifs} chantiers en cours</p><p>â€¢ {stats.devisEnAttente} devis en attente</p></>} />
+        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>"¢ {stats.chantiersActifs} chantiers en cours</p><p>"¢ {stats.devisEnAttente} devis en attente</p></>} />
       </div>
 
       {/* Graphiques */}
@@ -132,11 +132,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       <div className="grid lg:grid-cols-3 gap-6">
         <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />Ã€ faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
             <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
-            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est Ã  jour ! </h4></div>
+            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour ! </h4></div>
           ) : (
             <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
               const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
@@ -166,7 +166,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           </div>
           {aSurveiller.length > 0 && (
             <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš ï¸ Ã€ surveiller</h3>
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš  À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
                 <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
                   <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>
