@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark }) {
-  // Variables thème
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-white" : "text-slate-900";
@@ -86,7 +85,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {(depassementBudget || margeNegative) && (
           <div className={`rounded-2xl p-4 ${margeNegative ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{margeNegative ? 'ðŸš¨' : 'âš ï¸'}</span>
+              <span className="text-2xl">{margeNegative ? '' : 'âš ï¸'}</span>
               <div>
                 <p className="font-semibold">{margeNegative ? 'Marge négative !' : 'Dépassement budget'}</p>
                 <p className="text-sm text-slate-600">{margeNegative ? 'Ce chantier est actuellement en perte. Analysez les dépassements.' : 'Les dépenses dépassent le budget prévu de >20%'}</p>
@@ -98,7 +97,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Widget Santé Financière */}
         <div className={`${getMargeBg(bilan.tauxMarge)} rounded-2xl border p-5`}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className="font-semibold text-lg">ðŸ’° Santé Financière</h3>
+            <h3 className="font-semibold text-lg"> Santé Financière</h3>
             <div className={`px-4 py-2 rounded-xl text-xl font-bold ${getMargeColor(bilan.tauxMarge)}`}>
               {formatMoney(bilan.marge)} <span className="text-base">({formatPct(bilan.tauxMarge)})</span>
             </div>
@@ -143,7 +142,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {/* Projection */}
           {avancement > 0 && avancement < 100 && (
             <div className="bg-gradient-to-r from-slate-100 to-slate-50 rounded-xl p-4">
-              <h4 className="font-medium mb-3">ðŸ“ˆ Projection Fin de Chantier</h4>
+              <h4 className="font-medium mb-3"> Projection Fin de Chantier</h4>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div><p className="text-xs text-slate-500">Dépenses finales</p><p className="font-bold text-red-500">{formatMoney(depensesFinalesEstimees)}</p></div>
                 <div><p className="text-xs text-slate-500">Bénéfice projeté</p><p className={`font-bold ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p></div>
@@ -155,7 +154,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {/* Comparaison Devis vs Réel */}
           {devisHT > 0 && !modeDiscret && (
             <div className="bg-white rounded-xl p-4 mt-4">
-              <h4 className="font-medium mb-3">ðŸ“Š Devis vs Réel</h4>
+              <h4 className="font-medium mb-3"> Devis vs Réel</h4>
               <table className="w-full text-sm">
                 <thead><tr className="border-b"><th className="text-left py-2">Poste</th><th className="text-right py-2">Devis</th><th className="text-right py-2">Réel</th><th className="text-right py-2">Écart</th></tr></thead>
                 <tbody>
@@ -171,7 +170,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* Onglets */}
         <div className="flex gap-2 border-b overflow-x-auto pb-2">
-          {[['finances', 'ðŸ’° Finances'], ['taches', 'ðŸ“‹ Tâches'], ['photos', 'ðŸ“¸ Photos'], ['notes', 'ðŸ“ Notes']].map(([k, v]) => (
+          {[['finances', ' Finances'], ['taches', ' Tâches'], ['photos', ' Photos'], ['notes', ' Notes']].map(([k, v]) => (
             <button key={k} onClick={() => setActiveTab(k)} className={`px-4 py-2 rounded-t-xl whitespace-nowrap font-medium ${activeTab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`}>{v}</button>
           ))}
         </div>
@@ -180,18 +179,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="space-y-4">
             {adjRevenus.length > 0 && (
               <div className={`rounded-2xl border p-5 ${cardBg}`}>
-                <h3 className="font-semibold mb-3 text-emerald-600">ðŸ“ˆ Ajustements Revenus</h3>
+                <h3 className="font-semibold mb-3 text-emerald-600"> Ajustements Revenus</h3>
                 {adjRevenus.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-emerald-600">+{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
             {adjDepenses.length > 0 && (
               <div className={`rounded-2xl border p-5 ${cardBg}`}>
-                <h3 className="font-semibold mb-3 text-red-600">ðŸ“‰ Ajustements Dépenses</h3>
+                <h3 className="font-semibold mb-3 text-red-600"> Ajustements Dépenses</h3>
                 {adjDepenses.map(a => (<div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0"><span>{a.libelle}</span><div className="flex items-center gap-3"><span className="font-bold text-red-600">-{formatMoney(a.montant_ht)}</span><button onClick={() => deleteAjustement(a.id)} className="text-red-400 hover:text-red-600">âœ•</button></div></div>))}
               </div>
             )}
             <div className={`rounded-2xl border p-5 ${cardBg}`}>
-              <h3 className="font-semibold mb-4">ðŸ§¾ Dépenses Matériaux</h3>
+              <h3 className="font-semibold mb-4"> Dépenses Matériaux</h3>
               <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><span className="text-slate-500 text-sm w-24">{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className="flex-1">{d.description}</span><span className="text-xs bg-slate-200 px-2 py-1 rounded">{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className="text-center text-slate-400 py-4">Aucune dépense</p>}</div>
               <div className="flex gap-2 flex-wrap">
                 <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className="px-3 py-2.5 border rounded-xl text-sm"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
@@ -205,7 +204,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'taches' && (
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
-            <h3 className="font-semibold mb-4">ðŸ“‹ Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
+            <h3 className="font-semibold mb-4"> Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
             {tasksTotal > 0 && <div className="w-full h-2 bg-slate-100 rounded-full mb-4 overflow-hidden"><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
             <div className="space-y-2 mb-4">{ch.taches?.map(t => (<div key={t.id} onClick={() => toggleTache(t.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${t.done ? 'bg-emerald-50' : 'bg-slate-50'}`}><span className="text-xl">{t.done ? 'âœ…' : 'â¬œ'}</span><span className={t.done ? 'line-through text-slate-400' : ''}>{t.text}</span></div>))}</div>
             <div className="flex gap-2"><input placeholder="Nouvelle tâche..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className="flex-1 px-4 py-2.5 border rounded-xl" /><button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button></div>
@@ -215,7 +214,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {activeTab === 'photos' && (
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-              <h3 className="font-semibold">ðŸ“¸ Carnet Photos</h3>
+              <h3 className="font-semibold"> Carnet Photos</h3>
               <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
             </div>
             {(!ch.photos || ch.photos.length === 0) ? <p className="text-slate-400 text-center py-8">Aucune photo</p> : (
@@ -226,7 +225,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'notes' && (
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
-            <h3 className="font-semibold mb-4">ðŸ“ Notes</h3>
+            <h3 className="font-semibold mb-4"> Notes</h3>
             <textarea className="w-full px-4 py-3 border rounded-xl" rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Notes internes..." />
           </div>
         )}
@@ -235,7 +234,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {showAjustement && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md">
-              <h3 className="text-lg font-bold mb-4">{showAjustement === 'REVENU' ? 'ðŸ“ˆ Ajustement Revenu' : 'ðŸ“‰ Ajustement Dépense'}</h3>
+              <h3 className="text-lg font-bold mb-4">{showAjustement === 'REVENU' ? ' Ajustement Revenu' : ' Ajustement Dépense'}</h3>
               <p className="text-sm text-slate-500 mb-4">{showAjustement === 'REVENU' ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</p>
               <div className="space-y-4">
                 <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Libellé" value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
@@ -250,7 +249,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {showQuickMateriau && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setShowQuickMateriau(false)}>
             <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-bold mb-2">ðŸ§± Ajouter un matériau</h3>
+              <h3 className="text-lg font-bold mb-2"> Ajouter un matériau</h3>
               <p className="text-sm text-slate-500 mb-4">Ajout rapide de dépense matériau</p>
               
               {/* Sélection depuis catalogue */}
@@ -307,7 +306,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">â±ï¸ Détail Main d'Å’uvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm text-white rounded-lg" style={{background: couleur}}>+ Heures</button></div>
               <div className="space-y-2 mb-4">{chPointages.map(p => { const emp = equipe.find(e => e.id === p.employeId); const cout = emp?.coutHoraireCharge || 28; return (
                 <div key={p.id} className={`p-3 rounded-xl ${p.manuel ? 'bg-blue-50' : 'bg-slate-50'} ${p.verrouille ? 'opacity-60' : ''}`}>
-                  <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? 'âœ…' : 'â³'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded">ðŸ”’</span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} className="text-red-400">ðŸ—‘ï¸</button>}</div>
+                  <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? 'âœ…' : 'â³'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} className="text-red-400"></button>}</div>
                   <div className="grid grid-cols-4 gap-2 mt-2 text-sm"><div><p className="text-xs text-slate-500">Date</p><input type="date" value={p.date} onChange={e => handleEditPointage(p.id, 'date', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded text-xs" /></div><div><p className="text-xs text-slate-500">Employé</p><p className="font-medium">{emp?.nom}</p></div><div><p className="text-xs text-slate-500">Heures</p><input type="number" step="0.5" value={p.heures} onChange={e => handleEditPointage(p.id, 'heures', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded" /></div><div><p className="text-xs text-slate-500">Coût</p><p className="font-bold text-blue-600">{formatMoney(p.heures * cout)}</p></div></div>
                 </div>
               ); })}{chPointages.length === 0 && <p className="text-center text-slate-400 py-4">Aucun pointage</p>}</div>
@@ -356,7 +355,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Chantiers ({chantiers.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      {chantiers.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ—ï¸</p><p className="text-slate-500">Aucun chantier</p></div> : (
+      {chantiers.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun chantier</p></div> : (
         <div className="grid gap-4">
           {chantiers.map(ch => {
             const client = clients.find(c => c.id === ch.client_id);

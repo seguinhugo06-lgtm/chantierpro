@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], onExportComptable, isDark, couleur }) {
-  // Variables thème
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-white" : "text-slate-900";
@@ -74,7 +73,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     });
 
     // Créer CSV (compatible Excel)
-    const headers = ['NÂ° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
+    const headers = ['N° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
     const rows = devisYear.map(d => {
       const tva55 = d.tvaRate === 5.5 ? d.tva : 0;
       const tva10 = d.tvaRate === 10 ? d.tva : 0;
@@ -129,7 +128,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <h1 className="text-2xl font-bold">Paramètres</h1>
         <div className="flex items-center gap-4">
           <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm flex items-center gap-2">
-            ðŸ“Š Export comptable
+             Export comptable
           </button>
           <div className="flex items-center gap-3">
             <div className="text-right">
@@ -146,7 +145,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Alertes assurances critiques */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
         <div key={i} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 flex items-center gap-3 animate-pulse">
-          <span className="text-2xl">ðŸš¨</span>
+          <span className="text-2xl"></span>
           <div className="flex-1">
             <p className="font-bold text-red-800">{alert.message}</p>
             <p className="text-sm text-red-600">Date d'expiration: {alert.date.toLocaleDateString('fr-FR')}</p>
@@ -168,12 +167,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Tabs */}
       <div className="flex gap-2 border-b pb-2 flex-wrap overflow-x-auto">
         {[
-          ['identite', 'ðŸ¢ Identité'],
-          ['legal', 'ðŸ“‹ Légal'],
-          ['assurances', `ðŸ›¡ï¸ Assurances${hasAssuranceAlerts ? ' âš ï¸' : ''}`],
-          ['banque', 'ðŸ¦ Banque'],
-          ['documents', 'ðŸ“„ Documents'],
-          ['rentabilite', 'ðŸ’° Rentabilité']
+          ['identite', ' Identité'],
+          ['legal', ' Légal'],
+          ['assurances', ` Assurances${hasAssuranceAlerts ? ' âš ï¸' : ''}`],
+          ['banque', ' Banque'],
+          ['documents', ' Documents'],
+          ['rentabilite', ' Rentabilité']
         ].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
@@ -192,12 +191,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
                     ) : (
-                      <span className="text-3xl text-slate-300">ðŸ¢</span>
+                      <span className="text-3xl text-slate-300"></span>
                     )}
                   </div>
                   <div className="space-y-2">
                     <label className="block px-4 py-2 rounded-xl cursor-pointer text-white text-sm" style={{background: entreprise.couleur}}>
-                      ðŸ“ Choisir une image
+                       Choisir une image
                       <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                     </label>
                     {entreprise.logo && (
@@ -344,7 +343,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           {entreprise.formeJuridique === 'Micro-entreprise' && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="font-medium text-blue-800">ðŸ’¡ Micro-entreprise</p>
+              <p className="font-medium text-blue-800"> Micro-entreprise</p>
               <p className="text-sm text-blue-700 mt-1">La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
             </div>
           )}
@@ -384,7 +383,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
                   'bg-blue-50 border border-blue-200'
                 }`}>
-                  <span className="text-xl">{alert.severity === 'critical' ? 'ðŸš¨' : alert.severity === 'warning' ? 'âš ï¸' : 'â„¹ï¸'}</span>
+                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? 'âš ï¸' : 'â„¹ï¸'}</span>
                   <div className="flex-1">
                     <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
                       {alert.message}
@@ -405,7 +404,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <div className={`rounded-2xl border p-6 ${cardBg}`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">ðŸ›¡ï¸ Assurance RC Professionnelle</h3>
+              <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
               {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">âœ“ Valide</span>
               )}
@@ -432,7 +431,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <div className={`rounded-2xl border p-6 ${cardBg}`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">ðŸ—ï¸ Garantie Décennale</h3>
+              <h3 className="font-semibold"> Garantie Décennale</h3>
               {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">âœ“ Valide</span>
               )}
@@ -569,7 +568,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`rounded-2xl border p-6 ${cardBg}`}>
-          <h3 className="font-semibold mb-4">ðŸ’° Calcul de Rentabilité</h3>
+          <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
@@ -593,16 +592,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* APERÃ‡U DOCUMENT */}
+      {/* APERÇU DOCUMENT */}
       <div className={`rounded-2xl border p-6 ${cardBg}`}>
-        <h3 className="font-semibold mb-4">ðŸ‘ï¸ Aperçu en-tête document</h3>
+        <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
         <div className="border rounded-xl p-6 bg-slate-50">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-4">
               {entreprise.logo ? (
                 <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" />
               ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}>ðŸ¢</div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}></div>
               )}
               <div>
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
@@ -622,9 +621,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `â€¢ ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
               <p className="pt-1 text-[10px]">
-                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} NÂ°${entreprise.rcProNumero}`}
+                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' â€¢ '}
-                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} NÂ°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
           </div>
@@ -634,8 +633,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Modal Export Comptable */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`}>
-            <h3 className="font-bold text-lg mb-4">ðŸ“Š Export pour comptable</h3>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 className="font-bold text-lg mb-4"> Export pour comptable</h3>
             <p className="text-slate-500 mb-4">Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2">Année Ã  exporter</label>
@@ -645,11 +644,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="bg-slate-50 rounded-xl p-4 mb-6 text-sm">
               <p className="font-medium mb-2">Colonnes exportées:</p>
-              <p className="text-slate-600">NÂ° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
+              <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowExportModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
-              <button onClick={handleExportComptable} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl">ðŸ“¥ Télécharger CSV</button>
+              <button onClick={handleExportComptable} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl"> Télécharger CSV</button>
             </div>
           </div>
         </div>

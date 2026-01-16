@@ -4,7 +4,6 @@ const CATEGORIES = ['Tous', 'Plomberie', 'Électricité', 'Maçonnerie', 'Carrel
 const UNITES = ['unité', 'h', 'mÂ²', 'ml', 'forfait', 'jour', 'pot', 'sac', 'rouleau', 'kg', 'mÂ³', 'palette'];
 
 export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) {
-  // Variables thème
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-white" : "text-slate-900";
@@ -63,7 +62,7 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-2xl font-bold">Catalogue ({catalogue.length})</h1>
         <div className="flex gap-2">
-          <button onClick={() => setShowStock(!showStock)} className={`px-4 py-2 rounded-xl text-sm ${showStock ? 'text-white' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>ðŸ“¦ Stock</button>
+          <button onClick={() => setShowStock(!showStock)} className={`px-4 py-2 rounded-xl text-sm ${showStock ? 'text-white' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}> Stock</button>
           <button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Ajouter</button>
         </div>
       </div>
@@ -83,11 +82,11 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
       )}
 
       <div className="flex gap-4 flex-wrap items-center">
-        <input type="text" placeholder="ðŸ” Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2.5 border rounded-xl" />
+        <input type="text" placeholder=" Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2.5 border rounded-xl" />
         <div className="flex gap-2 flex-wrap">{CATEGORIES.map(cat => (<button key={cat} onClick={() => setCatFilter(cat)} className={`px-3 py-1.5 rounded-lg text-sm ${catFilter === cat ? 'text-white' : 'bg-slate-100'}`} style={catFilter === cat ? {background: couleur} : {}}>{cat}</button>))}</div>
       </div>
 
-      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ“¦</p><p className="text-slate-500">Catalogue vide</p></div> : (
+      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Catalogue vide</p></div> : (
         <div className="bg-white rounded-2xl border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b"><tr><th className="text-left px-4 py-3">Article</th><th className="text-right px-4 py-3 w-24">Vente</th><th className="text-right px-4 py-3 w-24">Achat</th><th className="text-right px-4 py-3 w-20">Marge</th>{showStock && <th className="text-center px-4 py-3 w-28">Stock</th>}<th className="w-20"></th></tr></thead>
@@ -107,7 +106,7 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
                     <td className="px-4 py-3 text-right text-slate-500">{item.prixAchat || 0}€</td>
                     <td className="px-4 py-3 text-right"><span className={`font-bold ${marge >= 30 ? 'text-emerald-600' : marge >= 15 ? 'text-amber-500' : 'text-red-500'}`}>{marge.toFixed(0)}%</span></td>
                     {showStock && (<td className="px-4 py-3 text-center">{item.stock_actuel !== undefined ? (<input type="number" value={item.stock_actuel} onChange={e => updateStock(item.id, e.target.value)} className="w-16 px-2 py-1 border rounded text-center" />) : <span className="text-slate-400">-</span>}</td>)}
-                    <td className="px-4 py-3 text-center"><button onClick={() => startEdit(item)} className="text-slate-400 hover:text-slate-600 mr-2">âœï¸</button><button onClick={() => deleteItem(item.id)} className="text-red-400 hover:text-red-600">ðŸ—‘ï¸</button></td>
+                    <td className="px-4 py-3 text-center"><button onClick={() => startEdit(item)} className="text-slate-400 hover:text-slate-600 mr-2">âœï¸</button><button onClick={() => deleteItem(item.id)} className="text-red-400 hover:text-red-600"></button></td>
                   </tr>
                 );
               })}

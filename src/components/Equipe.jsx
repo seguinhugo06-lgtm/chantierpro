@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
 export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark }) {
-  // Variables thème
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-white" : "text-slate-900";
@@ -113,7 +112,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
       {/* Tabs */}
       <div className="flex gap-2 border-b pb-2 overflow-x-auto">
-        {[['pointage', 'â±ï¸ Pointage'], ['equipe', 'ðŸ‘· Équipe'], ['validation', `âœ… Validation ${pointagesEnAttente.length > 0 ? `(${pointagesEnAttente.length})` : ''}`], ['historique', 'ðŸ“‹ Historique']].map(([k, v]) => (
+        {[['pointage', 'â±ï¸ Pointage'], ['equipe', ' Équipe'], ['validation', `âœ… Validation ${pointagesEnAttente.length > 0 ? `(${pointagesEnAttente.length})` : ''}`], ['historique', ' Historique']].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`}>{v}</button>
         ))}
       </div>
@@ -122,7 +121,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <div className="space-y-6">
           <div className={`rounded-2xl border p-6 ${cardBg}`}>
             <h3 className="font-semibold mb-4">â±ï¸ Chronomètre</h3>
-            <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm text-orange-500 mt-2">ðŸ”´ En cours</p>}</div>
+            <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm text-orange-500 mt-2"> En cours</p>}</div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <select className="px-4 py-2.5 border rounded-xl" value={chrono.employeId} onChange={e => setChrono(p => ({...p, employeId: e.target.value}))} disabled={chrono.running}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
               <select className="px-4 py-2.5 border rounded-xl" value={chrono.chantierId} onChange={e => setChrono(p => ({...p, chantierId: e.target.value}))} disabled={chrono.running}><option value="">Chantier</option>{chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select>
@@ -151,7 +150,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <p className="text-sm text-slate-500">{pointagesEnAttente.length} pointage(s) en attente</p>
             <div className="flex gap-2">
               {pointagesEnAttente.length > 0 && <button onClick={approuverTout} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm">âœ… Tout valider</button>}
-              <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm">ðŸ”’ Verrouiller semaine</button>
+              <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Verrouiller semaine</button>
             </div>
           </div>
           {pointagesEnAttente.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">âœ…</p><p className="text-slate-500">Tous validés</p></div> : (
@@ -161,11 +160,11 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                 const ch = chantiers.find(c => c.id === p.chantierId);
                 return (
                   <div key={p.id} className="flex items-center px-5 py-4 border-b gap-4 flex-wrap">
-                    <span className={`text-2xl ${p.manuel ? 'ðŸ”µ' : 'ðŸŸ '}`}></span>
-                    <div className="flex-1 min-w-[150px]"><p className="font-medium">{emp?.nom} {emp?.prenom}</p><p className="text-sm text-slate-500">{ch?.nom || 'Sans chantier'} â€¢ {new Date(p.date).toLocaleDateString('fr-FR')}</p>{p.note && <p className="text-xs text-blue-600 mt-1">ðŸ’¬ {p.note}</p>}</div>
+                    <span className={`text-2xl ${p.manuel ? '' : ' '}`}></span>
+                    <div className="flex-1 min-w-[150px]"><p className="font-medium">{emp?.nom} {emp?.prenom}</p><p className="text-sm text-slate-500">{ch?.nom || 'Sans chantier'} â€¢ {new Date(p.date).toLocaleDateString('fr-FR')}</p>{p.note && <p className="text-xs text-blue-600 mt-1"> {p.note}</p>}</div>
                     <div className="flex items-center gap-2"><input type="number" value={p.heures} onChange={e => updatePointage(p.id, 'heures', e.target.value)} className="w-16 px-2 py-1 border rounded text-center" /><span>h</span></div>
                     <button onClick={() => approuverPointage(p.id)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm">âœ…</button>
-                    <button onClick={() => rejeterPointage(p.id)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-sm">ðŸ—‘ï¸</button>
+                    <button onClick={() => rejeterPointage(p.id)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-sm"></button>
                   </div>
                 );
               })}
@@ -175,7 +174,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       )}
 
       {tab === 'equipe' && (
-        equipe.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ‘·</p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
+        equipe.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {equipe.map(e => (
               <div key={e.id} className={`rounded-2xl border p-5 ${cardBg}`}>
@@ -183,7 +182,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{background: couleur}}>{e.nom?.[0]}{e.prenom?.[0]}</div>
                   <div className="flex-1"><h3 className="font-semibold">{e.nom} {e.prenom}</h3>{e.telephone && <p className="text-sm text-slate-500">{e.telephone}</p>}</div>
                   <button onClick={() => startEdit(e)} className="text-slate-400 hover:text-slate-600">âœï¸</button>
-                  <button onClick={() => deleteEmploye(e.id)} className="text-red-400 hover:text-red-600">ðŸ—‘ï¸</button>
+                  <button onClick={() => deleteEmploye(e.id)} className="text-red-400 hover:text-red-600"></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                   <div className="bg-slate-50 p-3 rounded-xl"><p className="text-xs text-slate-500">Taux facturé</p><p className="font-bold">{e.tauxHoraire || 45}€/h</p></div>
@@ -198,14 +197,14 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
       {tab === 'historique' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center"><p className="text-sm text-slate-500">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm" style={{background: `${couleur}20`, color: couleur}}>ðŸ“¥ Exporter CSV</button></div>
+          <div className="flex justify-between items-center"><p className="text-sm text-slate-500">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm" style={{background: `${couleur}20`, color: couleur}}> Exporter CSV</button></div>
           <div className="bg-white rounded-2xl border overflow-hidden">
             {weekPointages.length === 0 ? <p className="p-8 text-center text-slate-500">Aucun pointage</p> : weekPointages.sort((a, b) => new Date(b.date) - new Date(a.date)).map(p => {
               const emp = equipe.find(e => e.id === p.employeId);
               const ch = chantiers.find(c => c.id === p.chantierId);
               return (
                 <div key={p.id} className="flex items-center px-5 py-3 border-b gap-4">
-                  <span className={`text-lg ${p.verrouille ? 'ðŸ”’' : p.approuve ? 'âœ…' : 'â³'}`}></span>
+                  <span className={`text-lg ${p.verrouille ? '' : p.approuve ? 'âœ…' : 'â³'}`}></span>
                   <span className={`w-2 h-2 rounded-full ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`} title={p.manuel ? 'Manuel' : 'Chrono'}></span>
                   <span className="w-24 text-sm">{new Date(p.date).toLocaleDateString('fr-FR')}</span>
                   <span className="flex-1">{emp?.nom} {emp?.prenom}</span>
@@ -215,7 +214,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               );
             })}
           </div>
-          <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700"><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Chrono</span><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Manuel</span><span className="inline-flex items-center gap-2">ðŸ”’ Verrouillé</span></div>
+          <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700"><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Chrono</span><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Manuel</span><span className="inline-flex items-center gap-2"> Verrouillé</span></div>
         </div>
       )}
     </div>

@@ -83,7 +83,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           <p className={textSecondary}>Vue d'ensemble de votre activité</p>
         </div>
         <div className="flex items-center gap-3">
-          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>ðŸ—ï¸ Données démo</span>}
+          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}> Données démo</span>}
           <button onClick={() => setModeDiscret(!modeDiscret)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${btnBg}`}>{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
             <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
-            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est Ã  jour ! ðŸŽ‰</h4></div>
+            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est Ã  jour ! </h4></div>
           ) : (
             <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
               const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
@@ -155,10 +155,10 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
         <div className="space-y-4">
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
-            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}>ðŸ† Top Rentabilité</h3>
+            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}> Top Rentabilité</h3>
             {top3.length === 0 ? <p className={`text-center ${textSecondary} py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
               <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                <div className="flex items-center gap-3"><span className="text-xl">{['ðŸ¥‡', 'ðŸ¥ˆ', 'ðŸ¥‰'][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
+                <div className="flex items-center gap-3"><span className="text-xl">{['', '', ''][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
                 <span className="font-bold" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
             ))}

@@ -1,23 +1,21 @@
-# ChantierPro v19.1 - Corrections Encodage
+# ChantierPro v20 - Refonte Complete
 
 ## Corrections majeures
-- Tous les caractères français corrigés (é, è, à, ç, etc.)
-- Symbole Euro (€) corrigé partout
-- Emojis corrompus supprimés
-- Accents dans les labels corrigés
+- Encodage UTF-8 corrige (Euro, accents francais)
+- Emojis corrompus supprimes
+- App.jsx reecrit de zero
+- Page de connexion moderne avec gradient
+- Theme sombre fonctionnel
 
-## Améliorations interface
-- Page de connexion redesignée
-- Sidebar avec ombre et séparateurs
-- Notifications fonctionnelles avec dropdown
-- Menu Nouveau avec dropdown
+## Composants mis a jour
+- Tous les composants recoivent isDark et couleur
+- Variables theme (cardBg, inputBg, textPrimary, textSecondary)
+- bg-white remplaces par variables conditionnelles
 
 ## Installation
-```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v19.1-encoding-fixed.zip
+unzip -o ~/Downloads/chantierpro-v20-clean.zip
 npm run build
-git add . && git commit -m "v19.1 - Encodage corrigé" && git push
+git add . && git commit -m "v20 - Refonte complete" && git push
 npx vercel --prod
-```

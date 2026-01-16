@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 
 export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark }) {
-  // Variables thème
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-white" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-400" : "text-slate-500";
-  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
   const [show, setShow] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);
@@ -62,8 +60,8 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
         {/* Actions rapides */}
         <div className={`rounded-2xl border p-5 ${cardBg}`}>
           <div className="flex gap-3 flex-wrap mb-4">
-            {client.telephone && (<><button onClick={() => callPhone(client.telephone)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm">ðŸ“ž Appeler</button><button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm">ðŸ’¬ WhatsApp</button></>)}
-            {client.adresse && <button onClick={() => openGPS(client.adresse)} className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl text-sm">ðŸ—ºï¸ Itinéraire</button>}
+            {client.telephone && (<><button onClick={() => callPhone(client.telephone)} className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Appeler</button><button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm"> WhatsApp</button></>)}
+            {client.adresse && <button onClick={() => openGPS(client.adresse)} className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-xl text-sm"> Itinéraire</button>}
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             {client.telephone && <div><p className="text-slate-500">Téléphone</p><p className="font-medium">{client.telephone}</p></div>}
@@ -83,7 +81,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
 
         {/* Onglets Historique */}
         <div className="flex gap-2 border-b pb-2">
-          {[['chantiers', 'ðŸ—ï¸ Chantiers'], ['documents', 'ðŸ“„ Documents'], ['photos', 'ðŸ“¸ Photos']].map(([k, v]) => (
+          {[['chantiers', ' Chantiers'], ['documents', ' Documents'], ['photos', ' Photos']].map(([k, v]) => (
             <button key={k} onClick={() => setActiveTab(k)} className={`px-4 py-2 rounded-t-xl font-medium ${activeTab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`}>{v}</button>
           ))}
         </div>
@@ -106,10 +104,10 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
           <div className={`rounded-2xl border p-5 ${cardBg}`}>
             {clientDevis.length === 0 ? <p className="text-center text-slate-400 py-8">Aucun document</p> : (
               <div className="space-y-2">{clientDevis.map(d => {
-                const statusIcon = { brouillon: 'âšª', envoye: 'ðŸŸ¡', accepte: 'âœ…', payee: 'ðŸ’°', refuse: 'âŒ' }[d.statut] || 'ðŸ“„';
+                const statusIcon = { brouillon: 'âšª', envoye: '', accepte: 'âœ…', payee: '', refuse: 'âŒ' }[d.statut] || '';
                 return (
                   <div key={d.id} onClick={() => openDocument(d)} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 hover:shadow-sm transition-all">
-                    <span className="text-xl">{d.type === 'facture' ? 'ðŸ§¾' : 'ðŸ“„'}</span>
+                    <span className="text-xl">{d.type === 'facture' ? '' : ''}</span>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{d.numero}</p>
@@ -162,8 +160,8 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center"><h1 className="text-2xl font-bold">Clients ({clients.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      <input type="text" placeholder="ðŸ” Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2.5 border rounded-xl" />
-      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">ðŸ‘¥</p><p className="text-slate-500">Aucun client</p></div> : (
+      <input type="text" placeholder=" Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2.5 border rounded-xl" />
+      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun client</p></div> : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(c => {
             const s = getClientStats(c.id);
@@ -174,9 +172,9 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setViewId(c.id)}><h3 className="font-semibold truncate">{c.nom} {c.prenom}</h3>{c.entreprise && <p className="text-sm text-slate-500 truncate">{c.entreprise}</p>}</div>
                   <button onClick={() => startEdit(c)} className="text-slate-400 hover:text-slate-600 p-1">âœï¸</button>
                 </div>
-                {c.telephone && (<div className="flex gap-2 mb-3"><button onClick={() => callPhone(c.telephone)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm">ðŸ“ž {c.telephone}</button><button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className="py-2 px-3 bg-green-50 text-green-600 rounded-lg text-sm">ðŸ’¬</button></div>)}
-                {c.adresse && <button onClick={() => openGPS(c.adresse)} className="w-full py-2 bg-purple-50 text-purple-600 rounded-lg text-sm mb-3">ðŸ—ºï¸ Itinéraire</button>}
-                <div className="flex gap-4 pt-3 border-t text-sm"><span>ðŸ—ï¸ {s.chantiers}</span><span>ðŸ“„ {s.devis}</span><span className="font-bold ml-auto" style={{color: couleur}}>{s.ca.toLocaleString()}€</span></div>
+                {c.telephone && (<div className="flex gap-2 mb-3"><button onClick={() => callPhone(c.telephone)} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm"> {c.telephone}</button><button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className="py-2 px-3 bg-green-50 text-green-600 rounded-lg text-sm"></button></div>)}
+                {c.adresse && <button onClick={() => openGPS(c.adresse)} className="w-full py-2 bg-purple-50 text-purple-600 rounded-lg text-sm mb-3"> Itinéraire</button>}
+                <div className="flex gap-4 pt-3 border-t text-sm"><span> {s.chantiers}</span><span> {s.devis}</span><span className="font-bold ml-auto" style={{color: couleur}}>{s.ca.toLocaleString()}€</span></div>
               </div>
             );
           })}
