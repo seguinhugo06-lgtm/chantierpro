@@ -235,8 +235,8 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
               >
                 <Text style={styles.colDesc}>{ligne.description}</Text>
                 <Text style={styles.colQty}>{ligne.quantite}</Text>
-                <Text style={styles.colPrice}>{ligne.prixUnitaire.toFixed(2)}â‚¬</Text>
-                <Text style={styles.colTotal}>{ligne.montant.toFixed(2)}â‚¬</Text>
+                <Text style={styles.colPrice}>{ligne.prixUnitaire.toFixed(2)}€</Text>
+                <Text style={styles.colTotal}>{ligne.montant.toFixed(2)}€</Text>
               </View>
             ))}
           </View>
@@ -246,15 +246,15 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
         <View style={styles.totals}>
           <View style={styles.totalRow}>
             <Text>Total HT</Text>
-            <Text>{devis.total_ht.toFixed(2)}â‚¬</Text>
+            <Text>{devis.total_ht.toFixed(2)}€</Text>
           </View>
           <View style={styles.totalRow}>
             <Text>TVA ({entreprise.tva_percent}%)</Text>
-            <Text>{devis.tva.toFixed(2)}â‚¬</Text>
+            <Text>{devis.tva.toFixed(2)}€</Text>
           </View>
           <View style={styles.totalRowFinal}>
             <Text>TOTAL TTC</Text>
-            <Text>{devis.total_ttc.toFixed(2)}â‚¬</Text>
+            <Text>{devis.total_ttc.toFixed(2)}€</Text>
           </View>
         </View>
 
