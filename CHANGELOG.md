@@ -1,22 +1,17 @@
-# ChantierPro v21.1 - Corrections Completes
+# ChantierPro v21.2 - Build Fix
 
 ## Corrections
+- Suppression des declarations en double dans Dashboard.jsx
 - Encodage UTF-8 corrige
-- isDark ajoute a tous les composants
-- Variables theme ajoutees (cardBg, inputBg, textPrimary, etc.)
-- App.jsx reecrit avec gestion theme complete
-- Page connexion moderne
-- Notifications fonctionnelles
-- Menu Nouveau fonctionnel
+- isDark dans tous les composants
+- Variables theme (cardBg, inputBg, etc.)
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v21.1-fixed.zip
+unzip -o ~/Downloads/chantierpro-v21.2-build-fix.zip
 npm run build
+git add . && git commit -m "v21.2 - Build fix" && git push
+npx vercel --prod
 ```
-
-Note: Les composants utilisent les variables theme mais les classes CSS
-ne sont pas encore toutes remplacees par les variables.
-Le theme sombre sera applique progressivement.

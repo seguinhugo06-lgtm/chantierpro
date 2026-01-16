@@ -7,12 +7,6 @@ const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cu
 
 export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, isDark }) {
   // Theme classes
-  const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
-  const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
-
   const [todoFilter, setTodoFilter] = useState('all');
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
 
