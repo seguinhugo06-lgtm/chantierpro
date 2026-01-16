@@ -2,6 +2,13 @@ import { Users, Plus, Phone, Clock, DollarSign, Check, X, Trash2, TrendingUp, Ca
 import React, { useState, useEffect } from 'react';
 
 export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark }) {
+  // Variables thème
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
+  const btnSecondary = isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700';
   const [tab, setTab] = useState('pointage');
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -76,33 +83,33 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
   if (showAdd) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl"></button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
-      <div className="bg-white rounded-2xl border p-6">
+      <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className="p-2 ${hoverBg} rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
+      <div className={`rounded-2xl border p-6 ${cardBg}`}>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Prénom</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Téléphone</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Taux facturation (€/h)</label><input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" /></div>
+          <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Téléphone</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /></div>
+          <div><label className="block text-sm font-medium mb-1">Taux facturation (€/h)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" /></div>
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Coût horaire chargé (€/h) *</label>
-            <input type="number" className="w-full px-4 py-2.5 border rounded-xl" value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
+            <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
             <p className="text-xs text-slate-500 mt-1">Salaire brut + charges patronales (~45%). Utilisé pour calculer la rentabilité réelle des chantiers.</p>
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => { setShowAdd(false); setEditId(null); }} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={addEmploye} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>{editId ? 'Enregistrer' : 'Ajouter'}</button></div>
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2 rounded-xl ${btnSecondary}`}>Annuler</button><button onClick={addEmploye} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>{editId ? 'Enregistrer' : 'Ajouter'}</button></div>
       </div>
     </div>
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Équipe & Heures</h1><button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Employé</button></div>
+      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className={`text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1><button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Employé</button></div>
 
       {/* Total Semaine */}
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-5 text-white">
         <div className="flex justify-between items-center">
           <div><p className="text-sm opacity-80">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><p className="text-3xl font-bold">{totalWeekHours.toFixed(1)}h <span className="text-lg opacity-80">/ 39h</span></p></div>
-          <div className="text-right"><p className="text-sm opacity-80">Validées</p><p className="text-2xl font-bold">{approvedWeekHours.toFixed(1)}h</p></div>
+          <div className="text-right"><p className="text-sm opacity-80">Validées</p><p className={`text-2xl font-bold ${textPrimary}`}>{approvedWeekHours.toFixed(1)}h</p></div>
         </div>
         <div className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden"><div className="h-full bg-white rounded-full" style={{width: `${Math.min((totalWeekHours / 39) * 100, 100)}%`}}></div></div>
       </div>
@@ -110,13 +117,13 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {/* Tabs */}
       <div className="flex gap-2 border-b pb-2 overflow-x-auto">
         {[['pointage', '¸ Pointage'], ['equipe', ' Équipe'], ['validation', ` Validation ${pointagesEnAttente.length > 0 ? `(${pointagesEnAttente.length})` : ''}`], ['historique', ' Historique']].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'}`}>{v}</button>
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border') + ' border-b-0 -mb-[3px]' : textSecondary}`}>{v}</button>
         ))}
       </div>
 
       {tab === 'pointage' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`rounded-2xl border p-6 ${cardBg}`}>
             <h3 className="font-semibold mb-4">¸ Chronomètre</h3>
             <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm text-orange-500 mt-2"> En cours</p>}</div>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -127,7 +134,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               {!chrono.running ? <button onClick={startChrono} className="px-8 py-3 text-white rounded-xl text-lg" style={{background: couleur}}>¸ Démarrer</button> : <button onClick={() => { const note = prompt('Note de fin (optionnel):'); stopChrono(note || ''); }} className="px-8 py-3 bg-red-500 text-white rounded-xl text-lg">¸ Arrêter</button>}
             </div>
           </div>
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`rounded-2xl border p-6 ${cardBg}`}>
             <h3 className="font-semibold mb-4">¸ Saisie manuelle</h3>
             <div className="flex gap-3 flex-wrap">
               <select className="flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl" value={pForm.employeId} onChange={e => setPForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
@@ -150,8 +157,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Verrouiller semaine</button>
             </div>
           </div>
-          {pointagesEnAttente.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Tous validés</p></div> : (
-            <div className="bg-white rounded-2xl border overflow-hidden">
+          {pointagesEnAttente.length === 0 ? <div className={`rounded-2xl border p-12 text-center ${cardBg}`}><p className="text-5xl mb-4"></p><p className="text-slate-500">Tous validés</p></div> : (
+            <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
               {pointagesEnAttente.map(p => {
                 const emp = equipe.find(e => e.id === p.employeId);
                 const ch = chantiers.find(c => c.id === p.chantierId);
@@ -171,10 +178,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       )}
 
       {tab === 'equipe' && (
-        equipe.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
+        equipe.length === 0 ? <div className={`rounded-2xl border p-12 text-center ${cardBg}`}><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {equipe.map(e => (
-              <div key={e.id} className="bg-white rounded-2xl border p-5">
+              <div key={e.id} className={`rounded-2xl border p-5 ${cardBg}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{background: couleur}}>{e.nom?.[0]}{e.prenom?.[0]}</div>
                   <div className="flex-1"><h3 className="font-semibold">{e.nom} {e.prenom}</h3>{e.telephone && <p className="text-sm text-slate-500">{e.telephone}</p>}</div>
@@ -185,7 +192,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   <div className="bg-slate-50 p-3 rounded-xl"><p className="text-xs text-slate-500">Taux facturé</p><p className="font-bold">{e.tauxHoraire || 45}€/h</p></div>
                   <div className="bg-red-50 p-3 rounded-xl"><p className="text-xs text-slate-500">Coût chargé</p><p className="font-bold text-red-600">{e.coutHoraireCharge || 28}€/h</p></div>
                 </div>
-                <div className="flex justify-between items-center pt-4 border-t"><div><p className="text-2xl font-bold" style={{color: couleur}}>{getHeuresMois(e.id).toFixed(1)}h</p><p className="text-xs text-slate-500">ce mois (validé)</p></div></div>
+                <div className="flex justify-between items-center pt-4 border-t"><div><p className={`text-2xl font-bold ${textPrimary}`} style={{color: couleur}}>{getHeuresMois(e.id).toFixed(1)}h</p><p className="text-xs text-slate-500">ce mois (validé)</p></div></div>
               </div>
             ))}
           </div>
@@ -195,7 +202,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {tab === 'historique' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center"><p className="text-sm text-slate-500">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm" style={{background: `${couleur}20`, color: couleur}}> Exporter CSV</button></div>
-          <div className="bg-white rounded-2xl border overflow-hidden">
+          <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
             {weekPointages.length === 0 ? <p className="p-8 text-center text-slate-500">Aucun pointage</p> : weekPointages.sort((a, b) => new Date(b.date) - new Date(a.date)).map(p => {
               const emp = equipe.find(e => e.id === p.employeId);
               const ch = chantiers.find(c => c.id === p.chantierId);

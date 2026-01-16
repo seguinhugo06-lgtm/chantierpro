@@ -1,32 +1,34 @@
-# ChantierPro v17 - Version Finale Corrigée
+# ChantierPro v18 - Thème Sombre Complet
 
-## Corrections complètes
+## Corrections majeures
+
+### Thème sombre
+- Variables thème dans TOUS les composants: cardBg, inputBg, textPrimary, textSecondary, hoverBg, btnSecondary
+- Tous les `bg-white` remplacés par `${cardBg}` conditionnel
+- Tous les `bg-slate-100` remplacés par `${btnSecondary}` conditionnel
+- Tous les textes avec classes conditionnelles
+- Onglets avec thème sombre
+- Modals avec thème sombre
+
+### Composants corrigés
+- Dashboard.jsx ✓
+- DevisPage.jsx ✓  
+- Chantiers.jsx ✓
+- Planning.jsx ✓
+- Clients.jsx ✓
+- Equipe.jsx ✓
+- Catalogue.jsx ✓
 
 ### Encodage
-- Tous les caractères UTF-8 corrigés (é, è, à, ç, €, etc.)
-- Plus aucun mojibake (ðŸ, â, etc.)
-
-### Icônes Lucide
-Tous les composants utilisent des icônes Lucide cohérentes:
-- App.jsx: Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings
-- Dashboard.jsx: DollarSign, TrendingUp, Clock, AlertCircle, CheckCircle, etc.
-- Clients.jsx: Users, Phone, MessageCircle, MapPin, Edit, Trash2, etc.
-- Et tous les autres composants...
-
-### Thème sombre complet
-Tous les composants supportent isDark avec:
-- cardBg: fond des cartes
-- inputBg: fond des inputs
-- textPrimary: texte principal
-- textSecondary: texte secondaire
-- hoverBg: survol des éléments
+- Plus de mojibake (ðŸ, â, etc.)
+- UTF-8 propre (é, è, à, €, etc.)
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v17-final.zip
+unzip -o ~/Downloads/chantierpro-v18-dark-theme.zip
 npm run build
-git add . && git commit -m "v17 - Version finale corrigée" && git push
+git add . && git commit -m "v18 - Thème sombre complet" && git push
 npx vercel --prod
 ```

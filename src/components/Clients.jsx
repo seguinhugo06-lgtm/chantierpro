@@ -75,7 +75,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
             <div><p className={`text-2xl font-bold ${textPrimary}`}>{stats.chantiers}</p><p className={`text-xs ${textSecondary}`}>Chantiers</p></div>
             <div><p className={`text-2xl font-bold ${textPrimary}`}>{stats.devis}</p><p className={`text-xs ${textSecondary}`}>Devis</p></div>
             <div><p className={`text-2xl font-bold ${textPrimary}`}>{stats.factures}</p><p className={`text-xs ${textSecondary}`}>Factures</p></div>
-            <div><p className="text-2xl font-bold" style={{color: couleur}}>{stats.ca.toLocaleString()} €</p><p className={`text-xs ${textSecondary}`}>CA Total</p></div>
+            <div><p className={`text-2xl font-bold ${textPrimary}`} style={{color: couleur}}>{stats.ca.toLocaleString()} €</p><p className={`text-xs ${textSecondary}`}>CA Total</p></div>
           </div>
         </div>
 
