@@ -26,7 +26,7 @@ export default function Stocks({ stocks, setStocks }) {
         <button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl">â†</button>
         <h1 className="text-2xl font-bold">Nouveau matériau</h1>
       </div>
-      <div className={`rounded-2xl border ${cardBg}`} p-6">
+      <div className={`rounded-2xl border ${cardBg} p-`}6">
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Référence</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.reference} onChange={e => setForm(p => ({...p, reference: e.target.value}))} /></div>
@@ -58,7 +58,7 @@ export default function Stocks({ stocks, setStocks }) {
       )}
       <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full max-w-md px-4 py-2.5 border rounded-xl" />
       {filtered.length === 0 ? (
-        <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4"></p><h3>Aucun matériau</h3></div>
+        <div className={`rounded-2xl border ${cardBg} p-`}12 text-center"><p className="text-5xl mb-4"></p><h3>Aucun matériau</h3></div>
       ) : (
         <div className={`rounded-2xl border ${cardBg} overflow-hidden">
           {filtered.map(s => (

@@ -7,7 +7,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-500";
-  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
+
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
@@ -219,7 +219,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     setSnackbar({ type: 'success', message: `âœ… Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir la facture â†’', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
+  // PDF Generation - CONFORME LÉGISLATION FRANÃ‡AISE
   const downloadPDF = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
@@ -306,7 +306,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <div class="doc-type">
       <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
-        <strong>N° ${doc.numero}</strong><br>
+        <strong>NÂ° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
@@ -414,7 +414,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   ${entreprise?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
-    <h4>CONDITIONS PARTICULIÈRES</h4>
+    <h4>CONDITIONS PARTICULIÃˆRES</h4>
     ${entreprise.cgv}
   </div>
   ` : ''}
@@ -444,9 +444,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     ${getRCSComplet() ? ` â€¢ ${getRCSComplet()}` : ''}<br>
     ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
     <div class="assurances">
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} NÂ°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
-      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} NÂ°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
   </div>
 </body>
@@ -475,7 +475,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
-      <div className={`rounded-2xl border ${cardBg}`} p-6 text-center">
+      <div className="bg-white rounded-2xl border p-6 text-center">
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
@@ -559,7 +559,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         )}
 
         {/* Document */}
-        <div className={`rounded-2xl border ${cardBg}`} p-6">
+        <div className="bg-white rounded-2xl border p-6">
           <div className="flex justify-between items-start mb-6 pb-6 border-b">
             <div className="flex items-center gap-4">
               {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}></div>}
@@ -575,7 +575,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
         {/* Timeline */}
         {isDevis && facturesLiees.length > 0 && (
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4"> Historique Facturation</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p></div></div>
@@ -600,7 +600,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         )}
 
         {/* Statut */}
-        <div className={`rounded-2xl border ${cardBg}`} p-4">
+        <div className="bg-white rounded-2xl border p-4">
           <label className="text-sm font-medium mr-3">Statut:</label>
           <select value={selected.statut} onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }} className="px-3 py-2 border rounded-xl">
             <option value="brouillon">Brouillon</option>
@@ -672,7 +672,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">Nouveau {form.type}</h1></div>
-        <div className={`rounded-2xl border ${cardBg}`} p-6 space-y-6">
+        <div className="bg-white rounded-2xl border p-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><label className="block text-sm mb-1">Type</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
             <div><label className="block text-sm mb-1">Client *</label><div className="flex gap-2"><select className="flex-1 px-4 py-2.5 border rounded-xl" value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} className="px-3 rounded-xl" style={{background: `${couleur}20`, color: couleur}}>+</button></div></div>
@@ -770,22 +770,22 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Devis & Factures</h1><button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={`rounded-xl border ${cardBg}`} p-4"><p className="text-xs text-slate-500">Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
-        <div className={`rounded-xl border ${cardBg}`} p-4"><p className="text-xs text-slate-500">Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
-        <div className={`rounded-xl border ${cardBg}`} p-4"><p className="text-xs text-slate-500">Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
-        <div className={`rounded-xl border ${cardBg}`} p-4"><p className="text-xs text-slate-500">À encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
+        <div className="bg-white rounded-xl border p-4"><p className="text-xs text-slate-500">Ã€ encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
       </div>
       <div className="flex gap-2 flex-wrap items-center">
         <input placeholder=" Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2 border rounded-xl" />
         {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-lg text-sm ${filter === k ? 'text-white' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
+      {filtered.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const icon = { brouillon: 'âšª', envoye: '', accepte: 'âœ…', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className={`rounded-xl border ${cardBg}`} p-4 cursor-pointer hover:shadow-md transition-all">
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className="bg-white rounded-xl border p-4 cursor-pointer hover:shadow-md transition-all">
               <div className="flex items-center gap-4">
                 <span className="text-2xl">{d.type === 'facture' ? '' : ''}</span>
                 <div className="flex-1 min-w-0">

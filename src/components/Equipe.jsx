@@ -7,7 +7,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-500";
-  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
+
   const [tab, setTab] = useState('pointage');
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -83,7 +83,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl">â†</button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
-      <div className={`rounded-2xl border ${cardBg}`} p-6">
+      <div className="bg-white rounded-2xl border p-6">
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Prénom</label><input className="w-full px-4 py-2.5 border rounded-xl" value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
@@ -122,7 +122,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
       {tab === 'pointage' && (
         <div className="space-y-6">
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">â±ï¸ Chronomètre</h3>
             <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm text-orange-500 mt-2"> En cours</p>}</div>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -133,7 +133,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               {!chrono.running ? <button onClick={startChrono} className="px-8 py-3 text-white rounded-xl text-lg" style={{background: couleur}}>â–¶ï¸ Démarrer</button> : <button onClick={() => { const note = prompt('Note de fin (optionnel):'); stopChrono(note || ''); }} className="px-8 py-3 bg-red-500 text-white rounded-xl text-lg">â¹ï¸ Arrêter</button>}
             </div>
           </div>
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">âœï¸ Saisie manuelle</h3>
             <div className="flex gap-3 flex-wrap">
               <select className="flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl" value={pForm.employeId} onChange={e => setPForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
@@ -156,8 +156,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Verrouiller semaine</button>
             </div>
           </div>
-          {pointagesEnAttente.length === 0 ? <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4">âœ…</p><p className="text-slate-500">Tous validés</p></div> : (
-            <div className={`rounded-2xl border ${cardBg} overflow-hidden">
+          {pointagesEnAttente.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4">âœ…</p><p className="text-slate-500">Tous validés</p></div> : (
+            <div className="bg-white rounded-2xl border overflow-hidden">
               {pointagesEnAttente.map(p => {
                 const emp = equipe.find(e => e.id === p.employeId);
                 const ch = chantiers.find(c => c.id === p.chantierId);
@@ -177,10 +177,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       )}
 
       {tab === 'equipe' && (
-        equipe.length === 0 ? <div className={`rounded-2xl border ${cardBg}`} p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
+        equipe.length === 0 ? <div className="bg-white rounded-2xl border p-12 text-center"><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {equipe.map(e => (
-              <div key={e.id} className={`rounded-2xl border ${cardBg}`} p-5">
+              <div key={e.id} className="bg-white rounded-2xl border p-5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{background: couleur}}>{e.nom?.[0]}{e.prenom?.[0]}</div>
                   <div className="flex-1"><h3 className="font-semibold">{e.nom} {e.prenom}</h3>{e.telephone && <p className="text-sm text-slate-500">{e.telephone}</p>}</div>
@@ -201,7 +201,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {tab === 'historique' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center"><p className="text-sm text-slate-500">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm" style={{background: `${couleur}20`, color: couleur}}> Exporter CSV</button></div>
-          <div className={`rounded-2xl border ${cardBg} overflow-hidden">
+          <div className="bg-white rounded-2xl border overflow-hidden">
             {weekPointages.length === 0 ? <p className="p-8 text-center text-slate-500">Aucun pointage</p> : weekPointages.sort((a, b) => new Date(b.date) - new Date(a.date)).map(p => {
               const emp = equipe.find(e => e.id === p.employeId);
               const ch = chantiers.find(c => c.id === p.chantierId);

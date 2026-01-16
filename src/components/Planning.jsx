@@ -7,7 +7,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-500";
-  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
+
   const [date, setDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
@@ -171,13 +171,13 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
       </div>
 
       <div className="flex gap-4 flex-wrap text-xs">
-        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span> À venir</span>
+        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span> Ã€ venir</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> En cours</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-slate-400"></span> Terminé</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span> Urgence</span>
       </div>
 
-      <div className={`rounded-2xl border ${cardBg} overflow-hidden">
+      <div className="bg-white rounded-2xl border overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†</button>
           <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
@@ -209,7 +209,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         </div>
       </div>
 
-      <div className={`rounded-2xl border ${cardBg}`} p-5">
+      <div className="bg-white rounded-2xl border p-5">
         <h3 className="font-semibold mb-4"> Prochains événements</h3>
         {allEvents.filter(e => new Date(e.date) >= new Date()).length === 0 ? (
           <p className="text-center text-slate-400 py-4">Aucun événement Ã  venir</p>

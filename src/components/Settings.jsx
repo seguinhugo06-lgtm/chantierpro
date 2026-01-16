@@ -10,7 +10,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-500";
-  const hoverBg = isDark ? "hover:bg-slate-700" : "hover:bg-slate-50";
+
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
@@ -76,7 +76,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     });
 
     // Créer CSV (compatible Excel)
-    const headers = ['N° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
+    const headers = ['NÂ° Document', 'Type', 'Date', 'Client', 'Total HT', 'TVA 5.5%', 'TVA 10%', 'TVA 20%', 'Total TTC', 'Statut'];
     const rows = devisYear.map(d => {
       const tva55 = d.tvaRate === 5.5 ? d.tva : 0;
       const tva10 = d.tvaRate === 10 ? d.tva : 0;
@@ -184,7 +184,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* IDENTITÉ */}
       {tab === 'identite' && (
         <div className="space-y-6">
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Logo & Couleur</h3>
             <div className="flex gap-6 flex-wrap items-start">
               <div>
@@ -222,7 +222,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Informations entreprise</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
@@ -280,7 +280,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* LÉGAL */}
       {tab === 'legal' && (
         <div className="space-y-6">
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Numéros d'identification</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -300,7 +300,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">RCS - Registre du Commerce</h3>
             <p className="text-sm text-slate-500 mb-4">Format légal: RCS [Ville] [Type] [Numéro]</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -332,7 +332,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             )}
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
@@ -351,7 +351,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           )}
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Qualifications professionnelles</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -405,7 +405,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className="text-sm text-amber-700 mt-1">L'assurance RC Pro et la garantie décennale doivent figurer sur tous vos devis et factures (Article L243-1 du Code des assurances).</p>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
               {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
@@ -432,7 +432,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Garantie Décennale</h3>
               {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
@@ -463,7 +463,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* BANQUE */}
       {tab === 'banque' && (
-        <div className={`rounded-2xl border ${cardBg}`} p-6">
+        <div className="bg-white rounded-2xl border p-6">
           <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
           <p className="text-sm text-slate-500 mb-4">Ces informations apparaîtront sur vos factures pour faciliter le paiement par virement.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -490,7 +490,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* DOCUMENTS */}
       {tab === 'documents' && (
         <div className="space-y-6">
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Paramètres par défaut des devis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -534,7 +534,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Mentions légales sur les documents</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
@@ -560,7 +560,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className={`rounded-2xl border ${cardBg}`} p-6">
+          <div className="bg-white rounded-2xl border p-6">
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
             <textarea className="w-full px-4 py-3 border rounded-xl" rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => setEntreprise(p => ({...p, cgv: e.target.value}))} />
             <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
@@ -570,7 +570,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
-        <div className={`rounded-2xl border ${cardBg}`} p-6">
+        <div className="bg-white rounded-2xl border p-6">
           <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div>
@@ -595,8 +595,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* APERÇU DOCUMENT */}
-      <div className={`rounded-2xl border ${cardBg}`} p-6">
+      {/* APERÃ‡U DOCUMENT */}
+      <div className="bg-white rounded-2xl border p-6">
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
         <div className="border rounded-xl p-6 bg-slate-50">
           <div className="flex justify-between items-start mb-4">
@@ -624,9 +624,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `â€¢ ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
               <p className="pt-1 text-[10px]">
-                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
+                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} NÂ°${entreprise.rcProNumero}`}
                 {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' â€¢ '}
-                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} NÂ°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
           </div>
@@ -647,7 +647,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="bg-slate-50 rounded-xl p-4 mb-6 text-sm">
               <p className="font-medium mb-2">Colonnes exportées:</p>
-              <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
+              <p className="text-slate-600">NÂ° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowExportModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>

@@ -1,44 +1,22 @@
-# ChantierPro v21 - Corrections Completes
+# ChantierPro v21.1 - Corrections Completes
 
-## Corrections majeures
-
-### 1. Encodage UTF-8 (CORRIGE)
-- Tous les caracteres francais corriges (e, e, a, c, etc.)
-- Symbole Euro (EUR) corrige partout
-- Emojis corrompus supprimes
-
-### 2. Theme Sombre (CORRIGE)
-- App.jsx reecrit avec theme complet
-- Variables theme dans tous les composants (cardBg, inputBg, textPrimary, etc.)
-- Sidebar avec shadow et border en dark mode
-- Header avec backdrop-blur et border conditionnel
-
-### 3. Page de Connexion (CORRIGE)
-- Design moderne avec gradient anime
-- Gestion erreur affichee
-- Mode demo accessible via email=demo password=demo
-- Bouton Demo bien visible
-
-### 4. Notifications (CORRIGE)
-- Dropdown fonctionnel avec badge compteur
-- Marquer comme lu
-- Fermeture au clic exterieur
-
-### 5. Menu Nouveau (CORRIGE)
-- Dropdown avec 3 options
-- Navigation vers la page correspondante
+## Corrections
+- Encodage UTF-8 corrige
+- isDark ajoute a tous les composants
+- Variables theme ajoutees (cardBg, inputBg, textPrimary, etc.)
+- App.jsx reecrit avec gestion theme complete
+- Page connexion moderne
+- Notifications fonctionnelles
+- Menu Nouveau fonctionnel
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v21-complete.zip
+unzip -o ~/Downloads/chantierpro-v21.1-fixed.zip
 npm run build
-git add . && git commit -m "v21 - Corrections completes" && git push
-npx vercel --prod
 ```
 
-## Note
-Le bouton PDF utilise la fonction generatePDF existante dans DevisPage.jsx.
-Si le PDF ne fonctionne pas, verifier que html2canvas et jspdf sont installes:
-npm install html2canvas jspdf
+Note: Les composants utilisent les variables theme mais les classes CSS
+ne sont pas encore toutes remplacees par les variables.
+Le theme sombre sera applique progressivement.
