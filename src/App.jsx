@@ -8,7 +8,7 @@ import DevisPage from './components/DevisPage';
 import Equipe from './components/Equipe';
 import Catalogue from './components/Catalogue';
 import Settings from './components/Settings';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, Gamepad2 } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, Gamepad2, X, ChevronRight, Zap, Shield, BarChart3, Clock } from 'lucide-react';
 
 const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
 
@@ -47,8 +47,9 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [theme, setTheme] = useState('light');
   const [modeDiscret, setModeDiscret] = useState(false);
+  const [createMode, setCreateMode] = useState(null); // 'devis', 'client', 'chantier'
   const [entreprise, setEntreprise] = useState({ 
-    nom: '', logo: '', couleur: '#f97316', 
+    nom: 'Martin Rénovation', logo: '', couleur: '#f97316', 
     formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
     siret: '', codeApe: '', rcs: '', tvaIntra: '',
     rge: '', rgeOrganisme: '', cartePro: '',
@@ -99,53 +100,52 @@ export default function App() {
       { id: 'd5', numero: 'DEV-2026-004', type: 'devis', client_id: 'c1', date: formatDate(addDays(today, -1)), statut: 'brouillon', tvaRate: 10, lignes: [{ id: 'l8', description: 'Extension véranda', quantite: 25, unite: 'm²', prixUnitaire: 85.00, montant: 2125.00 }], total_ht: 2125.00, tva: 212.50, total_ttc: 2337.50, validite: 30 },
       { id: 'd6', numero: 'DEV-2026-005', type: 'devis', client_id: 'c3', date: formatDate(addDays(today, -14)), statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l9', description: 'Isolation combles', quantite: 80, unite: 'm²', prixUnitaire: 35.00, prixAchat: 15.00, montant: 2800.00 }], total_ht: 8500.00, tva: 850.00, total_ttc: 9350.00 },
     ]);
-    setDepenses([
-      { id: 'dep1', chantierId: 'ch1', description: 'Placo BA13', montant: 380, categorie: 'Matériaux', date: formatDate(addDays(today, -10)) },
-      { id: 'dep2', chantierId: 'ch1', description: 'Enduit + peinture', montant: 245, categorie: 'Matériaux', date: formatDate(addDays(today, -5)) },
+    setEvents([
+      { id: 'ev1', title: 'RDV chantier Dupont', date: formatDate(addDays(today, 2)), time: '09:00', type: 'rdv', chantierId: 'ch1' },
+      { id: 'ev2', title: 'Livraison matériaux', date: formatDate(addDays(today, 3)), time: '14:00', type: 'livraison' },
     ]);
     setPointages([
-      { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -10)), heures: 8, approuve: true },
-      { id: 'p2', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -9)), heures: 8, approuve: true },
-      { id: 'p3', employeId: 'e2', chantierId: 'ch1', date: formatDate(addDays(today, -8)), heures: 7, approuve: true },
+      { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -1)), heures: 8, approuve: true },
+      { id: 'p2', employeId: 'e2', chantierId: 'ch1', date: formatDate(addDays(today, -1)), heures: 7.5, approuve: false },
     ]);
-    setEvents([
-      { id: 'ev1', titre: 'RDV chantier Dupont', date: formatDate(addDays(today, 2)), type: 'rdv', chantierId: 'ch1' },
-      { id: 'ev2', titre: 'Livraison matériaux', date: formatDate(addDays(today, 5)), type: 'livraison', chantierId: 'ch2' },
+    setDepenses([
+      { id: 'dep1', chantierId: 'ch1', description: 'Placo BA13', montant: 234, date: formatDate(addDays(today, -10)), categorie: 'materiaux' },
     ]);
-    setAjustements([]);
     setNotifications([
-      { id: 'n1', type: 'devis', message: 'Devis DEV-2026-002 en attente depuis 7 jours', date: new Date().toISOString(), read: false },
-      { id: 'n2', type: 'facture', message: 'Facture FAC-2026-001 impayée (20 jours)', date: new Date().toISOString(), read: false },
+      { id: 'n1', type: 'devis', message: 'Devis DEV-2026-002 en attente depuis 7 jours', read: false, date: formatDate(today) },
+      { id: 'n2', type: 'facture', message: 'Facture FAC-2026-001 impayée (935€)', read: false, date: formatDate(today) },
     ]);
-    setEntreprise(p => ({ ...p, nom: p.nom || 'Martin Rénovation' }));
   };
 
-  useEffect(() => { if (isDemo) { loadDemoData(); setLoading(false); } }, []);
-  useEffect(() => { if (!isDemo) { const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => { setUser(session?.user ?? null); setLoading(false); if (session?.user) { setDataLoading(true); const [c, d] = await Promise.all([safeApiCall(() => clientsDB.getAll(), []), safeApiCall(() => devisDB.getAll(), [])]); setClients(c); setDevis(d); setDataLoading(false); } }); return () => subscription.unsubscribe(); } }, []);
+  useEffect(() => {
+    if (isDemo) { loadDemoData(); return; }
+    const checkAuth = async () => { try { const u = await auth.getUser(); setUser(u); } catch (e) {} finally { setLoading(false); } };
+    checkAuth();
+  }, []);
 
-  const addClient = async (client) => { const newClient = { ...client, id: Date.now().toString() }; setClients(prev => [...prev, newClient]); if (!isDemo) await safeApiCall(() => clientsDB.create(newClient)); return newClient; };
-  const updateClient = async (id, updates) => { setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c)); if (!isDemo) await safeApiCall(() => clientsDB.update(id, updates)); };
-  const deleteClient = async (id) => { setClients(prev => prev.filter(c => c.id !== id)); if (!isDemo) await safeApiCall(() => clientsDB.delete(id)); };
-  const addDevis = async (doc) => { const newDoc = { ...doc, id: Date.now().toString() }; setDevis(prev => [...prev, newDoc]); if (!isDemo) await safeApiCall(() => devisDB.create(newDoc)); return newDoc; };
-  const updateDevis = async (id, updates) => { setDevis(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d)); if (!isDemo) await safeApiCall(() => devisDB.update(id, updates)); };
-  const deleteDevis = async (id) => { setDevis(prev => prev.filter(d => d.id !== id)); if (!isDemo) await safeApiCall(() => devisDB.delete(id)); };
-  const addChantier = (ch) => setChantiers(prev => [...prev, { ...ch, id: Date.now().toString() }]);
-  const updateChantier = (id, updates) => setChantiers(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  const addEvent = (ev) => setEvents(prev => [...prev, { ...ev, id: Date.now().toString() }]);
-  const updateEvent = (id, updates) => setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-  const deleteEvent = (id) => setEvents(prev => prev.filter(e => e.id !== id));
-  const addAjustement = (adj) => setAjustements(prev => [...prev, { ...adj, id: Date.now().toString(), date: new Date().toISOString() }]);
-  const deleteAjustement = (id) => setAjustements(prev => prev.filter(a => a.id !== id));
-  const deductStock = (catalogueId, qty) => setCatalogue(prev => prev.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
+  const addClient = (data) => { const c = { id: Date.now().toString(), ...data }; setClients([...clients, c]); return c; };
+  const updateClient = (id, data) => setClients(clients.map(c => c.id === id ? { ...c, ...data } : c));
+  const deleteClient = (id) => setClients(clients.filter(c => c.id !== id));
+  const addDevis = (data) => { const d = { id: Date.now().toString(), ...data }; setDevis([...devis, d]); return d; };
+  const updateDevis = (id, data) => setDevis(devis.map(d => d.id === id ? { ...d, ...data } : d));
+  const deleteDevis = (id) => setDevis(devis.filter(d => d.id !== id));
+  const addChantier = (data) => { const c = { id: Date.now().toString(), ...data }; setChantiers([...chantiers, c]); return c; };
+  const updateChantier = (id, data) => setChantiers(chantiers.map(c => c.id === id ? { ...c, ...data } : c));
+  const addEvent = (data) => { const e = { id: Date.now().toString(), ...data }; setEvents([...events, e]); return e; };
+  const updateEvent = (id, data) => setEvents(events.map(e => e.id === id ? { ...e, ...data } : e));
+  const deleteEvent = (id) => setEvents(events.filter(e => e.id !== id));
+  const addAjustement = (data) => { const a = { id: Date.now().toString(), ...data }; setAjustements([...ajustements, a]); return a; };
+  const deleteAjustement = (id) => setAjustements(ajustements.filter(a => a.id !== id));
+  const deductStock = (catalogueId, qty) => setCatalogue(catalogue.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
 
   const getChantierBilan = (chantierId) => {
     const ch = chantiers.find(c => c.id === chantierId);
     if (!ch) return { caHT: 0, caDevis: 0, adjRevenus: 0, adjDepenses: 0, coutMateriaux: 0, coutMO: 0, fraisFixes: 0, marge: 0, tauxMarge: 0, margePrevue: 0, heuresTotal: 0 };
-    const devisAccepte = devis.find(d => d.chantier_id === chantierId && d.type === 'devis' && d.statut === 'accepte');
-    const caDevis = devisAccepte?.total_ht || 0;
-    const facturesPaid = devis.filter(d => d.chantier_id === chantierId && d.type === 'facture' && d.statut === 'payee');
-    const caHT = facturesPaid.reduce((s, f) => s + (f.total_ht || 0), 0) || caDevis;
-    const chAjustements = (ajustements || []).filter(a => a.chantierId === chantierId);
+    const chDevis = devis.filter(d => d.chantier_id === chantierId && ['accepte', 'acompte_facture', 'facture_partielle'].includes(d.statut));
+    const caDevis = chDevis.reduce((s, d) => s + (d.total_ht || 0), 0);
+    const facturesPayees = devis.filter(d => d.chantier_id === chantierId && d.type === 'facture' && d.statut === 'payee');
+    const caHT = facturesPayees.reduce((s, d) => s + (d.total_ht || 0), 0);
+    const chAjustements = ajustements.filter(a => a.chantierId === chantierId);
     const adjRevenus = chAjustements.filter(a => a.type === 'REVENU').reduce((s, a) => s + (a.montant_ht || 0), 0);
     const adjDepenses = chAjustements.filter(a => a.type === 'DEPENSE').reduce((s, a) => s + (a.montant_ht || 0), 0);
     const coutMateriaux = depenses.filter(d => d.chantierId === chantierId).reduce((s, d) => s + (d.montant || 0), 0);
@@ -169,24 +169,107 @@ export default function App() {
   const handleSignIn = async (e) => { e.preventDefault(); setAuthError(''); try { const { error } = await auth.signIn(authForm.email, authForm.password); if (error) setAuthError(error.message); } catch (e) { setAuthError('Erreur de connexion'); } };
   const handleSignUp = async (e) => { e.preventDefault(); setAuthError(''); try { const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }); if (error) setAuthError(error.message); else { alert('Compte créé !'); setShowSignUp(false); } } catch (e) { setAuthError('Erreur'); } };
   const handleSignOut = async () => { try { await auth.signOut(); } catch (e) {} setUser(null); if (isDemo) window.location.href = window.location.pathname; };
+  const markNotifRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllNotifsRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
 
   if (loading) return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><div className="text-center"><Building2 size={48} className="mx-auto mb-4 text-orange-500 animate-bounce" /><p className="text-slate-500">Chargement...</p></div></div>;
 
+  // Page de connexion moderne
   if (!user && !isDemo) return (
     <div className="min-h-screen bg-slate-900 flex">
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-orange-500 to-orange-600 p-12 items-center"><div className="max-w-md text-white"><Building2 size={64} className="mb-6" /><h1 className="text-4xl font-bold mb-4">ChantierPro</h1><p className="text-xl opacity-90">Pilotez votre rentabilité.</p><ul className="mt-6 space-y-2 opacity-80"><li>✓ Marge temps réel</li><li>✓ Gestion équipe</li><li>✓ Devis & Factures</li><li>✓ Planning interactif</li></ul></div></div>
-      <div className="flex-1 flex items-center justify-center p-6">
+      {/* Partie gauche - Hero moderne */}
+      <div className="hidden lg:flex flex-1 relative overflow-hidden">
+        {/* Gradient de fond animé */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600" />
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-amber-300/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
+        </div>
+        
+        {/* Contenu */}
+        <div className="relative z-10 flex flex-col justify-center p-12 lg:p-16">
+          <div className="max-w-lg">
+            {/* Logo */}
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-8">
+              <Building2 size={32} className="text-white" />
+            </div>
+            
+            <h1 className="text-5xl font-bold text-white mb-4">ChantierPro</h1>
+            <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité en temps réel</p>
+            
+            {/* Features avec icônes */}
+            <div className="space-y-4">
+              {[
+                { icon: BarChart3, text: 'Marge temps réel sur chaque chantier' },
+                { icon: Users, text: 'Gestion équipe et pointages' },
+                { icon: FileText, text: 'Devis et factures conformes' },
+                { icon: Calendar, text: 'Planning interactif' },
+              ].map((feature, i) => (
+                <div key={i} className="flex items-center gap-4 text-white/90">
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <feature.icon size={20} />
+                  </div>
+                  <span className="text-lg">{feature.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Stats ou trust indicators */}
+            <div className="mt-12 pt-8 border-t border-white/20">
+              <p className="text-white/70 text-sm">Conçu pour les artisans et entreprises du bâtiment</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Partie droite - Formulaire */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
-          <h2 className="text-3xl font-bold text-white mb-6">{showSignUp ? 'Inscription' : 'Connexion'}</h2>
+          {/* Logo mobile */}
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+              <Building2 size={24} className="text-white" />
+            </div>
+            <span className="text-2xl font-bold text-white">ChantierPro</span>
+          </div>
+
+          <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
+          <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+          
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
-            {showSignUp && <input className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="Nom entreprise" value={authForm.nom} onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))} />}
-            <input type="email" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="Email" value={authForm.email} onChange={e => setAuthForm(p => ({...p, email: e.target.value}))} required />
-            <input type="password" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white" placeholder="Mot de passe" value={authForm.password} onChange={e => setAuthForm(p => ({...p, password: e.target.value}))} required />
-            {authError && <p className="text-red-400 text-sm">{authError}</p>}
-            <button type="submit" className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl">{showSignUp ? 'Créer' : 'Connexion'}</button>
+            {showSignUp && (
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">Nom de l'entreprise</label>
+                <input className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all" placeholder="Martin Rénovation" value={authForm.nom} onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))} />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Email</label>
+              <input type="email" className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all" placeholder="vous@entreprise.fr" value={authForm.email} onChange={e => setAuthForm(p => ({...p, email: e.target.value}))} required />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-2">Mot de passe</label>
+              <input type="password" className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all" placeholder="••••••••" value={authForm.password} onChange={e => setAuthForm(p => ({...p, password: e.target.value}))} required />
+            </div>
+            {authError && <p className="text-red-400 text-sm bg-red-400/10 px-4 py-2 rounded-lg">{authError}</p>}
+            <button type="submit" className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all">
+              {showSignUp ? 'Créer mon compte' : 'Se connecter'}
+            </button>
           </form>
-          <p className="text-center text-slate-400 mt-6">{showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}<button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 ml-2">{showSignUp ? 'Connexion' : "S'inscrire"}</button></p>
-          <div className="mt-8 pt-6 border-t border-slate-700"><a href="?demo=true" className="block w-full py-3 bg-slate-700 text-white rounded-xl text-center flex items-center justify-center gap-2"><Gamepad2 size={18} /> Démo</a></div>
+          
+          <p className="text-center text-slate-400 mt-6">
+            {showSignUp ? 'Déjà inscrit ?' : 'Pas encore de compte ?'}
+            <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 ml-2 hover:text-orange-400 transition-colors">
+              {showSignUp ? 'Se connecter' : "S'inscrire"}
+            </button>
+          </p>
+          
+          <div className="mt-8 pt-8 border-t border-slate-800">
+            <p className="text-center text-slate-500 text-sm mb-4">Ou découvrez l'application</p>
+            <a href="?demo=true" className="block w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-center flex items-center justify-center gap-2 transition-colors">
+              <Gamepad2 size={18} /> Mode démo
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -204,96 +287,146 @@ export default function App() {
   ];
   const couleur = entreprise.couleur || '#f97316';
   const isDark = theme === 'dark';
+  const unreadNotifs = notifications.filter(n => !n.read);
 
   return (
     <div className={`min-h-screen ${isDark ? 'dark bg-slate-900' : 'bg-slate-100'}`}>
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      
+      {/* Sidebar améliorée avec ombre */}
+      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl shadow-black/50`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: couleur}}><Building2 size={20} className="text-white" /></div>
-          <div className="flex-1 min-w-0"><h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1><p className="text-slate-500 text-xs">{isDemo ? 'Démo' : user?.email}</p></div>
+          <div className="flex-1 min-w-0"><h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1><p className="text-slate-500 text-xs truncate">{isDemo ? 'Démo' : user?.email}</p></div>
         </div>
         <nav className="p-3 space-y-1">
           {nav.map(n => (
-            <button key={n.id} onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800'}`} style={page === n.id ? {background: couleur} : {}}>
+            <button key={n.id} onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); setCreateMode(null); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`} style={page === n.id ? {background: couleur} : {}}>
               <n.icon size={18} />
               <span className="flex-1 text-left">{n.label}</span>
               {n.badge > 0 && <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{n.badge}</span>}
             </button>
           ))}
         </nav>
-        <div className="absolute bottom-28 left-0 right-0 px-3">
-          <button onClick={() => setModeDiscret(!modeDiscret)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-            {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
-            <span>Mode discret</span>
-          </button>
-        </div>
-        <div className="absolute bottom-16 left-0 right-0 px-3">
-          <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            <span>{isDark ? 'Clair' : 'Sombre'}</span>
-          </button>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800">
-          <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm">
-            <LogOut size={18} />
-            <span>{isDemo ? 'Quitter' : 'Déconnexion'}</span>
-          </button>
+        
+        {/* Section bas de sidebar avec meilleure séparation */}
+        <div className="absolute bottom-0 left-0 right-0">
+          {/* Mode discret */}
+          <div className="px-3 pb-2">
+            <button onClick={() => setModeDiscret(!modeDiscret)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+              {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
+              <span>Mode discret</span>
+            </button>
+          </div>
+          
+          {/* Thème */}
+          <div className="px-3 pb-3">
+            <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors">
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              <span>{isDark ? 'Clair' : 'Sombre'}</span>
+            </button>
+          </div>
+          
+          {/* Séparateur */}
+          <div className="border-t border-slate-800 mx-3" />
+          
+          {/* Quitter */}
+          <div className="p-3">
+            <button onClick={handleSignOut} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors">
+              <LogOut size={18} />
+              <span>{isDemo ? 'Quitter démo' : 'Déconnexion'}</span>
+            </button>
+          </div>
         </div>
       </aside>
 
       <div className="lg:pl-64">
-        <header className={`sticky top-0 z-30 ${isDark ? 'bg-slate-800/95' : 'bg-white/95'} backdrop-blur border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} px-4 py-3 flex items-center gap-4`}>
-          <button onClick={() => setSidebarOpen(true)} className={`lg:hidden p-2 ${isDark ? 'text-white' : ''}`}><Menu size={24} /></button>
+        <header className={`sticky top-0 z-30 ${isDark ? 'bg-slate-800/95 border-slate-700' : 'bg-white/95 border-slate-200'} backdrop-blur border-b px-4 py-3 flex items-center gap-4`}>
+          <button onClick={() => setSidebarOpen(true)} className={`lg:hidden p-2 rounded-lg ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-100'}`}><Menu size={24} /></button>
           {isDemo && <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium flex items-center gap-1"><Gamepad2 size={14} /> Démo</span>}
           {modeDiscret && <span className="px-3 py-1 bg-slate-700 text-white rounded-full text-xs font-medium flex items-center gap-1"><EyeOff size={14} /></span>}
           <div className="flex-1" />
+          
+          {/* Bouton Notifications avec dropdown */}
           <div className="relative">
-            <button onClick={() => setShowNotifs(!showNotifs)} className={`relative p-2 rounded-xl ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => setShowNotifs(!showNotifs)} className={`relative p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-100'}`}>
               <Bell size={20} />
-              {notifications.filter(n => !n.read).length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+              {unreadNotifs.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
             </button>
+            
+            {/* Dropdown notifications */}
+            {showNotifs && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowNotifs(false)} />
+                <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl shadow-2xl z-50 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border'}`}>
+                  <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-700' : ''}`}>
+                    <h3 className={`font-semibold ${isDark ? 'text-white' : ''}`}>Notifications</h3>
+                    {unreadNotifs.length > 0 && (
+                      <button onClick={markAllNotifsRead} className="text-xs text-orange-500 hover:text-orange-600">Tout marquer lu</button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell size={32} className={`mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                        <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Aucune notification</p>
+                      </div>
+                    ) : (
+                      notifications.map(n => (
+                        <div key={n.id} onClick={() => markNotifRead(n.id)} className={`px-4 py-3 cursor-pointer transition-colors ${!n.read ? (isDark ? 'bg-slate-700/50' : 'bg-orange-50') : ''} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <p className={`text-sm ${isDark ? 'text-white' : ''}`}>{n.message}</p>
+                          <p className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{n.date}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          <button onClick={() => setShowQuickAdd(true)} className="px-4 py-2 text-white rounded-xl flex items-center gap-2" style={{background: couleur}}>
-            <Plus size={18} /> <span className="hidden sm:inline">Nouveau</span>
-          </button>
+          
+          {/* Bouton Nouveau avec dropdown */}
+          <div className="relative">
+            <button onClick={() => setShowQuickAdd(!showQuickAdd)} className="px-4 py-2 text-white rounded-xl flex items-center gap-2 transition-all hover:shadow-lg" style={{background: couleur}}>
+              <Plus size={18} /> <span className="hidden sm:inline">Nouveau</span>
+            </button>
+            
+            {showQuickAdd && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
+                <div className={`absolute right-0 top-full mt-2 w-56 rounded-2xl shadow-2xl z-50 py-2 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border'}`}>
+                  {[
+                    { label: 'Nouveau devis', icon: FileText, action: () => { setPage('devis'); setCreateMode('devis'); setShowQuickAdd(false); } },
+                    { label: 'Nouveau client', icon: Users, action: () => { setPage('clients'); setCreateMode('client'); setShowQuickAdd(false); } },
+                    { label: 'Nouveau chantier', icon: Building2, action: () => { setPage('chantiers'); setCreateMode('chantier'); setShowQuickAdd(false); } },
+                  ].map(item => (
+                    <button key={item.label} onClick={item.action} className={`w-full flex items-center gap-3 px-4 py-3 ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-50'} transition-colors`}>
+                      <item.icon size={18} style={{color: couleur}} />
+                      <span>{item.label}</span>
+                      <ChevronRight size={16} className={`ml-auto ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </header>
 
         <main className={`p-4 lg:p-6 ${isDark ? 'text-white' : ''}`}>
           {dataLoading ? <PageSkeleton /> : (
             <>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} />}
-              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} />}
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode} setCreateMode={setCreateMode} />}
+              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode} setCreateMode={setCreateMode} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-              {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode} setCreateMode={setCreateMode} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
-              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} />}
+              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
             </>
           )}
         </main>
       </div>
-
-      {showQuickAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowQuickAdd(false)}>
-          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-sm`} onClick={e => e.stopPropagation()}>
-            <h3 className={`font-bold text-lg mb-4 ${isDark ? 'text-white' : ''}`}>Créer</h3>
-            <div className="space-y-2">
-              {[
-                { label: 'Nouveau devis', icon: FileText, action: () => { setPage('devis'); setShowQuickAdd(false); } },
-                { label: 'Nouveau client', icon: Users, action: () => { setPage('clients'); setShowQuickAdd(false); } },
-                { label: 'Nouveau chantier', icon: Building2, action: () => { setPage('chantiers'); setShowQuickAdd(false); } },
-              ].map(item => (
-                <button key={item.label} onClick={item.action} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-100'}`}>
-                  <item.icon size={20} style={{color: couleur}} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

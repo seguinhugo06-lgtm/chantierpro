@@ -1,23 +1,42 @@
-# ChantierPro v18.3 - Corrections Complètes
+# ChantierPro v19 - Améliorations Interface
 
-## Corrections v18.3
-- Suppression des paramètres en double (couleur dans Planning et Chantiers)
-- Ajout de couleur à DevisPage dans App.jsx
-- Correction des props passés à Planning (setEvents, updateChantier)
-- Correction des props passés à Clients (setClients, onSubmit, setSelectedChantier)
-- Correction des props passés à Equipe (setPointages)
+## Améliorations majeures
 
-## Thème sombre
+### Page de connexion redesignée
+- Design moderne avec gradient animé
+- Icônes pour les features
+- Meilleure hiérarchie visuelle
+- Version mobile optimisée
+
+### Sidebar améliorée
+- Ombre portée en mode sombre
+- Meilleure séparation entre les sections
+- Séparateur avant "Quitter"
+- Transitions douces
+
+### Notifications fonctionnelles
+- Dropdown avec liste des notifications
+- Marquage lu/non lu
+- "Tout marquer comme lu"
+
+### Menu Nouveau amélioré
+- Dropdown avec chevrons
+- Navigation directe vers création
+
+### Corrections
+- Props passés correctement à tous les composants
 - Variables thème dans tous les composants
-- Tous les bg-white convertis en ${cardBg}
-- Modals et onglets avec thème sombre
+- setSelectedDevis ajouté à Dashboard
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v18.3-complete.zip
+unzip -o ~/Downloads/chantierpro-v19-ui.zip
 npm run build
-git add . && git commit -m "v18.3 - Corrections complètes" && git push
-npx vercel --prod
 ```
+
+## Note sur l'encodage
+Certains caractères peuvent encore apparaître mal encodés.
+Si c'est le cas, le problème vient des fichiers source du projet.
+Une solution complète nécessiterait de réécrire les fichiers concernés.

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Phone, MessageCircle, MapPin, Edit, Trash2, ArrowLeft, Plus, Search, FileText, Building2, ChevronRight } from 'lucide-react';
 
-export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark }) {
+export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
   const [show, setShow] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);

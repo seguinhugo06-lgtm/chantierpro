@@ -23,9 +23,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
-  const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  const MOIS = ['Janvier', 'FÃ©vrier', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'AoÃ»t', 'Septembre', 'Octobre', 'Novembre', 'DÃ©cembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-  const TYPE_LABELS = { chantier: ' Chantier', rdv: ' RDV', relance: ' Relance', urgence: ' Urgence', autre: ' Autre' };
+  const TYPE_LABELS = { chantier: 'ðŸ—ï¸ Chantier', rdv: 'ðŸ“… RDV', relance: 'ðŸ“ž Relance', urgence: 'ðŸš¨ Urgence', autre: 'ðŸ“Œ Autre' };
 
   const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; if (ch.statut === 'en_cours') return '#22c55e'; return '#3b82f6'; };
   const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', autre: '#8b5cf6' };
@@ -70,7 +70,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   
   const deleteEvent = (id) => { 
     if (id.startsWith('ch_')) return; 
-    if (confirm('Supprimer cet événement ?')) { setEvents(events.filter(e => e.id !== id)); setShowDetail(null); }
+    if (confirm('Supprimer cet Ã©vÃ©nement ?')) { setEvents(events.filter(e => e.id !== id)); setShowDetail(null); }
   };
 
   const updateEvent = () => {
@@ -86,7 +86,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     setEditMode(true);
   };
 
-  // Modal détail/édition
+  // Modal dÃ©tail/Ã©dition
   if (showDetail) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetail(null)}>
       <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
@@ -94,9 +94,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 rounded-full" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }} />
-              <h2 className="font-bold text-lg dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Ã‰vénement')}</h2>
+              <h2 className="font-bold text-lg dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Ã‰vÃ©nement')}</h2>
             </div>
-            <button onClick={() => setShowDetail(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-slate-400"></button>
+            <button onClick={() => setShowDetail(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-slate-400">âœ•</button>
           </div>
         </div>
         
@@ -110,7 +110,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Type</label><select className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
-                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Employé</label><select className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+                <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">EmployÃ©</label><select className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
               </div>
               <div><label className="block text-sm font-medium mb-1 dark:text-slate-300">Description</label><textarea className="w-full px-4 py-2.5 border rounded-xl dark:border-slate-600 dark:bg-slate-700 dark:text-white" rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
             </div>
@@ -118,9 +118,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
             <div className="space-y-4">
               <h3 className="text-xl font-bold dark:text-white">{showDetail.title}</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20"> Date</span><span className="font-medium dark:text-white">{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && `  ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span></div>
-                {showDetail.time && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20"> Heure</span><span className="font-medium dark:text-white">{showDetail.time}</span></div>}
-                {showDetail.employeId && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20"> Assigné</span><span className="font-medium dark:text-white">{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span></div>}
+                <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">ðŸ“… Date</span><span className="font-medium dark:text-white">{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` â†’ ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span></div>
+                {showDetail.time && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">ðŸ• Heure</span><span className="font-medium dark:text-white">{showDetail.time}</span></div>}
+                {showDetail.employeId && <div className="flex items-center gap-3"><span className="text-slate-500 dark:text-slate-400 w-20">ðŸ‘¤ AssignÃ©</span><span className="font-medium dark:text-white">{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span></div>}
               </div>
               {showDetail.description && <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-700 rounded-xl"><p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{showDetail.description}</p></div>}
             </div>
@@ -129,33 +129,33 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         
         <div className="p-4 border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-b-2xl flex gap-3">
           {showDetail.isChantier ? (
-            <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}> Voir le chantier</button>
+            <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>ðŸ—ï¸ Voir le chantier</button>
           ) : editMode ? (
             <><button onClick={() => setEditMode(false)} className="flex-1 px-4 py-2.5 bg-slate-200 dark:bg-slate-700 dark:text-slate-300 rounded-xl">Annuler</button><button onClick={updateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>Enregistrer</button></>
           ) : (
-            <><button onClick={() => deleteEvent(showDetail.id)} className="px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200"></button><button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>¸ Modifier</button></>
+            <><button onClick={() => deleteEvent(showDetail.id)} className="px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200">ðŸ—‘ï¸</button><button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl" style={{ background: couleur }}>âœï¸ Modifier</button></>
           )}
         </div>
       </div>
     </div>
   );
 
-  // Formulaire création
+  // Formulaire crÃ©ation
   if (showAdd) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-white"></button><h1 className="text-2xl font-bold dark:text-white">Nouvel événement</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-white">â†</button><h1 className="text-2xl font-bold dark:text-white">Nouvel Ã©vÃ©nement</h1></div>
       <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-6">
         <div className="space-y-4">
           <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Titre *</label><input className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Date *</label><input type="date" className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
             <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Heure</label><input type="time" className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
-            <div><label className="block text-sm font-medium mb-1">Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
-            <div><label className="block text-sm font-medium mb-1">Employé</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+            <div><label className="block text-sm font-medium mb-1">Type</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
+            <div><label className="block text-sm font-medium mb-1">EmployÃ©</label><select className="w-full px-4 py-2.5 border rounded-xl" value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
           </div>
-          <div><label className="block text-sm font-medium mb-1">Description</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Détails..." /></div>
+          <div><label className="block text-sm font-medium mb-1">Description</label><textarea className="w-full px-4 py-2.5 border rounded-xl" rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="DÃ©tails..." /></div>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShowAdd(false)} className={`px-4 py-2 rounded-xl ${btnSecondary}`}>Annuler</button><button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div>
+        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-slate-100 rounded-xl">Annuler</button><button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>CrÃ©er</button></div>
       </div>
     </div>
   );
@@ -163,25 +163,25 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Planning</h1>
+        <h1 className="text-2xl font-bold">Planning</h1>
         <div className="flex gap-2">
           <select className="px-4 py-2 border rounded-xl text-sm" value={filterEmploye} onChange={e => setFilterEmploye(e.target.value)}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Ã‰vénement</button>
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Ã‰vÃ©nement</button>
         </div>
       </div>
 
       <div className="flex gap-4 flex-wrap text-xs">
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span> Ã€ venir</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> En cours</span>
-        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-slate-400"></span> Terminé</span>
+        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-slate-400"></span> TerminÃ©</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span> Urgence</span>
       </div>
 
-      <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
+      <div className="bg-white rounded-2xl border overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl"></button>
+          <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†</button>
           <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
-          <button onClick={() => setDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl"></button>
+          <button onClick={() => setDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl">â†’</button>
         </div>
         <div className="grid grid-cols-7 border-b">{JOURS.map(j => <div key={j} className="py-2 text-center text-sm font-medium text-slate-500">{j}</div>)}</div>
         <div className="grid grid-cols-7">
@@ -209,20 +209,20 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         </div>
       </div>
 
-      <div className={`rounded-2xl border p-5 ${cardBg}`}>
-        <h3 className="font-semibold mb-4"> Prochains événements</h3>
+      <div className="bg-white rounded-2xl border p-5">
+        <h3 className="font-semibold mb-4">ðŸ“… Prochains Ã©vÃ©nements</h3>
         {allEvents.filter(e => new Date(e.date) >= new Date()).length === 0 ? (
-          <p className="text-center text-slate-400 py-4">Aucun événement Ã  venir</p>
+          <p className="text-center text-slate-400 py-4">Aucun Ã©vÃ©nement Ã  venir</p>
         ) : allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 8).map(ev => (
           <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer hover:bg-slate-50 rounded-xl px-2 transition-colors">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{background: ev.color || typeColors[ev.type] || couleur}}></div>
             <div className="flex-1 min-w-0"><p className="font-medium truncate">{ev.title}</p><p className="text-sm text-slate-500">{new Date(ev.date).toLocaleDateString('fr-FR')} {ev.time && `Ã  ${ev.time}`}</p></div>
-            <span className="text-slate-400 text-sm">{ev.isChantier ? '' : ''}</span>
+            <span className="text-slate-400 text-sm">{ev.isChantier ? 'ðŸ—ï¸' : 'â†’'}</span>
           </div>
         ))}
       </div>
 
-      <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700"> Glissez-déposez les blocs pour modifier les dates. Cliquez sur un événement pour voir/modifier.</div>
+      <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">ðŸ’¡ Glissez-dÃ©posez les blocs pour modifier les dates. Cliquez sur un Ã©vÃ©nement pour voir/modifier.</div>
     </div>
   );
 }
