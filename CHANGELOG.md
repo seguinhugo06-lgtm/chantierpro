@@ -1,42 +1,23 @@
-# ChantierPro v19 - Améliorations Interface
+# ChantierPro v19.1 - Corrections Encodage
 
-## Améliorations majeures
+## Corrections majeures
+- Tous les caractères français corrigés (é, è, à, ç, etc.)
+- Symbole Euro (€) corrigé partout
+- Emojis corrompus supprimés
+- Accents dans les labels corrigés
 
-### Page de connexion redesignée
-- Design moderne avec gradient animé
-- Icônes pour les features
-- Meilleure hiérarchie visuelle
-- Version mobile optimisée
-
-### Sidebar améliorée
-- Ombre portée en mode sombre
-- Meilleure séparation entre les sections
-- Séparateur avant "Quitter"
-- Transitions douces
-
-### Notifications fonctionnelles
-- Dropdown avec liste des notifications
-- Marquage lu/non lu
-- "Tout marquer comme lu"
-
-### Menu Nouveau amélioré
-- Dropdown avec chevrons
-- Navigation directe vers création
-
-### Corrections
-- Props passés correctement à tous les composants
-- Variables thème dans tous les composants
-- setSelectedDevis ajouté à Dashboard
+## Améliorations interface
+- Page de connexion redesignée
+- Sidebar avec ombre et séparateurs
+- Notifications fonctionnelles avec dropdown
+- Menu Nouveau avec dropdown
 
 ## Installation
 ```bash
 cd ~/Documents/chantierpro-app
 rm -rf src/
-unzip -o ~/Downloads/chantierpro-v19-ui.zip
+unzip -o ~/Downloads/chantierpro-v19.1-encoding-fixed.zip
 npm run build
+git add . && git commit -m "v19.1 - Encodage corrigé" && git push
+npx vercel --prod
 ```
-
-## Note sur l'encodage
-Certains caractères peuvent encore apparaître mal encodés.
-Si c'est le cas, le problème vient des fichiers source du projet.
-Une solution complète nécessiterait de réécrire les fichiers concernés.

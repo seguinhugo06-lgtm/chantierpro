@@ -53,7 +53,7 @@ export default function Stocks({ stocks, setStocks }) {
       </div>
       {lowStocks.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <div className="flex items-center gap-3 mb-2"><span className="text-2xl"> ï¸</span><h3 className="font-semibold text-amber-800">Stocks bas ({lowStocks.length})</h3></div>
+          <div className="flex items-center gap-3 mb-2"><span className="text-2xl"> ï¸</span><h3 className="font-semibold text-amber-800">Stocks bas ({lowStocks.length})</h3></div>
           <div className="flex flex-wrap gap-2">{lowStocks.map(s => <span key={s.id} className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm">{s.nom}: {s.quantite}</span>)}</div>
         </div>
       )}

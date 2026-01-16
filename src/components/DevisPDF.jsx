@@ -176,7 +176,7 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
               <Text style={styles.companyDetails}>Email: {entreprise.email}</Text>
             )}
             {entreprise.telephone && (
-              <Text style={styles.companyDetails}>TÃ©l: {entreprise.telephone}</Text>
+              <Text style={styles.companyDetails}>Tél: {entreprise.telephone}</Text>
             )}
           </View>
         </View>
@@ -195,7 +195,7 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
             </View>
             {devis.type === 'devis' && (
               <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>ValiditÃ©: </Text>
+                <Text style={styles.metaLabel}>Validité: </Text>
                 <Text style={styles.metaValue}>30 jours</Text>
               </View>
             )}
@@ -214,17 +214,17 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
             )}
             <Text style={styles.clientDetail}>{client.adresse}</Text>
             <Text style={styles.clientDetail}>Email: {client.email}</Text>
-            <Text style={styles.clientDetail}>TÃ©l: {client.telephone}</Text>
+            <Text style={styles.clientDetail}>Tél: {client.telephone}</Text>
           </View>
         </View>
 
         {/* Table */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DÃ‰TAIL</Text>
+          <Text style={styles.sectionTitle}>DÉTAIL</Text>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={styles.colDesc}>DÃ©signation</Text>
-              <Text style={styles.colQty}>QtÃ©</Text>
+              <Text style={styles.colDesc}>Désignation</Text>
+              <Text style={styles.colQty}>Qté</Text>
               <Text style={styles.colPrice}>Prix HT</Text>
               <Text style={styles.colTotal}>Total HT</Text>
             </View>
@@ -235,8 +235,8 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
               >
                 <Text style={styles.colDesc}>{ligne.description}</Text>
                 <Text style={styles.colQty}>{ligne.quantite}</Text>
-                <Text style={styles.colPrice}>{ligne.prixUnitaire.toFixed(2)}â‚¬</Text>
-                <Text style={styles.colTotal}>{ligne.montant.toFixed(2)}â‚¬</Text>
+                <Text style={styles.colPrice}>{ligne.prixUnitaire.toFixed(2)}€</Text>
+                <Text style={styles.colTotal}>{ligne.montant.toFixed(2)}€</Text>
               </View>
             ))}
           </View>
@@ -246,15 +246,15 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
         <View style={styles.totals}>
           <View style={styles.totalRow}>
             <Text>Total HT</Text>
-            <Text>{devis.total_ht.toFixed(2)}â‚¬</Text>
+            <Text>{devis.total_ht.toFixed(2)}€</Text>
           </View>
           <View style={styles.totalRow}>
             <Text>TVA ({entreprise.tva_percent}%)</Text>
-            <Text>{devis.tva.toFixed(2)}â‚¬</Text>
+            <Text>{devis.tva.toFixed(2)}€</Text>
           </View>
           <View style={styles.totalRowFinal}>
             <Text>TOTAL TTC</Text>
-            <Text>{devis.total_ttc.toFixed(2)}â‚¬</Text>
+            <Text>{devis.total_ttc.toFixed(2)}€</Text>
           </View>
         </View>
 
@@ -266,7 +266,7 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
           </Text>
           {devis.type === 'facture' && (
             <Text style={{ marginTop: 5 }}>
-              Facture Ã  rÃ©gler sous 30 jours. En cas de retard, pÃ©nalitÃ©s de 3 fois le taux d'intÃ©rÃªt lÃ©gal.
+              Facture Ã  régler sous 30 jours. En cas de retard, pénalités de 3 fois le taux d'intérêt légal.
             </Text>
           )}
         </View>
@@ -275,7 +275,7 @@ export const DevisPDF = ({ devis, client, entreprise }) => {
   );
 };
 
-// Fonction helper pour gÃ©nÃ©rer et tÃ©lÃ©charger le PDF
+// Fonction helper pour générer et télécharger le PDF
 export async function downloadDevisPDF(devis, client, entreprise) {
   const { pdf } = await import('@react-pdf/renderer');
   const blob = await pdf(<DevisPDF devis={devis} client={client} entreprise={entreprise} />).toBlob();
