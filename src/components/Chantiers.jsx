@@ -1,9 +1,8 @@
-import { Building2, Plus, ArrowLeft, Check, X, Trash2, Clock, TrendingUp, TrendingDown, AlertCircle, Camera, Package, Users, DollarSign, Calendar, Edit, ChevronDown } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
-export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark }) {
+export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, couleur }) {
   // Variables thème
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
@@ -78,7 +77,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="p-2 hover:bg-slate-100 rounded-xl text-xl"></button>
           <div className="flex-1 min-w-0"><h1 className="text-2xl font-bold truncate">{ch.nom}</h1><p className="text-slate-500">{client?.nom} • {ch.adresse}</p></div>
           <select value={ch.statut} onChange={e => updateChantier(ch.id, { statut: e.target.value })} className="px-4 py-2 border rounded-xl">
             <option value="prospect">Prospect</option><option value="en_cours">En cours</option><option value="termine">Terminé</option>
@@ -110,7 +109,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md ${cardBg}`} onClick={() => setShowAjustement('REVENU')}>
               <div className="flex justify-between mb-1"><p className="text-xs text-slate-500">CA HT</p><span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">+ Ajuster</span></div>
-              <p className={`text-xl font-bold ${textPrimary}`} style={{color: couleur}}>{formatMoney(bilan.caHT)}</p>
+              <p className="text-xl font-bold" style={{color: couleur}}>{formatMoney(bilan.caHT)}</p>
               {bilan.adjRevenus > 0 && <p className="text-xs text-emerald-600">+{formatMoney(bilan.adjRevenus)} ajustés</p>}
             </div>
             <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md transition-all group ${cardBg}`} onClick={() => setShowQuickMateriau(true)}>
@@ -160,7 +159,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className={`rounded-xl p-4 mt-4 ${cardBg}`}>
               <h4 className="font-medium mb-3"> Devis vs Réel</h4>
               <table className="w-full text-sm">
-                <thead><tr className="border-b"><th className="text-left py-2">Poste</th><th className="text-right py-2">Devis</th><th className="text-right py-2">Réel</th><th className="text-right py-2">Écart</th></tr></thead>
+                <thead><tr className="border-b"><th className="text-left py-2">Poste</th><th className="text-right py-2">Devis</th><th className="text-right py-2">Réel</th><th className="text-right py-2">Ã‰cart</th></tr></thead>
                 <tbody>
                   <tr className="border-b"><td className="py-2">CA HT</td><td className="text-right">{formatMoney(devisHT)}</td><td className="text-right">{formatMoney(bilan.caHT)}</td><td className={`text-right ${bilan.caHT >= devisHT ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.caHT >= devisHT ? '+' : ''}{formatMoney(bilan.caHT - devisHT)}</td></tr>
                   <tr className="border-b"><td className="py-2">Matériaux</td><td className="text-right">{formatMoney(devisMateriaux)}</td><td className="text-right">{formatMoney(bilan.coutMateriaux)}</td><td className={`text-right ${bilan.coutMateriaux <= devisMateriaux ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.coutMateriaux <= devisMateriaux ? '' : '+'}{formatMoney(bilan.coutMateriaux - devisMateriaux)}</td></tr>
@@ -175,7 +174,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Onglets */}
         <div className="flex gap-2 border-b overflow-x-auto pb-2">
           {[['finances', ' Finances'], ['taches', ' Ts'], ['photos', ' Photos'], ['notes', ' Notes']].map(([k, v]) => (
-            <button key={k} onClick={() => setActiveTab(k)} className={`px-4 py-2 rounded-t-xl whitespace-nowrap font-medium ${activeTab === k ? (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border') + ' border-b-0 -mb-[3px]' : textSecondary}`}>{v}</button>
+            <button key={k} onClick={() => setActiveTab(k)} className={`px-4 py-2 rounded-t-xl whitespace-nowrap font-medium ${activeTab === k ? (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border') + ' -mb-[3px]' : textSecondary}`}>{v}</button>
           ))}
         </div>
 
@@ -237,7 +236,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Modal Ajustement */}
         {showAjustement && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`}>
+            <div className={`rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`}>
               <h3 className="text-lg font-bold mb-4">{showAjustement === 'REVENU' ? ' Ajustement Revenu' : ' Ajustement Dépense'}</h3>
               <p className="text-sm text-slate-500 mb-4">{showAjustement === 'REVENU' ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</p>
               <div className="space-y-4">
@@ -252,7 +251,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Modal Ajout Rapide Matériau */}
         {showQuickMateriau && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setShowQuickMateriau(false)}>
-            <div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
+            <div className={`rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`} onClick={e => e.stopPropagation()}>
               <h3 className="text-lg font-bold mb-2"> Ajouter un matériau</h3>
               <p className="text-sm text-slate-500 mb-4">Ajout rapide de dépense matériau</p>
               
@@ -306,7 +305,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Modal MO */}
         {showMODetail && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto`}>
+            <div className={`rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto ${isDark ? "bg-slate-800" : "bg-white"}`}>
               <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">¸ Détail Main d'Å’uvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm text-white rounded-lg" style={{background: couleur}}>+ Heures</button></div>
               <div className="space-y-2 mb-4">{chPointages.map(p => { const emp = equipe.find(e => e.id === p.employeId); const cout = emp?.coutHoraireCharge || 28; return (
                 <div key={p.id} className={`p-3 rounded-xl ${p.manuel ? 'bg-blue-50' : 'bg-slate-50'} ${p.verrouille ? 'opacity-60' : ''}`}>
@@ -323,7 +322,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Modal Ajout MO */}
         {showAddMO && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`}>
+            <div className={`rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`}>
               <h3 className="text-lg font-bold mb-4">+ Ajouter des heures</h3>
               <div className="space-y-4">
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.employeId} onChange={e => setMoForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
@@ -341,7 +340,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Formulaire création
   if (show) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className={`p-2 ${hoverBg} rounded-xl`}></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau chantier</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className="p-2 hover:bg-slate-100 rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau chantier</h1></div>
       <div className={`rounded-2xl border p-6 ${cardBg}`}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>

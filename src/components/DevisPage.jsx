@@ -1,8 +1,15 @@
-import { Search, FileText, Receipt, Check, Download, Plus, X, ArrowLeft, Send, Eye, Trash2, Clock, ChevronDown, AlertCircle } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark }) {
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur }) {
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
+
+  // Variables thème
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
+  const btnSecondary = isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700';
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -39,14 +46,6 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   });
 
   const couleur = entreprise?.couleur || '#f97316';
-
-  // Variables thème
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const hoverBg = isDark ? 'hover:bg-slate-700' : '${hoverBg}';
-
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
@@ -222,7 +221,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     setSnackbar({ type: 'success', message: ` Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir la facture ', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  // PDF Generation - CONFORME LÉGISLATION FRANÃ‡AISE
+  // PDF Generation - CONFORME LÃ‰GISLATION FRANÃ‡AISE
   const downloadPDF = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
@@ -374,7 +373,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
   <!-- CONDITIONS -->
   <div class="conditions">
-    <h4>CONDITIONS GÉNÉRALES</h4>
+    <h4>CONDITIONS GÃ‰NÃ‰RALES</h4>
     <div class="conditions-grid">
       <div>
         <strong>Modalités de paiement</strong><br>
@@ -395,9 +394,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   </div>
 
   ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
-  <!-- GARANTIES LÉGALES -->
+  <!-- GARANTIES LÃ‰GALES -->
   <div class="garanties">
-    <h4> GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
+    <h4> GARANTIES LÃ‰GALES (Code civil & Code de la construction)</h4>
     <strong>1. Garantie de parfait achèvement</strong> - 1 an Ã  compter de la réception des travaux<br>
     <strong>2. Garantie de bon fonctionnement</strong> - 2 ans (équipements dissociables)<br>
     <strong>3. Garantie décennale</strong> - 10 ans (solidité de l'ouvrage)
@@ -405,9 +404,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   ` : ''}
 
   ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
-  <!-- DROIT DE RÉTRACTATION -->
+  <!-- DROIT DE RÃ‰TRACTATION -->
   <div class="retractation">
-    <strong> ï¸ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
+    <strong> ï¸ DROIT DE RÃ‰TRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court Ã  compter de la signature du présent devis.
     Pour l'exercer, envoyez une lettre recommandée AR Ã : ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
@@ -415,9 +414,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   ` : ''}
 
   ${entreprise?.cgv ? `
-  <!-- CGV PERSONNALISÉES -->
+  <!-- CGV PERSONNALISÃ‰ES -->
   <div class="conditions" style="margin-top:10px">
-    <h4>CONDITIONS PARTICULIÈRES</h4>
+    <h4>CONDITIONS PARTICULIÃˆRES</h4>
     ${entreprise.cgv}
   </div>
   ` : ''}
@@ -477,12 +476,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className={`p-2 ${hoverBg} rounded-xl`}></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Signature Client</h1></div>
+      <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Signature Client</h1></div>
       <div className={`rounded-2xl border p-6 text-center ${cardBg}`}>
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
-        <p className={`text-sm ${textSecondary} mt-2`}>Dessinez votre signature ci-dessus</p>
+        <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
           <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button>
           <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}> Valider</button>
@@ -506,8 +505,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2 ${hoverBg} dark:hover:bg-slate-700 rounded-xl`}></button>
-          <h1 className={`text-xl font-bold ${textPrimary}`}>{selected.numero}</h1>
+          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl"></button>
+          <h1 className="text-xl font-bold">{selected.numero}</h1>
           <span className={`px-3 py-1 rounded-full text-sm ${selected.statut === 'accepte' ? 'bg-emerald-100 text-emerald-700' : selected.statut === 'payee' ? 'bg-purple-100 text-purple-700' : selected.statut === 'acompte_facture' ? 'bg-blue-100 text-blue-700' : selected.statut === 'facture' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
             {{ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', acompte_facture: 'Acompte facturé', facture: 'Facturé', payee: 'Payée', refuse: 'Refusé' }[selected.statut] || selected.statut}
           </span>
@@ -553,9 +552,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-2xl"></span>
-                <div><p className={`font-medium ${textPrimary}`}>Acompte facturé</p><button onClick={() => setSelected(acompteFacture)} className="text-sm text-blue-600 hover:underline">{acompteFacture.numero} • {formatMoney(acompteFacture.total_ttc)} </button></div>
+                <div><p className="font-medium">Acompte facturé</p><button onClick={() => setSelected(acompteFacture)} className="text-sm text-blue-600 hover:underline">{acompteFacture.numero} • {formatMoney(acompteFacture.total_ttc)} </button></div>
               </div>
-              <div className="text-right"><p className={`text-sm ${textSecondary}`}>Reste Ã  facturer</p><p className="font-bold text-lg">{formatMoney(resteAFacturer)}</p></div>
+              <div className="text-right"><p className="text-sm text-slate-500">Reste Ã  facturer</p><p className="font-bold text-lg">{formatMoney(resteAFacturer)}</p></div>
             </div>
             <div className="mt-3 h-2 bg-blue-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${selected.acompte_pct}%` }} /></div>
           </div>
@@ -563,17 +562,17 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
         {/* Document */}
         <div className={`rounded-2xl border p-6 ${cardBg}`}>
-          <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? "border-slate-700" : ""}`}>
+          <div className="flex justify-between items-start mb-6 pb-6 border-b">
             <div className="flex items-center gap-4">
               {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}></div>}
-              <div><p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p><p className={`text-sm ${textSecondary}`}>{entreprise?.adresse}</p></div>
+              <div><p className="font-bold">{entreprise?.nom}</p><p className="text-sm text-slate-500">{entreprise?.adresse}</p></div>
             </div>
-            <div className="text-right"><p className={`text-xl font-bold ${textPrimary}`} style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className={textSecondary}>{selected.numero}</p><p className="text-sm text-slate-400">{new Date(selected.date).toLocaleDateString('fr-FR')}</p></div>
+            <div className="text-right"><p className="text-xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p><p className="text-sm text-slate-400">{new Date(selected.date).toLocaleDateString('fr-FR')}</p></div>
           </div>
-          <div className="mb-6 p-4 bg-slate-50 rounded-xl"><p className={`text-sm ${textSecondary}`}>Client</p><p className={`font-semibold ${textPrimary}`}>{client?.nom} {client?.prenom}</p>{client?.adresse && <p className={`text-sm ${textSecondary}`}>{client.adresse}</p>}</div>
-          <table className="w-full mb-6 text-sm"><thead><tr className={`border-b ${isDark ? `}border-slate-700" : ""}"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">Qté</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className={`border-b ${isDark ? `}border-slate-700" : ""}"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : ''}`}>{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
+          <div className="mb-6 p-4 bg-slate-50 rounded-xl"><p className="text-sm text-slate-500">Client</p><p className="font-semibold">{client?.nom} {client?.prenom}</p>{client?.adresse && <p className="text-sm text-slate-500">{client.adresse}</p>}</div>
+          <table className="w-full mb-6 text-sm"><thead><tr className="border-b"><th className="text-left py-2">Description</th><th className="text-right py-2 w-16">Qté</th><th className="text-right py-2 w-20">PU HT</th><th className="text-right py-2 w-24">Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className="border-b"><td className="py-2">{l.description}</td><td className="text-right">{l.quantite} {l.unite}</td><td className="text-right">{(l.prixUnitaire || 0).toFixed(2)}€</td><td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : ''}`}>{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
           <div className="flex justify-end"><div className="w-56"><div className="flex justify-between py-1"><span>HT</span><span>{formatMoney(selected.total_ht)}</span></div><div className="flex justify-between py-1"><span>TVA {selected.tvaRate}%</span><span>{formatMoney(selected.tva)}</span></div><div className="flex justify-between py-2 border-t font-bold" style={{color: couleur}}><span>TTC</span><span>{formatMoney(selected.total_ttc)}</span></div></div></div>
-          {selected.signature && <div className={`mt-6 pt-6 border-t ${isDark ? `}border-slate-700" : ""}"><p className={`text-sm ${textSecondary}`}>Signé le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600 font-medium"> Accepté par le client</span></div>}
+          {selected.signature && <div className="mt-6 pt-6 border-t"><p className="text-sm text-slate-500">Signé le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600 font-medium"> Accepté par le client</span></div>}
         </div>
 
         {/* Timeline */}
@@ -584,9 +583,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p></div></div>
               {selected.signatureDate && <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepté </p></div></div>}
               {facturesLiees.map(f => (
-                <div key={f.id} className={`flex items-center gap-3 cursor-pointer ${hoverBg} rounded-lg p-2 -m-2`} onClick={() => setSelected(f)}>
+                <div key={f.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 rounded-lg p-2 -m-2" onClick={() => setSelected(f)}>
                   <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  <div className="flex-1"><p className="text-sm">{new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}</p><p className={`text-xs ${textSecondary}`}>{f.numero} • {formatMoney(f.total_ttc)}</p></div>
+                  <div className="flex-1"><p className="text-sm">{new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}</p><p className="text-xs text-slate-500">{f.numero} • {formatMoney(f.total_ttc)}</p></div>
                   <span className="text-slate-400"></span>
                 </div>
               ))}
@@ -597,7 +596,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         {/* Lien vers devis source */}
         {selected.type === 'facture' && selected.devis_source_id && (
           <div className="bg-slate-50 rounded-xl p-4">
-            <p className={`text-sm ${textSecondary} mb-1`}>Devis source</p>
+            <p className="text-sm text-slate-500 mb-1">Devis source</p>
             <button onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }} className="text-sm font-medium hover:underline" style={{ color: couleur }}> Voir le devis</button>
           </div>
         )}
@@ -617,19 +616,19 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         {/* Modal Acompte */}
         {showAcompteModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-2xl p-6 w-full max-w-md`}>
+            <div className={`rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`}>
               <h3 className="font-bold text-lg mb-2"> Facture d'acompte</h3>
               <p className="text-slate-500 mb-4 text-sm">Sécurisez votre engagement avant les travaux</p>
               <div className="space-y-3 mb-4">
                 {[20, 30, 40, 50].map(pct => (
                   <button key={pct} onClick={() => setAcomptePct(pct)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${acomptePct === pct ? 'border-purple-500 bg-purple-50' : 'border-slate-200'}`}>
-                    <span className={`font-medium ${textPrimary}`}>Acompte {pct}%</span>
+                    <span className="font-medium">Acompte {pct}%</span>
                     <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(selected.total_ttc * pct / 100)}</span>
                   </button>
                 ))}
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
                   <input type="number" min="1" max="99" value={acomptePct} onChange={e => setAcomptePct(parseInt(e.target.value) || 30)} className="w-20 px-3 py-2 border rounded-xl text-center" />
-                  <span className={textSecondary}>%</span>
+                  <span className="text-slate-500">%</span>
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
                 </div>
               </div>
@@ -645,18 +644,18 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         {/* Modal Preview */}
         {showPreview && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className={`rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col ${cardBg}`}>
-              <div className={`flex items-center justify-between p-4 border-b ${isDark ? `}border-slate-700" : ""}">
+            <div className={`rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col ${isDark ? "bg-slate-800" : "bg-white"}`}>
+              <div className="flex items-center justify-between p-4 border-b">
                 <h3 className="font-bold">Aperçu {selected.type === 'facture' ? 'Facture' : 'Devis'}</h3>
                 <div className="flex gap-2">
                   <button onClick={() => downloadPDF(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl"> Télécharger</button>
-                  <button onClick={() => setShowPreview(false)} className={`p-2 ${hoverBg} rounded-xl`}></button>
+                  <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-xl"></button>
                 </div>
               </div>
               <div className="flex-1 overflow-auto p-6 bg-slate-100">
-                <div className={`shadow-lg rounded-lg p-8 max-w-2xl mx-auto ${cardBg}`}>
-                  <div className="text-center mb-6"><p className={`text-2xl font-bold ${textPrimary}`} style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className={textSecondary}>{selected.numero}</p></div>
-                  <p className={`text-sm ${textSecondary}`}>Ceci est un aperçu. Cliquez sur "Télécharger" pour obtenir le PDF complet.</p>
+                <div className="bg-white shadow-lg rounded-lg p-8 max-w-2xl mx-auto">
+                  <div className="text-center mb-6"><p className={`text-2xl font-bold ${textPrimary}`} style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p></div>
+                  <p className="text-sm text-slate-500">Ceci est un aperçu. Cliquez sur "Télécharger" pour obtenir le PDF complet.</p>
                 </div>
               </div>
             </div>
@@ -674,7 +673,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const catalogueFiltered = catalogue?.filter(c => !catalogueSearch || c.nom?.toLowerCase().includes(catalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className={`p-2 ${hoverBg} rounded-xl`}></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
+        <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className="p-2 hover:bg-slate-100 rounded-xl"></button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
         <div className={`rounded-2xl border p-6 space-y-6 ${cardBg}`}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><label className="block text-sm mb-1">Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
@@ -695,15 +694,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             {isMicro && <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">TVA non applicable (micro)</span>}
           </div>
           
-          {favoris.length >= 3 && <div className={`${isDark ? `}bg-amber-900/20 border-amber-800" : "bg-amber-50 border-amber-100"} rounded-xl p-4"><p className="text-sm font-medium mb-2"> Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 hover:bg-amber-100 border rounded-lg ${cardBg} text-sm">{item.nom} <span className={textSecondary}>{item.prix}€</span></button>)}</div></div>}
-          <div><input placeholder=" Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className={`w-full flex justify-between px-4 py-2 ${hoverBg} border-b last:border-0 text-left`}><span>{item.nom}</span><span className={textSecondary}>{item.prix}€/{item.unite}</span></button>)}</div>}</div>
+          {favoris.length >= 3 && <div className={`${isDark ? "bg-amber-900/20 border-amber-800" : "bg-amber-50 border-amber-100"} rounded-xl p-4`}><p className="text-sm font-medium mb-2"> Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 hover:bg-amber-100 border border-amber-200 rounded-lg text-sm ${isDark ? "bg-slate-700" : "bg-white"}`}>{item.nom} <span className="text-slate-500">{item.prix}€</span></button>)}</div></div>}
+          <div><input placeholder=" Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />{catalogueSearch && <div className="mt-2 border rounded-xl max-h-40 overflow-y-auto">{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className="w-full flex justify-between px-4 py-2 hover:bg-slate-50 border-b last:border-0 text-left"><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
           
           {/* Table avec TVA par ligne */}
           {form.sections.map(section => (
             <div key={section.id} className="border rounded-xl p-4 overflow-x-auto">
               <table className="w-full text-sm min-w-[600px]">
                 <thead>
-                  <tr className={`border-b ${isDark ? `}border-slate-700" : ""}">
+                  <tr className="border-b">
                     <th className="text-left py-2">Description</th>
                     <th className="w-16 text-center py-2">Qté</th>
                     <th className="w-20 text-center py-2">Unité</th>
@@ -715,7 +714,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 </thead>
                 <tbody>
                   {section.lignes.map(l => (
-                    <tr key={l.id} className={`border-b ${isDark ? `}border-slate-700" : ""}">
+                    <tr key={l.id} className="border-b">
                       <td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className="w-full px-2 py-1 border rounded" /></td>
                       <td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className="w-full px-2 py-1 border rounded text-center" /></td>
                       <td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className="w-full px-2 py-1 border rounded text-center" /></td>
@@ -760,9 +759,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </div>
           </div>
           
-          <div className={`flex justify-end gap-3 pt-6 border-t ${isDark ? `}border-slate-700" : ""}"><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl ${isDark ? "bg-slate-700 text-slate-300" : "bg-slate-100"}`}>Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer le {form.type}</button></div>
+          <div className="flex justify-end gap-3 pt-6 border-t"><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl ${btnSecondary}`}>Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer le {form.type}</button></div>
         </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${isDark ? "bg-slate-800" : "bg-white"} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? "bg-slate-700 text-slate-300" : "bg-slate-100"}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`rounded-2xl p-6 w-full max-w-md ${isDark ? "bg-slate-800" : "bg-white"}`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${btnSecondary}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
         <Snackbar />
       </div>
     );
@@ -773,16 +772,16 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4"><h1 className={`text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1><button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={`rounded-xl border p-4 ${cardBg}`}><p className={`text-xs ${textSecondary}`}>Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
-        <div className={`rounded-xl border p-4 ${cardBg}`}><p className={`text-xs ${textSecondary}`}>Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
-        <div className={`rounded-xl border p-4 ${cardBg}`}><p className={`text-xs ${textSecondary}`}>Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
-        <div className={`rounded-xl border p-4 ${cardBg}`}><p className={`text-xs ${textSecondary}`}>À encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
+        <div className={`rounded-xl border p-4 ${cardBg}`}><p className="text-xs text-slate-500">Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
+        <div className={`rounded-xl border p-4 ${cardBg}`}><p className="text-xs text-slate-500">Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
+        <div className={`rounded-xl border p-4 ${cardBg}`}><p className="text-xs text-slate-500">Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
+        <div className={`rounded-xl border p-4 ${cardBg}`}><p className="text-xs text-slate-500">Ã€ encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
       </div>
       <div className="flex gap-2 flex-wrap items-center">
         <input placeholder=" Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="flex-1 max-w-xs px-4 py-2 border rounded-xl" />
         {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-lg text-sm ${filter === k ? 'text-white' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className={`rounded-2xl border p-12 text-center ${cardBg}`}><p className="text-5xl mb-4"></p><p className={textSecondary}>Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
+      {filtered.length === 0 ? <div className={`rounded-2xl border p-12 text-center ${cardBg}`}><p className="text-5xl mb-4"></p><p className="text-slate-500">Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const icon = { brouillon: '', envoye: '', accepte: '', acompte_facture: '', facture: '', payee: '', refuse: '' }[d.statut] || '';
@@ -793,15 +792,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 <span className="text-2xl">{d.type === 'facture' ? '' : ''}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`font-medium ${textPrimary}`}>{d.numero}</p><span>{icon}</span>
+                    <p className="font-medium">{d.numero}</p><span>{icon}</span>
                     {hasAcompte && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Acompte</span>}
                     {d.facture_type === 'acompte' && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">Acompte</span>}
                     {d.facture_type === 'solde' && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Solde</span>}
                     {d.facture_type === 'totale' && <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">Complète</span>}
                   </div>
-                  <p className={`text-sm ${textSecondary}`}>{client?.nom} • {new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-sm text-slate-500">{client?.nom} • {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className={`p-2 ${hoverBg} rounded-lg`} title="PDF"></button>
+                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className="p-2 hover:bg-slate-100 rounded-lg" title="PDF"></button>
                 <p className="text-lg font-bold" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>

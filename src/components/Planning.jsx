@@ -1,7 +1,6 @@
-import { Calendar, Plus, ChevronLeft, ChevronRight, Clock, Building2, Users, X, Trash2, Edit } from 'lucide-react';
 import React, { useState } from 'react';
 
-export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
+export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark, couleur }) {
   // Variables thème
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
@@ -90,12 +89,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   // Modal détail/édition
   if (showDetail) return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetail(null)}>
-      <div className={`dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-xl ${cardBg}`} onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b dark:border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 rounded-full" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }} />
-              <h2 className="font-bold text-lg dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Événement')}</h2>
+              <h2 className="font-bold text-lg dark:text-white">{editMode ? 'Modifier' : (TYPE_LABELS[showDetail.type] || 'Ã‰vénement')}</h2>
             </div>
             <button onClick={() => setShowDetail(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-slate-400"></button>
           </div>
@@ -145,7 +144,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => setShowAdd(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl dark:text-white"></button><h1 className="text-2xl font-bold dark:text-white">Nouvel événement</h1></div>
-      <div className={`dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-6 ${cardBg}`}>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border dark:border-slate-700 p-6">
         <div className="space-y-4">
           <div><label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Titre *</label><input className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -167,12 +166,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         <h1 className={`text-2xl font-bold ${textPrimary}`}>Planning</h1>
         <div className="flex gap-2">
           <select className="px-4 py-2 border rounded-xl text-sm" value={filterEmploye} onChange={e => setFilterEmploye(e.target.value)}><option value="">Tous</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Événement</button>
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Ã‰vénement</button>
         </div>
       </div>
 
       <div className="flex gap-4 flex-wrap text-xs">
-        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span> À venir</span>
+        <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-blue-500"></span> Ã€ venir</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> En cours</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-slate-400"></span> Terminé</span>
         <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500"></span> Urgence</span>
@@ -180,9 +179,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
 
       <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <button onClick={() => setDate(new Date(year, month - 1))} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
+          <button onClick={() => setDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl"></button>
           <h2 className="text-lg font-semibold">{MOIS[month]} {year}</h2>
-          <button onClick={() => setDate(new Date(year, month + 1))} className={`p-2 ${hoverBg} rounded-xl text-xl`}></button>
+          <button onClick={() => setDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-xl text-xl"></button>
         </div>
         <div className="grid grid-cols-7 border-b">{JOURS.map(j => <div key={j} className="py-2 text-center text-sm font-medium text-slate-500">{j}</div>)}</div>
         <div className="grid grid-cols-7">
@@ -215,7 +214,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         {allEvents.filter(e => new Date(e.date) >= new Date()).length === 0 ? (
           <p className="text-center text-slate-400 py-4">Aucun événement Ã  venir</p>
         ) : allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 8).map(ev => (
-          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer ${hoverBg} rounded-xl px-2 transition-colors`}>
+          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="flex items-center gap-4 py-3 border-b last:border-0 cursor-pointer hover:bg-slate-50 rounded-xl px-2 transition-colors">
             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{background: ev.color || typeColors[ev.type] || couleur}}></div>
             <div className="flex-1 min-w-0"><p className="font-medium truncate">{ev.title}</p><p className="text-sm text-slate-500">{new Date(ev.date).toLocaleDateString('fr-FR')} {ev.time && `Ã  ${ev.time}`}</p></div>
             <span className="text-slate-400 text-sm">{ev.isChantier ? '' : ''}</span>
