@@ -1026,7 +1026,87 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
         {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-3xl sm:text-5xl mb-3 sm:mb-4">{filter === 'factures' ? '🧾' : '📋'}</p><p className={textMuted}>{filter === 'factures' ? 'Aucune facture' : filter === 'devis' ? 'Aucun devis' : 'Aucun document'}</p><button onClick={() => { setMode('create'); setForm(p => ({...p, type: filter === 'factures' ? 'facture' : 'devis'})); }} className="mt-4 px-4 py-2 text-white rounded-xl flex items-center gap-1.5 mx-auto hover:shadow-lg transition-all" style={{ background: couleur }}><Plus size={16} />{filter === 'factures' ? 'Créer une facture' : 'Créer un devis'}</button></div> : (
+      {filtered.length === 0 ? (
+        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+          {/* Header with gradient */}
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 38.59l2.83-2.83 1.41 1.41L1.41 40H0v-1.41zM0 1.4l2.83 2.83 1.41-1.41L1.41 0H0v1.41zM38.59 40l-2.83-2.83 1.41-1.41L40 38.59V40h-1.41zM40 1.41l-2.83 2.83-1.41-1.41L38.59 0H40v1.41zM20 18.6l2.83-2.83 1.41 1.41L21.41 20l2.83 2.83-1.41 1.41L20 21.41l-2.83 2.83-1.41-1.41L18.59 20l-2.83-2.83 1.41-1.41L20 18.59z\'/%3E%3C/g%3E%3C/svg%3E")' }} />
+
+            <div className="relative">
+              {/* Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                {filter === 'factures' ? <Receipt size={40} className="text-white" /> : <FileText size={40} className="text-white" />}
+              </div>
+
+              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
+                {search ? 'Aucun résultat' : filter === 'factures' ? 'Créez votre première facture' : filter === 'devis' ? 'Créez votre premier devis' : 'Commencez à facturer'}
+              </h2>
+              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
+                {search
+                  ? 'Modifiez votre recherche ou créez un nouveau document.'
+                  : 'Créez des devis professionnels, transformez-les en factures et suivez vos paiements.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          {!search && filter === 'all' && (
+            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <Send size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Envoi rapide</p>
+                    <p className={`text-xs ${textMuted}`}>Email, WhatsApp, PDF</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <CreditCard size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Acomptes</p>
+                    <p className={`text-xs ${textMuted}`}>Factures d'acompte et solde</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <CheckCircle size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Suivi des paiements</p>
+                    <p className={`text-xs ${textMuted}`}>Statuts et relances</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'devis'})); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                  <FileText size={18} />
+                  Créer un devis
+                </button>
+                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'facture'})); }} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium border-2 ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                  <Receipt size={18} />
+                  Créer une facture
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Simple CTA for filtered empty state */}
+          {(search || filter !== 'all') && (
+            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
+              <button onClick={() => { setMode('create'); setForm(p => ({...p, type: filter === 'factures' ? 'facture' : 'devis'})); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Plus size={18} />
+                {filter === 'factures' ? 'Créer une facture' : 'Créer un devis'}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';

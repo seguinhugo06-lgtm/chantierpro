@@ -182,9 +182,78 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
       )}
 
       {filtered.length === 0 ? (
-        <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-          <Package size={48} className={`mx-auto mb-4 ${textMuted}`} />
-          <p className={textMuted}>Catalogue vide</p>
+        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+          {/* Header with gradient */}
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'/%3E%3C/g%3E%3C/svg%3E")' }} />
+
+            <div className="relative">
+              {/* Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                <Package size={40} className="text-white" />
+              </div>
+
+              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
+                {search || catFilter !== 'Tous' ? 'Aucun article trouvé' : 'Créez votre catalogue'}
+              </h2>
+              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
+                {search || catFilter !== 'Tous'
+                  ? 'Modifiez vos filtres ou ajoutez un nouvel article.'
+                  : 'Centralisez vos matériaux, tarifs et gérez vos stocks en un seul endroit.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          {!search && catFilter === 'Tous' && (
+            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <Star size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Articles favoris</p>
+                    <p className={`text-xs ${textMuted}`}>Accès rapide à vos essentiels</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <Box size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Gestion des stocks</p>
+                    <p className={`text-xs ${textMuted}`}>Alertes automatiques</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <AlertTriangle size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Calcul des marges</p>
+                    <p className={`text-xs ${textMuted}`}>Prix achat vs vente</p>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Plus size={18} />
+                Ajouter mon premier article
+              </button>
+            </div>
+          )}
+
+          {/* Simple CTA for filtered empty state */}
+          {(search || catFilter !== 'Tous') && (
+            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
+              <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Plus size={18} />
+                Ajouter un article
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>

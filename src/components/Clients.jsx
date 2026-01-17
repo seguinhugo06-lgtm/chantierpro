@@ -360,9 +360,78 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
       </div>
 
       {filtered.length === 0 ? (
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}>
-          <Users size={48} className={`mx-auto mb-4 ${textMuted}`} />
-          <p className={textMuted}>Aucun client</p>
+        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+          {/* Header with gradient */}
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")' }} />
+
+            <div className="relative">
+              {/* Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                <Users size={40} className="text-white" />
+              </div>
+
+              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
+                {search ? 'Aucun client trouvé' : 'Ajoutez votre premier client'}
+              </h2>
+              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
+                {search
+                  ? 'Modifiez votre recherche ou ajoutez un nouveau client.'
+                  : 'Gérez vos contacts clients, leur historique et facilitez vos échanges.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          {!search && (
+            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <Phone size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Contact rapide</p>
+                    <p className={`text-xs ${textMuted}`}>Appel, SMS, WhatsApp</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <FileText size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Historique complet</p>
+                    <p className={`text-xs ${textMuted}`}>Devis, factures, chantiers</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <MapPin size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Itinéraire GPS</p>
+                    <p className={`text-xs ${textMuted}`}>Navigation directe</p>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Plus size={18} />
+                Ajouter mon premier client
+              </button>
+            </div>
+          )}
+
+          {/* Simple CTA for search empty state */}
+          {search && (
+            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
+              <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Plus size={18} />
+                Ajouter un client
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

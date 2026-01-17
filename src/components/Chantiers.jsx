@@ -969,7 +969,65 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
       )}
 
-      {chantiers.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-5xl mb-4">🏗️</p><p className={textMuted}>Aucun chantier</p></div> : (
+      {chantiers.length === 0 ? (
+        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+          {/* Header with gradient */}
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
+
+            <div className="relative">
+              {/* Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                <Building2 size={40} className="text-white" />
+              </div>
+
+              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Commencez à suivre vos chantiers</h2>
+              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
+                Gérez vos projets, suivez vos dépenses et contrôlez votre rentabilité en temps réel.
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+            <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                  <DollarSign size={18} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <p className={`font-medium text-sm ${textPrimary}`}>Suivi financier</p>
+                  <p className={`text-xs ${textMuted}`}>Dépenses, revenus et marge</p>
+                </div>
+              </div>
+              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                  <Camera size={18} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <p className={`font-medium text-sm ${textPrimary}`}>Carnet photos</p>
+                  <p className={`text-xs ${textMuted}`}>Avant, pendant, après</p>
+                </div>
+              </div>
+              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                  <CheckSquare size={18} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <p className={`font-medium text-sm ${textPrimary}`}>Liste de tâches</p>
+                  <p className={`text-xs ${textMuted}`}>Suivez l'avancement</p>
+                </div>
+              </div>
+            </div>
+
+            <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <Plus size={18} />
+              Créer mon premier chantier
+            </button>
+          </div>
+        </div>
+      ) : (
         <div className="grid gap-3 sm:gap-4">
           {getSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
