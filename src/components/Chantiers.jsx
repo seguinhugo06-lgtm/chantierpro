@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2 } from 'lucide-react';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -629,20 +629,159 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   }
 
   // Formulaire création
+  const handleClientChange = (clientId) => {
+    const client = clients.find(c => c.id === clientId);
+    setForm(p => ({
+      ...p,
+      client_id: clientId,
+      adresse: client?.adresse || p.adresse,
+      nom: client ? `${client.nom} - ${p.nom || 'Nouveau chantier'}` : p.nom
+    }));
+  };
+
+  // Get devis acceptés sans chantier pour suggestion
+  const devisDisponibles = devis.filter(d => d.type === 'devis' && d.statut === 'accepte' && !d.chantier_id);
+
   if (show) return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl`}><ArrowLeft size={20} className={textPrimary} /></button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div><label className={`block text-xs sm:text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
-          <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Adresse</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Date début</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_debut} onChange={e => setForm(p => ({...p, date_debut: e.target.value}))} /></div>
-          <div><label className="block text-sm font-medium mb-1">Date fin</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_fin} onChange={e => setForm(p => ({...p, date_fin: e.target.value}))} /></div>
+      <div className="flex items-center gap-4">
+        <button onClick={() => setShow(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl transition-colors`}>
+          <ArrowLeft size={20} className={textPrimary} />
+        </button>
+        <div>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Nouveau chantier</h1>
+          <p className={`text-sm ${textMuted}`}>Créez un chantier pour suivre vos dépenses et votre rentabilité</p>
         </div>
-                {/* Options avancées toggle */}
-        <button onClick={() => setShowAdvanced(!showAdvanced)} className={`mt-4 flex items-center gap-2 text-sm ${textMuted} hover:opacity-80 transition-opacity`}>
-          <ChevronRight size={16} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+      </div>
+
+      {/* Suggestion de devis disponibles */}
+      {devisDisponibles.length > 0 && (
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+              <FileText size={20} style={{ color: couleur }} />
+            </div>
+            <div>
+              <h3 className={`font-semibold ${textPrimary}`}>Devis acceptés disponibles</h3>
+              <p className={`text-sm ${textMuted}`}>Créez un chantier à partir d'un devis existant</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {devisDisponibles.slice(0, 3).map(d => {
+              const client = clients.find(c => c.id === d.client_id);
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => {
+                    setForm(p => ({
+                      ...p,
+                      nom: `${client?.nom || 'Client'} - ${d.lignes?.[0]?.description || 'Chantier'}`.substring(0, 60),
+                      client_id: d.client_id,
+                      adresse: client?.adresse || '',
+                      budget_estime: d.total_ht?.toString() || '',
+                      notes: `Lié au devis ${d.numero}`
+                    }));
+                  }}
+                  className={`w-full p-3 rounded-xl border text-left transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 bg-slate-700/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
+                      <p className={`text-sm ${textMuted}`}>{client?.nom} · {d.lignes?.[0]?.description?.substring(0, 30)}...</p>
+                    </div>
+                    <span className="font-bold" style={{ color: couleur }}>{(d.total_ht || 0).toLocaleString('fr-FR')} €</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+        {/* Section principale avec icônes */}
+        <div className="space-y-4">
+          {/* Nom du chantier */}
+          <div>
+            <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <Building2 size={16} style={{ color: couleur }} />
+              Nom du chantier *
+            </label>
+            <input
+              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg}`}
+              value={form.nom}
+              onChange={e => setForm(p => ({...p, nom: e.target.value}))}
+              placeholder="Ex: Rénovation cuisine, Extension maison..."
+            />
+          </div>
+
+          {/* Client et Adresse en ligne */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <Users size={16} style={{ color: couleur }} />
+                Client
+              </label>
+              <select
+                className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                value={form.client_id}
+                onChange={e => handleClientChange(e.target.value)}
+              >
+                <option value="">Sélectionner un client...</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <MapPin size={16} style={{ color: couleur }} />
+                Adresse du chantier
+              </label>
+              <input
+                className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                value={form.adresse}
+                onChange={e => setForm(p => ({...p, adresse: e.target.value}))}
+                placeholder="Adresse complète"
+              />
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <Calendar size={16} style={{ color: couleur }} />
+                Date début
+              </label>
+              <input
+                type="date"
+                className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                value={form.date_debut}
+                onChange={e => setForm(p => ({...p, date_debut: e.target.value}))}
+              />
+            </div>
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <Calendar size={16} className={textMuted} />
+                Date fin prévue
+              </label>
+              <input
+                type="date"
+                className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                value={form.date_fin}
+                onChange={e => setForm(p => ({...p, date_fin: e.target.value}))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Options avancées toggle */}
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className={`mt-6 flex items-center gap-2 text-sm font-medium ${textMuted} hover:opacity-80 transition-all`}
+        >
+          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${showAdvanced ? '' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`} style={showAdvanced ? { background: couleur } : {}}>
+            <ChevronRight size={14} className={`transition-transform ${showAdvanced ? 'rotate-90 text-white' : ''}`} />
+          </div>
           Options avancées (statut, budget, notes)
         </button>
 
@@ -651,34 +790,66 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className={`mt-4 pt-4 border-t space-y-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Statut initial</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.statut} onChange={e => setForm(p => ({...p, statut: e.target.value}))}>
-                  <option value="prospect">Prospect</option>
+                <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                  <Target size={16} style={{ color: couleur }} />
+                  Statut initial
+                </label>
+                <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={form.statut} onChange={e => setForm(p => ({...p, statut: e.target.value}))}>
+                  <option value="prospect">Prospect (en attente)</option>
                   <option value="en_cours">En cours</option>
                   <option value="termine">Terminé</option>
                 </select>
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Budget estimé HT</label>
+                <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                  <DollarSign size={16} style={{ color: couleur }} />
+                  Budget estimé HT
+                </label>
                 <div className="relative">
-                  <DollarSign size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                  <input type="number" className={`w-full pl-9 pr-4 py-2.5 border rounded-xl ${inputBg}`} value={form.budget_estime} onChange={e => setForm(p => ({...p, budget_estime: e.target.value}))} placeholder="0" />
+                  <input
+                    type="number"
+                    className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    value={form.budget_estime}
+                    onChange={e => setForm(p => ({...p, budget_estime: e.target.value}))}
+                    placeholder="0"
+                  />
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
                 </div>
               </div>
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes / Description</label>
-              <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Informations complémentaires, spécificités du chantier..." />
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <FileText size={16} style={{ color: couleur }} />
+                Notes / Description
+              </label>
+              <textarea
+                className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                rows={3}
+                value={form.notes}
+                onChange={e => setForm(p => ({...p, notes: e.target.value}))}
+                placeholder="Informations complémentaires, spécificités du chantier..."
+              />
             </div>
           </div>
         )}
 
-        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
-          <button onClick={() => { setShow(false); setShowAdvanced(false); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
-            <X size={16} />Annuler
+        {/* Actions */}
+        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <button
+            onClick={() => { setShow(false); setShowAdvanced(false); }}
+            className={`px-5 py-2.5 rounded-xl flex items-center gap-2 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+          >
+            <X size={16} />
+            Annuler
           </button>
-          <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}>
-            <Check size={16} />Créer le chantier
+          <button
+            onClick={submit}
+            disabled={!form.nom}
+            className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{background: couleur}}
+          >
+            <Check size={16} />
+            Créer le chantier
           </button>
         </div>
       </div>

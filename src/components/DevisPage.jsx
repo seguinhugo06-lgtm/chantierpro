@@ -861,6 +861,39 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </div>
         )}
 
+        {/* PDF Preview Modal */}
+        {showPdfPreview && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
+              <div className={`p-4 border-b ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'} flex items-center justify-between flex-shrink-0`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}>
+                    <FileText size={20} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <h2 className={`font-bold text-lg ${textPrimary}`}>Aperçu du document</h2>
+                    <p className={`text-sm ${textMuted}`}>Format A4 - Prêt pour impression</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { printPDF(selected); }} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2 min-h-[44px] transition-colors">
+                    <Download size={18} />
+                    <span>Imprimer / PDF</span>
+                  </button>
+                  <button onClick={() => setShowPdfPreview(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}>
+                    <X size={20} className={textPrimary} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
+                <div className="bg-white shadow-2xl rounded-sm w-full max-w-[210mm] min-h-[297mm]" style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)' }}>
+                  <iframe srcDoc={pdfContent} className="w-full h-full min-h-[297mm] border-0" title="PDF Preview" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Snackbar />
       </div>
     );
@@ -982,7 +1015,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
         {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-3xl sm:text-5xl mb-3 sm:mb-4">📋</p><p className={textMuted}>Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl flex items-center gap-1.5 mx-auto hover:shadow-lg transition-all" style={{ background: couleur }}><Plus size={16} />Créer un devis</button></div> : (
+      {filtered.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-3xl sm:text-5xl mb-3 sm:mb-4">{filter === 'factures' ? '🧾' : '📋'}</p><p className={textMuted}>{filter === 'factures' ? 'Aucune facture' : filter === 'devis' ? 'Aucun devis' : 'Aucun document'}</p><button onClick={() => { setMode('create'); setForm(p => ({...p, type: filter === 'factures' ? 'facture' : 'devis'})); }} className="mt-4 px-4 py-2 text-white rounded-xl flex items-center gap-1.5 mx-auto hover:shadow-lg transition-all" style={{ background: couleur }}><Plus size={16} />{filter === 'factures' ? 'Créer une facture' : 'Créer un devis'}</button></div> : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';

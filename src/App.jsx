@@ -133,13 +133,24 @@ export default function App() {
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
-  const [clients, setClients] = useState([]);
-  const [devis, setDevis] = useState([]);
+  // Initial test data for demo
+  const [clients, setClients] = useState([
+    { id: 'c1', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.fr', telephone: '06 12 34 56 78', adresse: '12 rue des Lilas, 75011 Paris' },
+    { id: 'c2', nom: 'Martin', prenom: 'Jean', email: 'j.martin@gmail.com', telephone: '06 98 76 54 32', adresse: '45 avenue Victor Hugo, 69006 Lyon' }
+  ]);
+  const [devis, setDevis] = useState([
+    { id: 'd1', numero: 'DEV-2025-001', type: 'devis', client_id: 'c1', date: '2025-01-15', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Rénovation cuisine complète', quantite: 1, unite: 'forfait', prixUnitaire: 5000, montant: 5000 }], total_ht: 5000, tva: 500, total_ttc: 5500 }
+  ]);
   const [chantiers, setChantiers] = useState([]);
   const [events, setEvents] = useState([]);
-  const [equipe, setEquipe] = useState([]);
+  const [equipe, setEquipe] = useState([
+    { id: 'e1', nom: 'Moreau', prenom: 'Pierre', role: 'Chef de chantier', telephone: '06 11 11 11 11', tauxHoraire: 45, coutHoraireCharge: 28 }
+  ]);
   const [pointages, setPointages] = useState([]);
-  const [catalogue, setCatalogue] = useState([]);
+  const [catalogue, setCatalogue] = useState([
+    { id: 'cat1', nom: 'Carrelage 60x60', prix: 45, prixAchat: 28, unite: 'm²', categorie: 'Carrelage', favori: true },
+    { id: 'cat2', nom: 'Peinture blanc mat', prix: 35, prixAchat: 18, unite: 'pot', categorie: 'Peinture', favori: true }
+  ]);
   const [depenses, setDepenses] = useState([]);
   const [ajustements, setAjustements] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -609,7 +620,7 @@ export default function App() {
 
         {/* Page content */}
         <main className={`p-3 sm:p-4 lg:p-6 ${tc.text}`}>
-          {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
+          {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
           {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} />}
           {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
           {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
