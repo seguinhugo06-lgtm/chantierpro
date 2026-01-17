@@ -50,8 +50,39 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     const encaisse = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const enAttente = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const chantiersActifs = safeChantiers.filter(c => c.statut === 'en_cours').length;
+    const chantiersProspect = safeChantiers.filter(c => c.statut === 'prospect').length;
+    const chantiersTermines = safeChantiers.filter(c => c.statut === 'termine').length;
     const devisEnAttente = safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
     const tendance = caParMois[4]?.ca > 0 ? ((caParMois[5]?.ca - caParMois[4]?.ca) / caParMois[4]?.ca) * 100 : 0;
+
+    // Devis Pipeline - crucial stats for artisans
+    const devisOnly = safeDevis.filter(d => d.type === 'devis');
+    const devisPipeline = {
+      brouillon: devisOnly.filter(d => d.statut === 'brouillon'),
+      envoye: devisOnly.filter(d => d.statut === 'envoye'),
+      accepte: devisOnly.filter(d => ['accepte', 'acompte_facture', 'facture'].includes(d.statut)),
+      refuse: devisOnly.filter(d => d.statut === 'refuse'),
+    };
+    const devisTotalEnvoyes = devisPipeline.envoye.length + devisPipeline.accepte.length + devisPipeline.refuse.length;
+    const tauxConversion = devisTotalEnvoyes > 0 ? (devisPipeline.accepte.length / devisTotalEnvoyes) * 100 : 0;
+    const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
+
+    // Factures overdue (30+ jours)
+    const facturesOverdue = facturesEnAttente.filter(f => {
+      const daysSince = Math.floor((now - new Date(f.date)) / 86400000);
+      return daysSince > 30;
+    });
+    const montantOverdue = facturesOverdue.reduce((s, f) => s + (f.total_ttc || 0), 0);
+
+    // This month stats
+    const thisMonthDevis = devisOnly.filter(d => {
+      const dd = new Date(d.date);
+      return dd.getMonth() === thisMonth && dd.getFullYear() === thisYear;
+    });
+    const thisMonthFactures = factures.filter(f => {
+      const dd = new Date(f.date);
+      return dd.getMonth() === thisMonth && dd.getFullYear() === thisYear;
+    });
 
     // Breakdown for CA detail
     const caBreakdown = {
@@ -59,6 +90,10 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       facturesPaye: factures.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.total_ht || 0), 0),
       facturesEnCours: factures.filter(f => f.statut !== 'payee').reduce((s, f) => s + (f.total_ht || 0), 0),
     };
+
+    // Check if user is new (no data at all)
+    const isNewUser = safeClients.length === 0 && safeDevis.length === 0 && safeChantiers.length === 0;
+    const hasMinimalData = safeClients.length > 0 || safeDevis.length > 0 || safeChantiers.length > 0;
 
     return {
       caParMois,
@@ -71,14 +106,25 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       enAttente,
       facturesPayees,
       facturesEnAttente,
+      facturesOverdue,
+      montantOverdue,
       chantiersActifs,
+      chantiersProspect,
+      chantiersTermines,
       devisEnAttente,
       tendance,
       caBreakdown,
       totalDep,
-      totalMO
+      totalMO,
+      devisPipeline,
+      tauxConversion,
+      montantDevisEnAttente,
+      thisMonthDevis,
+      thisMonthFactures,
+      isNewUser,
+      hasMinimalData
     };
-  }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, getChantierBilan, couleur]);
+  }, [safeChantiers, safeClients, safeDevis, safeDepenses, safePointages, safeEquipe, getChantierBilan, couleur]);
 
   const actions = useMemo(() => {
     const items = [], now = new Date();
@@ -423,6 +469,135 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     );
   }
 
+  // Beautiful empty state for new users
+  if (stats.isNewUser) {
+    return (
+      <div className="space-y-6">
+        {/* Welcome Header */}
+        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}20, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
+            <div className="relative">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                <Sparkles size={40} className="text-white" />
+              </div>
+              <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>Bienvenue dans ChantierPro</h1>
+              <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>
+                Votre assistant pour gérer devis, factures et chantiers. Commençons !
+              </p>
+            </div>
+          </div>
+
+          {/* Getting Started Steps */}
+          <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+            <p className={`text-xs font-medium uppercase tracking-wider mb-5 ${textMuted}`}>Pour bien démarrer</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <button onClick={() => { setPage?.('parametres'); }} className={`group p-5 rounded-xl border text-left transition-all hover:shadow-lg hover:-translate-y-1 ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                    <span className="text-lg font-bold" style={{ color: couleur }}>1</span>
+                  </div>
+                  <Settings size={20} className={textMuted} />
+                </div>
+                <h3 className={`font-semibold mb-1 ${textPrimary}`}>Configurer mon entreprise</h3>
+                <p className={`text-sm ${textMuted}`}>Nom, adresse, SIRET, logo...</p>
+              </button>
+              <button onClick={() => { if (setCreateMode) setCreateMode(p => ({...p, client: true})); setPage?.('clients'); }} className={`group p-5 rounded-xl border text-left transition-all hover:shadow-lg hover:-translate-y-1 ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                    <span className="text-lg font-bold" style={{ color: couleur }}>2</span>
+                  </div>
+                  <Users size={20} className={textMuted} />
+                </div>
+                <h3 className={`font-semibold mb-1 ${textPrimary}`}>Ajouter un client</h3>
+                <p className={`text-sm ${textMuted}`}>Créez votre premier contact</p>
+              </button>
+              <button onClick={() => { if (setCreateMode) setCreateMode(p => ({...p, devis: true})); setPage?.('devis'); }} className={`group p-5 rounded-xl border text-left transition-all hover:shadow-lg hover:-translate-y-1 ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                    <span className="text-lg font-bold" style={{ color: couleur }}>3</span>
+                  </div>
+                  <FileText size={20} className={textMuted} />
+                </div>
+                <h3 className={`font-semibold mb-1 ${textPrimary}`}>Créer un devis</h3>
+                <p className={`text-sm ${textMuted}`}>Lancez votre première affaire</p>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview of what they'll see */}
+        <div className={`${cardBg} rounded-2xl border p-6 sm:p-8`}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-xl" style={{ background: `${couleur}20` }}>
+              <BarChart3 size={20} style={{ color: couleur }} />
+            </div>
+            <div>
+              <h3 className={`font-semibold ${textPrimary}`}>Votre futur tableau de bord</h3>
+              <p className={`text-sm ${textMuted}`}>Voici ce que vous verrez une fois vos données ajoutées</p>
+            </div>
+          </div>
+
+          {/* Sample Stats Preview */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 opacity-60">
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign size={16} style={{ color: couleur }} />
+                <span className={`text-xs ${textMuted}`}>Chiffre d'affaires</span>
+              </div>
+              <p className="text-xl font-bold" style={{ color: couleur }}>12 500 €</p>
+              <p className={`text-xs ${textMuted}`}>+15% ce mois</p>
+            </div>
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={16} className="text-emerald-500" />
+                <span className={`text-xs ${textMuted}`}>Marge nette</span>
+              </div>
+              <p className="text-xl font-bold text-emerald-500">3 750 €</p>
+              <p className={`text-xs ${textMuted}`}>30% de marge</p>
+            </div>
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <FileText size={16} className="text-blue-500" />
+                <span className={`text-xs ${textMuted}`}>Devis en attente</span>
+              </div>
+              <p className="text-xl font-bold text-blue-500">3</p>
+              <p className={`text-xs ${textMuted}`}>8 500 € potentiel</p>
+            </div>
+            <div className={`p-4 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Hammer size={16} className="text-purple-500" />
+                <span className={`text-xs ${textMuted}`}>Chantiers actifs</span>
+              </div>
+              <p className="text-xl font-bold text-purple-500">2</p>
+              <p className={`text-xs ${textMuted}`}>En cours</p>
+            </div>
+          </div>
+
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+            <div className="flex items-start gap-3">
+              <Lightbulb size={20} className="text-blue-500 mt-0.5" />
+              <div>
+                <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Astuce de pro</p>
+                <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                  Commencez par remplir votre catalogue de prestations. Vous pourrez ensuite créer des devis en quelques clics !
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Help Button */}
+        <div className="text-center">
+          <button onClick={() => setShowHelp(true)} className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
+            <HelpCircle size={18} />
+            Voir le guide complet
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
@@ -441,6 +616,91 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
         <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} onClick={() => setShowMargeDetail(true)} clickable />
         <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} sub={`${stats.facturesPayees.length} facture${stats.facturesPayees.length > 1 ? 's' : ''}`} color="#10b981" onClick={() => setShowEncaisseDetail(true)} clickable />
         <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
+      </div>
+
+      {/* Devis Pipeline - NEW SECTION */}
+      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+            <FileText size={18} style={{ color: couleur }} />
+            Pipeline des devis
+          </h3>
+          {stats.tauxConversion > 0 && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+              <Target size={14} className="text-emerald-500" />
+              <span className={isDark ? 'text-emerald-400' : 'text-emerald-700'}>
+                <strong>{stats.tauxConversion.toFixed(0)}%</strong> taux de conversion
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Brouillons */}
+          <div
+            onClick={() => { setPage?.('devis'); }}
+            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className={`w-3 h-3 rounded-full bg-slate-400`}></span>
+              <span className={`text-2xl font-bold ${textPrimary}`}>{stats.devisPipeline.brouillon.length}</span>
+            </div>
+            <p className={`text-sm font-medium ${textSecondary}`}>Brouillons</p>
+            <p className={`text-xs ${textMuted}`}>À finaliser</p>
+          </div>
+          {/* Envoyés */}
+          <div
+            onClick={() => { setPage?.('devis'); }}
+            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/40' : 'bg-blue-50 hover:bg-blue-100'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className={`w-3 h-3 rounded-full bg-blue-500`}></span>
+              <span className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{stats.devisPipeline.envoye.length}</span>
+            </div>
+            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>En attente</p>
+            <p className={`text-xs ${textMuted}`}>{formatMoney(stats.montantDevisEnAttente)}</p>
+          </div>
+          {/* Acceptés */}
+          <div
+            onClick={() => { setPage?.('devis'); }}
+            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/40' : 'bg-emerald-50 hover:bg-emerald-100'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className={`w-3 h-3 rounded-full bg-emerald-500`}></span>
+              <span className={`text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{stats.devisPipeline.accepte.length}</span>
+            </div>
+            <p className={`text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Acceptés</p>
+            <p className={`text-xs ${textMuted}`}>Signés</p>
+          </div>
+          {/* Refusés */}
+          <div
+            onClick={() => { setPage?.('devis'); }}
+            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100'}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className={`w-3 h-3 rounded-full bg-red-500`}></span>
+              <span className={`text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{stats.devisPipeline.refuse.length}</span>
+            </div>
+            <p className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Refusés</p>
+            <p className={`text-xs ${textMuted}`}>Perdus</p>
+          </div>
+        </div>
+        {/* Overdue Alert */}
+        {stats.facturesOverdue.length > 0 && (
+          <div className={`mt-4 p-3 rounded-xl flex items-center justify-between ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={18} className="text-red-500" />
+              <div>
+                <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                  {stats.facturesOverdue.length} facture{stats.facturesOverdue.length > 1 ? 's' : ''} en retard (+30j)
+                </p>
+                <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>{formatMoney(stats.montantOverdue)} à relancer</p>
+              </div>
+            </div>
+            <button onClick={() => setShowEnAttenteDetail(true)} className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors">
+              Voir
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Charts */}
