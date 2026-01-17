@@ -2,8 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown } from 'lucide-react';
 
-const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
-const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
 
 export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
   const [todoFilter, setTodoFilter] = useState('all');
@@ -63,19 +61,19 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     };
 
     return {
-      caParMois: hasRealData ? caParMois : DEMO_CA.map((d, i) => ({ ...d, fill: i === 5 ? couleur : '#94a3b8', moisFull: d.mois, nbDevis: 2, nbFactures: 1, devis: [] })),
-      margesChantiers: margesChantiers.length > 0 ? margesChantiers : DEMO_MARGES,
+      caParMois,
+      margesChantiers,
       hasRealData,
-      totalCA: hasRealData ? totalCA : 15200,
-      marge: hasRealData ? marge : 8700,
-      tauxMarge: hasRealData ? tauxMarge : 57.3,
-      encaisse: hasRealData ? encaisse : 11390,
-      enAttente: hasRealData ? enAttente : 3810,
-      facturesPayees: hasRealData ? facturesPayees : [],
-      facturesEnAttente: hasRealData ? facturesEnAttente : [],
+      totalCA,
+      marge,
+      tauxMarge,
+      encaisse,
+      enAttente,
+      facturesPayees,
+      facturesEnAttente,
       chantiersActifs,
       devisEnAttente,
-      tendance: hasRealData ? tendance : 15,
+      tendance,
       caBreakdown,
       totalDep,
       totalMO
@@ -434,7 +432,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           <p className={`text-sm sm:text-base ${textSecondary}`}>Vue d'ensemble de votre activité</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          {!stats.hasRealData && <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>Demo</span>}
         </div>
       </div>
 
