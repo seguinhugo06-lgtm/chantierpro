@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, 
 const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
 const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, isDark }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark }) {
   // Theme classes
   const [todoFilter, setTodoFilter] = useState('all');
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
@@ -37,11 +37,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     const items = [], now = new Date();
     safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} "¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} "¢ ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeChantiers.filter(ch => ch.statut === 'en_cours').forEach(ch => {
       const bilan = getChantierBilan?.(ch.id);
@@ -53,13 +53,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
   const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
   const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
-  const formatMoney = (n) => modeDiscret ? '"¢"¢"¢"¢"¢' : `${(n || 0).toLocaleString('fr-FR')} €`;
+  const formatMoney = (n) => modeDiscret ? '·····' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
 
   // Classes conditionnelles pour le thème
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
   const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
 
   const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
@@ -92,9 +93,9 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} />
-        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '"¢"¢%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
+        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
         <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} color="#10b981" />
-        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>"¢ {stats.chantiersActifs} chantiers en cours</p><p>"¢ {stats.devisEnAttente} devis en attente</p></>} />
+        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>· {stats.chantiersActifs} chantiers en cours</p><p>· {stats.devisEnAttente} devis en attente</p></>} />
       </div>
 
       {/* Graphiques */}
@@ -114,17 +115,83 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
         </div>
 
         <div className={`rounded-2xl border p-5 ${cardBg}`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><TrendingUp size={18} className="text-emerald-500" />Marges par chantier</h3>
-          {!modeDiscret && stats.margesChantiers.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stats.margesChantiers.slice(0, 8)} layout="vertical" margin={{ left: 90 }}>
-                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
-                <YAxis type="category" dataKey="nom" width={85} axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }} />
-                <Tooltip formatter={(v) => [`${v.toFixed(1)}%`, 'Marge']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
-                <Bar dataKey="marge" radius={[0, 4, 4, 0]}>{stats.margesChantiers.slice(0, 8).map((e, i) => <Cell key={i} fill={getMargeColor(e.marge)} />)}</Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}>{modeDiscret ? <><EyeOff size={32} className="mr-2" />Masqué</> : 'Aucun chantier'}</div>}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+                <TrendingUp size={16} className="text-white" />
+              </div>
+              Rentabilité Chantiers
+            </h3>
+            {stats.margesChantiers.length > 0 && !modeDiscret && (
+              <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textSecondary}`}>
+                {stats.margesChantiers.length} chantier{stats.margesChantiers.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {modeDiscret ? (
+            <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>
+          ) : stats.margesChantiers.length === 0 ? (
+            <div className={`h-[220px] flex flex-col items-center justify-center ${textSecondary}`}>
+              <Hammer size={40} className="mb-3 opacity-30" />
+              <p>Aucun chantier</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              {stats.margesChantiers.slice(0, 6).map((ch, idx) => {
+                const bilan = getChantierBilan?.(ch.id);
+                const ca = bilan?.caHT || 0;
+                const margeAmount = bilan?.marge || 0;
+                const isPositive = ch.marge >= 0;
+                const isGood = ch.marge >= 30;
+                const isWarning = ch.marge >= 0 && ch.marge < 15;
+                const isBad = ch.marge < 0;
+                return (
+                  <div
+                    key={ch.id}
+                    onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }}
+                    className={`group p-3 rounded-xl cursor-pointer transition-all border ${
+                      isDark
+                        ? `border-slate-700 hover:border-slate-600 ${isBad ? 'bg-red-900/20' : isGood ? 'bg-emerald-900/10' : 'bg-slate-800/50'}`
+                        : `border-slate-100 hover:border-slate-200 ${isBad ? 'bg-red-50' : isGood ? 'bg-emerald-50/50' : 'bg-slate-50/50'}`
+                    } hover:shadow-md`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className={`text-sm font-medium ${textPrimary} truncate`}>{ch.nom}</span>
+                        {idx === 0 && isGood && <span className="text-xs">🏆</span>}
+                        {isBad && <span className="text-xs">⚠️</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          isBad ? 'bg-red-100 text-red-700' : isGood ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {ch.marge.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="relative h-2 rounded-full overflow-hidden bg-slate-200">
+                      <div
+                        className={`absolute left-0 top-0 h-full rounded-full transition-all ${
+                          isBad ? 'bg-gradient-to-r from-red-500 to-red-400'
+                          : isGood ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-400'
+                        }`}
+                        style={{ width: `${Math.min(Math.max(ch.marge, 0), 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className={`text-xs ${textMuted}`}>
+                        CA: {formatMoney(ca)}
+                      </span>
+                      <span className={`text-xs font-medium ${isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        {isPositive ? '+' : ''}{formatMoney(margeAmount)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -166,7 +233,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           </div>
           {aSurveiller.length > 0 && (
             <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>âš  À surveiller</h3>
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>⚠️  À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
                 <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
                   <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>
@@ -180,8 +247,8 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
 
       {/* Actions rapides */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
-          <button key={b.target} onClick={() => setPage?.(b.target)} className={`flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all ${cardBg}`}>
+        {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis', create: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers', create: 'chantier' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients', create: 'client' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
+          <button key={b.target} onClick={() => { if (b.create && setCreateMode) setCreateMode(p => ({...p, [b.create]: true})); setPage?.(b.target); }} className={`flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all ${cardBg}`}>
             <b.icon size={24} style={{ color: b.color }} />
             <span className={`text-sm font-medium ${textPrimary}`}>{b.label}</span>
             <span className={`text-xs ${textSecondary}`}>{b.sub}</span>

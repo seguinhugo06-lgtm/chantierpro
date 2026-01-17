@@ -8,9 +8,7 @@ import DevisPage from './components/DevisPage';
 import Equipe from './components/Equipe';
 import Catalogue from './components/Catalogue';
 import Settings from './components/Settings';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, Gamepad2, ChevronRight, BarChart3, X } from 'lucide-react';
-
-const isDemo = new URLSearchParams(window.location.search).get('demo') === 'true';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3 } from 'lucide-react';
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -24,22 +22,85 @@ const getThemeClasses = (isDark) => ({
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
 
+// Demo data for testing
+const DEMO_CLIENTS = [
+  { id: 'c1', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.fr', telephone: '06 12 34 56 78', adresse: '12 rue des Lilas, 75011 Paris', entreprise: '' },
+  { id: 'c2', nom: 'Martin', prenom: 'Jean', email: 'j.martin@gmail.com', telephone: '06 98 76 54 32', adresse: '45 avenue Victor Hugo, 69006 Lyon', entreprise: 'SCI Martin' },
+  { id: 'c3', nom: 'Bernard', prenom: 'Sophie', email: 'sophie.bernard@outlook.fr', telephone: '07 11 22 33 44', adresse: '8 place de la République, 33000 Bordeaux', entreprise: '' },
+  { id: 'c4', nom: 'Petit', prenom: 'Luc', email: 'luc.petit@entreprise.com', telephone: '06 55 44 33 22', adresse: '23 boulevard Gambetta, 13001 Marseille', entreprise: 'Petit & Fils' }
+];
+
+const DEMO_EQUIPE = [
+  { id: 'e1', nom: 'Moreau', prenom: 'Pierre', role: 'Chef de chantier', telephone: '06 11 11 11 11', email: 'p.moreau@chantier.fr', tauxHoraire: 25, coutHoraireCharge: 45, contrat: 'CDI' },
+  { id: 'e2', nom: 'Leroy', prenom: 'Thomas', role: 'Ouvrier qualifié', telephone: '06 22 22 22 22', email: 't.leroy@chantier.fr', tauxHoraire: 18, coutHoraireCharge: 32, contrat: 'CDI' },
+  { id: 'e3', nom: 'Garcia', prenom: 'Antoine', role: 'Apprenti', telephone: '06 33 33 33 33', email: 'a.garcia@chantier.fr', tauxHoraire: 12, coutHoraireCharge: 20, contrat: 'Apprentissage' }
+];
+
+const DEMO_CHANTIERS = [
+  { id: 'ch1', nom: 'Rénovation cuisine Dupont', client_id: 'c1', adresse: '12 rue des Lilas, 75011 Paris', date_debut: '2025-01-10', date_fin: '2025-02-15', statut: 'en_cours', avancement: 65, notes: 'Cuisine complète avec îlot central' },
+  { id: 'ch2', nom: 'Salle de bain Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, 69006 Lyon', date_debut: '2025-01-20', date_fin: '2025-02-28', statut: 'en_cours', avancement: 30, notes: 'SDB avec douche italienne' },
+  { id: 'ch3', nom: 'Peinture appartement Bernard', client_id: 'c3', adresse: '8 place de la République, 33000 Bordeaux', date_debut: '2024-12-01', date_fin: '2024-12-20', statut: 'termine', avancement: 100, notes: 'T3, peinture complète' },
+  { id: 'ch4', nom: 'Extension maison Petit', client_id: 'c4', adresse: '23 boulevard Gambetta, 13001 Marseille', date_debut: '2025-03-01', date_fin: '2025-06-30', statut: 'prospect', avancement: 0, notes: 'Extension 40m² + terrasse' }
+];
+
+const DEMO_CATALOGUE = [
+  { id: 'cat1', nom: 'Carrelage grès cérame 60x60', prix: 45, prixAchat: 28, unite: 'm²', categorie: 'Carrelage', favori: true },
+  { id: 'cat2', nom: 'Peinture acrylique blanc mat', prix: 35, prixAchat: 18, unite: 'pot', categorie: 'Peinture', favori: true },
+  { id: 'cat3', nom: 'Placo BA13 standard', prix: 12, prixAchat: 6, unite: 'm²', categorie: 'Matériaux', favori: false },
+  { id: 'cat4', nom: 'Câble électrique 2.5mm²', prix: 2.5, prixAchat: 1.2, unite: 'ml', categorie: 'Électricité', favori: false },
+  { id: 'cat5', nom: 'Tube PER 16mm', prix: 3, prixAchat: 1.5, unite: 'ml', categorie: 'Plomberie', favori: true },
+  { id: 'cat6', nom: 'Main d\'oeuvre pose carrelage', prix: 45, prixAchat: 0, unite: 'm²', categorie: 'Main d\'oeuvre', favori: true },
+  { id: 'cat7', nom: 'Main d\'oeuvre peinture', prix: 25, prixAchat: 0, unite: 'm²', categorie: 'Main d\'oeuvre', favori: true },
+  { id: 'cat8', nom: 'Sac de ciment 35kg', prix: 12, prixAchat: 7, unite: 'sac', categorie: 'Maçonnerie', favori: false }
+];
+
+const DEMO_DEVIS = [
+  { id: 'd1', numero: 'DEV-2025-001', type: 'devis', client_id: 'c1', chantier_id: 'ch1', date: '2025-01-05', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Dépose cuisine existante', quantite: 1, unite: 'forfait', prixUnitaire: 800, montant: 800 }, { id: 'l2', description: 'Pose carrelage sol', quantite: 18, unite: 'm²', prixUnitaire: 45, montant: 810 }, { id: 'l3', description: 'Plomberie cuisine', quantite: 1, unite: 'forfait', prixUnitaire: 1200, montant: 1200 }, { id: 'l4', description: 'Électricité', quantite: 1, unite: 'forfait', prixUnitaire: 950, montant: 950 }], total_ht: 3760, tva: 376, total_ttc: 4136 },
+  { id: 'd2', numero: 'DEV-2025-002', type: 'devis', client_id: 'c2', chantier_id: 'ch2', date: '2025-01-15', validite: 30, statut: 'envoye', tvaRate: 10, lignes: [{ id: 'l1', description: 'Dépose salle de bain', quantite: 1, unite: 'forfait', prixUnitaire: 600, montant: 600 }, { id: 'l2', description: 'Pose douche italienne', quantite: 1, unite: 'forfait', prixUnitaire: 2500, montant: 2500 }, { id: 'l3', description: 'Carrelage mural', quantite: 25, unite: 'm²', prixUnitaire: 55, montant: 1375 }], total_ht: 4475, tva: 447.5, total_ttc: 4922.5 },
+  { id: 'd3', numero: 'FAC-2024-015', type: 'facture', client_id: 'c3', chantier_id: 'ch3', date: '2024-12-20', statut: 'payee', tvaRate: 10, lignes: [{ id: 'l1', description: 'Peinture T3 complet', quantite: 85, unite: 'm²', prixUnitaire: 25, montant: 2125 }], total_ht: 2125, tva: 212.5, total_ttc: 2337.5 },
+  { id: 'd4', numero: 'DEV-2025-003', type: 'devis', client_id: 'c4', chantier_id: 'ch4', date: '2025-01-25', validite: 60, statut: 'brouillon', tvaRate: 20, lignes: [{ id: 'l1', description: 'Gros oeuvre extension', quantite: 40, unite: 'm²', prixUnitaire: 450, montant: 18000 }, { id: 'l2', description: 'Toiture', quantite: 45, unite: 'm²', prixUnitaire: 180, montant: 8100 }, { id: 'l3', description: 'Menuiseries extérieures', quantite: 1, unite: 'forfait', prixUnitaire: 6500, montant: 6500 }], total_ht: 32600, tva: 6520, total_ttc: 39120 }
+];
+
+const DEMO_DEPENSES = [
+  { id: 'dep1', chantierId: 'ch1', description: 'Carrelage cuisine', montant: 520, categorie: 'Matériaux', date: '2025-01-12' },
+  { id: 'dep2', chantierId: 'ch1', description: 'Robinetterie', montant: 380, categorie: 'Matériaux', date: '2025-01-14' },
+  { id: 'dep3', chantierId: 'ch2', description: 'Receveur douche', montant: 450, categorie: 'Matériaux', date: '2025-01-22' },
+  { id: 'dep4', chantierId: 'ch3', description: 'Peinture + apprêt', montant: 320, categorie: 'Matériaux', date: '2024-12-05' }
+];
+
+const DEMO_POINTAGES = [
+  { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: '2025-01-10', heures: 8, approuve: true },
+  { id: 'p2', employeId: 'e2', chantierId: 'ch1', date: '2025-01-10', heures: 8, approuve: true },
+  { id: 'p3', employeId: 'e1', chantierId: 'ch1', date: '2025-01-11', heures: 7.5, approuve: true },
+  { id: 'p4', employeId: 'e2', chantierId: 'ch1', date: '2025-01-11', heures: 8, approuve: true },
+  { id: 'p5', employeId: 'e1', chantierId: 'ch2', date: '2025-01-22', heures: 8, approuve: true },
+  { id: 'p6', employeId: 'e3', chantierId: 'ch2', date: '2025-01-22', heures: 6, approuve: true },
+  { id: 'p7', employeId: 'e1', chantierId: 'ch3', date: '2024-12-05', heures: 8, approuve: true },
+  { id: 'p8', employeId: 'e2', chantierId: 'ch3', date: '2024-12-05', heures: 8, approuve: true }
+];
+
+const DEMO_EVENTS = [
+  { id: 'ev1', title: 'Début cuisine Dupont', date: '2025-01-10', chantierId: 'ch1', type: 'chantier' },
+  { id: 'ev2', title: 'Livraison carrelage', date: '2025-01-12', chantierId: 'ch1', type: 'livraison' },
+  { id: 'ev3', title: 'RDV client Martin', date: '2025-01-20', chantierId: 'ch2', type: 'rdv' }
+];
+
 export default function App() {
-  const demoUser = { email: 'demo@chantierpro.test', user_metadata: { nom: 'Demo' } };
-  const [user, setUser] = useState(isDemo ? demoUser : null);
-  const [loading, setLoading] = useState(!isDemo);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
-  const [clients, setClients] = useState([]);
-  const [devis, setDevis] = useState([]);
-  const [chantiers, setChantiers] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [equipe, setEquipe] = useState([]);
-  const [pointages, setPointages] = useState([]);
-  const [catalogue, setCatalogue] = useState([]);
-  const [depenses, setDepenses] = useState([]);
+  const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
+  const [clients, setClients] = useState(DEMO_CLIENTS);
+  const [devis, setDevis] = useState(DEMO_DEVIS);
+  const [chantiers, setChantiers] = useState(DEMO_CHANTIERS);
+  const [events, setEvents] = useState(DEMO_EVENTS);
+  const [equipe, setEquipe] = useState(DEMO_EQUIPE);
+  const [pointages, setPointages] = useState(DEMO_POINTAGES);
+  const [catalogue, setCatalogue] = useState(DEMO_CATALOGUE);
+  const [depenses, setDepenses] = useState(DEMO_DEPENSES);
   const [ajustements, setAjustements] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -68,51 +129,30 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) {} }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) {} }, [modeDiscret]);
 
-  // Demo data loader
-  const loadDemoData = () => {
-    const today = new Date();
-    const formatDate = (d) => d.toISOString().split('T')[0];
-    const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
-    
-    setClients([
-      { id: 'c1', nom: 'Dupont', prenom: 'Jean', telephone: '06 12 34 56 78', email: 'jean.dupont@email.fr', adresse: '12 rue des Lilas, 75001 Paris' },
-      { id: 'c2', nom: 'Martin', prenom: 'Marie', telephone: '06 98 76 54 32', email: 'marie.martin@email.fr', adresse: '45 avenue Victor Hugo, 69001 Lyon' },
-      { id: 'c3', nom: 'Bernard', prenom: 'Pierre', entreprise: 'SCI Les Oliviers', telephone: '07 11 22 33 44', adresse: '8 place de la Mairie, 13001 Marseille' },
-    ]);
-    setCatalogue([
-      { id: 'cat1', nom: 'Placo BA13', categorie: 'Materiaux', unite: 'm2', prix: 8.50, stock: 150 },
-      { id: 'cat2', nom: 'Pose placo', categorie: "Main d'oeuvre", unite: 'm2', prix: 25.00 },
-    ]);
-    setEquipe([
-      { id: 'e1', nom: 'Lucas Martin', role: 'Plaquiste', telephone: '06 11 11 11 11', tauxHoraire: 35, coutHoraireCharge: 52 },
-      { id: 'e2', nom: 'Thomas Durand', role: 'Peintre', telephone: '06 22 22 22 22', tauxHoraire: 32, coutHoraireCharge: 48 },
-    ]);
-    setChantiers([
-      { id: 'ch1', nom: 'Renovation appartement Dupont', client_id: 'c1', adresse: '12 rue des Lilas, 75001 Paris', date_debut: formatDate(addDays(today, -15)), date_fin: formatDate(addDays(today, 15)), statut: 'en_cours', avancement: 60, taches: [], photos: [] },
-      { id: 'ch2', nom: 'Peinture bureaux SCI', client_id: 'c3', adresse: '8 place de la Mairie, 13001 Marseille', date_debut: formatDate(addDays(today, 5)), date_fin: formatDate(addDays(today, 20)), statut: 'planifie', avancement: 0, taches: [], photos: [] },
-    ]);
-    setDevis([
-      { id: 'd1', numero: 'DEV-2026-001', type: 'devis', client_id: 'c1', chantier_id: 'ch1', date: formatDate(addDays(today, -30)), statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Fourniture et pose placo BA13', quantite: 45, unite: 'm2', prixUnitaire: 33.50, montant: 1507.50 }], total_ht: 2767.50, tva: 276.75, total_ttc: 3044.25 },
-      { id: 'd2', numero: 'DEV-2026-002', type: 'devis', client_id: 'c2', date: formatDate(addDays(today, -7)), statut: 'envoye', tvaRate: 10, lignes: [{ id: 'l3', description: 'Refection plafond', quantite: 12, unite: 'm2', prixUnitaire: 55.00, montant: 660.00 }], total_ht: 1500.00, tva: 150.00, total_ttc: 1650.00 },
-      { id: 'd3', numero: 'DEV-2026-003', type: 'devis', client_id: 'c3', date: formatDate(addDays(today, -3)), statut: 'envoye', tvaRate: 20, lignes: [{ id: 'l5', description: 'Peinture bureaux', quantite: 120, unite: 'm2', prixUnitaire: 22.00, montant: 2640.00 }], total_ht: 3240.00, tva: 648.00, total_ttc: 3888.00 },
-      { id: 'd4', numero: 'FAC-2026-001', type: 'facture', client_id: 'c1', date: formatDate(addDays(today, -20)), statut: 'envoye', tvaRate: 10, lignes: [{ id: 'l7', description: 'Reparation plafond', quantite: 1, unite: 'forfait', prixUnitaire: 850.00, montant: 850.00 }], total_ht: 850.00, tva: 85.00, total_ttc: 935.00 },
-    ]);
-    setEvents([{ id: 'ev1', title: 'RDV chantier Dupont', date: formatDate(addDays(today, 2)), time: '09:00', type: 'rdv', chantierId: 'ch1' }]);
-    setPointages([{ id: 'p1', employeId: 'e1', chantierId: 'ch1', date: formatDate(addDays(today, -1)), heures: 8, approuve: true }]);
-    setDepenses([{ id: 'dep1', chantierId: 'ch1', description: 'Placo BA13', montant: 234, date: formatDate(addDays(today, -10)) }]);
-    setNotifications([
-      { id: 'n1', message: 'Devis DEV-2026-002 en attente depuis 7 jours', read: false, date: formatDate(today) },
-      { id: 'n2', message: 'Facture FAC-2026-001 impayee - 935 EUR', read: false, date: formatDate(today) },
-    ]);
-  };
+  // Auth state listener - persists session across page refreshes
+  useEffect(() => {
+    // Check for existing session on mount
+    const checkAuth = async () => {
+      try {
+        const u = await auth.getCurrentUser();
+        setUser(u);
+      } catch (e) {}
+      finally { setLoading(false); }
+    };
+    checkAuth();
 
-  useEffect(() => { 
-    if (isDemo) { loadDemoData(); return; } 
-    const checkAuth = async () => { 
-      try { const u = await auth.getUser(); setUser(u); } catch (e) {} 
-      finally { setLoading(false); } 
-    }; 
-    checkAuth(); 
+    // Subscribe to auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription?.unsubscribe();
   }, []);
 
   // CRUD functions
@@ -145,22 +185,15 @@ export default function App() {
   };
 
   // Auth handlers
-  const handleSignIn = async (e) => { 
-    e.preventDefault(); 
-    setAuthError(''); 
-    
-    // Mode demo rapide
-    if (authForm.email === 'demo' && authForm.password === 'demo') {
-      window.location.href = '?demo=true';
-      return;
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const { error } = await auth.signIn(authForm.email, authForm.password);
+      if (error) setAuthError(error.message);
+    } catch (e) {
+      setAuthError('Erreur de connexion.');
     }
-    
-    try { 
-      const { error } = await auth.signIn(authForm.email, authForm.password); 
-      if (error) setAuthError(error.message); 
-    } catch (e) { 
-      setAuthError('Erreur de connexion. Utilisez demo/demo pour tester.'); 
-    } 
   };
   
   const handleSignUp = async (e) => { 
@@ -175,10 +208,9 @@ export default function App() {
     } 
   };
   
-  const handleSignOut = async () => { 
-    try { await auth.signOut(); } catch (e) {} 
-    setUser(null); 
-    if (isDemo) window.location.href = window.location.pathname; 
+  const handleSignOut = async () => {
+    try { await auth.signOut(); } catch (e) {}
+    setUser(null);
   };
   
   const markNotifRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
@@ -195,7 +227,7 @@ export default function App() {
   const tc = getThemeClasses(isDark);
 
   // Login Page
-  if (!user && !isDemo) return (
+  if (!user) return (
     <div className="min-h-screen bg-slate-900 flex">
       {/* Left - Hero */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
@@ -287,16 +319,6 @@ export default function App() {
               {showSignUp ? 'Se connecter' : "S'inscrire"}
             </button>
           </p>
-          
-          <div className="mt-8 pt-8 border-t border-slate-800">
-            <p className="text-center text-slate-500 text-sm mb-4">Ou decouvrez l'application</p>
-            <a 
-              href="?demo=true" 
-              className="flex items-center justify-center gap-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors"
-            >
-              <Gamepad2 size={18} /> Mode demo
-            </a>
-          </div>
         </div>
       </div>
     </div>
@@ -330,7 +352,7 @@ export default function App() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1>
-            <p className="text-slate-500 text-xs truncate">{isDemo ? 'Mode Demo' : user?.email}</p>
+            <p className="text-slate-500 text-xs truncate">{user?.email}</p>
           </div>
         </div>
         
@@ -370,7 +392,7 @@ export default function App() {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
           >
             <LogOut size={18} />
-            <span>{isDemo ? 'Quitter demo' : 'Deconnexion'}</span>
+            <span>Deconnexion</span>
           </button>
         </div>
       </aside>
@@ -386,12 +408,7 @@ export default function App() {
             <Menu size={24} />
           </button>
           
-          {isDemo && (
-            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium flex items-center gap-1">
-              <Gamepad2 size={14} /> Demo
-            </span>
-          )}
-          {modeDiscret && (
+                    {modeDiscret && (
             <span className="px-3 py-1 bg-slate-700 text-white rounded-full text-xs font-medium flex items-center gap-1">
               <EyeOff size={14} />
             </span>
@@ -465,13 +482,13 @@ export default function App() {
                 <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
                 <div className={`absolute right-0 top-full mt-2 w-56 rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
                   {[
-                    { label: 'Nouveau devis', icon: FileText, p: 'devis' }, 
-                    { label: 'Nouveau client', icon: Users, p: 'clients' }, 
-                    { label: 'Nouveau chantier', icon: Building2, p: 'chantiers' }
+                    { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
+                    { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
+                    { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' }
                   ].map(item => (
-                    <button 
-                      key={item.label} 
-                      onClick={() => { setPage(item.p); setShowQuickAdd(false); }} 
+                    <button
+                      key={item.label}
+                      onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }} 
                       className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-50 text-slate-900'}`}
                     >
                       <item.icon size={18} style={{color: couleur}} />
@@ -487,11 +504,11 @@ export default function App() {
 
         {/* Page content */}
         <main className={`p-4 lg:p-6 ${tc.text}`}>
-          {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} />}
-          {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} />}
-          {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} />}
+          {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} />}
+          {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} />}
+          {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
           {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-          {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} />}
+          {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
           {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
           {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
           {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}

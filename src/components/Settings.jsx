@@ -158,39 +158,39 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <span className="text-xl">âš </span>
+        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
+          <span className="text-xl">⚠️</span>
           <div>
-            <p className="font-medium text-amber-800">Profil incomplet</p>
-            <p className="text-sm text-amber-700">Complétez vos informations pour générer des devis et factures conformes à la loi française.</p>
+            <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Profil incomplet</p>
+            <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Complétez vos informations pour générer des devis et factures conformes à la loi française.</p>
           </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b pb-2 flex-wrap overflow-x-auto">
+      <div className={`flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {[
-          ['identite', ' Identité'],
-          ['legal', ' Légal'],
-          ['assurances', ` Assurances${hasAssuranceAlerts ? ' âš ' : ''}`],
-          ['banque', ' Banque'],
-          ['documents', ' Documents'],
-          ['rentabilite', ' Rentabilité']
+          ['identite', '🏢 Identité'],
+          ['legal', '📋 Légal'],
+          ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
+          ['banque', '🏦 Banque'],
+          ['documents', '📄 Documents'],
+          ['rentabilite', '📊 Rentabilité']
         ].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? 'bg-white border border-b-white -mb-[3px]' : 'text-slate-500'} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
       </div>
 
       {/* IDENTITÉ */}
       {tab === 'identite' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Logo & Couleur</h3>
             <div className="flex gap-6 flex-wrap items-start">
               <div>
                 <p className="text-sm font-medium mb-2">Logo entreprise</p>
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden bg-slate-50">
+                  <div className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
                     ) : (
@@ -222,16 +222,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Informations entreprise</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Nom / Raison sociale <span className="text-red-500">*</span></label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => setEntreprise(p => ({...p, nom: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => setEntreprise(p => ({...p, nom: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Forme juridique <span className="text-red-500">*</span></label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.formeJuridique || ''} onChange={e => setEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => setEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="EI">Entreprise Individuelle (EI)</option>
                   <option value="EIRL">EIRL</option>
@@ -247,30 +247,30 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   Capital social {['SARL', 'SAS', 'SASU', 'EURL'].includes(entreprise.formeJuridique) && <span className="text-red-500">*</span>}
                 </label>
                 <div className="flex">
-                  <input type="number" className="flex-1 px-4 py-2.5 border rounded-l-xl" placeholder="10000" value={entreprise.capital || ''} onChange={e => setEntreprise(p => ({...p, capital: e.target.value}))} />
-                  <span className="px-4 py-2.5 bg-slate-100 border-y border-r rounded-r-xl text-slate-500">€</span>
+                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={e => setEntreprise(p => ({...p, capital: e.target.value}))} />
+                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
                 </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <textarea className="w-full px-4 py-2.5 border rounded-xl" rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => setEntreprise(p => ({...p, adresse: e.target.value}))} />
+                <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => setEntreprise(p => ({...p, adresse: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
-                <input type="tel" className="w-full px-4 py-2.5 border rounded-xl" placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => setEntreprise(p => ({...p, tel: e.target.value}))} />
+                <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => setEntreprise(p => ({...p, tel: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
-                <input type="email" className="w-full px-4 py-2.5 border rounded-xl" placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => setEntreprise(p => ({...p, email: e.target.value}))} />
+                <input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => setEntreprise(p => ({...p, email: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={e => setEntreprise(p => ({...p, siteWeb: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={e => setEntreprise(p => ({...p, siteWeb: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Slogan (optionnel)</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={e => setEntreprise(p => ({...p, slogan: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={e => setEntreprise(p => ({...p, slogan: e.target.value}))} />
               </div>
             </div>
           </div>
@@ -280,12 +280,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* LÉGAL */}
       {tab === 'legal' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Numéros d'identification</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : ''}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} />
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
                 )}
@@ -295,25 +295,25 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Code APE/NAF</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl font-mono" placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={e => setEntreprise(p => ({...p, codeApe: e.target.value.toUpperCase()}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={e => setEntreprise(p => ({...p, codeApe: e.target.value.toUpperCase()}))} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">RCS - Registre du Commerce</h3>
             <p className="text-sm text-slate-500 mb-4">Format légal: RCS [Ville] [Type] [Numéro]</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ville du greffe</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.rcsVille || ''} onChange={e => setEntreprise(p => ({...p, rcsVille: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => setEntreprise(p => ({...p, rcsVille: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   {VILLES_RCS.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.rcsType || 'B'} onChange={e => setEntreprise(p => ({...p, rcsType: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsType || 'B'} onChange={e => setEntreprise(p => ({...p, rcsType: e.target.value}))}>
                   <option value="A">A - Commerçant</option>
                   <option value="B">B - Société commerciale</option>
                   <option value="C">C - GIE</option>
@@ -322,7 +322,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl font-mono" placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={e => setEntreprise(p => ({...p, rcsNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={e => setEntreprise(p => ({...p, rcsNumero: e.target.value}))} />
               </div>
             </div>
             {getRCSComplet() && (
@@ -332,11 +332,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             )}
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : ''}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
                 <p className="text-xs text-green-600 mt-1">“ Format valide</p>
@@ -351,17 +351,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Qualifications professionnelles</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro RGE</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="E-12345" value={entreprise.rge || ''} onChange={e => setEntreprise(p => ({...p, rge: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={e => setEntreprise(p => ({...p, rge: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Reconnu Garant de l'Environnement</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Organisme RGE</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.rgeOrganisme || ''} onChange={e => setEntreprise(p => ({...p, rgeOrganisme: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rgeOrganisme || ''} onChange={e => setEntreprise(p => ({...p, rgeOrganisme: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="Qualibat">Qualibat</option>
                   <option value="Qualifelec">Qualifelec</option>
@@ -386,7 +386,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
                   'bg-blue-50 border border-blue-200'
                 }`}>
-                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? 'âš ' : 'â„¹'}</span>
+                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? '⚠️ ' : 'ℹ'}</span>
                   <div className="flex-1">
                     <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
                       {alert.message}
@@ -401,11 +401,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           )}
 
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="font-medium text-amber-800">âš  Obligatoire pour les artisans du BTP</p>
+            <p className="font-medium text-amber-800">⚠️  Obligatoire pour les artisans du BTP</p>
             <p className="text-sm text-amber-700 mt-1">L'assurance RC Pro et la garantie décennale doivent figurer sur tous vos devis et factures (Article L243-1 du Code des assurances).</p>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
               {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
@@ -415,24 +415,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => setEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => setEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={e => setEntreprise(p => ({...p, rcProNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={e => setEntreprise(p => ({...p, rcProNumero: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
-                <input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.rcProValidite || ''} onChange={e => setEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => setEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Zone géographique</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => setEntreprise(p => ({...p, rcProZone: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => setEntreprise(p => ({...p, rcProZone: e.target.value}))} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Garantie Décennale</h3>
               {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
@@ -442,19 +442,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={e => setEntreprise(p => ({...p, decennaleAssureur: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={e => setEntreprise(p => ({...p, decennaleAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={e => setEntreprise(p => ({...p, decennaleNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={e => setEntreprise(p => ({...p, decennaleNumero: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
-                <input type="date" className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.decennaleValidite || ''} onChange={e => setEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.decennaleValidite || ''} onChange={e => setEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Activités couvertes</label>
-                <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={e => setEntreprise(p => ({...p, decennaleActivites: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={e => setEntreprise(p => ({...p, decennaleActivites: e.target.value}))} />
               </div>
             </div>
           </div>
@@ -463,25 +463,25 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* BANQUE */}
       {tab === 'banque' && (
-        <div className="bg-white rounded-2xl border p-6">
+        <div className={`${cardBg} rounded-2xl border p-6`}>
           <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
           <p className="text-sm text-slate-500 mb-4">Ces informations apparaîtront sur vos factures pour faciliter le paiement par virement.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Banque</label>
-              <input className="w-full px-4 py-2.5 border rounded-xl" placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={e => setEntreprise(p => ({...p, banque: e.target.value}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={e => setEntreprise(p => ({...p, banque: e.target.value}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Titulaire du compte</label>
-              <input className="w-full px-4 py-2.5 border rounded-xl" placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={e => setEntreprise(p => ({...p, titulaireBanque: e.target.value}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={e => setEntreprise(p => ({...p, titulaireBanque: e.target.value}))} />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input className="w-full px-4 py-2.5 border rounded-xl font-mono" placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => setEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => setEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <input className="w-full px-4 py-2.5 border rounded-xl font-mono" placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => setEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => setEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
             </div>
           </div>
         </div>
@@ -490,12 +490,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* DOCUMENTS */}
       {tab === 'documents' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Paramètres par défaut des devis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Validité devis par défaut</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.validiteDevis || 30} onChange={e => setEntreprise(p => ({...p, validiteDevis: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.validiteDevis || 30} onChange={e => setEntreprise(p => ({...p, validiteDevis: parseInt(e.target.value)}))}>
                   <option value={15}>15 jours</option>
                   <option value={30}>30 jours</option>
                   <option value={60}>2 mois</option>
@@ -504,7 +504,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">TVA par défaut</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.tvaDefaut || 10} onChange={e => setEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tvaDefaut || 10} onChange={e => setEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
                   <option value={20}>20% (taux normal)</option>
                   <option value={10}>10% (rénovation &gt;2 ans)</option>
                   <option value={5.5}>5,5% (réno. énergétique)</option>
@@ -513,7 +513,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Délai de paiement</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.delaiPaiement || 30} onChange={e => setEntreprise(p => ({...p, delaiPaiement: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.delaiPaiement || 30} onChange={e => setEntreprise(p => ({...p, delaiPaiement: parseInt(e.target.value)}))}>
                   <option value={0}>Comptant</option>
                   <option value={14}>14 jours</option>
                   <option value={30}>30 jours</option>
@@ -523,7 +523,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Acompte par défaut</label>
-                <select className="w-full px-4 py-2.5 border rounded-xl" value={entreprise.acompteDefaut || 30} onChange={e => setEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => setEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
                   <option value={0}>Pas d'acompte</option>
                   <option value={20}>20%</option>
                   <option value={30}>30% (max légal si &gt;1500€)</option>
@@ -534,10 +534,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Mentions légales sur les documents</h3>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+              <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                 <div>
                   <p className="font-medium">Droit de rétractation (14 jours)</p>
                   <p className="text-sm text-slate-500">Article L221-18 du Code de la consommation</p>
@@ -547,7 +547,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
               </div>
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+              <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                 <div>
                   <p className="font-medium">Garanties légales BTP</p>
                   <p className="text-sm text-slate-500">Parfait achèvement, biennale, décennale</p>
@@ -560,9 +560,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border p-6">
+          <div className={`${cardBg} rounded-2xl border p-6`}>
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
-            <textarea className="w-full px-4 py-3 border rounded-xl" rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => setEntreprise(p => ({...p, cgv: e.target.value}))} />
+            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => setEntreprise(p => ({...p, cgv: e.target.value}))} />
             <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
@@ -570,15 +570,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
-        <div className="bg-white rounded-2xl border p-6">
+        <div className={`${cardBg} rounded-2xl border p-6`}>
           <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
-              <input type="number" min="0" max="50" className="w-32 px-4 py-2.5 border rounded-xl" value={entreprise.tauxFraisStructure || 15} onChange={e => setEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+              <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => setEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
               <p className="text-sm text-slate-500 mt-2">Loyer, assurances, carburant, comptable, téléphone...</p>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 font-mono text-sm">
+            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm`}>
               <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
               <p className="ml-4">- Matériaux (achats)</p>
               <p className="ml-4">- Main d'œuvre (heures × coût chargé)</p>
@@ -596,9 +596,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* APERÇU DOCUMENT */}
-      <div className="bg-white rounded-2xl border p-6">
+      <div className={`${cardBg} rounded-2xl border p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
-        <div className="border rounded-xl p-6 bg-slate-50">
+        <div className={`border rounded-xl p-6 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-4">
               {entreprise.logo ? (
@@ -610,7 +610,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
                 {entreprise.slogan && <p className="text-xs text-slate-500 italic">{entreprise.slogan}</p>}
                 {entreprise.formeJuridique && (
-                  <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` "¢ Capital: ${entreprise.capital} €`}</p>
+                  <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` · Capital: ${entreprise.capital} €`}</p>
                 )}
                 <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse'}</p>
               </div>
@@ -618,14 +618,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
           </div>
           <div className="text-xs text-slate-500 space-y-0.5 border-t pt-3 mt-3">
-            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `"¢ APE: ${entreprise.codeApe}`}</p>}
+            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
             {getRCSComplet() && <p>{getRCSComplet()}</p>}
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
-            {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `"¢ ${entreprise.email}`}</p>}
+            {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
             {(entreprise.rcProAssureur || entreprise.decennaleAssureur) && (
               <p className="pt-1 text-[10px]">
                 {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}`}
-                {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' "¢ '}
+                {entreprise.rcProAssureur && entreprise.decennaleAssureur && ' · '}
                 {entreprise.decennaleAssureur && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
               </p>
             )}
@@ -636,21 +636,21 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Modal Export Comptable */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="font-bold text-lg mb-4"> Export pour comptable</h3>
-            <p className="text-slate-500 mb-4">Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
+          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl p-6 w-full max-w-md`}>
+            <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}> Export pour comptable</h3>
+            <p className={`${textMuted} mb-4`}>Exportez vos devis et factures au format Excel/CSV pour votre comptable.</p>
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2">Année à exporter</label>
-              <select className="w-full px-4 py-2.5 border rounded-xl" value={exportYear} onChange={e => setExportYear(parseInt(e.target.value))}>
+              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={exportYear} onChange={e => setExportYear(parseInt(e.target.value))}>
                 {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4 mb-6 text-sm">
+            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 mb-6 text-sm`}>
               <p className="font-medium mb-2">Colonnes exportées:</p>
               <p className="text-slate-600">N° Document, Type, Date, Client, Total HT, TVA 5.5%, TVA 10%, TVA 20%, Total TTC, Statut</p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowExportModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
+              <button onClick={() => setShowExportModal(false)} className={`flex-1 px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
               <button onClick={handleExportComptable} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl"> Télécharger CSV</button>
             </div>
           </div>
