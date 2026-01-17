@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, User, Phone, Mail, Briefcase, Clock, Calendar, Timer, Play, Square, ChevronRight, Euro, DollarSign, Users, CheckSquare, History, FileText, Download, ArrowUpDown } from 'lucide-react';
 
 export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark }) {
   // Theme classes
@@ -12,6 +13,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' });
+  const [sortBy, setSortBy] = useState('name');
   const [pForm, setPForm] = useState({ employeId: '', chantierId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
   const [chrono, setChrono] = useState({ running: false, start: null, employeId: '', chantierId: '' });
   const [elapsed, setElapsed] = useState(0);
@@ -80,6 +82,21 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
   const getHeuresMois = (empId) => { const now = new Date(); return pointages.filter(p => p.employeId === empId && new Date(p.date).getMonth() === now.getMonth() && p.approuve).reduce((s, p) => s + (p.heures || 0), 0); };
 
+  const getSortedEquipe = () => {
+    return [...equipe].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`);
+        case 'hours':
+          return getHeuresMois(b.id) - getHeuresMois(a.id);
+        case 'rate':
+          return (b.tauxHoraire || 45) - (a.tauxHoraire || 45);
+        default:
+          return 0;
+      }
+    });
+  };
+
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4"><button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">{editId ? 'Modifier' : 'Nouvel'} employé</h1></div>
@@ -114,34 +131,50 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       </div>
 
       {/* Tabs */}
-      <div className={`flex gap-2 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        {[['pointage', '⏱️ Pointage'], ['equipe', '👥 Équipe'], ['validation', `✅ Validation ${pointagesEnAttente.length > 0 ? `(${pointagesEnAttente.length})` : ''}`], ['historique', '📋 Historique']].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>{v}</button>
+      <div className={`flex gap-1 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        {[
+          { key: 'pointage', label: 'Pointage', icon: Timer },
+          { key: 'equipe', label: 'Equipe', icon: Users },
+          { key: 'validation', label: `Validation${pointagesEnAttente.length > 0 ? ` (${pointagesEnAttente.length})` : ''}`, icon: CheckSquare },
+          { key: 'historique', label: 'Historique', icon: History }
+        ].map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => setTab(key)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-colors ${tab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={tab === key ? { background: couleur } : {}}>
+            <Icon size={16} />
+            <span>{label}</span>
+          </button>
         ))}
       </div>
 
       {tab === 'pointage' && (
         <div className="space-y-6">
           <div className={`${cardBg} rounded-2xl border p-6`}>
-            <h3 className="font-semibold mb-4">⏱ Chronomètre</h3>
-            <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm text-orange-500 mt-2"> En cours</p>}</div>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Timer size={18} style={{ color: couleur }} /> Chronometre</h3>
+            <div className="text-center mb-6"><p className="text-5xl font-mono font-bold" style={{color: chrono.running ? couleur : isDark ? '#94a3b8' : '#64748b'}}>{formatTime(elapsed)}</p>{chrono.running && <p className="text-sm mt-2 flex items-center justify-center gap-2" style={{ color: couleur }}><span className="w-2 h-2 rounded-full animate-pulse" style={{ background: couleur }}></span> En cours</p>}</div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <select className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={chrono.employeId} onChange={e => setChrono(p => ({...p, employeId: e.target.value}))} disabled={chrono.running}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
               <select className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={chrono.chantierId} onChange={e => setChrono(p => ({...p, chantierId: e.target.value}))} disabled={chrono.running}><option value="">Chantier</option>{chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select>
             </div>
             <div className="flex justify-center gap-4">
-              {!chrono.running ? <button onClick={startChrono} className="px-8 py-3 text-white rounded-xl text-lg" style={{background: couleur}}>▶ Démarrer</button> : <button onClick={() => { const note = prompt('Note de fin (optionnel):'); stopChrono(note || ''); }} className="px-8 py-3 bg-red-500 text-white rounded-xl text-lg">⏹ Arrêter</button>}
+              {!chrono.running ? (
+                <button onClick={startChrono} className="px-8 py-3 text-white rounded-xl text-lg flex items-center gap-2 hover:shadow-lg transition-all min-h-[52px]" style={{background: couleur}}>
+                  <Play size={20} /> Demarrer
+                </button>
+              ) : (
+                <button onClick={() => { const note = prompt('Note de fin (optionnel):'); stopChrono(note || ''); }} className="px-8 py-3 bg-red-500 text-white rounded-xl text-lg flex items-center gap-2 hover:shadow-lg transition-all min-h-[52px]">
+                  <Square size={20} /> Arreter
+                </button>
+              )}
             </div>
           </div>
           <div className={`${cardBg} rounded-2xl border p-6`}>
-            <h3 className="font-semibold mb-4"> Saisie manuelle</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Edit3 size={18} style={{ color: couleur }} /> Saisie manuelle</h3>
             <div className="flex gap-3 flex-wrap">
-              <select className="flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl" value={pForm.employeId} onChange={e => setPForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
-              <select className="flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl" value={pForm.chantierId} onChange={e => setPForm(p => ({...p, chantierId: e.target.value}))}><option value="">Chantier</option>{chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select>
+              <select className={`flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl ${inputBg}`} value={pForm.employeId} onChange={e => setPForm(p => ({...p, employeId: e.target.value}))}><option value="">Employe *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select>
+              <select className={`flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl ${inputBg}`} value={pForm.chantierId} onChange={e => setPForm(p => ({...p, chantierId: e.target.value}))}><option value="">Chantier</option>{chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select>
               <input type="date" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={pForm.date} onChange={e => setPForm(p => ({...p, date: e.target.value}))} />
-              <input type="number" step="0.5" placeholder="Heures" className="w-20 px-4 py-2.5 border rounded-xl" value={pForm.heures} onChange={e => setPForm(p => ({...p, heures: e.target.value}))} />
-              <input placeholder="Note" className="flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl" value={pForm.note} onChange={e => setPForm(p => ({...p, note: e.target.value}))} />
-              <button onClick={addPointageManuel} className="px-6 py-2.5 text-white rounded-xl" style={{background: couleur}}>Ajouter</button>
+              <input type="number" step="0.5" placeholder="Heures" className={`w-20 px-4 py-2.5 border rounded-xl ${inputBg}`} value={pForm.heures} onChange={e => setPForm(p => ({...p, heures: e.target.value}))} />
+              <input placeholder="Note" className={`flex-1 min-w-[140px] px-4 py-2.5 border rounded-xl ${inputBg}`} value={pForm.note} onChange={e => setPForm(p => ({...p, note: e.target.value}))} />
+              <button onClick={addPointageManuel} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2" style={{background: couleur}}><Plus size={16} /> Ajouter</button>
             </div>
           </div>
         </div>
@@ -150,24 +183,24 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {tab === 'validation' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
-            <p className="text-sm text-slate-500">{pointagesEnAttente.length} pointage(s) en attente</p>
+            <p className={`text-sm ${textMuted}`}>{pointagesEnAttente.length} pointage(s) en attente</p>
             <div className="flex gap-2">
-              {pointagesEnAttente.length > 0 && <button onClick={approuverTout} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm">[OK] Tout valider</button>}
-              <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm"> Verrouiller semaine</button>
+              {pointagesEnAttente.length > 0 && <button onClick={approuverTout} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm min-h-[40px] flex items-center gap-2"><Check size={16} /> Tout valider</button>}
+              <button onClick={validerSemaine} className="px-4 py-2 bg-blue-500 text-white rounded-xl text-sm min-h-[40px] flex items-center gap-2"><CheckSquare size={16} /> Verrouiller</button>
             </div>
           </div>
-          {pointagesEnAttente.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4">✅</p><p className={textMuted}>Tous validés</p></div> : (
+          {pointagesEnAttente.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><CheckSquare size={48} className="mx-auto mb-4 text-emerald-500" /><p className={textMuted}>Tous valides</p></div> : (
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
               {pointagesEnAttente.map(p => {
                 const emp = equipe.find(e => e.id === p.employeId);
                 const ch = chantiers.find(c => c.id === p.chantierId);
                 return (
-                  <div key={p.id} className="flex items-center px-5 py-4 border-b gap-4 flex-wrap">
-                    <span className={`text-2xl ${p.manuel ? '' : ' '}`}></span>
-                    <div className="flex-1 min-w-[150px]"><p className="font-medium">{emp?.nom} {emp?.prenom}</p><p className="text-sm text-slate-500">{ch?.nom || 'Sans chantier'} · {new Date(p.date).toLocaleDateString('fr-FR')}</p>{p.note && <p className="text-xs text-blue-600 mt-1"> {p.note}</p>}</div>
-                    <div className="flex items-center gap-2"><input type="number" value={p.heures} onChange={e => updatePointage(p.id, 'heures', e.target.value)} className="w-16 px-2 py-1 border rounded text-center" /><span>h</span></div>
-                    <button onClick={() => approuverPointage(p.id)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm">[OK]</button>
-                    <button onClick={() => rejeterPointage(p.id)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-sm"></button>
+                  <div key={p.id} className={`flex items-center px-5 py-4 border-b gap-4 flex-wrap ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <span className={`w-2 h-2 rounded-full ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`} title={p.manuel ? 'Saisie manuelle' : 'Chronometre'}></span>
+                    <div className="flex-1 min-w-[150px]"><p className={`font-medium ${textPrimary}`}>{emp?.nom} {emp?.prenom}</p><p className={`text-sm ${textMuted}`}>{ch?.nom || 'Sans chantier'} - {new Date(p.date).toLocaleDateString('fr-FR')}</p>{p.note && <p className="text-xs text-blue-600 mt-1">{p.note}</p>}</div>
+                    <div className="flex items-center gap-2"><input type="number" value={p.heures} onChange={e => updatePointage(p.id, 'heures', e.target.value)} className={`w-16 px-2 py-1 border rounded text-center ${inputBg}`} /><span className={textMuted}>h</span></div>
+                    <button onClick={() => approuverPointage(p.id)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm min-h-[40px] flex items-center gap-1"><Check size={16} /></button>
+                    <button onClick={() => rejeterPointage(p.id)} className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-sm min-h-[40px] flex items-center gap-1"><X size={16} /></button>
                   </div>
                 );
               })}
@@ -177,47 +210,77 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       )}
 
       {tab === 'equipe' && (
-        equipe.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4"></p><p className="text-slate-500">Ajoutez votre équipe</p></div> : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {equipe.map(e => (
+        equipe.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><Users size={48} className={`mx-auto mb-4 ${textMuted}`} /><p className={textMuted}>Ajoutez votre equipe</p><button onClick={() => setShowAdd(true)} className="mt-4 px-4 py-2 text-white rounded-xl flex items-center gap-2 mx-auto" style={{ background: couleur }}><Plus size={16} /> Ajouter un employe</button></div> : (
+          <div className="space-y-4">
+            {/* Sorting controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <ArrowUpDown size={16} className={textMuted} />
+              <span className={`text-sm ${textMuted}`}>Trier:</span>
+              {[
+                { key: 'name', label: 'Nom' },
+                { key: 'hours', label: 'Heures' },
+                { key: 'rate', label: 'Taux' }
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    sortBy === opt.key
+                      ? 'text-white'
+                      : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  style={sortBy === opt.key ? { background: couleur } : {}}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {getSortedEquipe().map(e => (
               <div key={e.id} className={`${cardBg} rounded-2xl border p-5`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold" style={{background: couleur}}>{e.nom?.[0]}{e.prenom?.[0]}</div>
-                  <div className="flex-1"><h3 className="font-semibold">{e.nom} {e.prenom}</h3>{e.telephone && <p className="text-sm text-slate-500">{e.telephone}</p>}</div>
-                  <button onClick={() => startEdit(e)} className="text-slate-400 hover:text-slate-600"></button>
-                  <button onClick={() => deleteEmploye(e.id)} className="text-red-400 hover:text-red-600"></button>
+                  <div className="flex-1"><h3 className={`font-semibold ${textPrimary}`}>{e.nom} {e.prenom}</h3>{e.telephone && <p className={`text-sm ${textMuted}`}>{e.telephone}</p>}</div>
+                  <button onClick={() => startEdit(e)} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}><Edit3 size={16} /></button>
+                  <button onClick={() => deleteEmploye(e.id)} className="p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                  <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><p className={`text-xs ${textMuted}`}>Taux facturé</p><p className={`font-bold ${textPrimary}`}>{e.tauxHoraire || 45}€/h</p></div>
-                  <div className="bg-red-50 p-3 rounded-xl"><p className="text-xs text-slate-500">Coût chargé</p><p className="font-bold text-red-600">{e.coutHoraireCharge || 28}€/h</p></div>
+                  <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><p className={`text-xs ${textMuted}`}>Taux facture</p><p className={`font-bold ${textPrimary}`}>{e.tauxHoraire || 45}EUR/h</p></div>
+                  <div className={`p-3 rounded-xl ${isDark ? 'bg-red-900/30' : 'bg-red-50'}`}><p className={`text-xs ${textMuted}`}>Cout charge</p><p className="font-bold text-red-500">{e.coutHoraireCharge || 28}EUR/h</p></div>
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t"><div><p className="text-2xl font-bold" style={{color: couleur}}>{getHeuresMois(e.id).toFixed(1)}h</p><p className="text-xs text-slate-500">ce mois (validé)</p></div></div>
               </div>
             ))}
+            </div>
           </div>
         )
       )}
 
       {tab === 'historique' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center"><p className="text-sm text-slate-500">Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm" style={{background: `${couleur}20`, color: couleur}}> Exporter CSV</button></div>
+          <div className="flex justify-between items-center"><p className={`text-sm ${textMuted}`}>Semaine du {weekStart.toLocaleDateString('fr-FR')}</p><button onClick={exportCSV} className="px-4 py-2 rounded-xl text-sm min-h-[40px] flex items-center gap-2" style={{background: `${couleur}20`, color: couleur}}><Download size={16} /> Exporter CSV</button></div>
           <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-            {weekPointages.length === 0 ? <p className="p-8 text-center text-slate-500">Aucun pointage</p> : weekPointages.sort((a, b) => new Date(b.date) - new Date(a.date)).map(p => {
+            {weekPointages.length === 0 ? <p className={`p-8 text-center ${textMuted}`}>Aucun pointage</p> : weekPointages.sort((a, b) => new Date(b.date) - new Date(a.date)).map(p => {
               const emp = equipe.find(e => e.id === p.employeId);
               const ch = chantiers.find(c => c.id === p.chantierId);
               return (
-                <div key={p.id} className="flex items-center px-5 py-3 border-b gap-4">
-                  <span className={`text-lg ${p.verrouille ? '' : p.approuve ? '[OK]' : '⏳'}`}></span>
+                <div key={p.id} className={`flex items-center px-5 py-3 border-b gap-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  {p.verrouille ? <CheckSquare size={16} className="text-blue-500" /> : p.approuve ? <Check size={16} className="text-emerald-500" /> : <Clock size={16} className={textMuted} />}
                   <span className={`w-2 h-2 rounded-full ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`} title={p.manuel ? 'Manuel' : 'Chrono'}></span>
-                  <span className="w-24 text-sm">{new Date(p.date).toLocaleDateString('fr-FR')}</span>
-                  <span className="flex-1">{emp?.nom} {emp?.prenom}</span>
-                  <span className="flex-1 text-slate-500">{ch?.nom || '-'}</span>
+                  <span className={`w-24 text-sm ${textMuted}`}>{new Date(p.date).toLocaleDateString('fr-FR')}</span>
+                  <span className={`flex-1 ${textPrimary}`}>{emp?.nom} {emp?.prenom}</span>
+                  <span className={`flex-1 ${textMuted}`}>{ch?.nom || '-'}</span>
                   <span className="w-20 text-right font-bold" style={{color: couleur}}>{(p.heures || 0).toFixed(1)}h</span>
                 </div>
               );
             })}
           </div>
-          <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700"><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Chrono</span><span className="inline-flex items-center gap-2 mr-4"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Manuel</span><span className="inline-flex items-center gap-2"> Verrouillé</span></div>
+          <div className={`rounded-xl p-4 text-sm flex flex-wrap gap-4 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+            <span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500"></span> <span className={textMuted}>Chrono</span></span>
+            <span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500"></span> <span className={textMuted}>Manuel</span></span>
+            <span className="inline-flex items-center gap-2"><CheckSquare size={14} className="text-blue-500" /> <span className={textMuted}>Verrouille</span></span>
+            <span className="inline-flex items-center gap-2"><Check size={14} className="text-emerald-500" /> <span className={textMuted}>Valide</span></span>
+          </div>
         </div>
       )}
     </div>

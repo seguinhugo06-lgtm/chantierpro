@@ -31,6 +31,35 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [isDrawing, setIsDrawing] = useState(false);
   const [showChantierModal, setShowChantierModal] = useState(false);
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfContent, setPdfContent] = useState('');
+  const [tooltip, setTooltip] = useState(null); // { text, x, y }
+
+  // Tooltip component
+  const Tooltip = ({ text, children, position = 'top' }) => {
+    const [show, setShow] = useState(false);
+    return (
+      <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+        {children}
+        {show && (
+          <div className={`absolute z-50 px-3 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg shadow-lg whitespace-nowrap ${
+            position === 'top' ? 'bottom-full left-1/2 -translate-x-1/2 mb-2' :
+            position === 'bottom' ? 'top-full left-1/2 -translate-x-1/2 mt-2' :
+            position === 'left' ? 'right-full top-1/2 -translate-y-1/2 mr-2' :
+            'left-full top-1/2 -translate-y-1/2 ml-2'
+          }`}>
+            {text}
+            <div className={`absolute w-2 h-2 bg-slate-900 rotate-45 ${
+              position === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1' :
+              position === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1' :
+              position === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1' :
+              'right-full top-1/2 -translate-y-1/2 -mr-1'
+            }`} />
+          </div>
+        )}
+      </div>
+    );
+  };
   
   // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
   useEffect(() => {
@@ -480,6 +509,19 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 </body>
 </html>`;
 
+    return content;
+  };
+
+  // Preview PDF in modal
+  const previewPDF = (doc) => {
+    const content = downloadPDF(doc);
+    setPdfContent(content);
+    setShowPdfPreview(true);
+  };
+
+  // Print PDF
+  const printPDF = (doc) => {
+    const content = downloadPDF(doc);
     const w = window.open('', '_blank');
     if (!w) {
       alert('Veuillez autoriser les popups pour générer le PDF');
@@ -577,35 +619,50 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ArrowLeft size={20} className={textPrimary} /></button>
           <h1 className={`text-base sm:text-xl font-bold ${textPrimary}`}>{selected.numero}</h1>
-          <span className={`px-3 py-1 rounded-full text-sm ${selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') : selected.statut === 'facture' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700') : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')}`}>
-            {{ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', acompte_facture: 'Acompte facturé', facture: 'Facturé', payee: 'Payée', refuse: 'Refusé' }[selected.statut] || selected.statut}
-          </span>
+          <select
+            value={selected.statut}
+            onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer border-0 outline-none appearance-none pr-7 bg-no-repeat bg-right ${
+              selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+              : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700')
+              : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
+              : selected.statut === 'facture' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700')
+              : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
+              : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')
+            }`}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '16px', backgroundPosition: 'right 6px center' }}
+          >
+            <option value="brouillon">Brouillon</option>
+            <option value="envoye">Envoyé</option>
+            {isDevis && <option value="accepte">Accepté</option>}
+            {isDevis && <option value="refuse">Refusé</option>}
+            {isDevis && <option value="acompte_facture" disabled>Acompte facturé</option>}
+            {isDevis && <option value="facture" disabled>Facturé</option>}
+            {selected.type === 'facture' && <option value="payee">Payée</option>}
+          </select>
           <div className="flex-1" />
-          <button onClick={() => { downloadPDF(selected); }} className="px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] text-sm transition-all hover:shadow-lg" title="Télécharger PDF"><Download size={16} /><span>PDF</span></button>
+          <button onClick={() => { previewPDF(selected); }} className="px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] text-sm transition-all hover:shadow-lg" title="Aperçu PDF"><Eye size={16} /><span>Aperçu</span></button>
         </div>
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
-          {isDevis && selected.statut === 'envoye' && <button onClick={() => setMode('sign')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}>✍️ Faire signer</button>}
-          {canAcompte && <button onClick={() => setShowAcompteModal(true)} className="px-3 sm:px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><CreditCard size={14} /><span>Acompte</span></button>}
+          {isDevis && selected.statut === 'envoye' && <Tooltip text="Le client peut signer directement sur l'écran pour accepter le devis" position="bottom"><button onClick={() => setMode('sign')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}>✍️ Faire signer</button></Tooltip>}
+          {canAcompte && <Tooltip text="Créer une facture d'acompte (ex: 30%) avant de commencer le chantier" position="bottom"><button onClick={() => setShowAcompteModal(true)} className="px-3 sm:px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><CreditCard size={14} /><span>Acompte</span></button></Tooltip>}
           {canFacturer && (
-            <div className="relative group">
+            <Tooltip text={acompteFacture ? "Créer la facture de solde pour le montant restant après l'acompte" : "Convertir ce devis en facture définitive"} position="bottom">
               <button onClick={createSolde} className="px-3 sm:px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><Banknote size={14} />
                  {acompteFacture ? `Facturer le solde (${formatMoney(resteAFacturer)})` : 'Facturer intégralement'}
               </button>
-              <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10">
-                <div className="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg max-w-xs">
-                  {acompteFacture ? 'Créer la facture finale avec déduction de l\'acompte' : 'Créer une facture unique pour le montant total sans acompte'}
-                </div>
-              </div>
-            </div>
+            </Tooltip>
           )}
           {isDevis && selected.statut === 'facture' && <span className="px-4 py-2 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 rounded-xl flex items-center gap-1.5 text-sm min-h-[44px]">✅ Entièrement facturé</span>}
           {canCreateChantier && (
-            <button onClick={openChantierModal} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:shadow-lg" style={{background: couleur}}>
-              <Building2 size={14} />
-              <span>Créer chantier</span>
-            </button>
+            <Tooltip text="Créer un chantier pour suivre les dépenses, le temps passé et calculer votre marge sur ce projet" position="bottom">
+              <button onClick={openChantierModal} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:shadow-lg" style={{background: couleur}}>
+                <Building2 size={14} />
+                <span>Créer chantier</span>
+              </button>
+            </Tooltip>
           )}
           {hasChantier && linkedChantier && (
             <button onClick={() => setPage?.('chantiers')} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
@@ -688,18 +745,6 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             <button onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }} className="text-sm font-medium hover:underline" style={{ color: couleur }}>← Voir le devis</button>
           </div>
         )}
-
-        {/* Statut */}
-        <div className={`rounded-2xl border p-4 ${cardBg}`}>
-          <label className={`text-sm font-medium mr-3 ${textPrimary}`}>Statut:</label>
-          <select value={selected.statut} onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }} className={`px-3 py-2 border rounded-xl ${inputBg}`}>
-            <option value="brouillon">Brouillon</option>
-            <option value="envoye">Envoyé</option>
-            {isDevis && <option value="accepte">Accepté</option>}
-            {isDevis && <option value="refuse">Refusé</option>}
-            {selected.type === 'facture' && <option value="payee">Payée</option>}
-          </select>
-        </div>
 
         {/* Modal Acompte */}
         {showAcompteModal && (
@@ -967,7 +1012,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   </div>
                   <p className={`text-sm ${textMuted}`}>{client?.nom} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Télécharger PDF"><Download size={18} className={textMuted} /></button>
+                <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF"><Eye size={18} className={textMuted} /></button>
                 <p className="text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
@@ -975,6 +1020,57 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         })}</div>
       )}
       <Snackbar />
+
+      {/* PDF Preview Modal */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowPdfPreview(false)}>
+          <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-100'} rounded-2xl w-full max-w-4xl h-[90vh] shadow-2xl flex flex-col overflow-hidden`} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className={`p-4 border-b ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'} flex items-center justify-between flex-shrink-0`}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}>
+                  <FileText size={20} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <h2 className={`font-bold text-lg ${textPrimary}`}>Aperçu du document</h2>
+                  <p className={`text-sm ${textMuted}`}>Format A4 - Prêt pour impression</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { printPDF(selected); }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2 min-h-[44px] transition-colors"
+                >
+                  <Download size={18} />
+                  <span>Imprimer / PDF</span>
+                </button>
+                <button
+                  onClick={() => setShowPdfPreview(false)}
+                  className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+                >
+                  <X size={20} className={textPrimary} />
+                </button>
+              </div>
+            </div>
+
+            {/* PDF Content - Paper style */}
+            <div className="flex-1 overflow-auto p-4 sm:p-8 flex justify-center">
+              <div
+                className="bg-white shadow-2xl rounded-sm w-full max-w-[210mm] min-h-[297mm]"
+                style={{
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <iframe
+                  srcDoc={pdfContent}
+                  className="w-full h-full min-h-[297mm] border-0"
+                  title="Aperçu PDF"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

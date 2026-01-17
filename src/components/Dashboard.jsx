@@ -12,6 +12,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const [helpSection, setHelpSection] = useState('overview');
   const [showEncaisseDetail, setShowEncaisseDetail] = useState(false);
   const [showEnAttenteDetail, setShowEnAttenteDetail] = useState(false);
+  const [showMargeDetail, setShowMargeDetail] = useState(false);
 
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
 
@@ -344,234 +345,24 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
     }
   };
 
-  // CA Detail Modal
-  if (showCADetail) {
+  // Helper to compute marge modal data
+  const getMargeModalData = () => {
     const isMonthView = showCADetail === 'month' && selectedMonth;
     const monthData = isMonthView ? stats.caParMois.find(m => m.moisFull === selectedMonth) : null;
+    return { isMonthView, monthData };
+  };
 
+  // Render Modal Overlay component
+  const ModalOverlay = ({ show, onClose, children }) => {
+    if (!show) return null;
     return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => { setShowCADetail(null); setSelectedMonth(null); }}>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
         <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {isMonthView && (
-                  <button onClick={() => { setShowCADetail('ca'); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                    <ArrowLeft size={20} className={textPrimary} />
-                  </button>
-                )}
-                <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}>
-                  <DollarSign size={20} style={{ color: couleur }} />
-                </div>
-                <h2 className={`font-bold text-lg ${textPrimary}`}>
-                  {isMonthView ? `CA ${monthData?.moisFull}` : 'Détail du Chiffre d\'Affaires'}
-                </h2>
-              </div>
-              <button onClick={() => { setShowCADetail(null); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                <X size={20} className={textPrimary} />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-5 space-y-5">
-            {isMonthView ? (
-              <>
-                <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                  <p className={`text-sm ${textSecondary}`}>Total HT</p>
-                  <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(monthData?.ca || 0)}</p>
-                  <p className={`text-sm ${textSecondary} mt-1`}>{monthData?.nbDevis || 0} devis · {monthData?.nbFactures || 0} factures</p>
-                </div>
-                {monthData?.devis?.length > 0 && (
-                  <div>
-                    <h4 className={`font-semibold mb-3 ${textPrimary}`}>Documents du mois</h4>
-                    <div className="space-y-2">
-                      {monthData.devis.map(d => (
-                        <div key={d.id} onClick={() => { setSelectedDevis?.(d); setPage?.('devis'); setShowCADetail(null); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                          <div className="flex items-center gap-3">
-                            {d.type === 'facture' ? <Receipt size={18} className="text-purple-500" /> : <FileText size={18} className="text-blue-500" />}
-                            <div>
-                              <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
-                              <p className={`text-xs ${textSecondary}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
-                            </div>
-                          </div>
-                          <p className="font-bold" style={{ color: couleur }}>{formatMoney(d.total_ht)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                  <p className={`text-sm ${textSecondary}`}>Total CA (6 derniers mois)</p>
-                  <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(stats.totalCA)}</p>
-                </div>
-
-                <div>
-                  <h4 className={`font-semibold mb-3 ${textPrimary}`}>Répartition</h4>
-                  <div className="space-y-3">
-                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle size={18} className="text-emerald-500" />
-                        <span className={textSecondary}>Devis acceptés</span>
-                      </div>
-                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.devisAcceptes)}</span>
-                    </div>
-                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <Receipt size={18} className="text-purple-500" />
-                        <span className={textSecondary}>Factures payées</span>
-                      </div>
-                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesPaye)}</span>
-                    </div>
-                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <div className="flex items-center gap-3">
-                        <Clock size={18} className="text-amber-500" />
-                        <span className={textSecondary}>Factures en attente</span>
-                      </div>
-                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesEnCours)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className={`font-semibold mb-3 ${textPrimary}`}>Par mois (cliquez pour détails)</h4>
-                  <div className="space-y-2">
-                    {stats.caParMois.map((m, i) => (
-                      <div key={i} onClick={() => { setSelectedMonth(m.moisFull); setShowCADetail('month'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                        <div>
-                          <p className={`font-medium capitalize ${textPrimary}`}>{m.moisFull}</p>
-                          <p className={`text-xs ${textSecondary}`}>{m.nbDevis || 0} devis · {m.nbFactures || 0} factures</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold" style={{ color: i === 5 ? couleur : textSecondary }}>{formatMoney(m.ca)}</p>
-                          <ChevronRight size={16} className={textMuted} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          {children}
         </div>
       </div>
     );
-  }
-
-  // Encaissé Detail Modal
-  if (showEncaisseDetail) {
-    return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEncaisseDetail(false)}>
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                  <CheckCircle size={20} className="text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <h2 className={`font-bold text-lg ${textPrimary}`}>Factures encaissées</h2>
-              </div>
-              <button onClick={() => setShowEncaisseDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                <X size={20} className={textPrimary} />
-              </button>
-            </div>
-          </div>
-          <div className="p-5 space-y-4">
-            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
-              <p className={`text-sm ${textSecondary}`}>Total encaissé</p>
-              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(stats.encaisse)}</p>
-              <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesPayees.length} facture{stats.facturesPayees.length > 1 ? 's' : ''} payée{stats.facturesPayees.length > 1 ? 's' : ''}</p>
-            </div>
-            {stats.facturesPayees.length > 0 ? (
-              <div className="space-y-2">
-                {stats.facturesPayees.sort((a, b) => new Date(b.date) - new Date(a.date)).map(f => {
-                  const client = safeClients.find(c => c.id === f.client_id);
-                  return (
-                    <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEncaisseDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                      <div className="flex items-center gap-3">
-                        <Receipt size={18} className="text-emerald-500" />
-                        <div>
-                          <p className={`font-medium ${textPrimary}`}>{f.numero}</p>
-                          <p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p>
-                        </div>
-                      </div>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(f.total_ttc)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className={`text-center py-8 ${textSecondary}`}>
-                <Receipt size={32} className="mx-auto mb-2 opacity-30" />
-                <p>Aucune facture encaissée</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // En Attente Detail Modal
-  if (showEnAttenteDetail) {
-    return (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEnAttenteDetail(false)}>
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                  <Clock size={20} className="text-amber-600 dark:text-amber-400" />
-                </div>
-                <h2 className={`font-bold text-lg ${textPrimary}`}>Factures en attente</h2>
-              </div>
-              <button onClick={() => setShowEnAttenteDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                <X size={20} className={textPrimary} />
-              </button>
-            </div>
-          </div>
-          <div className="p-5 space-y-4">
-            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'}`}>
-              <p className={`text-sm ${textSecondary}`}>À encaisser</p>
-              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{formatMoney(stats.enAttente)}</p>
-              <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente</p>
-            </div>
-            {stats.facturesEnAttente.length > 0 ? (
-              <div className="space-y-2">
-                {stats.facturesEnAttente.sort((a, b) => new Date(a.date) - new Date(b.date)).map(f => {
-                  const client = safeClients.find(c => c.id === f.client_id);
-                  const daysSince = Math.floor((new Date() - new Date(f.date)) / 86400000);
-                  const isOverdue = daysSince > 30;
-                  return (
-                    <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEnAttenteDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isOverdue ? (isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100') : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')}`}>
-                      <div className="flex items-center gap-3">
-                        <Receipt size={18} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className={`font-medium ${textPrimary}`}>{f.numero}</p>
-                            {isOverdue && <span className="px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded">{daysSince}j</span>}
-                          </div>
-                          <p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p>
-                        </div>
-                      </div>
-                      <p className={`font-bold ${isOverdue ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>{formatMoney(f.total_ttc)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className={`text-center py-8 ${textSecondary}`}>
-                <Receipt size={32} className="mx-auto mb-2 opacity-30" />
-                <p>Aucune facture en attente</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  };
 
   // Help Modal - Fixed layout
   if (showHelp) {
@@ -650,7 +441,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       {/* KPI Cards - now clickable */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} onClick={() => setShowCADetail('ca')} clickable />
-        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} onClick={() => setShowHelp(true) || setHelpSection('rentabilite')} clickable />
+        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} onClick={() => setShowMargeDetail(true)} clickable />
         <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} sub={`${stats.facturesPayees.length} facture${stats.facturesPayees.length > 1 ? 's' : ''}`} color="#10b981" onClick={() => setShowEncaisseDetail(true)} clickable />
         <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
       </div>
@@ -814,6 +605,241 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           </button>
         ))}
       </div>
+
+      {/* === MODALS (rendered as overlays to keep dashboard visible) === */}
+
+      {/* CA Detail Modal */}
+      {showCADetail && (() => {
+        const isMonthView = showCADetail === 'month' && selectedMonth;
+        const monthData = isMonthView ? stats.caParMois.find(m => m.moisFull === selectedMonth) : null;
+        return (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => { setShowCADetail(null); setSelectedMonth(null); }}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+              <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {isMonthView && <button onClick={() => { setShowCADetail('ca'); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ArrowLeft size={20} className={textPrimary} /></button>}
+                    <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}><DollarSign size={20} style={{ color: couleur }} /></div>
+                    <h2 className={`font-bold text-lg ${textPrimary}`}>{isMonthView ? `CA ${monthData?.moisFull}` : 'Détail du Chiffre d\'Affaires'}</h2>
+                  </div>
+                  <button onClick={() => { setShowCADetail(null); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+                </div>
+              </div>
+              <div className="p-5 space-y-5">
+                {isMonthView ? (
+                  <>
+                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <p className={`text-sm ${textSecondary}`}>Total HT</p>
+                      <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(monthData?.ca || 0)}</p>
+                      <p className={`text-sm ${textSecondary} mt-1`}>{monthData?.nbDevis || 0} devis · {monthData?.nbFactures || 0} factures</p>
+                    </div>
+                    {monthData?.devis?.length > 0 && (
+                      <div>
+                        <h4 className={`font-semibold mb-3 ${textPrimary}`}>Documents du mois</h4>
+                        <div className="space-y-2">
+                          {monthData.devis.map(d => (
+                            <div key={d.id} onClick={() => { setSelectedDevis?.(d); setPage?.('devis'); setShowCADetail(null); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                              <div className="flex items-center gap-3">
+                                {d.type === 'facture' ? <Receipt size={18} className="text-purple-500" /> : <FileText size={18} className="text-blue-500" />}
+                                <div><p className={`font-medium ${textPrimary}`}>{d.numero}</p><p className={`text-xs ${textSecondary}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p></div>
+                              </div>
+                              <p className="font-bold" style={{ color: couleur }}>{formatMoney(d.total_ht)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <p className={`text-sm ${textSecondary}`}>Total CA (6 derniers mois)</p>
+                      <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(stats.totalCA)}</p>
+                    </div>
+                    <div>
+                      <h4 className={`font-semibold mb-3 ${textPrimary}`}>Répartition</h4>
+                      <div className="space-y-3">
+                        <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><div className="flex items-center gap-3"><CheckCircle size={18} className="text-emerald-500" /><span className={textSecondary}>Devis acceptés</span></div><span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.devisAcceptes)}</span></div>
+                        <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><div className="flex items-center gap-3"><Receipt size={18} className="text-purple-500" /><span className={textSecondary}>Factures payées</span></div><span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesPaye)}</span></div>
+                        <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><div className="flex items-center gap-3"><Clock size={18} className="text-amber-500" /><span className={textSecondary}>Factures en attente</span></div><span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesEnCours)}</span></div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className={`font-semibold mb-3 ${textPrimary}`}>Par mois (cliquez pour détails)</h4>
+                      <div className="space-y-2">
+                        {stats.caParMois.map((m, i) => (
+                          <div key={i} onClick={() => { setSelectedMonth(m.moisFull); setShowCADetail('month'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                            <div><p className={`font-medium capitalize ${textPrimary}`}>{m.moisFull}</p><p className={`text-xs ${textSecondary}`}>{m.nbDevis || 0} devis · {m.nbFactures || 0} factures</p></div>
+                            <div className="flex items-center gap-2"><p className="font-bold" style={{ color: i === 5 ? couleur : textSecondary }}>{formatMoney(m.ca)}</p><ChevronRight size={16} className={textMuted} /></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Encaissé Detail Modal */}
+      {showEncaisseDetail && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEncaisseDetail(false)}>
+          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+            <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50"><CheckCircle size={20} className="text-emerald-600 dark:text-emerald-400" /></div><h2 className={`font-bold text-lg ${textPrimary}`}>Factures encaissées</h2></div>
+                <button onClick={() => setShowEncaisseDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+                <p className={`text-sm ${textSecondary}`}>Total encaissé</p>
+                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(stats.encaisse)}</p>
+                <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesPayees.length} facture{stats.facturesPayees.length > 1 ? 's' : ''} payée{stats.facturesPayees.length > 1 ? 's' : ''}</p>
+              </div>
+              {stats.facturesPayees.length > 0 ? (
+                <div className="space-y-2">
+                  {[...stats.facturesPayees].sort((a, b) => new Date(b.date) - new Date(a.date)).map(f => {
+                    const client = safeClients.find(c => c.id === f.client_id);
+                    return (
+                      <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEncaisseDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <div className="flex items-center gap-3"><Receipt size={18} className="text-emerald-500" /><div><p className={`font-medium ${textPrimary}`}>{f.numero}</p><p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p></div></div>
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(f.total_ttc)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (<div className={`text-center py-8 ${textSecondary}`}><Receipt size={32} className="mx-auto mb-2 opacity-30" /><p>Aucune facture encaissée</p></div>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* En Attente Detail Modal */}
+      {showEnAttenteDetail && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEnAttenteDetail(false)}>
+          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+            <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50"><Clock size={20} className="text-amber-600 dark:text-amber-400" /></div><h2 className={`font-bold text-lg ${textPrimary}`}>Factures en attente</h2></div>
+                <button onClick={() => setShowEnAttenteDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'}`}>
+                <p className={`text-sm ${textSecondary}`}>À encaisser</p>
+                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{formatMoney(stats.enAttente)}</p>
+                <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente</p>
+              </div>
+              {stats.facturesEnAttente.length > 0 ? (
+                <div className="space-y-2">
+                  {[...stats.facturesEnAttente].sort((a, b) => new Date(a.date) - new Date(b.date)).map(f => {
+                    const client = safeClients.find(c => c.id === f.client_id);
+                    const daysSince = Math.floor((new Date() - new Date(f.date)) / 86400000);
+                    const isOverdue = daysSince > 30;
+                    return (
+                      <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEnAttenteDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isOverdue ? (isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100') : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')}`}>
+                        <div className="flex items-center gap-3"><Receipt size={18} className={isOverdue ? 'text-red-500' : 'text-amber-500'} /><div><div className="flex items-center gap-2"><p className={`font-medium ${textPrimary}`}>{f.numero}</p>{isOverdue && <span className="px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded">{daysSince}j</span>}</div><p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p></div></div>
+                        <p className={`font-bold ${isOverdue ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>{formatMoney(f.total_ttc)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (<div className={`text-center py-8 ${textSecondary}`}><Receipt size={32} className="mx-auto mb-2 opacity-30" /><p>Aucune facture en attente</p></div>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Marge Nette Detail Modal */}
+      {showMargeDetail && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowMargeDetail(false)}>
+          <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+            <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg" style={{ background: stats.tauxMarge >= 15 ? '#10b98120' : stats.tauxMarge >= 0 ? '#f59e0b20' : '#ef444420' }}>
+                    <TrendingUp size={20} style={{ color: stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444' }} />
+                  </div>
+                  <h2 className={`font-bold text-lg ${textPrimary}`}>Détail de la Marge</h2>
+                </div>
+                <button onClick={() => setShowMargeDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+              </div>
+            </div>
+            <div className="p-5 space-y-5">
+              {/* Overview Stats */}
+              <div className={`p-4 rounded-xl text-center ${stats.tauxMarge >= 15 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : stats.tauxMarge >= 0 ? (isDark ? 'bg-amber-900/30' : 'bg-amber-50') : (isDark ? 'bg-red-900/30' : 'bg-red-50')}`}>
+                <p className={`text-sm ${textSecondary}`}>Marge nette globale</p>
+                <p className="text-3xl font-bold" style={{ color: stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444' }}>{formatMoney(stats.marge)}</p>
+                <p className={`text-xl font-semibold mt-1`} style={{ color: stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444' }}>{stats.tauxMarge.toFixed(1)}%</p>
+              </div>
+
+              {/* Breakdown */}
+              <div>
+                <h4 className={`font-semibold mb-3 ${textPrimary}`}>Calcul de la marge</h4>
+                <div className="space-y-2">
+                  <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-3"><DollarSign size={18} className="text-blue-500" /><span className={textSecondary}>Chiffre d'affaires</span></div>
+                    <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.totalCA)}</span>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-3"><Package size={18} className="text-red-500" /><span className={textSecondary}>Dépenses matériaux</span></div>
+                    <span className="font-bold text-red-500">-{formatMoney(stats.totalDep)}</span>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-3"><Users size={18} className="text-red-500" /><span className={textSecondary}>Main d'œuvre</span></div>
+                    <span className="font-bold text-red-500">-{formatMoney(stats.totalMO)}</span>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 rounded-xl border-t-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-100 border-slate-300'}`}>
+                    <div className="flex items-center gap-3"><TrendingUp size={18} style={{ color: stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444' }} /><span className={`font-semibold ${textPrimary}`}>= Marge nette</span></div>
+                    <span className="font-bold text-lg" style={{ color: stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444' }}>{formatMoney(stats.marge)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chantiers History */}
+              <div>
+                <h4 className={`font-semibold mb-3 ${textPrimary}`}>Rentabilité par chantier</h4>
+                {stats.margesChantiers.length > 0 ? (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {stats.margesChantiers.slice(0, 8).map(ch => {
+                      const isGood = ch.marge >= 30;
+                      const isBad = ch.marge < 0;
+                      return (
+                        <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); setShowMargeDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                          <div className="flex items-center gap-3">
+                            <Hammer size={18} className={isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'} />
+                            <span className={`font-medium ${textPrimary}`}>{ch.nom}</span>
+                          </div>
+                          <span className={`font-bold ${isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'}`}>{ch.marge.toFixed(0)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (<div className={`text-center py-4 ${textSecondary}`}><Hammer size={24} className="mx-auto mb-2 opacity-30" /><p>Aucun chantier</p></div>)}
+              </div>
+
+              {/* Tips */}
+              <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                <div className="flex items-start gap-3">
+                  <Info size={18} className="text-blue-500 mt-0.5" />
+                  <div>
+                    <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Interprétation</p>
+                    <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                      {stats.tauxMarge >= 30 ? '✅ Excellente rentabilité ! Continuez ainsi.'
+                        : stats.tauxMarge >= 15 ? '👍 Bonne rentabilité. Marge de progression possible.'
+                        : stats.tauxMarge >= 0 ? '⚠️ Marge faible. Révisez vos tarifs ou réduisez les coûts.'
+                        : '🚨 Vous perdez de l\'argent. Action urgente requise.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

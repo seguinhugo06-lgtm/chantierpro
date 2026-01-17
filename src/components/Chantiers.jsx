@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -13,15 +14,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
   const [activeTab, setActiveTab] = useState('finances');
-  const [form, setForm] = useState({ nom: '', client_id: '', adresse: '', date_debut: '', date_fin: '', statut: 'prospect', avancement: 0 });
+  const [form, setForm] = useState({ nom: '', client_id: '', adresse: '', date_debut: new Date().toISOString().split('T')[0], date_fin: '', statut: 'prospect', avancement: 0, notes: '', budget_estime: '' });
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [newTache, setNewTache] = useState('');
   const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' });
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
   const [showAddMO, setShowAddMO] = useState(false);
   const [showQuickMateriau, setShowQuickMateriau] = useState(false); // Modal ajout rapide matériau
+  const [photoPreview, setPhotoPreview] = useState(null); // Photo preview modal
   const [adjForm, setAdjForm] = useState({ libelle: '', montant_ht: '' });
   const [moForm, setMoForm] = useState({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
+  const [newMessage, setNewMessage] = useState({ type: 'email', content: '' });
+  const [showEditBudget, setShowEditBudget] = useState(false);
+  const [budgetForm, setBudgetForm] = useState({ budget_estime: '' });
+  const [sortBy, setSortBy] = useState('recent'); // recent, name, status, margin
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -41,7 +48,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) return; setPointages([...pointages, { id: Date.now().toString(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
   const handleEditPointage = (id, field, value) => setPointages(pointages.map(p => p.id === id ? { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value } : p));
   const deletePointage = (id) => { if (confirm('Supprimer ?')) setPointages(pointages.filter(p => p.id !== id)); };
-  const submit = () => { if (!form.nom) return alert('Nom requis'); addChantier(form); setShow(false); setForm({ nom: '', client_id: '', adresse: '', date_debut: '', date_fin: '', statut: 'prospect', avancement: 0 }); };
+  const submit = () => { if (!form.nom) return alert('Nom requis'); addChantier({ ...form, budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined }); setShow(false); setShowAdvanced(false); setForm({ nom: '', client_id: '', adresse: '', date_debut: new Date().toISOString().split('T')[0], date_fin: '', statut: 'prospect', avancement: 0, notes: '', budget_estime: '' }); };
 
   // Vue détail chantier
   if (view) {
@@ -56,144 +63,271 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const adjDepenses = chAjustements.filter(a => a.type === 'DEPENSE');
     const tasksDone = ch.taches?.filter(t => t.done).length || 0;
     const tasksTotal = ch.taches?.length || 0;
-    
+
     // Devis lié
     const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
     const devisHT = devisLie?.total_ht || 0;
-    const devisMateriaux = devisLie?.lignes?.filter(l => l.categorie === 'Matériaux').reduce((s, l) => s + (l.montant || 0), 0) || devisHT * 0.4;
-    const devisMO = devisLie?.lignes?.filter(l => l.categorie === 'Main d\'oeuvre').reduce((s, l) => s + (l.montant || 0), 0) || devisHT * 0.3;
-    const devisMarge = devisHT - devisMateriaux - devisMO;
-    
+
     // Projections
-    const avancement = ch.avancement || (tasksTotal > 0 ? (tasksDone / tasksTotal) * 100 : 50);
-    const depensesFinalesEstimees = avancement > 0 ? (bilan.coutMateriaux + bilan.coutMO) / (avancement / 100) : 0;
-    const beneficeProjecte = bilan.caHT - depensesFinalesEstimees;
-    const tauxMargeProjecte = bilan.caHT > 0 ? (beneficeProjecte / bilan.caHT) * 100 : 0;
-    
-    // Alertes
-    const depassementBudget = devisHT > 0 && (bilan.coutMateriaux + bilan.coutMO) > (devisMateriaux + devisMO) * 1.2;
-    const margeNegative = bilan.tauxMarge < 0;
+    const avancement = ch.avancement || (tasksTotal > 0 ? (tasksDone / tasksTotal) * 100 : 0);
+    const depensesFinalesEstimees = avancement > 0 ? bilan.totalDepenses / (avancement / 100) : bilan.totalDepenses * 2;
+    const beneficeProjecte = bilan.revenuPrevu - depensesFinalesEstimees;
+    const tauxMargeProjecte = bilan.revenuPrevu > 0 ? (beneficeProjecte / bilan.revenuPrevu) * 100 : 0;
+
+    // Alertes - basées sur des seuils clairs
+    const revenuTotal = bilan.revenuPrevu + (bilan.adjRevenus || 0);
+    const budgetDepasse = revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9; // >90% du budget consommé
+    const margeNegative = bilan.margePrevisionnelle < 0;
+    const margeFaible = !margeNegative && bilan.tauxMargePrevi < 15;
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl text-xl`}>←</button>
-          <div className="flex-1 min-w-0"><h1 className="text-2xl font-bold truncate">{ch.nom}</h1><p className="text-slate-500">{client?.nom} · {ch.adresse}</p></div>
-          <select value={ch.statut} onChange={e => updateChantier(ch.id, { statut: e.target.value })} className="px-4 py-2 border rounded-xl">
-            <option value="prospect">Prospect</option><option value="en_cours">En cours</option><option value="termine">Terminé</option>
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
+          <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h1><p className={`text-xs sm:text-sm ${textMuted} truncate`}>{client?.nom} · {ch.adresse}</p></div>
+          <select
+            value={ch.statut}
+            onChange={e => updateChantier(ch.id, { statut: e.target.value })}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer border-0 outline-none appearance-none pr-7 bg-no-repeat bg-right min-h-[44px] ${
+              ch.statut === 'en_cours' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
+              : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+              : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')
+            }`}
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '16px', backgroundPosition: 'right 8px center' }}
+          >
+            <option value="prospect">Prospect</option>
+            <option value="en_cours">En cours</option>
+            <option value="termine">Terminé</option>
           </select>
         </div>
 
         {/* Alertes */}
-        {(depassementBudget || margeNegative) && (
-          <div className={`rounded-2xl p-4 ${margeNegative ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+        {(margeNegative || budgetDepasse || margeFaible) && (
+          <div className={`rounded-2xl p-4 ${margeNegative ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : budgetDepasse ? (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200') : (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')}`}>
             <div className="flex items-center gap-3">
-              <span className="text-2xl">{margeNegative ? '' : '⚠️'}</span>
+              {margeNegative ? <TrendingDown size={24} className="text-red-500" /> : budgetDepasse ? <AlertTriangle size={24} className="text-amber-500" /> : <AlertCircle size={24} className="text-blue-500" />}
               <div>
-                <p className="font-semibold">{margeNegative ? 'Marge négative !' : 'Dépassement budget'}</p>
-                <p className="text-sm text-slate-600">{margeNegative ? 'Ce chantier est actuellement en perte. Analysez les dépassements.' : 'Les dépenses dépassent le budget prévu de >20%'}</p>
+                <p className={`font-semibold ${margeNegative ? (isDark ? 'text-red-400' : 'text-red-700') : budgetDepasse ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-blue-400' : 'text-blue-700')}`}>
+                  {margeNegative ? 'Chantier en perte' : budgetDepasse ? 'Budget presque epuise' : 'Marge faible'}
+                </p>
+                <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {margeNegative
+                    ? `Les depenses (${formatMoney(bilan.totalDepenses)}) depassent le revenu prevu (${formatMoney(revenuTotal)}).`
+                    : budgetDepasse
+                    ? `Vous avez consomme ${((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}% du budget. Surveillez les couts.`
+                    : `Marge previsionnelle de ${formatPct(bilan.tauxMargePrevi)} - en dessous de 15%.`}
+                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Widget Santé Financière */}
-        <div className={`${cardBg} rounded-2xl border p-5`}>
+        {/* Résumé Financier Principal */}
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
+          {/* Titre et marge */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                <span className="text-xl">{bilan.tauxMarge < 0 ? '📉' : bilan.tauxMarge < 15 ? '⚠️' : '📈'}</span>
+              {bilan.margePrevisionnelle < 0 ? (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
+                  <TrendingDown size={20} className="text-red-500" />
+                </div>
+              ) : bilan.tauxMargePrevi < 15 ? (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-amber-900/50' : 'bg-amber-100'}`}>
+                  <AlertTriangle size={20} className="text-amber-500" />
+                </div>
+              ) : (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
+                  <TrendingUp size={20} className="text-emerald-500" />
+                </div>
+              )}
+              <div>
+                <p className={`text-xs ${textMuted}`}>Marge previsionnelle</p>
+                <p className={`font-bold text-xl ${bilan.margePrevisionnelle < 0 ? 'text-red-500' : bilan.tauxMargePrevi < 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                  {formatMoney(bilan.margePrevisionnelle)} <span className="text-sm opacity-80">({formatPct(bilan.tauxMargePrevi)})</span>
+                </p>
               </div>
-              <h3 className={`font-semibold text-lg ${textPrimary}`}>Santé Financière</h3>
             </div>
-            <div className={`px-4 py-2 rounded-xl text-xl font-bold ${bilan.tauxMarge < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500'}`} style={{background: `${couleur}15`}}>
-              {formatMoney(bilan.marge)} <span className="text-base opacity-80">({formatPct(bilan.tauxMarge)})</span>
+            {devisLie && (
+              <span className={`text-xs px-3 py-1.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                Lie au devis {devisLie.numero}
+              </span>
+            )}
+          </div>
+
+          {/* Grille Revenus vs Depenses */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Colonne Revenus */}
+            <div className={`rounded-xl p-4 border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <ArrowUpRight size={16} className="text-emerald-500" />
+                <h4 className={`font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenus</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className={`text-sm ${textSecondary}`}>Montant devis</span>
+                  <span className={`font-semibold ${textPrimary}`}>{bilan.revenuPrevu > 0 ? formatMoney(bilan.revenuPrevu) : <span className={textMuted}>Non defini</span>}</span>
+                </div>
+                {(bilan.adjRevenus || 0) > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className={`text-sm ${textSecondary}`}>Travaux supplementaires</span>
+                    <span className="font-semibold text-emerald-600">+{formatMoney(bilan.adjRevenus)}</span>
+                  </div>
+                )}
+                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-emerald-800' : 'border-emerald-200'}`}>
+                  <span className={`font-medium ${textPrimary}`}>Total prevu</span>
+                  <span className="font-bold text-lg" style={{ color: couleur }}>{formatMoney(revenuTotal)}</span>
+                </div>
+                {bilan.revenuEncaisse > 0 && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className={textMuted}>Deja encaisse</span>
+                    <span className="text-emerald-600">{formatMoney(bilan.revenuEncaisse)}</span>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setShowAjustement('REVENU')} className={`mt-3 w-full py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 ${isDark ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
+                <Plus size={14} /> Ajouter un revenu
+              </button>
+            </div>
+
+            {/* Colonne Depenses */}
+            <div className={`rounded-xl p-4 border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <ArrowDownRight size={16} className="text-red-500" />
+                <h4 className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Depenses</h4>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowQuickMateriau(true)}>
+                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><Package size={14} /> Materiaux</span>
+                  <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
+                </div>
+                <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowMODetail(true)}>
+                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><UserCog size={14} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
+                  <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
+                </div>
+                {(bilan.coutAutres || 0) > 0 && (
+                  <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowAjustement('DEPENSE')}>
+                    <span className={`text-sm ${textSecondary}`}>Autres frais</span>
+                    <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutAutres)}</span>
+                  </div>
+                )}
+                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-red-800' : 'border-red-200'}`}>
+                  <span className={`font-medium ${textPrimary}`}>Total depenses</span>
+                  <span className="font-bold text-lg text-red-500">{formatMoney(bilan.totalDepenses)}</span>
+                </div>
+              </div>
+              <button onClick={() => setShowQuickMateriau(true)} className={`mt-3 w-full py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
+                <Plus size={14} /> Ajouter une depense
+              </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md transition-all border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`} onClick={() => setShowAjustement('REVENU')}>
-              <div className="flex justify-between mb-1"><p className={`text-xs ${textMuted}`}>CA HT</p><span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">+ Ajuster</span></div>
-              <p className="text-xl font-bold" style={{color: couleur}}>{formatMoney(bilan.caHT)}</p>
-              {bilan.adjRevenus > 0 && <p className="text-xs text-emerald-600">+{formatMoney(bilan.adjRevenus)} ajustés</p>}
-            </div>
-            <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md transition-all border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`} onClick={() => setShowQuickMateriau(true)}>
-              <div className="flex justify-between mb-1">
-                <p className={`text-xs ${textMuted}`}>Matériaux</p>
-                <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">+ Ajouter</span>
+          {/* Budget restant */}
+          {revenuTotal > 0 && (
+            <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm ${textSecondary}`}>Budget consomme</span>
+                <span className={`font-semibold ${bilan.totalDepenses > revenuTotal ? 'text-red-500' : textPrimary}`}>
+                  {formatMoney(bilan.totalDepenses)} / {formatMoney(revenuTotal)} ({((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}%)
+                </span>
               </div>
-              <p className="text-xl font-bold text-red-500">{formatMoney(bilan.coutMateriaux)}</p>
-              {devisMateriaux > 0 && <p className={`text-xs ${bilan.coutMateriaux > devisMateriaux ? 'text-red-600' : 'text-emerald-600'}`}>{bilan.coutMateriaux > devisMateriaux ? '↗' : '↘'} vs devis {formatMoney(devisMateriaux)}</p>}
+              <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                <div
+                  className={`h-full rounded-full transition-all ${bilan.totalDepenses > revenuTotal ? 'bg-red-500' : bilan.totalDepenses > revenuTotal * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${Math.min(100, (bilan.totalDepenses / revenuTotal) * 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-2 text-xs">
+                <span className={textMuted}>Reste: <span className={bilan.margePrevisionnelle < 0 ? 'text-red-500' : 'text-emerald-500'}>{formatMoney(revenuTotal - bilan.totalDepenses)}</span></span>
+                <button onClick={() => { setBudgetForm({ budget_estime: ch.budget_estime?.toString() || '' }); setShowEditBudget(true); }} className="flex items-center gap-1 hover:underline" style={{ color: couleur }}>
+                  <Edit3 size={12} /> Modifier budget
+                </button>
+              </div>
             </div>
-            <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md transition-all border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`} onClick={() => setShowMODetail(true)}>
-              <div className="flex justify-between mb-1"><p className={`text-xs ${textMuted}`}>MO ({bilan.heuresTotal}h)</p><span className={`text-xs ${textMuted}`}>Détail →</span></div>
-              <p className="text-xl font-bold text-blue-500">{formatMoney(bilan.coutMO)}</p>
-            </div>
-            <div className={`rounded-xl p-4 cursor-pointer hover:shadow-md transition-all border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`} onClick={() => setShowAjustement('DEPENSE')}>
-              <div className="flex justify-between mb-1"><p className={`text-xs ${textMuted}`}>Autres</p><span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">+ Ajuster</span></div>
-              <p className="text-xl font-bold text-red-500">{formatMoney(bilan.adjDepenses + bilan.fraisFixes)}</p>
-            </div>
-          </div>
+          )}
 
           {/* Avancement */}
-          <div className={`rounded-xl p-4 mb-4 border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${textPrimary}`}>Avancement estimé</span>
-              <div className="flex items-center gap-2">
-                <input type="range" min="0" max="100" value={avancement} onChange={e => updateChantier(ch.id, { avancement: parseInt(e.target.value) })} className="w-24" />
-                <span className="font-bold" style={{ color: couleur }}>{avancement.toFixed(0)}%</span>
-              </div>
+          <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`}>
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <span className={`text-sm font-medium ${textPrimary}`}>Avancement du chantier</span>
+              <span className="font-bold text-lg" style={{ color: couleur }}>{avancement.toFixed(0)}%</span>
             </div>
-            <div className={`h-2 ${isDark ? 'bg-slate-600' : 'bg-slate-100'} rounded-full overflow-hidden`}><div className="h-full rounded-full" style={{ width: `${avancement}%`, background: couleur }} /></div>
+            <div className="relative">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={avancement}
+                onChange={e => updateChantier(ch.id, { avancement: parseInt(e.target.value) })}
+                className="w-full h-2 appearance-none cursor-pointer rounded-full"
+                style={{
+                  background: `linear-gradient(to right, ${couleur} 0%, ${couleur} ${avancement}%, ${isDark ? '#475569' : '#e2e8f0'} ${avancement}%, ${isDark ? '#475569' : '#e2e8f0'} 100%)`,
+                  WebkitAppearance: 'none'
+                }}
+              />
+              <style>{`
+                input[type="range"]::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: ${couleur};
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
+                input[type="range"]::-moz-range-thumb {
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 50%;
+                  background: ${couleur};
+                  cursor: pointer;
+                  border: 3px solid white;
+                  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                }
+              `}</style>
+            </div>
           </div>
 
           {/* Projection */}
-          {avancement > 0 && avancement < 100 && (
-            <div className={`rounded-xl p-4 border-2 border-dashed ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+          {avancement > 0 && avancement < 100 && revenuTotal > 0 && (
+            <div className={`mt-4 rounded-xl p-4 border-2 border-dashed ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">🔮</span>
-                <h4 className={`font-medium ${textPrimary}`}>Projection Fin de Chantier</h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} ${textMuted}`}>Estimé</span>
+                <Target size={18} style={{ color: couleur }} />
+                <h4 className={`font-medium ${textPrimary}`}>Projection fin de chantier</h4>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} ${textMuted}`}>Estimation</span>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Dépenses finales</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Depenses totales estimees</p>
                   <p className="font-bold text-red-500 text-lg">{formatMoney(depensesFinalesEstimees)}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Bénéfice projeté</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Benefice projete</p>
                   <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Marge projetée</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Marge projetee</p>
                   <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatPct(tauxMargeProjecte)}</p>
                 </div>
               </div>
             </div>
           )}
-
-          {/* Comparaison Devis vs Réel */}
-          {devisHT > 0 && !modeDiscret && (
-            <div className={`rounded-xl p-4 mt-4 border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`}>
-              <h4 className={`font-medium mb-3 ${textPrimary}`}>📊 Devis vs Réel</h4>
-              <table className="w-full text-sm">
-                <thead><tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><th className={`text-left py-2 ${textSecondary}`}>Poste</th><th className={`text-right py-2 ${textSecondary}`}>Devis</th><th className={`text-right py-2 ${textSecondary}`}>Réel</th><th className={`text-right py-2 ${textSecondary}`}>Écart</th></tr></thead>
-                <tbody className={textPrimary}>
-                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><td className="py-2">CA HT</td><td className="text-right">{formatMoney(devisHT)}</td><td className="text-right">{formatMoney(bilan.caHT)}</td><td className={`text-right ${bilan.caHT >= devisHT ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.caHT >= devisHT ? '+' : ''}{formatMoney(bilan.caHT - devisHT)}</td></tr>
-                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><td className="py-2">Matériaux</td><td className="text-right">{formatMoney(devisMateriaux)}</td><td className="text-right">{formatMoney(bilan.coutMateriaux)}</td><td className={`text-right ${bilan.coutMateriaux <= devisMateriaux ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.coutMateriaux <= devisMateriaux ? '' : '+'}{formatMoney(bilan.coutMateriaux - devisMateriaux)}</td></tr>
-                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><td className="py-2">Main d'oeuvre</td><td className="text-right">{formatMoney(devisMO)}</td><td className="text-right">{formatMoney(bilan.coutMO)}</td><td className={`text-right ${bilan.coutMO <= devisMO ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.coutMO <= devisMO ? '' : '+'}{formatMoney(bilan.coutMO - devisMO)}</td></tr>
-                  <tr className="font-bold"><td className="py-2">Marge</td><td className="text-right">{formatMoney(devisMarge)}</td><td className="text-right">{formatMoney(bilan.marge)}</td><td className={`text-right ${bilan.marge >= devisMarge ? 'text-emerald-500' : 'text-red-500'}`}>{bilan.marge >= devisMarge ? '+' : ''}{formatMoney(bilan.marge - devisMarge)}</td></tr>
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
 
         {/* Onglets */}
-        <div className={`flex gap-2 border-b overflow-x-auto pb-2 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {[['finances', '💰 Finances'], ['taches', '✅ Tâches'], ['photos', '📷 Photos'], ['notes', '📝 Notes']].map(([k, v]) => (
-            <button key={k} onClick={() => setActiveTab(k)} className={`px-4 py-2 rounded-t-xl whitespace-nowrap font-medium ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>{v}</button>
+        <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          {[
+            { key: 'finances', label: 'Finances', icon: Wallet },
+            { key: 'taches', label: 'Taches', icon: CheckSquare },
+            { key: 'photos', label: 'Photos', icon: Camera },
+            { key: 'notes', label: 'Notes', icon: StickyNote },
+            { key: 'messages', label: 'Messages', icon: MessageSquare }
+          ].map(({ key, label, icon: Icon }) => (
+            <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
+              <Icon size={16} />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
           ))}
         </div>
 
@@ -212,13 +346,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
-              <h3 className="font-semibold mb-4"> Dépenses Matériaux</h3>
-              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"><span className="text-slate-500 text-sm w-24">{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className="flex-1">{d.description}</span><span className="text-xs bg-slate-200 px-2 py-1 rounded">{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className="text-center text-slate-400 py-4">Aucune dépense</p>}</div>
+              <h3 className={`font-semibold mb-4 ${textPrimary}`}>Depenses Materiaux</h3>
+              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune depense</p>}</div>
               <div className="flex gap-2 flex-wrap">
-                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className="px-3 py-2.5 border rounded-xl text-sm"><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
-                <input placeholder="Description" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className="flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl" />
-                <input type="number" placeholder="Montant" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className="w-28 px-4 py-2.5 border rounded-xl" />
-                <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button>
+                <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`}><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
+                <input placeholder="Description" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <input type="number" placeholder="Montant" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className={`w-28 px-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{background: couleur}}>+</button>
               </div>
             </div>
           </div>
@@ -240,22 +374,114 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
             </div>
             {(!ch.photos || ch.photos.length === 0) ? <p className="text-slate-400 text-center py-8">Aucune photo</p> : (
-              <div className="space-y-4">{PHOTO_CATS.map(cat => { const catPhotos = (ch.photos || []).filter(p => p.categorie === cat); if (catPhotos.length === 0) return null; return (<div key={cat}><p className="text-sm font-medium mb-2 capitalize">{cat} ({catPhotos.length})</p><div className="flex gap-2 flex-wrap">{catPhotos.map(p => (<div key={p.id} className="relative group"><img src={p.src} className="w-24 h-24 object-cover rounded-xl" alt="" /><button onClick={() => deletePhoto(p.id)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100">x</button></div>))}</div></div>); })}</div>
+              <div className="space-y-4">{PHOTO_CATS.map(cat => { const catPhotos = (ch.photos || []).filter(p => p.categorie === cat); if (catPhotos.length === 0) return null; return (<div key={cat}><p className="text-sm font-medium mb-2 capitalize">{cat} ({catPhotos.length})</p><div className="flex gap-2 flex-wrap">{catPhotos.map(p => (<div key={p.id} className="relative group cursor-pointer" onClick={() => setPhotoPreview(p)}><img src={p.src} className="w-24 h-24 object-cover rounded-xl hover:opacity-90 transition-opacity" alt="" /><button onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center"><X size={12} /></button></div>))}</div></div>); })}</div>
             )}
           </div>
         )}
 
         {activeTab === 'notes' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>📝 Notes</h3>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><StickyNote size={18} /> Notes</h3>
             <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Notes internes..." />
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className={`${cardBg} rounded-2xl border p-5`}>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} style={{ color: couleur }} /> Historique des echanges</h3>
+            <p className={`text-sm ${textMuted} mb-4`}>Centralisez ici tous vos echanges avec le client (emails, SMS, appels...).</p>
+
+            {/* Existing messages */}
+            <div className="space-y-3 mb-4">
+              {(!ch.messages || ch.messages.length === 0) ? (
+                <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <MessageSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                  <p className={textMuted}>Aucun echange enregistre</p>
+                </div>
+              ) : (
+                ch.messages.map(msg => (
+                  <div key={msg.id} className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs px-2 py-0.5 rounded ${msg.type === 'email' ? 'bg-blue-100 text-blue-700' : msg.type === 'sms' ? 'bg-green-100 text-green-700' : msg.type === 'appel' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>{msg.type === 'email' ? 'Email' : msg.type === 'sms' ? 'SMS' : msg.type === 'appel' ? 'Appel' : 'Note'}</span>
+                      <span className={`text-xs ${textMuted}`}>{new Date(msg.date).toLocaleDateString('fr-FR')} - {new Date(msg.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} className="ml-auto p-1 rounded text-red-400 hover:bg-red-50"><X size={14} /></button>
+                    </div>
+                    <p className={`text-sm ${textPrimary}`}>{msg.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add new message */}
+            <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex gap-2 mb-3">
+                {['email', 'sms', 'appel', 'note'].map(type => (
+                  <button key={type} onClick={() => setNewMessage && setNewMessage(p => ({ ...p, type }))} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${(newMessage?.type || 'email') === type ? 'text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-white text-slate-600'}`} style={(newMessage?.type || 'email') === type ? { background: couleur } : {}}>
+                    {type === 'email' ? 'Email' : type === 'sms' ? 'SMS' : type === 'appel' ? 'Appel' : 'Note'}
+                  </button>
+                ))}
+              </div>
+              <textarea className={`w-full px-3 py-2 border rounded-xl text-sm ${inputBg}`} rows={2} placeholder="Resumer l'echange..." value={newMessage?.content || ''} onChange={e => setNewMessage && setNewMessage(p => ({ ...p, content: e.target.value }))} />
+              <button onClick={() => {
+                if (!newMessage?.content) return;
+                const msg = { id: Date.now().toString(), type: newMessage.type || 'email', content: newMessage.content, date: new Date().toISOString() };
+                updateChantier(ch.id, { messages: [...(ch.messages || []), msg] });
+                setNewMessage && setNewMessage({ type: 'email', content: '' });
+              }} className="mt-2 px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2" style={{ background: couleur }}>
+                <Plus size={14} /> Ajouter
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Photo Preview Modal */}
+        {photoPreview && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setPhotoPreview(null)}>
+            {/* Top buttons */}
+            <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+              <a
+                href={photoPreview.src}
+                download={`photo_${photoPreview.categorie}_${new Date(photoPreview.date).toISOString().split('T')[0]}.jpg`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors flex items-center gap-2"
+                title="Telecharger"
+              >
+                <Download size={20} />
+              </a>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `Photo ${photoPreview.categorie} - ${ch.nom}`,
+                      text: `Photo du chantier ${ch.nom}`,
+                      url: photoPreview.src
+                    }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(photoPreview.src);
+                    alert('Lien copie dans le presse-papier');
+                  }
+                }}
+                className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors"
+                title="Partager"
+              >
+                <Share2 size={20} />
+              </button>
+              <button onClick={() => setPhotoPreview(null)} className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <img src={photoPreview.src} className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl" alt="" onClick={(e) => e.stopPropagation()} />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-xl backdrop-blur-sm">
+              <span className="capitalize">{photoPreview.categorie}</span> · {new Date(photoPreview.date).toLocaleDateString('fr-FR')}
+            </div>
           </div>
         )}
 
         {/* Modal Ajustement */}
         {showAjustement && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`}>
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] overflow-y-auto`}>
               <h3 className={`text-lg font-bold mb-4 ${textPrimary}`}>{showAjustement === 'REVENU' ? ' Ajustement Revenu' : ' Ajustement Dépense'}</h3>
               <p className="text-sm text-slate-500 mb-4">{showAjustement === 'REVENU' ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</p>
               <div className="space-y-4">
@@ -269,8 +495,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* Modal Ajout Rapide Matériau */}
         {showQuickMateriau && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" onClick={() => setShowQuickMateriau(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowQuickMateriau(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}> Ajouter un matériau</h3>
               <p className={`text-sm ${textMuted} mb-4`}>Ajout rapide de dépense matériau</p>
               
@@ -323,8 +549,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* Modal MO */}
         {showMODetail && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto`}>
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in max-h-[85vh] overflow-y-auto`}>
               <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">⏱ Détail Main d'oeuvre</h3><button onClick={() => setShowAddMO(true)} className="px-3 py-1.5 text-sm text-white rounded-lg" style={{background: couleur}}>+ Heures</button></div>
               <div className="space-y-2 mb-4">{chPointages.map(p => { const emp = equipe.find(e => e.id === p.employeId); const cout = emp?.coutHoraireCharge || 28; return (
                 <div key={p.id} className={`p-3 rounded-xl ${p.manuel ? 'bg-blue-50' : 'bg-slate-50'} ${p.verrouille ? 'opacity-60' : ''}`}>
@@ -340,8 +566,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* Modal Ajout MO */}
         {showAddMO && (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md`}>
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] overflow-y-auto`}>
               <h3 className={`text-lg font-bold mb-4 ${textPrimary}`}>+ Ajouter des heures</h3>
               <div className="space-y-4">
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.employeId} onChange={e => setMoForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
@@ -352,56 +578,197 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
           </div>
         )}
+
+        {/* Modal Edit Budget */}
+        {showEditBudget && (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowEditBudget(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
+              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Modifier le budget</h3>
+              <p className={`text-sm ${textMuted} mb-4`}>Definissez le budget previsionnel HT pour ce chantier.</p>
+              {devisLie && (
+                <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
+                  <p className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                    Ce chantier est lie au devis <strong>{devisLie.numero}</strong> ({formatMoney(devisHT)}).
+                    Le budget du devis sera utilise par defaut.
+                  </p>
+                </div>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Budget estime HT</label>
+                  <div className="relative">
+                    <DollarSign size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                    <input
+                      type="number"
+                      className={`w-full pl-9 pr-4 py-2.5 border rounded-xl ${inputBg}`}
+                      placeholder="0"
+                      value={budgetForm.budget_estime}
+                      onChange={e => setBudgetForm({ budget_estime: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowEditBudget(false)} className={`flex-1 px-4 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                <button
+                  onClick={() => {
+                    updateChantier(ch.id, { budget_estime: budgetForm.budget_estime ? parseFloat(budgetForm.budget_estime) : undefined });
+                    setShowEditBudget(false);
+                  }}
+                  className="flex-1 px-4 py-2.5 text-white rounded-xl"
+                  style={{ background: couleur }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // Formulaire création
   if (show) return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl`}>←</button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
-      <div className={`${cardBg} rounded-2xl border p-6`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium mb-1">Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-4"><button onClick={() => setShow(false)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl`}><ArrowLeft size={20} className={textPrimary} /></button><h1 className="text-2xl font-bold">Nouveau chantier</h1></div>
+      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div><label className={`block text-xs sm:text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.client_id} onChange={e => setForm(p => ({...p, client_id: e.target.value}))}><option value="">Sélectionner...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom}</option>)}</select></div>
           <div className="md:col-span-2"><label className="block text-sm font-medium mb-1">Adresse</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Date début</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_debut} onChange={e => setForm(p => ({...p, date_debut: e.target.value}))} /></div>
           <div><label className="block text-sm font-medium mb-1">Date fin</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date_fin} onChange={e => setForm(p => ({...p, date_fin: e.target.value}))} /></div>
         </div>
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t"><button onClick={() => setShow(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={submit} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div>
+                {/* Options avancées toggle */}
+        <button onClick={() => setShowAdvanced(!showAdvanced)} className={`mt-4 flex items-center gap-2 text-sm ${textMuted} hover:opacity-80 transition-opacity`}>
+          <ChevronRight size={16} className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+          Options avancées (statut, budget, notes)
+        </button>
+
+        {/* Options avancées */}
+        {showAdvanced && (
+          <div className={`mt-4 pt-4 border-t space-y-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Statut initial</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.statut} onChange={e => setForm(p => ({...p, statut: e.target.value}))}>
+                  <option value="prospect">Prospect</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="termine">Terminé</option>
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Budget estimé HT</label>
+                <div className="relative">
+                  <DollarSign size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                  <input type="number" className={`w-full pl-9 pr-4 py-2.5 border rounded-xl ${inputBg}`} value={form.budget_estime} onChange={e => setForm(p => ({...p, budget_estime: e.target.value}))} placeholder="0" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes / Description</label>
+              <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Informations complémentaires, spécificités du chantier..." />
+            </div>
+          </div>
+        )}
+
+        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
+          <button onClick={() => { setShow(false); setShowAdvanced(false); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+            <X size={16} />Annuler
+          </button>
+          <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Check size={16} />Créer le chantier
+          </button>
+        </div>
       </div>
     </div>
   );
 
+  // Sorting logic
+  const getSortedChantiers = () => {
+    const sorted = [...chantiers];
+    switch (sortBy) {
+      case 'name':
+        return sorted.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+      case 'status':
+        const statusOrder = { en_cours: 0, prospect: 1, termine: 2 };
+        return sorted.sort((a, b) => (statusOrder[a.statut] || 2) - (statusOrder[b.statut] || 2));
+      case 'margin':
+        return sorted.sort((a, b) => getChantierBilan(b.id).tauxMarge - getChantierBilan(a.id).tauxMarge);
+      case 'recent':
+      default:
+        return sorted.sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
+    }
+  };
+
   // Liste
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Chantiers ({chantiers.length})</h1><button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      {chantiers.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4">🏗️</p><p className={textMuted}>Aucun chantier</p></div> : (
-        <div className="grid gap-4">
-          {chantiers.map(ch => {
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers ({chantiers.length})</h1>
+        <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+        </button>
+      </div>
+
+      {/* Sorting options */}
+      {chantiers.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className={`text-sm ${textMuted} flex items-center gap-1`}><ArrowUpDown size={14} /> Trier:</span>
+          {[
+            { key: 'recent', label: 'Recent' },
+            { key: 'name', label: 'Nom' },
+            { key: 'status', label: 'Statut' },
+            { key: 'margin', label: 'Marge' }
+          ].map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setSortBy(opt.key)}
+              className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              style={sortBy === opt.key ? { background: couleur } : {}}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {chantiers.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-5xl mb-4">🏗️</p><p className={textMuted}>Aucun chantier</p></div> : (
+        <div className="grid gap-3 sm:gap-4">
+          {getSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilan = getChantierBilan(ch.id);
+            const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
+            const budgetPrevu = devisLie?.total_ht || ch.budget_estime || 0;
+            const hasAlert = bilan.tauxMarge < 0;
+            const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Termine' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
               ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
               : ch.statut === 'termine'
-              ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')
+              ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600')
               : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
-            const hasAlert = bilan.tauxMarge < 0;
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition ${hasAlert ? (isDark ? 'border-red-700' : 'border-red-300') : ''}`}>
-                <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
-                  <div className="min-w-0"><h3 className={`font-semibold text-lg truncate ${textPrimary}`}>{ch.nom}</h3><p className={`text-sm ${textMuted}`}>{client?.nom} · {ch.adresse}</p></div>
-                  <div className="flex items-center gap-2">
-                    {hasAlert && <span className={`px-2 py-1 text-xs rounded-full ${isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'}`}>⚠️ Perte</span>}
-                    <span className={`px-3 py-1 rounded-full text-sm ${statusColor}`}>{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</span>
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${hasAlert ? (isDark ? 'border-red-700' : 'border-red-300') : ''}`}>
+                {/* Header with status */}
+                <div className="flex items-start gap-2 mb-2">
+                  <div className="flex-1 min-w-0 overflow-hidden pr-1">
+                    <h3 className={`font-semibold text-base truncate ${textPrimary}`}>{ch.nom}</h3>
+                    <p className={`text-sm ${textMuted} truncate`}>{client?.nom || 'Sans client'}{ch.adresse ? ` - ${ch.adresse}` : ''}</p>
                   </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${statusColor}`}>
+                    {statusLabel}
+                  </span>
                 </div>
-                <div className="flex items-center gap-4 text-sm flex-wrap">
-                  <span className={`font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatMoney(bilan.marge)}</span>
-                  <span className={`px-2 py-0.5 rounded ${getMargeBg(bilan.tauxMarge)} ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
-                  <span className={textMuted}>|</span>
-                  <span className={textMuted}>CA: {formatMoney(bilan.caHT)}</span>
+                {/* Stats row */}
+                <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                  <span className={`font-bold flex-shrink-0 ${getMargeColor(bilan.tauxMarge)}`}>{formatMoney(bilan.marge)}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-600') : bilan.tauxMarge < 15 ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-600') : (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600')}`}>{formatPct(bilan.tauxMarge)}</span>
+                  <span className={`text-sm ${textMuted} flex-1 text-right truncate min-w-0`}>
+                    {budgetPrevu > 0 ? `Budget: ${formatMoney(budgetPrevu)}` : bilan.caHT > 0 ? `CA: ${formatMoney(bilan.caHT)}` : ''}
+                  </span>
+                  {hasAlert && <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />}
+                  <ChevronRight size={16} className={`${textMuted} flex-shrink-0`} />
                 </div>
               </div>
             );
