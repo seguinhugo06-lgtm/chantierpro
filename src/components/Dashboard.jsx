@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown } from 'lucide-react';
 
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const [showCADetail, setShowCADetail] = useState(null); // 'ca' | 'month' | null
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -702,6 +702,57 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
           </div>
         )}
       </div>
+
+      {/* Today's Events - Quick view */}
+      {(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayEvents = events.filter(e => e.date === today);
+        const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const tomorrowEvents = events.filter(e => e.date === tomorrowDate);
+        const upcomingEvents = [...todayEvents.map(e => ({ ...e, isToday: true })), ...tomorrowEvents.map(e => ({ ...e, isToday: false }))].slice(0, 3);
+
+        if (upcomingEvents.length > 0) {
+          return (
+            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+                  <Calendar size={18} style={{ color: couleur }} />
+                  Agenda du jour
+                </h3>
+                <button onClick={() => setPage?.('planning')} className={`text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
+                  Voir tout
+                </button>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {upcomingEvents.map(ev => {
+                  const typeColors = {
+                    rdv: { bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', text: isDark ? 'text-blue-300' : 'text-blue-700', icon: '📅' },
+                    chantier: { bg: isDark ? 'bg-emerald-900/30' : 'bg-emerald-50', text: isDark ? 'text-emerald-300' : 'text-emerald-700', icon: '🏗️' },
+                    relance: { bg: isDark ? 'bg-amber-900/30' : 'bg-amber-50', text: isDark ? 'text-amber-300' : 'text-amber-700', icon: '📞' },
+                    urgence: { bg: isDark ? 'bg-red-900/30' : 'bg-red-50', text: isDark ? 'text-red-300' : 'text-red-700', icon: '🚨' },
+                    autre: { bg: isDark ? 'bg-slate-700' : 'bg-slate-100', text: textSecondary, icon: '📌' }
+                  };
+                  const style = typeColors[ev.type] || typeColors.autre;
+                  return (
+                    <div key={ev.id} onClick={() => setPage?.('planning')} className={`flex-shrink-0 w-48 sm:w-56 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${style.bg}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">{style.icon}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ev.isToday ? 'bg-emerald-500 text-white' : (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600')}`}>
+                          {ev.isToday ? "Aujourd'hui" : 'Demain'}
+                        </span>
+                        {ev.time && <span className={`text-xs ${textMuted}`}>{ev.time}</span>}
+                      </div>
+                      <p className={`font-medium text-sm truncate ${style.text}`}>{ev.title}</p>
+                      {ev.description && <p className={`text-xs truncate mt-1 ${textMuted}`}>{ev.description}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">

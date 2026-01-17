@@ -8,7 +8,7 @@ import DevisPage from './components/DevisPage';
 import Equipe from './components/Equipe';
 import Catalogue from './components/Catalogue';
 import Settings from './components/Settings';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt } from 'lucide-react';
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -158,6 +158,9 @@ export default function App() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [toasts, setToasts] = useState([]);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     // Show onboarding if user hasn't seen it before
     return !localStorage.getItem('onboarding_completed');
@@ -298,6 +301,47 @@ export default function App() {
   const markNotifRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
   const markAllNotifsRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
 
+  // Toast notification system
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  };
+
+  // Global search results
+  const searchResults = searchQuery.length > 1 ? {
+    clients: clients.filter(c =>
+      `${c.nom} ${c.prenom} ${c.email} ${c.telephone}`.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 3),
+    chantiers: chantiers.filter(c =>
+      `${c.nom} ${c.adresse}`.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 3),
+    devis: devis.filter(d =>
+      `${d.numero} ${clients.find(c => c.id === d.client_id)?.nom || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 3)
+  } : { clients: [], chantiers: [], devis: [] };
+
+  const hasSearchResults = searchResults.clients.length > 0 || searchResults.chantiers.length > 0 || searchResults.devis.length > 0;
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Cmd/Ctrl + K for search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+        setShowQuickAdd(false);
+        setShowNotifs(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Loading screen
   if (loading) return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -406,15 +450,20 @@ export default function App() {
     </div>
   );
 
+  // Calculate stats for badges
+  const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
+  const devisEnAttente = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
+  const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
+
   // Navigation items
   const nav = [
-    { id: 'dashboard', icon: Home, label: 'Accueil' }, 
-    { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente }, 
-    { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours }, 
-    { id: 'planning', icon: Calendar, label: 'Planning' }, 
-    { id: 'clients', icon: Users, label: 'Clients' }, 
-    { id: 'catalogue', icon: Package, label: 'Catalogue' }, 
-    { id: 'equipe', icon: HardHat, label: 'Equipe' }, 
+    { id: 'dashboard', icon: Home, label: 'Accueil' },
+    { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente + facturesImpayees, badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316' },
+    { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours, badgeColor: '#22c55e' },
+    { id: 'planning', icon: Calendar, label: 'Planning', badge: todayEvents, badgeColor: '#3b82f6' },
+    { id: 'clients', icon: Users, label: 'Clients', badge: clients.length > 0 ? null : null },
+    { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'equipe', icon: HardHat, label: 'Equipe' },
     { id: 'settings', icon: SettingsIcon, label: 'Parametres' }
   ];
   
@@ -448,7 +497,7 @@ export default function App() {
             >
               <n.icon size={18} />
               <span className="flex-1 text-left">{n.label}</span>
-              {n.badge > 0 && <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{n.badge}</span>}
+              {n.badge > 0 && <span className="px-2 py-0.5 text-white text-xs rounded-full" style={{ background: n.badgeColor || '#ef4444' }}>{n.badge}</span>}
             </button>
           ))}
         </nav>
@@ -497,7 +546,17 @@ export default function App() {
             </span>
           )}
 
-          <div className="flex-1" />
+          {/* Search button */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-1 max-w-xs ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-500'}`}
+          >
+            <Search size={16} />
+            <span className="text-sm">Rechercher...</span>
+            <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>⌘K</kbd>
+          </button>
+
+          <div className="flex-1 sm:hidden" />
 
           {/* Help button */}
           <button
@@ -642,6 +701,134 @@ export default function App() {
 
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
+
+      {/* Global Search Modal */}
+      {showSearch && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 pt-20 sm:pt-32 p-4 animate-fade-in" onClick={() => { setShowSearch(false); setSearchQuery(''); }}>
+          <div className={`w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`} onClick={e => e.stopPropagation()}>
+            {/* Search input */}
+            <div className={`flex items-center gap-3 px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <Search size={20} className={tc.textMuted} />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Rechercher clients, chantiers, devis..."
+                className={`flex-1 bg-transparent outline-none text-lg ${tc.text}`}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <kbd className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>ESC</kbd>
+            </div>
+
+            {/* Results */}
+            <div className="max-h-80 overflow-y-auto">
+              {searchQuery.length > 1 ? (
+                hasSearchResults ? (
+                  <div className="py-2">
+                    {/* Clients */}
+                    {searchResults.clients.length > 0 && (
+                      <div className="px-3 py-2">
+                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Clients</p>
+                        {searchResults.clients.map(c => (
+                          <button key={c.id} onClick={() => { setPage('clients'); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>{c.nom?.[0]}{c.prenom?.[0]}</div>
+                            <div className="flex-1 text-left">
+                              <p className={`font-medium ${tc.text}`}>{c.nom} {c.prenom}</p>
+                              <p className={`text-sm ${tc.textMuted}`}>{c.telephone}</p>
+                            </div>
+                            <ChevronRight size={16} className={tc.textMuted} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Chantiers */}
+                    {searchResults.chantiers.length > 0 && (
+                      <div className="px-3 py-2">
+                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Chantiers</p>
+                        {searchResults.chantiers.map(c => (
+                          <button key={c.id} onClick={() => { setPage('chantiers'); setSelectedChantier(c.id); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.statut === 'en_cours' ? 'bg-emerald-100 text-emerald-600' : c.statut === 'termine' ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-600'}`}>
+                              <Building2 size={18} />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className={`font-medium ${tc.text}`}>{c.nom}</p>
+                              <p className={`text-sm ${tc.textMuted}`}>{c.adresse?.substring(0, 30)}...</p>
+                            </div>
+                            <ChevronRight size={16} className={tc.textMuted} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* Devis */}
+                    {searchResults.devis.length > 0 && (
+                      <div className="px-3 py-2">
+                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Documents</p>
+                        {searchResults.devis.map(d => (
+                          <button key={d.id} onClick={() => { setPage('devis'); setSelectedDevis(d.id); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${d.type === 'facture' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600'}`}>
+                              {d.type === 'facture' ? <Receipt size={18} /> : <FileText size={18} />}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className={`font-medium ${tc.text}`}>{d.numero}</p>
+                              <p className={`text-sm ${tc.textMuted}`}>{clients.find(c => c.id === d.client_id)?.nom || ''} - {d.total_ttc?.toLocaleString('fr-FR')}€</p>
+                            </div>
+                            <ChevronRight size={16} className={tc.textMuted} />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <Search size={32} className={`mx-auto mb-2 ${tc.textMuted} opacity-30`} />
+                    <p className={tc.textMuted}>Aucun résultat pour "{searchQuery}"</p>
+                  </div>
+                )
+              ) : (
+                <div className="p-6">
+                  <p className={`text-xs font-medium uppercase tracking-wider mb-3 ${tc.textMuted}`}>Accès rapide</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Devis', icon: FileText, page: 'devis', color: '#f97316' },
+                      { label: 'Chantiers', icon: Building2, page: 'chantiers', color: '#22c55e' },
+                      { label: 'Clients', icon: Users, page: 'clients', color: '#3b82f6' }
+                    ].map(item => (
+                      <button key={item.label} onClick={() => { setPage(item.page); setShowSearch(false); }} className={`p-4 rounded-xl text-center transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <item.icon size={24} className="mx-auto mb-2" style={{ color: item.color }} />
+                        <span className={`text-sm font-medium ${tc.text}`}>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up ${
+              toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
+              toast.type === 'error' ? (isDark ? 'bg-red-900/90 text-red-100' : 'bg-red-600 text-white') :
+              toast.type === 'warning' ? (isDark ? 'bg-amber-900/90 text-amber-100' : 'bg-amber-600 text-white') :
+              (isDark ? 'bg-slate-700 text-slate-100' : 'bg-slate-800 text-white')
+            }`}
+          >
+            {toast.type === 'success' && <CheckCircle size={18} />}
+            {toast.type === 'error' && <AlertCircle size={18} />}
+            {toast.type === 'warning' && <AlertCircle size={18} />}
+            {toast.type === 'info' && <Info size={18} />}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-2 opacity-70 hover:opacity-100">
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
