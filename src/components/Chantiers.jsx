@@ -17,7 +17,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [form, setForm] = useState({ nom: '', client_id: '', adresse: '', date_debut: new Date().toISOString().split('T')[0], date_fin: '', statut: 'prospect', avancement: 0, notes: '', budget_estime: '' });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newTache, setNewTache] = useState('');
-  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' });
+  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
   const [showAddMO, setShowAddMO] = useState(false);
@@ -43,7 +43,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
   const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: Date.now().toString(), text: newTache, done: false }] }); setNewTache(''); } };
   const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
-  const addDepenseToChantier = () => { if (!newDepense.description || !newDepense.montant) return; setDepenses([...depenses, { id: Date.now().toString(), chantierId: view, ...newDepense, montant: parseFloat(newDepense.montant), date: new Date().toISOString().split('T')[0] }]); if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, 1); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' }); setShowQuickMateriau(false); };
+  const addDepenseToChantier = () => {
+    if (!newDepense.description || !newDepense.montant) return;
+    const qty = parseInt(newDepense.quantite) || 1;
+    setDepenses([...depenses, {
+      id: Date.now().toString(),
+      chantierId: view,
+      description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
+      montant: parseFloat(newDepense.montant),
+      categorie: newDepense.categorie,
+      date: new Date().toISOString().split('T')[0]
+    }]);
+    if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
+    setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+    setShowQuickMateriau(false);
+  };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
   const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) return; setPointages([...pointages, { id: Date.now().toString(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
   const handleEditPointage = (id, field, value) => setPointages(pointages.map(p => p.id === id ? { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value } : p));
@@ -448,25 +462,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               >
                 <Download size={20} />
               </a>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `Photo ${photoPreview.categorie} - ${ch.nom}`,
-                      text: `Photo du chantier ${ch.nom}`,
-                      url: photoPreview.src
-                    }).catch(() => {});
-                  } else {
-                    navigator.clipboard.writeText(photoPreview.src);
-                    alert('Lien copie dans le presse-papier');
-                  }
-                }}
-                className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors"
-                title="Partager"
-              >
-                <Share2 size={20} />
-              </button>
               <button onClick={() => setPhotoPreview(null)} className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors">
                 <X size={20} />
               </button>
@@ -493,55 +488,124 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
-        {/* Modal Ajout Rapide Matériau */}
+        {/* Modal Ajouter une dépense */}
         {showQuickMateriau && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowQuickMateriau(false)}>
             <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
-              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}> Ajouter un matériau</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>Ajout rapide de dépense matériau</p>
-              
+              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>💰 Ajouter une dépense</h3>
+              <p className={`text-sm ${textMuted} mb-4`}>Enregistrez un achat ou une dépense sur ce chantier</p>
+
               {/* Sélection depuis catalogue */}
               {catalogue && catalogue.length > 0 && (
                 <div className="mb-4">
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Depuis le catalogue</label>
-                  <select 
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} 
-                    value={newDepense.catalogueId} 
-                    onChange={e => { 
-                      const item = catalogue.find(c => c.id === e.target.value); 
-                      if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: (item.prixAchat || item.prix || 0).toString() })); 
+                  <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Depuis le catalogue</label>
+                  <select
+                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                    value={newDepense.catalogueId}
+                    onChange={e => {
+                      const item = catalogue.find(c => c.id === e.target.value);
+                      if (item) {
+                        const prix = item.prixAchat || item.prix || 0;
+                        setNewDepense(p => ({
+                          ...p,
+                          catalogueId: e.target.value,
+                          description: item.nom,
+                          prixUnitaire: prix.toString(),
+                          montant: (prix * (p.quantite || 1)).toString()
+                        }));
+                      }
                     }}
                   >
                     <option value="">Choisir un article...</option>
-                    {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}€)</option>)}
+                    {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}€/{c.unite || 'unité'})</option>)}
                   </select>
                 </div>
               )}
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Description *</label>
+                  <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Description *</label>
                   <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
                 </div>
+
+                {/* Quantité et prix unitaire */}
+                {newDepense.catalogueId && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Quantité</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const qty = Math.max(1, (parseInt(newDepense.quantite) || 1) - 1);
+                            const prix = parseFloat(newDepense.prixUnitaire) || 0;
+                            setNewDepense(p => ({...p, quantite: qty, montant: (prix * qty).toString()}));
+                          }}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                        >-</button>
+                        <input
+                          type="number"
+                          min="1"
+                          className={`flex-1 px-3 py-2.5 border rounded-xl text-center ${inputBg}`}
+                          value={newDepense.quantite}
+                          onChange={e => {
+                            const qty = parseInt(e.target.value) || 1;
+                            const prix = parseFloat(newDepense.prixUnitaire) || 0;
+                            setNewDepense(p => ({...p, quantite: qty, montant: (prix * qty).toString()}));
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const qty = (parseInt(newDepense.quantite) || 1) + 1;
+                            const prix = parseFloat(newDepense.prixUnitaire) || 0;
+                            setNewDepense(p => ({...p, quantite: qty, montant: (prix * qty).toString()}));
+                          }}
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                        >+</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Prix unitaire</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                          value={newDepense.prixUnitaire}
+                          onChange={e => {
+                            const prix = parseFloat(e.target.value) || 0;
+                            const qty = parseInt(newDepense.quantite) || 1;
+                            setNewDepense(p => ({...p, prixUnitaire: e.target.value, montant: (prix * qty).toString()}));
+                          }}
+                        />
+                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Montant TTC *</label>
-                  <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                  <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant total TTC *</label>
+                  <div className="relative">
+                    <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
+                  </div>
                 </div>
+
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
+                  <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Catégorie</label>
                   <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
                     <option value="Matériaux">Matériaux</option>
                     <option value="Outillage">Outillage</option>
                     <option value="Location">Location</option>
                     <option value="Sous-traitance">Sous-traitance</option>
+                    <option value="Transport">Transport</option>
                     <option value="Autre">Autre</option>
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex gap-3 mt-6">
-                <button onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '' }); }} className={`flex-1 px-4 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
-                <button onClick={addDepenseToChantier} disabled={!newDepense.description || !newDepense.montant} className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50" style={{background: couleur}}>Ajouter</button>
+                <button onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' }); }} className={`flex-1 px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                <button onClick={addDepenseToChantier} disabled={!newDepense.description || !newDepense.montant} className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50 min-h-[44px]" style={{background: couleur}}>Ajouter</button>
               </div>
             </div>
           </div>

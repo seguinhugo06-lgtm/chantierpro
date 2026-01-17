@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare } from 'lucide-react';
 
-export default function Clients({ clients, setClients, devis, chantiers, onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
+export default function Clients({ clients, setClients, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
@@ -156,6 +156,7 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
           {[
             ['chantiers', <Home size={14} />, 'Chantiers'],
             ['documents', <FileText size={14} />, 'Documents'],
+            ['echanges', <MessageSquare size={14} />, 'Échanges'],
             ['photos', <Camera size={14} />, 'Photos']
           ].map(([k, icon, label]) => (
             <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
@@ -210,6 +211,62 @@ export default function Clients({ clients, setClients, devis, chantiers, onSubmi
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'echanges' && (
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
+            {(() => {
+              const clientEchanges = echanges.filter(e => e.client_id === cl.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+              if (clientEchanges.length === 0) return (
+                <div className="text-center py-8">
+                  <p className={`${textMuted} mb-4`}>Aucun échange enregistré</p>
+                  <div className="flex justify-center gap-3">
+                    <a href={`mailto:${cl.email || ''}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                      <Mail size={16} /> Envoyer un email
+                    </a>
+                    <a href={`sms:${cl.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
+                      <MessageCircle size={16} /> Envoyer un SMS
+                    </a>
+                  </div>
+                </div>
+              );
+              return (
+                <div className="space-y-3">
+                  <div className="flex justify-end gap-2 mb-4">
+                    <a href={`mailto:${cl.email || ''}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                      <Mail size={14} /> Email
+                    </a>
+                    <a href={`sms:${cl.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      <MessageCircle size={14} /> SMS
+                    </a>
+                  </div>
+                  {clientEchanges.map(e => (
+                    <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        e.type === 'email' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600') :
+                        e.type === 'sms' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600') :
+                        e.type === 'whatsapp' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600') :
+                        (isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-200 text-slate-500')
+                      }`}>
+                        {e.type === 'email' ? <Mail size={18} /> : e.type === 'whatsapp' ? <MessageCircle size={18} /> : <MessageCircle size={18} />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className={`font-medium ${textPrimary}`}>
+                            {e.type === 'email' ? 'Email' : e.type === 'whatsapp' ? 'WhatsApp' : 'SMS'}
+                            {e.document && <span className={`text-sm ${textMuted} ml-2`}>· {e.document}</span>}
+                          </p>
+                          <span className={`text-xs ${textMuted}`}>{new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        {e.objet && <p className={`text-sm ${textSecondary} mt-1`}>{e.objet}</p>}
+                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{e.montant.toLocaleString()}€</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 

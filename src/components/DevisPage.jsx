@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, XCircle, Building2 } from 'lucide-react';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage }) {
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, addEchange }) {
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -532,8 +532,19 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     setTimeout(() => w.print(), 500);
   };
 
-  const sendWhatsApp = (doc) => { const client = clients.find(c => c.id === doc.client_id); const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank'); if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' }); };
-  const sendEmail = (doc) => { const client = clients.find(c => c.id === doc.client_id); window.location.href = `mailto:${client?.email || ''}?subject=${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}&body=Bonjour,%0A%0AVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.%0A%0ACordialement`; if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' }); };
+  const sendWhatsApp = (doc) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
+    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+  };
+  const sendEmail = (doc) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    window.location.href = `mailto:${client?.email || ''}?subject=${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}&body=Bonjour,%0A%0AVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.%0A%0ACordialement`;
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
+    if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+  };
 
   const Snackbar = () => snackbar && (
     <div className="fixed bottom-6 left-1/2 z-50 animate-snackbar">

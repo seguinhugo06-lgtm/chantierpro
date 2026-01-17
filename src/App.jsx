@@ -152,11 +152,16 @@ export default function App() {
     { id: 'cat2', nom: 'Peinture blanc mat', prix: 35, prixAchat: 18, unite: 'pot', categorie: 'Peinture', favori: true }
   ]);
   const [depenses, setDepenses] = useState([]);
+  const [echanges, setEchanges] = useState([]);
   const [ajustements, setAjustements] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    // Show onboarding if user hasn't seen it before
+    return !localStorage.getItem('onboarding_completed');
+  });
   const [showSignUp, setShowSignUp] = useState(false);
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
   const [authError, setAuthError] = useState('');
@@ -217,6 +222,7 @@ export default function App() {
   const addEvent = (data) => { const e = { id: Date.now().toString(), ...data }; setEvents([...events, e]); return e; };
   const addAjustement = (data) => { const a = { id: Date.now().toString(), ...data }; setAjustements([...ajustements, a]); return a; };
   const deleteAjustement = (id) => setAjustements(ajustements.filter(a => a.id !== id));
+  const addEchange = (data) => { const e = { id: Date.now().toString(), date: new Date().toISOString(), ...data }; setEchanges([...echanges, e]); return e; };
   const deductStock = (catalogueId, qty) => setCatalogue(catalogue.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
 
   const getChantierBilan = (chantierId) => {
@@ -621,14 +627,462 @@ export default function App() {
         {/* Page content */}
         <main className={`p-3 sm:p-4 lg:p-6 ${tc.text}`}>
           {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
-          {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} />}
+          {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} addEchange={addEchange} />}
           {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
           {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-          {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
+          {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
           {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
           {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
           {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
         </main>
+      </div>
+
+      {/* Global Help Modal */}
+      {showHelp && <HelpModal showHelp={showHelp} setShowHelp={setShowHelp} isDark={isDark} couleur={couleur} tc={tc} />}
+
+      {/* Onboarding Modal for first-time users */}
+      {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
+    </div>
+  );
+}
+
+// Help Modal Component
+function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
+  const [helpSection, setHelpSection] = useState('overview');
+
+  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+
+  const helpSections = {
+    overview: {
+      title: "Bienvenue",
+      titleFull: "Bienvenue dans ChantierPro",
+      icon: "🏠",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>💡 Exemple concret</h4>
+            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+            </p>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>📍 Par où commencer ?</h4>
+            <ol className={`text-sm space-y-2 ${textSecondary}`}>
+              <li>1. Configurez votre entreprise dans <strong>Paramètres</strong></li>
+              <li>2. Ajoutez vos prestations dans le <strong>Catalogue</strong></li>
+              <li>3. Créez votre premier <strong>Client</strong> et <strong>Devis</strong></li>
+            </ol>
+          </div>
+        </div>
+      )
+    },
+    devis: {
+      title: "Devis & Factures",
+      titleFull: "Créer et gérer vos devis",
+      icon: "📋",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Créez des devis professionnels et transformez-les en factures en un clic.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Créer un devis</h5>
+              <p className={`text-sm ${textSecondary}`}>Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>2. Envoyer au client</h5>
+              <p className={`text-sm ${textSecondary}`}>Générez le PDF et envoyez-le par WhatsApp ou email directement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>3. Convertir en facture</h5>
+              <p className={`text-sm ${textSecondary}`}>Devis accepté ? Demandez un acompte ou facturez directement.</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    chantiers: {
+      title: "Chantiers",
+      titleFull: "Suivre vos chantiers",
+      icon: "🏗️",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Suivez chaque chantier : dépenses, heures, avancement et rentabilité.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>📊 Suivi financier</h5>
+              <p className={`text-sm ${textSecondary}`}>Ajoutez vos dépenses (matériaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>📸 Photos de chantier</h5>
+              <p className={`text-sm ${textSecondary}`}>Prenez des photos avant/pendant/après pour documenter votre travail.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>✅ To-do list</h5>
+              <p className={`text-sm ${textSecondary}`}>Créez des tâches pour ne rien oublier sur chaque chantier.</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    rentabilite: {
+      title: "Rentabilité",
+      titleFull: "Comprendre votre marge",
+      icon: "💰",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>La marge nette est calculée automatiquement :</p>
+          <div className={`p-4 rounded-xl font-mono text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+            <p className={textPrimary}>Marge = CA - Dépenses - Main d'œuvre</p>
+          </div>
+          <div className="space-y-2">
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+              <span className="text-2xl">🟢</span>
+              <div>
+                <p className={`font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{">"} 40% = Excellent</p>
+                <p className={`text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>Vous êtes très rentable</p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+              <span className="text-2xl">🟡</span>
+              <div>
+                <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>20-40% = Correct</p>
+                <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Marge standard du BTP</p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+              <span className="text-2xl">🔴</span>
+              <div>
+                <p className={`font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>{"<"} 20% = Attention</p>
+                <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>Revoyez vos prix ou coûts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    astuces: {
+      title: "Astuces",
+      titleFull: "Astuces pour gagner du temps",
+      icon: "⚡",
+      content: (
+        <div className="space-y-4">
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📱 Utilisez le sur mobile</h4>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>ChantierPro fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>🎨 Personnalisez</h4>
+            <p className={`text-sm ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>Dans Paramètres, ajoutez votre logo et choisissez votre couleur. Vos devis auront un aspect professionnel unique.</p>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>📊 Mode discret</h4>
+            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>Cliquez sur l'œil pour masquer les montants. Pratique quand un client regarde votre écran !</p>
+          </div>
+        </div>
+      )
+    }
+  };
+
+  const currentSection = helpSections[helpSection];
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className={`p-4 sm:p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                <span className="text-xl">❓</span>
+              </div>
+              <div>
+                <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
+                <p className={`text-sm ${textSecondary}`}>Tout savoir sur ChantierPro</p>
+              </div>
+            </div>
+            <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <span className={textPrimary}>✕</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Content with sidebar for desktop */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - Desktop only */}
+          <div className={`hidden md:block w-48 border-r ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'} p-3`}>
+            <div className="space-y-1">
+              {Object.entries(helpSections).map(([key, section]) => (
+                <button
+                  key={key}
+                  onClick={() => setHelpSection(key)}
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-left transition-colors ${
+                    helpSection === key
+                      ? 'text-white'
+                      : isDark
+                        ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                  style={helpSection === key ? { background: couleur } : {}}
+                >
+                  <span>{section.icon}</span>
+                  <span>{section.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tabs - Mobile only */}
+          <div className={`md:hidden border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} flex-shrink-0`}>
+            <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
+              {Object.entries(helpSections).map(([key, section]) => (
+                <button
+                  key={key}
+                  onClick={() => setHelpSection(key)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm whitespace-nowrap min-h-[40px] transition-colors flex-shrink-0 ${
+                    helpSection === key
+                      ? 'text-white'
+                      : isDark
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  style={helpSection === key ? { background: couleur } : {}}
+                >
+                  <span>{section.icon}</span>
+                  <span>{section.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 p-5 sm:p-6 overflow-y-auto">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl">{currentSection.icon}</span>
+              <h3 className={`text-xl font-bold ${textPrimary}`}>{currentSection.titleFull || currentSection.title}</h3>
+            </div>
+            {currentSection.content}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Onboarding Modal for first-time users
+function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
+  const [step, setStep] = useState(0);
+
+  const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+
+  const steps = [
+    {
+      icon: "👋",
+      title: "Bienvenue sur ChantierPro",
+      subtitle: "Votre assistant de gestion pour artisan",
+      content: (
+        <div className="space-y-4">
+          <p className={`text-center ${textSecondary}`}>
+            Gérez vos devis, factures et chantiers en toute simplicité. Tout est pensé pour vous faire gagner du temps.
+          </p>
+          <div className="grid grid-cols-3 gap-3 mt-6">
+            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
+              <span className="text-3xl mb-2 block">📋</span>
+              <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Devis en 5 min</p>
+            </div>
+            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+              <span className="text-3xl mb-2 block">💰</span>
+              <p className={`text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Marge automatique</p>
+            </div>
+            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
+              <span className="text-3xl mb-2 block">📱</span>
+              <p className={`text-sm font-medium ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>Mobile friendly</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: "📋",
+      title: "Créez vos devis rapidement",
+      subtitle: "Du devis à la facture en 2 clics",
+      content: (
+        <div className="space-y-4">
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full" style={{ background: couleur + '30' }}></div>
+                <div>
+                  <p className={`font-medium ${textPrimary}`}>DEV-2025-001</p>
+                  <p className={`text-sm ${textSecondary}`}>Client: Dupont Marie</p>
+                </div>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>
+            </div>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-white'} space-y-2`}>
+              <div className="flex justify-between text-sm">
+                <span className={textSecondary}>Rénovation cuisine complète</span>
+                <span className={textPrimary}>5 000 €</span>
+              </div>
+              <div className={`pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'} flex justify-between`}>
+                <span className="font-medium">Total TTC</span>
+                <span className="font-bold text-lg" style={{ color: couleur }}>5 500 €</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <span className={`px-3 py-1.5 rounded-lg ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>✓ Accepté</span>
+            <span className={textSecondary}>→</span>
+            <span className={`px-3 py-1.5 rounded-lg ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>💰 Facturer</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      icon: "🏗️",
+      title: "Suivez vos chantiers",
+      subtitle: "Dépenses, heures et rentabilité",
+      content: (
+        <div className="space-y-4">
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className={`font-bold ${textPrimary}`}>Rénovation Dupont</p>
+                <p className={`text-sm ${textSecondary}`}>En cours</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-emerald-500">67%</p>
+                <p className={`text-xs ${textSecondary}`}>Marge nette</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                <p className="font-bold text-blue-500">5 500€</p>
+                <p className={`text-xs ${textSecondary}`}>CA</p>
+              </div>
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                <p className="font-bold text-red-500">1 200€</p>
+                <p className={`text-xs ${textSecondary}`}>Dépenses</p>
+              </div>
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                <p className="font-bold text-emerald-500">3 685€</p>
+                <p className={`text-xs ${textSecondary}`}>Marge</p>
+              </div>
+            </div>
+          </div>
+          <p className={`text-center text-sm ${textSecondary}`}>
+            Ajoutez vos dépenses et heures pour calculer automatiquement votre rentabilité
+          </p>
+        </div>
+      )
+    },
+    {
+      icon: "🚀",
+      title: "Prêt à commencer ?",
+      subtitle: "Votre première étape",
+      content: (
+        <div className="space-y-4">
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-gradient-to-br from-slate-700 to-slate-800' : 'bg-gradient-to-br from-slate-50 to-white'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <ol className="space-y-4">
+              <li className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>1</div>
+                <div>
+                  <p className={`font-medium ${textPrimary}`}>Configurez votre entreprise</p>
+                  <p className={`text-sm ${textSecondary}`}>Allez dans Paramètres pour ajouter votre logo et vos infos</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>2</div>
+                <div>
+                  <p className={`font-medium ${textPrimary}`}>Créez votre premier client</p>
+                  <p className={`text-sm ${textSecondary}`}>Ajoutez les coordonnées de vos clients pour les retrouver facilement</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>3</div>
+                <div>
+                  <p className={`font-medium ${textPrimary}`}>Créez votre premier devis</p>
+                  <p className={`text-sm ${textSecondary}`}>Générez un devis professionnel en quelques minutes</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+          <p className={`text-center text-sm ${textSecondary}`}>
+            Besoin d'aide ? Cliquez sur <strong>?</strong> en haut à droite à tout moment
+          </p>
+        </div>
+      )
+    }
+  ];
+
+  const currentStep = steps[step];
+
+  const completeOnboarding = () => {
+    localStorage.setItem('onboarding_completed', 'true');
+    setShowOnboarding(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden`}>
+        {/* Progress bar */}
+        <div className={`h-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+          <div className="h-full transition-all duration-300" style={{ width: `${((step + 1) / steps.length) * 100}%`, background: couleur }}></div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 sm:p-8">
+          <div className="text-center mb-6">
+            <span className="text-5xl mb-4 block">{currentStep.icon}</span>
+            <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>{currentStep.title}</h2>
+            <p className={textSecondary}>{currentStep.subtitle}</p>
+          </div>
+
+          {currentStep.content}
+        </div>
+
+        {/* Footer */}
+        <div className={`p-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'} flex items-center justify-between`}>
+          <div className="flex gap-1.5">
+            {steps.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setStep(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all ${i === step ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                style={i === step ? { background: couleur } : {}}
+              />
+            ))}
+          </div>
+          <div className="flex gap-3">
+            {step > 0 && (
+              <button
+                onClick={() => setStep(step - 1)}
+                className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              >
+                Précédent
+              </button>
+            )}
+            {step < steps.length - 1 ? (
+              <button
+                onClick={() => setStep(step + 1)}
+                className="px-6 py-2.5 text-white rounded-xl min-h-[44px] hover:shadow-lg transition-all"
+                style={{ background: couleur }}
+              >
+                Suivant
+              </button>
+            ) : (
+              <button
+                onClick={completeOnboarding}
+                className="px-6 py-2.5 text-white rounded-xl min-h-[44px] hover:shadow-lg transition-all"
+                style={{ background: couleur }}
+              >
+                C'est parti ! 🚀
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
