@@ -1,36 +1,84 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown } from 'lucide-react';
 
 const DEMO_CA = [{ mois: 'août', ca: 4200 }, { mois: 'sept.', ca: 5100 }, { mois: 'oct.', ca: 3800 }, { mois: 'nov.', ca: 6500 }, { mois: 'déc.', ca: 4700 }, { mois: 'janv.', ca: 3885 }];
 const DEMO_MARGES = [{ nom: 'Rénovation SDB', marge: 67, id: 'd1' }, { nom: 'Cuisine moderne', marge: 52, id: 'd2' }, { nom: 'Peinture T3', marge: 45, id: 'd3' }, { nom: 'Parquet salon', marge: 38, id: 'd4' }, { nom: 'Terrasse bois', marge: 28, id: 'd5' }];
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark }) {
-  // Theme classes
+export default function Dashboard({ chantiers = [], clients = [], devis = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
   const [todoFilter, setTodoFilter] = useState('all');
+  const [showCADetail, setShowCADetail] = useState(null); // 'ca' | 'month' | null
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [helpSection, setHelpSection] = useState('overview');
+  const [showEncaisseDetail, setShowEncaisseDetail] = useState(false);
+  const [showEnAttenteDetail, setShowEnAttenteDetail] = useState(false);
+
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
+
+  // Theme classes
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
+  const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
 
   const stats = useMemo(() => {
     const now = new Date(), thisMonth = now.getMonth(), thisYear = now.getFullYear();
     const caParMois = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(thisYear, thisMonth - i, 1);
-      const ca = safeDevis.filter(dv => { const dd = new Date(dv.date); return dd.getMonth() === d.getMonth() && dd.getFullYear() === d.getFullYear() && dv.statut !== 'brouillon'; }).reduce((s, dv) => s + (dv.total_ht || 0), 0);
-      caParMois.push({ mois: d.toLocaleDateString('fr-FR', { month: 'short' }), ca, fill: i === 0 ? couleur : '#94a3b8' });
+      const monthDevis = safeDevis.filter(dv => { const dd = new Date(dv.date); return dd.getMonth() === d.getMonth() && dd.getFullYear() === d.getFullYear() && dv.statut !== 'brouillon'; });
+      const ca = monthDevis.reduce((s, dv) => s + (dv.total_ht || 0), 0);
+      caParMois.push({
+        mois: d.toLocaleDateString('fr-FR', { month: 'short' }),
+        moisFull: d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+        ca,
+        fill: i === 0 ? couleur : '#94a3b8',
+        devis: monthDevis,
+        nbDevis: monthDevis.filter(d => d.type === 'devis').length,
+        nbFactures: monthDevis.filter(d => d.type === 'facture').length
+      });
     }
     const hasRealData = caParMois.some(m => m.ca > 0);
-    const margesChantiers = safeChantiers.map(ch => ({ nom: (ch.nom || '').substring(0, 14), marge: getChantierBilan?.(ch.id)?.tauxMarge || 0, id: ch.id })).sort((a, b) => b.marge - a.marge);
+    const margesChantiers = safeChantiers.map(ch => ({ nom: (ch.nom || '').substring(0, 14), marge: getChantierBilan?.(ch.id)?.tauxMarge || 0, id: ch.id, ...getChantierBilan?.(ch.id) })).sort((a, b) => b.marge - a.marge);
     const totalCA = safeDevis.filter(d => d.type === 'facture' || d.statut === 'accepte').reduce((s, d) => s + (d.total_ht || 0), 0);
     const totalDep = safeDepenses.reduce((s, d) => s + (d.montant || 0), 0);
     const totalMO = safePointages.reduce((s, p) => s + (p.heures * (safeEquipe.find(e => e.id === p.employeId)?.coutHoraireCharge || 28)), 0);
     const marge = totalCA - totalDep - totalMO, tauxMarge = totalCA > 0 ? (marge / totalCA) * 100 : 0;
     const factures = safeDevis.filter(d => d.type === 'facture');
-    const encaisse = factures.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0);
-    const enAttente = factures.filter(f => f.statut !== 'payee').reduce((s, f) => s + (f.total_ttc || 0), 0);
+    const facturesPayees = factures.filter(f => f.statut === 'payee');
+    const facturesEnAttente = factures.filter(f => f.statut !== 'payee');
+    const encaisse = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
+    const enAttente = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const chantiersActifs = safeChantiers.filter(c => c.statut === 'en_cours').length;
     const devisEnAttente = safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
     const tendance = caParMois[4]?.ca > 0 ? ((caParMois[5]?.ca - caParMois[4]?.ca) / caParMois[4]?.ca) * 100 : 0;
-    return { caParMois: hasRealData ? caParMois : DEMO_CA.map((d, i) => ({ ...d, fill: i === 5 ? couleur : '#94a3b8' })), margesChantiers: margesChantiers.length > 0 ? margesChantiers : DEMO_MARGES, hasRealData, totalCA: hasRealData ? totalCA : 15200, marge: hasRealData ? marge : 8700, tauxMarge: hasRealData ? tauxMarge : 57.3, encaisse: hasRealData ? encaisse : 11390, enAttente: hasRealData ? enAttente : 3810, chantiersActifs, devisEnAttente, tendance: hasRealData ? tendance : 15 };
+
+    // Breakdown for CA detail
+    const caBreakdown = {
+      devisAcceptes: safeDevis.filter(d => d.type === 'devis' && d.statut === 'accepte').reduce((s, d) => s + (d.total_ht || 0), 0),
+      facturesPaye: factures.filter(f => f.statut === 'payee').reduce((s, f) => s + (f.total_ht || 0), 0),
+      facturesEnCours: factures.filter(f => f.statut !== 'payee').reduce((s, f) => s + (f.total_ht || 0), 0),
+    };
+
+    return {
+      caParMois: hasRealData ? caParMois : DEMO_CA.map((d, i) => ({ ...d, fill: i === 5 ? couleur : '#94a3b8', moisFull: d.mois, nbDevis: 2, nbFactures: 1, devis: [] })),
+      margesChantiers: margesChantiers.length > 0 ? margesChantiers : DEMO_MARGES,
+      hasRealData,
+      totalCA: hasRealData ? totalCA : 15200,
+      marge: hasRealData ? marge : 8700,
+      tauxMarge: hasRealData ? tauxMarge : 57.3,
+      encaisse: hasRealData ? encaisse : 11390,
+      enAttente: hasRealData ? enAttente : 3810,
+      facturesPayees: hasRealData ? facturesPayees : [],
+      facturesEnAttente: hasRealData ? facturesEnAttente : [],
+      chantiersActifs,
+      devisEnAttente,
+      tendance: hasRealData ? tendance : 15,
+      caBreakdown,
+      totalDep,
+      totalMO
+    };
   }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, getChantierBilan, couleur]);
 
   const actions = useMemo(() => {
@@ -56,91 +104,604 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
   const formatMoney = (n) => modeDiscret ? '·····' : `${(n || 0).toLocaleString('fr-FR')} €`;
   const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
 
-  // Classes conditionnelles pour le thème
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
-  const btnBg = isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200';
-
-  const KPICard = ({ icon: Icon, label, value, sub, trend, color, detail }) => (
-    <div className={`rounded-2xl border p-5 ${cardBg} hover:shadow-md transition-shadow`}>
+  // KPI Card with click handler
+  const KPICard = ({ icon: Icon, label, value, sub, trend, color, onClick, clickable }) => (
+    <div
+      onClick={onClick}
+      className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${clickable ? 'cursor-pointer' : ''}`}
+    >
       <div className="flex items-start justify-between">
-        <div className="p-2.5 rounded-xl" style={{ background: `${color}20` }}><Icon size={22} style={{ color }} /></div>
-        {trend !== undefined && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${trend >= 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-800') : (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-800')}`}>{trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%</div>}
+        <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl" style={{ background: `${color}20` }}><Icon size={18} className="sm:w-[22px] sm:h-[22px]" style={{ color }} /></div>
+        <div className="flex items-center gap-2">
+          {trend !== undefined && (
+            <div className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${trend >= 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-800') : (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-800')}`}>
+              {trend >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%
+            </div>
+          )}
+          {clickable && <ChevronRight size={14} className={textMuted} />}
+        </div>
       </div>
-      <p className={`text-sm ${textSecondary} mt-3`}>{label}</p>
-      <p className="text-2xl font-bold mt-1" style={{ color }}>{value}</p>
-      {sub && <p className={`text-xs ${textSecondary} mt-1`}>{sub}</p>}
-      {detail && <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} space-y-1 text-xs ${textSecondary}`}>{detail}</div>}
+      <p className={`text-xs sm:text-sm ${textSecondary} mt-2 sm:mt-3`}>{label}</p>
+      <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1" style={{ color }}>{value}</p>
+      {sub && <p className={`text-[10px] sm:text-xs ${textSecondary} mt-0.5 sm:mt-1`}>{sub}</p>}
     </div>
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
-          <p className={textSecondary}>Vue d'ensemble de votre activité</p>
+  // Help sections content - Complete guide for artisans
+  const helpSections = {
+    overview: {
+      title: "Bienvenue",
+      titleFull: "Bienvenue dans ChantierPro",
+      icon: Home,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Exemple concret</h4>
+            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              Jean, plombier, utilise ChantierPro pour : creer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+            </p>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>Par ou commencer ?</h4>
+            <ol className={`text-sm space-y-2 ${textSecondary}`}>
+              <li>1. Configurez votre entreprise dans <strong>Parametres</strong></li>
+              <li>2. Ajoutez vos prestations dans le <strong>Catalogue</strong></li>
+              <li>3. Creez votre premier <strong>Client</strong> et <strong>Devis</strong></li>
+            </ol>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {!stats.hasRealData && <span className={`px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}> Données démo</span>}
-          <button onClick={() => setModeDiscret(!modeDiscret)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${btnBg}`}>{modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}{modeDiscret ? 'Afficher' : 'Masquer'}</button>
+      )
+    },
+    devis: {
+      title: "Devis",
+      titleFull: "Creer et gerer vos devis",
+      icon: FileText,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Creez des devis professionnels et transformez-les en factures en un clic.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Creer un devis</h5>
+              <p className={`text-sm ${textSecondary}`}>Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>2. Envoyer au client</h5>
+              <p className={`text-sm ${textSecondary}`}>Generez le PDF et envoyez-le par WhatsApp ou email directement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>3. Convertir en facture</h5>
+              <p className={`text-sm ${textSecondary}`}>Devis accepte ? Demandez un acompte ou facturez directement.</p>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}><Lightbulb size={16} /> Astuce</h4>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+              Remplissez votre catalogue une fois, puis ajoutez vos prestations en 2 clics dans tous vos devis !
+            </p>
+          </div>
         </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} />
-        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} />
-        <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} color="#10b981" />
-        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} color="#f59e0b" detail={!modeDiscret && <><p>· {stats.chantiersActifs} chantiers en cours</p><p>· {stats.devisEnAttente} devis en attente</p></>} />
-      </div>
-
-      {/* Graphiques */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className={`rounded-2xl border p-5 ${cardBg}`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><DollarSign size={18} style={{ color: couleur }} />CA sur 6 mois</h3>
-          {!modeDiscret ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={stats.caParMois}>
-                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
-                <Bar dataKey="ca" radius={[8, 8, 0, 0]}>{stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}</Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>}
+      )
+    },
+    chantiers: {
+      title: "Chantiers",
+      titleFull: "Suivre vos chantiers",
+      icon: Hammer,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Suivez chaque chantier : depenses, heures, avancement et rentabilite.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Suivi financier</h5>
+              <p className={`text-sm ${textSecondary}`}>Ajoutez vos depenses (materiaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Photos avant/apres</h5>
+              <p className={`text-sm ${textSecondary}`}>Documentez votre travail pour vos clients et en cas de litige.</p>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}><AlertTriangle size={16} /> Alertes marge</h4>
+            <p className={`text-sm ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+              Marge &lt; 15% = orange, &lt; 0% = rouge. Surveillez ces alertes pour ajuster vos prix !
+            </p>
+          </div>
         </div>
+      )
+    },
+    planning: {
+      title: "Planning",
+      titleFull: "Organiser votre agenda",
+      icon: Calendar,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Planifiez vos interventions, RDV clients et relances dans un calendrier visuel.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Vue mois ou semaine</h5>
+              <p className={`text-sm ${textSecondary}`}>Basculez entre les vues pour avoir une vision globale ou detaillee de votre emploi du temps.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Types d'evenements</h5>
+              <p className={`text-sm ${textSecondary}`}>Chantier (bleu), RDV Client (vert), Relance (orange), Urgence (rouge).</p>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}><Lightbulb size={16} /> Astuce</h4>
+            <p className={`text-sm ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>
+              Cliquez sur un jour pour ajouter rapidement un evenement, ou sur un evenement pour le modifier.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    clients: {
+      title: "Clients",
+      titleFull: "Gerer vos clients",
+      icon: Users,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Centralisez les informations de vos clients et retrouvez leur historique en un clic.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiche client complete</h5>
+              <p className={`text-sm ${textSecondary}`}>Nom, adresse, telephone, email - tout ce qu'il faut pour les contacter et facturer.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Historique</h5>
+              <p className={`text-sm ${textSecondary}`}>Consultez tous les devis et chantiers lies a un client depuis sa fiche.</p>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}><Lightbulb size={16} /> Astuce</h4>
+            <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              Lors de la creation d'un devis, vous pouvez creer un nouveau client directement sans quitter la page.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    equipe: {
+      title: "Equipe",
+      titleFull: "Gerer votre equipe",
+      icon: Users,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Gerez vos employes, suivez leurs heures et calculez le cout de main d'oeuvre par chantier.</p>
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiches employes</h5>
+              <p className={`text-sm ${textSecondary}`}>Nom, role, taux horaire et cout charge. Ces infos servent a calculer la rentabilite.</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Pointages</h5>
+              <p className={`text-sm ${textSecondary}`}>Enregistrez les heures par chantier. Le cout MO se calcule automatiquement dans la marge.</p>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}><Lightbulb size={16} /> Cout charge</h4>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+              Le cout charge inclut salaire + charges sociales. C'est ce qui est utilise pour calculer la vraie marge de vos chantiers.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    rentabilite: {
+      title: "Rentabilite",
+      titleFull: "Comprendre votre marge",
+      icon: TrendingUp,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>La rentabilite est la cle de votre succes. Voici comment la lire :</p>
+          <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
+            <h5 className={`font-bold mb-3 ${textPrimary}`}>Calcul de la marge</h5>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className={textSecondary}>Chiffre d'affaires</span><span className={textPrimary}>10 000 EUR</span></div>
+              <div className="flex justify-between"><span className={textSecondary}>- Materiaux</span><span className="text-red-500">- 3 000 EUR</span></div>
+              <div className="flex justify-between"><span className={textSecondary}>- Main d'oeuvre</span><span className="text-red-500">- 2 000 EUR</span></div>
+              <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><span className="font-bold">= Marge nette</span><span className="font-bold text-emerald-500">5 000 EUR (50%)</span></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+              <p className="text-xl font-bold text-emerald-500">30%+</p>
+              <p className={`text-xs ${textSecondary}`}>Excellent</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'}`}>
+              <p className="text-xl font-bold text-amber-500">15-30%</p>
+              <p className={`text-xs ${textSecondary}`}>Correct</p>
+            </div>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-red-900/30' : 'bg-red-50'}`}>
+              <p className="text-xl font-bold text-red-500">&lt;15%</p>
+              <p className={`text-xs ${textSecondary}`}>Attention</p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    catalogue: {
+      title: "Catalogue",
+      titleFull: "Vos articles et tarifs",
+      icon: Package,
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Centralisez vos articles et prestations avec les prix de vente et d'achat.</p>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>Exemple plombier</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className={isDark ? 'text-purple-200' : 'text-purple-700'}>Pose robinet mitigeur</span><span>85 EUR / unite</span></div>
+              <div className="flex justify-between"><span className={isDark ? 'text-purple-200' : 'text-purple-700'}>Tube PER 16mm</span><span>3 EUR / metre</span></div>
+              <div className="flex justify-between"><span className={isDark ? 'text-purple-200' : 'text-purple-700'}>Deplacement</span><span>45 EUR / forfait</span></div>
+            </div>
+          </div>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>Favoris</h4>
+            <p className={`text-sm ${textSecondary}`}>Marquez vos articles les plus utilises avec l'etoile pour les retrouver en haut lors de la creation d'un devis.</p>
+          </div>
+        </div>
+      )
+    }
+  };
 
-        <div className={`rounded-2xl border p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-                <TrendingUp size={16} className="text-white" />
+  // CA Detail Modal
+  if (showCADetail) {
+    const isMonthView = showCADetail === 'month' && selectedMonth;
+    const monthData = isMonthView ? stats.caParMois.find(m => m.moisFull === selectedMonth) : null;
+
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => { setShowCADetail(null); setSelectedMonth(null); }}>
+        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isMonthView && (
+                  <button onClick={() => { setShowCADetail('ca'); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <ArrowLeft size={20} className={textPrimary} />
+                  </button>
+                )}
+                <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}>
+                  <DollarSign size={20} style={{ color: couleur }} />
+                </div>
+                <h2 className={`font-bold text-lg ${textPrimary}`}>
+                  {isMonthView ? `CA ${monthData?.moisFull}` : 'Détail du Chiffre d\'Affaires'}
+                </h2>
               </div>
-              Rentabilité Chantiers
-            </h3>
-            {stats.margesChantiers.length > 0 && !modeDiscret && (
-              <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textSecondary}`}>
-                {stats.margesChantiers.length} chantier{stats.margesChantiers.length > 1 ? 's' : ''}
-              </span>
+              <button onClick={() => { setShowCADetail(null); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textPrimary} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+            {isMonthView ? (
+              <>
+                <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <p className={`text-sm ${textSecondary}`}>Total HT</p>
+                  <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(monthData?.ca || 0)}</p>
+                  <p className={`text-sm ${textSecondary} mt-1`}>{monthData?.nbDevis || 0} devis · {monthData?.nbFactures || 0} factures</p>
+                </div>
+                {monthData?.devis?.length > 0 && (
+                  <div>
+                    <h4 className={`font-semibold mb-3 ${textPrimary}`}>Documents du mois</h4>
+                    <div className="space-y-2">
+                      {monthData.devis.map(d => (
+                        <div key={d.id} onClick={() => { setSelectedDevis?.(d); setPage?.('devis'); setShowCADetail(null); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                          <div className="flex items-center gap-3">
+                            {d.type === 'facture' ? <Receipt size={18} className="text-purple-500" /> : <FileText size={18} className="text-blue-500" />}
+                            <div>
+                              <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
+                              <p className={`text-xs ${textSecondary}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                            </div>
+                          </div>
+                          <p className="font-bold" style={{ color: couleur }}>{formatMoney(d.total_ht)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <p className={`text-sm ${textSecondary}`}>Total CA (6 derniers mois)</p>
+                  <p className="text-3xl font-bold" style={{ color: couleur }}>{formatMoney(stats.totalCA)}</p>
+                </div>
+
+                <div>
+                  <h4 className={`font-semibold mb-3 ${textPrimary}`}>Répartition</h4>
+                  <div className="space-y-3">
+                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <CheckCircle size={18} className="text-emerald-500" />
+                        <span className={textSecondary}>Devis acceptés</span>
+                      </div>
+                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.devisAcceptes)}</span>
+                    </div>
+                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <Receipt size={18} className="text-purple-500" />
+                        <span className={textSecondary}>Factures payées</span>
+                      </div>
+                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesPaye)}</span>
+                    </div>
+                    <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <Clock size={18} className="text-amber-500" />
+                        <span className={textSecondary}>Factures en attente</span>
+                      </div>
+                      <span className={`font-bold ${textPrimary}`}>{formatMoney(stats.caBreakdown.facturesEnCours)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className={`font-semibold mb-3 ${textPrimary}`}>Par mois (cliquez pour détails)</h4>
+                  <div className="space-y-2">
+                    {stats.caParMois.map((m, i) => (
+                      <div key={i} onClick={() => { setSelectedMonth(m.moisFull); setShowCADetail('month'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <div>
+                          <p className={`font-medium capitalize ${textPrimary}`}>{m.moisFull}</p>
+                          <p className={`text-xs ${textSecondary}`}>{m.nbDevis || 0} devis · {m.nbFactures || 0} factures</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold" style={{ color: i === 5 ? couleur : textSecondary }}>{formatMoney(m.ca)}</p>
+                          <ChevronRight size={16} className={textMuted} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Encaissé Detail Modal
+  if (showEncaisseDetail) {
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEncaisseDetail(false)}>
+        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                  <CheckCircle size={20} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className={`font-bold text-lg ${textPrimary}`}>Factures encaissées</h2>
+              </div>
+              <button onClick={() => setShowEncaisseDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textPrimary} />
+              </button>
+            </div>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+              <p className={`text-sm ${textSecondary}`}>Total encaissé</p>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(stats.encaisse)}</p>
+              <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesPayees.length} facture{stats.facturesPayees.length > 1 ? 's' : ''} payée{stats.facturesPayees.length > 1 ? 's' : ''}</p>
+            </div>
+            {stats.facturesPayees.length > 0 ? (
+              <div className="space-y-2">
+                {stats.facturesPayees.sort((a, b) => new Date(b.date) - new Date(a.date)).map(f => {
+                  const client = safeClients.find(c => c.id === f.client_id);
+                  return (
+                    <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEncaisseDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <div className="flex items-center gap-3">
+                        <Receipt size={18} className="text-emerald-500" />
+                        <div>
+                          <p className={`font-medium ${textPrimary}`}>{f.numero}</p>
+                          <p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                      </div>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(f.total_ttc)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={`text-center py-8 ${textSecondary}`}>
+                <Receipt size={32} className="mx-auto mb-2 opacity-30" />
+                <p>Aucune facture encaissée</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // En Attente Detail Modal
+  if (showEnAttenteDetail) {
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowEnAttenteDetail(false)}>
+        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                  <Clock size={20} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <h2 className={`font-bold text-lg ${textPrimary}`}>Factures en attente</h2>
+              </div>
+              <button onClick={() => setShowEnAttenteDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textPrimary} />
+              </button>
+            </div>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'}`}>
+              <p className={`text-sm ${textSecondary}`}>À encaisser</p>
+              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{formatMoney(stats.enAttente)}</p>
+              <p className={`text-sm ${textSecondary} mt-1`}>{stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente</p>
+            </div>
+            {stats.facturesEnAttente.length > 0 ? (
+              <div className="space-y-2">
+                {stats.facturesEnAttente.sort((a, b) => new Date(a.date) - new Date(b.date)).map(f => {
+                  const client = safeClients.find(c => c.id === f.client_id);
+                  const daysSince = Math.floor((new Date() - new Date(f.date)) / 86400000);
+                  const isOverdue = daysSince > 30;
+                  return (
+                    <div key={f.id} onClick={() => { setSelectedDevis?.(f); setPage?.('devis'); setShowEnAttenteDetail(false); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer ${isOverdue ? (isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100') : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')}`}>
+                      <div className="flex items-center gap-3">
+                        <Receipt size={18} className={isOverdue ? 'text-red-500' : 'text-amber-500'} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className={`font-medium ${textPrimary}`}>{f.numero}</p>
+                            {isOverdue && <span className="px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-500 rounded">{daysSince}j</span>}
+                          </div>
+                          <p className={`text-xs ${textSecondary}`}>{client?.nom || 'Client'} · {new Date(f.date).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                      </div>
+                      <p className={`font-bold ${isOverdue ? 'text-red-500' : 'text-amber-600 dark:text-amber-400'}`}>{formatMoney(f.total_ttc)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={`text-center py-8 ${textSecondary}`}>
+                <Receipt size={32} className="mx-auto mb-2 opacity-30" />
+                <p>Aucune facture en attente</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Help Modal - Fixed layout
+  if (showHelp) {
+    const currentSection = helpSections[helpSection];
+    const SectionIcon = currentSection.icon;
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
+        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-2xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl" style={{ background: `${couleur}20` }}>
+                  <HelpCircle size={20} style={{ color: couleur }} />
+                </div>
+                <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
+              </div>
+              <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textPrimary} />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs - Horizontal scrollable for mobile and desktop */}
+          <div className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
+              {Object.entries(helpSections).map(([key, section]) => {
+                const TabIcon = section.icon;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setHelpSection(key)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm whitespace-nowrap min-h-[40px] transition-colors flex-shrink-0 ${
+                      helpSection === key
+                        ? 'text-white'
+                        : isDark
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    style={helpSection === key ? { background: couleur } : {}}
+                  >
+                    <TabIcon size={16} />
+                    <span>{section.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-5 overflow-y-auto">
+            <div className="flex items-center gap-3 mb-4">
+              <SectionIcon size={24} style={{ color: couleur }} />
+              <h3 className={`text-xl font-bold ${textPrimary}`}>{currentSection.titleFull || currentSection.title}</h3>
+            </div>
+            {currentSection.content}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
+          <p className={`text-sm sm:text-base ${textSecondary}`}>Vue d'ensemble de votre activité</p>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {!stats.hasRealData && <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>Demo</span>}
+        </div>
+      </div>
+
+      {/* KPI Cards - now clickable */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} onClick={() => setShowCADetail('ca')} clickable />
+        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} onClick={() => setShowHelp(true) || setHelpSection('rentabilite')} clickable />
+        <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} sub={`${stats.facturesPayees.length} facture${stats.facturesPayees.length > 1 ? 's' : ''}`} color="#10b981" onClick={() => setShowEncaisseDetail(true)} clickable />
+        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
+      </div>
+
+      {/* Charts */}
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><DollarSign size={16} style={{ color: couleur }} />CA sur 6 mois</h3>
+            <button onClick={() => setShowCADetail('ca')} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
+              Voir détails
+            </button>
+          </div>
+          {!modeDiscret ? (
+            <ResponsiveContainer width="100%" height={180} className="sm:!h-[220px]">
+              <BarChart data={stats.caParMois}>
+                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} width={35} />
+                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
+                <Bar dataKey="ca" radius={[6, 6, 0, 0]} onClick={(data) => { setSelectedMonth(data.moisFull); setShowCADetail('month'); }} cursor="pointer">
+                  {stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : <div className={`h-[180px] sm:h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={24} className="mr-2" />Masqué</div>}
+        </div>
+
+        {/* Improved Rentability Section */}
+        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}>
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+                <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
+              </div>
+              Rentabilité par chantier
+            </h3>
+            <button onClick={() => { setShowHelp(true); setHelpSection('rentabilite'); }} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Comprendre la rentabilité">
+              <HelpCircle size={14} className={textMuted} />
+            </button>
+          </div>
+
           {modeDiscret ? (
-            <div className={`h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={32} className="mr-2" />Masqué</div>
+            <div className={`h-[180px] sm:h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={24} className="mr-2" />Masqué</div>
           ) : stats.margesChantiers.length === 0 ? (
-            <div className={`h-[220px] flex flex-col items-center justify-center ${textSecondary}`}>
-              <Hammer size={40} className="mb-3 opacity-30" />
-              <p>Aucun chantier</p>
+            <div className={`h-[180px] sm:h-[220px] flex flex-col items-center justify-center ${textSecondary}`}>
+              <Hammer size={32} className="mb-2 opacity-30" />
+              <p className="text-sm">Aucun chantier</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-2 sm:space-y-3 max-h-[180px] sm:max-h-[220px] overflow-y-auto pr-1">
               {stats.margesChantiers.slice(0, 6).map((ch, idx) => {
-                const bilan = getChantierBilan?.(ch.id);
-                const ca = bilan?.caHT || 0;
-                const margeAmount = bilan?.marge || 0;
                 const isPositive = ch.marge >= 0;
                 const isGood = ch.marge >= 30;
                 const isWarning = ch.marge >= 0 && ch.marge < 15;
@@ -149,7 +710,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
                   <div
                     key={ch.id}
                     onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }}
-                    className={`group p-3 rounded-xl cursor-pointer transition-all border ${
+                    className={`group p-2.5 sm:p-3 rounded-xl cursor-pointer transition-all duration-200 border hover:-translate-y-0.5 ${
                       isDark
                         ? `border-slate-700 hover:border-slate-600 ${isBad ? 'bg-red-900/20' : isGood ? 'bg-emerald-900/10' : 'bg-slate-800/50'}`
                         : `border-slate-100 hover:border-slate-200 ${isBad ? 'bg-red-50' : isGood ? 'bg-emerald-50/50' : 'bg-slate-50/50'}`
@@ -157,19 +718,19 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {idx === 0 && isGood && <Medal size={14} className="text-yellow-500 flex-shrink-0" />}
+                        {isBad && <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />}
                         <span className={`text-sm font-medium ${textPrimary} truncate`}>{ch.nom}</span>
-                        {idx === 0 && isGood && <span className="text-xs">🏆</span>}
-                        {isBad && <span className="text-xs">⚠️</span>}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          isBad ? 'bg-red-100 text-red-700' : isGood ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {ch.marge.toFixed(0)}%
-                        </span>
-                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        isBad ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
+                        : isGood ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+                        : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')
+                      }`}>
+                        {ch.marge.toFixed(0)}%
+                      </span>
                     </div>
-                    <div className="relative h-2 rounded-full overflow-hidden bg-slate-200">
+                    <div className="relative h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-600">
                       <div
                         className={`absolute left-0 top-0 h-full rounded-full transition-all ${
                           isBad ? 'bg-gradient-to-r from-red-500 to-red-400'
@@ -179,12 +740,10 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
                         style={{ width: `${Math.min(Math.max(ch.marge, 0), 100)}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className={`text-xs ${textMuted}`}>
-                        CA: {formatMoney(ca)}
-                      </span>
-                      <span className={`text-xs font-medium ${isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'}`}>
-                        {isPositive ? '+' : ''}{formatMoney(margeAmount)}
+                    <div className="flex items-center justify-between mt-2 text-xs">
+                      <span className={textMuted}>CA: {formatMoney(ch.caHT || 0)}</span>
+                      <span className={`font-medium ${isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        {isPositive ? '+' : ''}{formatMoney(ch.marge * (ch.caHT || 0) / 100)}
                       </span>
                     </div>
                   </div>
@@ -196,48 +755,48 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
       </div>
 
       {/* Actions + Top/Flop */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className={`lg:col-span-2 rounded-2xl border p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><AlertCircle size={18} style={{ color: couleur }} />À faire aujourd'hui{actions.length > 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
-            <div className="flex gap-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Factures'], ['alerte', 'Alertes']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-3 py-1 rounded-lg text-xs font-medium ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className={`lg:col-span-2 rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
+            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><AlertCircle size={16} style={{ color: couleur }} />À faire{actions.length > 0 && <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
+            <div className="flex gap-1 overflow-x-auto pb-1 -mb-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Fact.'], ['alerte', 'Alert.']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap min-h-[32px] ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
           </div>
           {filteredActions.length === 0 ? (
-            <div className={`rounded-2xl p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={32} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} /></div><h4 className={`text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour ! </h4></div>
+            <div className={`rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={24} className={`sm:w-8 sm:h-8 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} /></div><h4 className={`text-base sm:text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour !</h4></div>
           ) : (
-            <div className="space-y-2 max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
+            <div className="space-y-2 max-h-[240px] sm:max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
               const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
               const pBorder = a.priority === 'urgent' ? 'border-l-4 border-red-500' : a.priority === 'high' ? 'border-l-4 border-orange-400' : 'border-l-4 border-slate-200';
               const iconBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/50' : 'bg-red-100') : a.priority === 'high' ? (isDark ? 'bg-orange-900/50' : 'bg-orange-100') : (isDark ? 'bg-slate-700' : 'bg-slate-100');
               const iconColor = a.priority === 'urgent' ? (isDark ? 'text-red-400' : 'text-red-600') : a.priority === 'high' ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-slate-500';
               return (
-                <div key={a.id} onClick={a.action} className={`group flex items-center gap-4 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all ${pBorder} ${pBg}`}>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}><a.icon size={20} className={iconColor} /></div>
-                  <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className={`font-medium truncate ${textPrimary}`}>{a.title}</p>{a.priority === 'urgent' && <span className="px-2 py-0.5 text-xs font-bold text-white rounded bg-red-500 animate-pulse">URGENT</span>}</div><p className={`text-sm ${textSecondary} truncate`}>{a.desc}</p></div>
-                  {a.days !== undefined && <span className={`text-xs ${textSecondary}`}>{a.days}j</span>}
+                <div key={a.id} onClick={a.action} className={`group flex items-center gap-2 sm:gap-4 p-2.5 sm:p-4 rounded-lg sm:rounded-xl cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[52px] ${pBorder} ${pBg}`}>
+                  <div className={`w-8 sm:w-10 h-8 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}><a.icon size={16} className={`sm:w-5 sm:h-5 ${iconColor}`} /></div>
+                  <div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 sm:gap-2"><p className={`text-sm sm:text-base font-medium truncate ${textPrimary}`}>{a.title}</p>{a.priority === 'urgent' && <span className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white rounded bg-red-500 animate-pulse">URGENT</span>}</div><p className={`text-xs sm:text-sm ${textSecondary} truncate`}>{a.desc}</p></div>
+                  {a.days !== undefined && <span className={`text-[10px] sm:text-xs ${textSecondary} flex-shrink-0`}>{a.days}j</span>}
                 </div>
               );
             })}</div>
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className={`rounded-2xl border p-5 ${cardBg}`}>
-            <h3 className={`font-bold mb-4 flex items-center gap-2 ${textPrimary}`}> Top Rentabilité</h3>
-            {top3.length === 0 ? <p className={`text-center ${textSecondary} py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
-              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                <div className="flex items-center gap-3"><span className="text-xl">{['', '', ''][i]}</span><p className={`font-medium text-sm ${textPrimary}`}>{ch.nom}</p></div>
-                <span className="font-bold" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
+        <div className="space-y-3 sm:space-y-4">
+          <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
+            <h3 className={`font-medium sm:font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><Trophy size={16} className="text-yellow-500" /> Top Rentabilité</h3>
+            {top3.length === 0 ? <p className={`text-center text-sm ${textSecondary} py-3 sm:py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
+              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-2 sm:p-3 rounded-lg sm:rounded-xl cursor-pointer transition-colors min-h-[44px] ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0"><span className="text-base sm:text-xl">{i === 0 ? <Medal size={18} className="text-yellow-500" /> : i === 1 ? <Medal size={18} className="text-slate-400" /> : <Medal size={18} className="text-amber-600" />}</span><p className={`font-medium text-xs sm:text-sm ${textPrimary} truncate`}>{ch.nom}</p></div>
+                <span className="font-bold text-sm sm:text-base flex-shrink-0 ml-2" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
             ))}
           </div>
           {aSurveiller.length > 0 && (
-            <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-red-300' : 'text-red-800'}`}>⚠️  À surveiller</h3>
+            <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+              <h3 className={`font-medium sm:font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base ${isDark ? 'text-red-300' : 'text-red-800'}`}><AlertTriangle size={16} /> À surveiller</h3>
               {aSurveiller.slice(0, 3).map(ch => (
-                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-3 rounded-xl mb-2 cursor-pointer hover:shadow-sm border ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
-                  <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-800'}`}>{ch.nom}</p>
-                  <span className={`text-xs font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{ch.marge.toFixed(0)}%</span>
+                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-2 sm:p-3 rounded-lg sm:rounded-xl mb-2 cursor-pointer hover:shadow-sm border min-h-[44px] ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
+                  <p className={`font-medium text-xs sm:text-sm ${isDark ? 'text-red-300' : 'text-red-800'} truncate`}>{ch.nom}</p>
+                  <span className={`text-xs font-bold flex-shrink-0 ml-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>{ch.marge.toFixed(0)}%</span>
                 </div>
               ))}
             </div>
@@ -245,13 +804,13 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], de
         </div>
       </div>
 
-      {/* Actions rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ icon: FileText, label: 'Nouveau devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis', create: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers', create: 'chantier' }, { icon: Users, label: 'Nouveau client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients', create: 'client' }, { icon: Calendar, label: 'Planning', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
-          <button key={b.target} onClick={() => { if (b.create && setCreateMode) setCreateMode(p => ({...p, [b.create]: true})); setPage?.(b.target); }} className={`flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all ${cardBg}`}>
-            <b.icon size={24} style={{ color: b.color }} />
-            <span className={`text-sm font-medium ${textPrimary}`}>{b.label}</span>
-            <span className={`text-xs ${textSecondary}`}>{b.sub}</span>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+        {[{ icon: FileText, label: 'Nouveau devis', labelShort: 'Devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis', create: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', labelShort: 'Chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers', create: 'chantier' }, { icon: Users, label: 'Nouveau client', labelShort: 'Client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients', create: 'client' }, { icon: Calendar, label: 'Planning', labelShort: 'Agenda', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
+          <button key={b.target} onClick={() => { if (b.create && setCreateMode) setCreateMode(p => ({...p, [b.create]: true})); setPage?.(b.target); }} className={`group flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 min-h-[80px] sm:min-h-[100px] ${cardBg}`}>
+            <div className="p-2 rounded-lg transition-colors group-hover:scale-110" style={{ background: `${b.color}15` }}><b.icon size={18} className="sm:w-5 sm:h-5 transition-transform" style={{ color: b.color }} /></div>
+            <span className={`text-xs sm:text-sm font-medium text-center ${textPrimary}`}><span className="sm:hidden">{b.labelShort}</span><span className="hidden sm:inline">{b.label}</span></span>
+            <span className={`text-[10px] sm:text-xs ${textSecondary} text-center`}>{b.sub}</span>
           </button>
         ))}
       </div>

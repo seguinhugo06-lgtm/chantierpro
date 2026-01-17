@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, XCircle, Building2 } from 'lucide-react';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode }) {
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage }) {
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -18,6 +19,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const [showClientModal, setShowClientModal] = useState(false);
   const [showAcompteModal, setShowAcompteModal] = useState(false);
@@ -27,6 +29,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showChantierModal, setShowChantierModal] = useState(false);
+  const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   
   // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
   useEffect(() => {
@@ -56,13 +60,27 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
   useEffect(() => { if (createMode) { setMode('create'); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
-  const filtered = devis.filter(d => {
+  const statusOrder = { brouillon: 0, envoye: 1, accepte: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: 6 };
+
+  const getSortedDevis = (items) => {
+    switch (sortBy) {
+      case 'status':
+        return [...items].sort((a, b) => (statusOrder[a.statut] ?? 99) - (statusOrder[b.statut] ?? 99));
+      case 'amount':
+        return [...items].sort((a, b) => (b.total_ttc || 0) - (a.total_ttc || 0));
+      case 'recent':
+      default:
+        return [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+  };
+
+  const filtered = getSortedDevis(devis.filter(d => {
     if (filter === 'devis' && d.type !== 'devis') return false;
     if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
     if (search && !d.numero?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }));
 
   // Calcul des totaux avec multi-taux TVA
   const calculateTotals = () => {
@@ -149,24 +167,25 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     
     const client = clients.find(c => c.id === form.clientId);
     
-    onSubmit({ 
-      numero: generateNumero(form.type), 
-      type: form.type, 
-      client_id: form.clientId, 
+    onSubmit({
+      numero: generateNumero(form.type),
+      type: form.type,
+      client_id: form.clientId,
       client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
-      chantier_id: form.chantierId, 
-      date: form.date, 
-      validite: form.validite, 
-      statut: 'brouillon', 
-      sections: form.sections, 
-      lignes: form.sections.flatMap(s => s.lignes), 
+      chantier_id: form.chantierId,
+      date: form.date,
+      validite: form.validite,
+      statut: 'brouillon',
+      sections: form.sections,
+      lignes: form.sections.flatMap(s => s.lignes),
       tvaParTaux: totals.tvaParTaux,
       tvaDetails: totals.tvaParTaux, // Pour affichage PDF
-      remise: form.remise, 
-      total_ht: totals.htApresRemise, 
-      tva: totals.totalTVA, 
-      total_ttc: totals.ttc, 
-      notes: form.notes 
+      tvaRate: form.tvaDefaut, // Taux TVA par défaut pour acompte/facture
+      remise: form.remise,
+      total_ht: totals.htApresRemise,
+      tva: totals.totalTVA,
+      total_ttc: totals.ttc,
+      notes: form.notes
     });
     
     setMode('list');
@@ -200,9 +219,10 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     if (!selected || selected.statut !== 'accepte') return alert('Le devis doit être accepté');
     if (getAcompteFacture(selected.id)) return alert('Un acompte existe déjà ');
     const montantHT = selected.total_ht * (acomptePct / 100);
-    const tva = montantHT * (selected.tvaRate / 100);
+    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
+    const tva = montantHT * (tvaRate / 100);
     const ttc = montantHT + tva;
-    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate: selected.tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
+    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
     onSubmit(facture);
     onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
@@ -215,11 +235,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const acompte = getAcompteFacture(selected.id);
     const montantAcompteHT = acompte ? acompte.total_ht : 0;
     const montantSoldeHT = selected.total_ht - montantAcompteHT;
-    const tva = montantSoldeHT * (selected.tvaRate / 100);
+    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
+    const tva = montantSoldeHT * (tvaRate / 100);
     const ttc = montantSoldeHT + tva;
     const lignes = [...(selected.lignes || [])];
-    if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà  facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
-    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate: selected.tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
+    if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
+    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
     onSubmit(facture);
     onUpdate(selected.id, { statut: 'facture' });
     setSelected({ ...selected, statut: 'facture' });
@@ -473,11 +494,14 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const sendEmail = (doc) => { const client = clients.find(c => c.id === doc.client_id); window.location.href = `mailto:${client?.email || ''}?subject=${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}&body=Bonjour,%0A%0AVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.%0A%0ACordialement`; if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' }); };
 
   const Snackbar = () => snackbar && (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-pulse">
-      <div className={`flex items-center gap-4 px-5 py-3 rounded-xl shadow-2xl ${snackbar.type === 'success' ? 'bg-emerald-600' : 'bg-slate-800'} text-white`}>
-        <span>{snackbar.message}</span>
-        {snackbar.action && <button onClick={snackbar.action.onClick} className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium">{snackbar.action.label}</button>}
-        <button onClick={() => setSnackbar(null)} className="hover:bg-white/20 rounded-full p-1">x</button>
+    <div className="fixed bottom-6 left-1/2 z-50 animate-snackbar">
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-sm ${snackbar.type === 'success' ? 'bg-emerald-600/95' : snackbar.type === 'error' ? 'bg-red-600/95' : 'bg-slate-800/95'} text-white min-w-[280px] max-w-[90vw]`}>
+        <span className="text-lg">{snackbar.type === 'success' ? '✅' : snackbar.type === 'error' ? '❌' : 'ℹ️'}</span>
+        <span className="flex-1 text-sm font-medium">{snackbar.message}</span>
+        {snackbar.action && <button onClick={snackbar.action.onClick} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium whitespace-nowrap transition-colors">{snackbar.action.label}</button>}
+        <button onClick={() => setSnackbar(null)} className="hover:bg-white/20 rounded-full p-1.5 transition-colors" aria-label="Fermer">
+          <X size={16} />
+        </button>
       </div>
     </div>
   );
@@ -485,15 +509,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
+      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
       <div className="bg-white rounded-2xl border p-6 text-center">
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
         <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
-          <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 rounded-xl">Effacer</button>
-          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl" style={{background: couleur}}>[OK] Valider</button>
+          <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Effacer</button>
+          <button onClick={saveSignature} className="px-6 py-3 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}><Check size={16} />Valider</button>
         </div>
       </div>
       <Snackbar />
@@ -510,27 +534,63 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const isDevis = selected.type === 'devis';
     const canAcompte = isDevis && selected.statut === 'accepte' && !acompteFacture;
     const canFacturer = isDevis && ['accepte', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0;
+    const hasChantier = !!selected.chantier_id;
+    const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
+    const canCreateChantier = isDevis && !hasChantier && addChantier;
+
+    const openChantierModal = () => {
+      if (!addChantier) return;
+      const description = selected.lignes?.[0]?.description || selected.sections?.[0]?.lignes?.[0]?.description || 'Nouveau chantier';
+      setChantierForm({
+        nom: `${client?.nom || 'Client'} - ${description}`.substring(0, 60),
+        adresse: client?.adresse || ''
+      });
+      setShowChantierModal(true);
+    };
+
+    const createChantierFromDevis = () => {
+      if (!addChantier || !chantierForm.nom) return;
+      const newChantier = addChantier({
+        nom: chantierForm.nom,
+        client_id: selected.client_id,
+        adresse: chantierForm.adresse || client?.adresse || '',
+        date_debut: new Date().toISOString().split('T')[0],
+        date_fin: '',
+        statut: 'en_cours',
+        avancement: 0,
+        notes: `Cree depuis devis ${selected.numero}`,
+        budget_estime: selected.total_ht
+      });
+      // Link devis to new chantier
+      onUpdate(selected.id, { chantier_id: newChantier.id });
+      setSelected({ ...selected, chantier_id: newChantier.id });
+      setShowChantierModal(false);
+      setSnackbar({
+        type: 'success',
+        message: `Chantier "${newChantier.nom}" cree`,
+        action: setPage ? { label: 'Voir le chantier', onClick: () => setPage('chantiers') } : null
+      });
+    };
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4 flex-wrap">
-          <button onClick={() => { setMode('list'); setSelected(null); }} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">←</button>
-          <h1 className={`text-xl font-bold ${textPrimary}`}>{selected.numero}</h1>
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><ArrowLeft size={20} className={textPrimary} /></button>
+          <h1 className={`text-base sm:text-xl font-bold ${textPrimary}`}>{selected.numero}</h1>
           <span className={`px-3 py-1 rounded-full text-sm ${selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') : selected.statut === 'facture' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700') : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')}`}>
             {{ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', acompte_facture: 'Acompte facturé', facture: 'Facturé', payee: 'Payée', refuse: 'Refusé' }[selected.statut] || selected.statut}
           </span>
           <div className="flex-1" />
-          <button onClick={() => { downloadPDF(selected); }} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-2"> <span className="hidden sm:inline">PDF</span></button>
-          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="p-2 hover:bg-red-100 text-red-500 rounded-xl"></button>
+          <button onClick={() => { downloadPDF(selected); }} className="px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] text-sm transition-all hover:shadow-lg" title="Télécharger PDF"><Download size={16} /><span>PDF</span></button>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 flex-wrap">
-          {isDevis && selected.statut === 'envoye' && <button onClick={() => setMode('sign')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}> Faire signer</button>}
-          {canAcompte && <button onClick={() => setShowAcompteModal(true)} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl"> Demander un acompte</button>}
+        <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
+          {isDevis && selected.statut === 'envoye' && <button onClick={() => setMode('sign')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}>✍️ Faire signer</button>}
+          {canAcompte && <button onClick={() => setShowAcompteModal(true)} className="px-3 sm:px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><CreditCard size={14} /><span>Acompte</span></button>}
           {canFacturer && (
             <div className="relative group">
-              <button onClick={createSolde} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl">
+              <button onClick={createSolde} className="px-3 sm:px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><Banknote size={14} />
                  {acompteFacture ? `Facturer le solde (${formatMoney(resteAFacturer)})` : 'Facturer intégralement'}
               </button>
               <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10">
@@ -540,9 +600,22 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               </div>
             </div>
           )}
-          {isDevis && selected.statut === 'facture' && <span className="px-4 py-2 bg-green-100 text-green-700 rounded-xl">[OK] Entièrement facturé</span>}
-          <button onClick={() => sendWhatsApp(selected)} className="px-4 py-2 bg-green-500 text-white rounded-xl"> WhatsApp</button>
-          <button onClick={() => sendEmail(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl"> Email</button>
+          {isDevis && selected.statut === 'facture' && <span className="px-4 py-2 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400 rounded-xl flex items-center gap-1.5 text-sm min-h-[44px]">✅ Entièrement facturé</span>}
+          {canCreateChantier && (
+            <button onClick={openChantierModal} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:shadow-lg" style={{background: couleur}}>
+              <Building2 size={14} />
+              <span>Créer chantier</span>
+            </button>
+          )}
+          {hasChantier && linkedChantier && (
+            <button onClick={() => setPage?.('chantiers')} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
+              <Building2 size={14} />
+              <span>{linkedChantier.nom}</span>
+            </button>
+          )}
+          <button onClick={() => sendWhatsApp(selected)} className="px-3 sm:px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><MessageCircle size={14} /><span>WhatsApp</span></button>
+          <button onClick={() => sendEmail(selected)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Mail size={14} /><span>Email</span></button>
+          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="px-3 sm:px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Trash2 size={14} /><span>Supprimer</span></button>
         </div>
 
         {/* Info workflow */}
@@ -550,7 +623,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'}`}>
             <div className="flex items-start gap-3">
               <span className="text-2xl"></span>
-              <div><p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Prochaine étape : Facturation</p><p className={`text-sm mt-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Vous pouvez <strong>demander un acompte</strong> (recommandé pour les gros montants) ou <strong>facturer intégralement</strong>.</p></div>
+              <div>
+                <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Prochaine étape : Facturation</p>
+                <p className={`text-sm mt-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                  {canCreateChantier && <><strong>Créer un chantier</strong> pour suivre les dépenses et le temps, puis </>}
+                  <strong>demander un acompte</strong> (recommandé pour les gros montants) ou <strong>facturer intégralement</strong>.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -570,9 +649,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         )}
 
         {/* Document */}
-        <div className={`rounded-2xl border p-6 ${cardBg}`}>
+        <div className={`rounded-xl sm:rounded-2xl border p-4 sm:p-6 ${cardBg}`}>
           <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}></div>}
               <div><p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p><p className={`text-sm ${textMuted}`}>{entreprise?.adresse}</p></div>
             </div>
@@ -586,7 +665,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
         {/* Timeline */}
         {isDevis && facturesLiees.length > 0 && (
-          <div className={`rounded-2xl border p-6 ${cardBg}`}>
+          <div className={`rounded-xl sm:rounded-2xl border p-4 sm:p-6 ${cardBg}`}>
             <h3 className={`font-semibold mb-4 ${textPrimary}`}>📋 Historique Facturation</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p></div></div>
@@ -643,8 +722,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800"> Pour travaux supérieurs à 1500€ chez particulier, acompte max 30%</div>
               <div className="flex gap-3">
-                <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 rounded-xl">Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-xl">Créer</button>
+                <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
+                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><Check size={16} />Créer</button>
               </div>
             </div>
           </div>
@@ -671,6 +750,72 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </div>
         )}
 
+        {/* Modal création chantier */}
+        {showChantierModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowChantierModal(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-lg animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                  <Building2 size={20} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <h3 className={`text-lg font-bold ${textPrimary}`}>Creer un chantier</h3>
+                  <p className={`text-sm ${textMuted}`}>A partir du devis {selected.numero}</p>
+                </div>
+              </div>
+
+              {/* Récapitulatif financier */}
+              <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
+                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prevu</p>
+                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} € HT`}</p>
+                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR')} € TTC</p>
+              </div>
+
+              {/* Formulaire */}
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom du chantier *</label>
+                  <input
+                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                    value={chantierForm.nom}
+                    onChange={e => setChantierForm(p => ({ ...p, nom: e.target.value }))}
+                    placeholder="Ex: Renovation cuisine"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse du chantier</label>
+                  <input
+                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                    value={chantierForm.adresse}
+                    onChange={e => setChantierForm(p => ({ ...p, adresse: e.target.value }))}
+                    placeholder="Adresse"
+                  />
+                </div>
+              </div>
+
+              {/* Info */}
+              <p className={`text-xs ${textMuted} mt-4`}>
+                Le chantier sera automatiquement lie a ce devis. Le revenu prevu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} €`}) sera utilise pour calculer la marge.
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowChantierModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                  Annuler
+                </button>
+                <button
+                  onClick={createChantierFromDevis}
+                  disabled={!chantierForm.nom}
+                  className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: couleur }}
+                >
+                  <Building2 size={16} /> Creer le chantier
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <Snackbar />
       </div>
     );
@@ -682,11 +827,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const catalogueFiltered = catalogue?.filter(c => !catalogueSearch || c.nom?.toLowerCase().includes(catalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4"><button onClick={() => setMode('list')} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl`}>←</button><h1 className={`text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
-        <div className={`${cardBg} rounded-2xl border p-6 space-y-6`}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} className="px-3 rounded-xl" style={{background: `${couleur}20`, color: couleur}}>+</button></div></div>
+            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}><Plus size={18} /></button></div></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Chantier</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Date</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
           </div>
@@ -703,7 +848,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             {isMicro && <span className={`text-xs px-2 py-1 rounded ${isDark ? 'text-blue-400 bg-blue-900/50' : 'text-blue-600 bg-blue-100'}`}>TVA non applicable (micro)</span>}
           </div>
           
-          {favoris.length >= 3 && <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-100'}`}><p className={`text-sm font-medium mb-2 ${textPrimary}`}>⭐ Favoris</p><div className="flex gap-2 flex-wrap">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 border-slate-600' : 'bg-white hover:bg-amber-100 border-amber-200'}`}>{item.nom} <span className={textMuted}>{item.prix}€</span></button>)}</div></div>}
+          {favoris.length >= 3 && <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-100'}`}><p className={`text-sm font-medium mb-2 ${textPrimary}`}>⭐ Favoris</p><div className="flex gap-2 flex-wrap overflow-x-auto pb-1">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 border-slate-600' : 'bg-white hover:bg-amber-100 border-amber-200'}`}>{item.nom} <span className={textMuted}>{item.prix}€</span></button>)}</div></div>}
           <div><input placeholder=" Rechercher dans le catalogue..." value={catalogueSearch} onChange={e => setCatalogueSearch(e.target.value)} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} />{catalogueSearch && <div className={`mt-2 border rounded-xl max-h-40 overflow-y-auto ${isDark ? 'border-slate-600 bg-slate-800' : 'border-slate-200 bg-white'}`}>{catalogueFiltered.map(item => <button key={item.id} onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }} className={`w-full flex justify-between px-4 py-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} border-b last:border-0 text-left`}><span>{item.nom}</span><span className="text-slate-500">{item.prix}€/{item.unite}</span></button>)}</div>}</div>
           
           {/* Table avec TVA par ligne */}
@@ -725,9 +870,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   {section.lignes.map(l => (
                     <tr key={l.id} className="border-b">
                       <td className="py-2"><input value={l.description} onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)} className={`w-full px-2 py-1 border rounded ${inputBg}`} /></td>
-                      <td><input type="number" value={l.quantite} onChange={e => updateLigne(section.id, l.id, 'quantite', parseFloat(e.target.value))} className={`w-full px-2 py-1 border rounded text-center ${inputBg}`} /></td>
+                      <td><input type="number" value={l.quantite || ''} onChange={e => updateLigne(section.id, l.id, 'quantite', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className={`w-full px-2 py-1 border rounded text-center ${inputBg}`} /></td>
                       <td><input value={l.unite} onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)} className={`w-full px-2 py-1 border rounded text-center ${inputBg}`} /></td>
-                      <td><input type="number" value={l.prixUnitaire} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', parseFloat(e.target.value))} className={`w-full px-2 py-1 border rounded text-right ${inputBg}`} /></td>
+                      <td><input type="number" value={l.prixUnitaire || ''} onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className={`w-full px-2 py-1 border rounded text-right ${inputBg}`} /></td>
                       <td>
                         <select value={l.tva !== undefined ? l.tva : form.tvaDefaut} onChange={e => updateLigne(section.id, l.id, 'tva', parseFloat(e.target.value))} className={`w-full px-1 py-1 border rounded text-center text-xs ${inputBg}`}>
                           <option value={20}>20%</option>
@@ -737,12 +882,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                         </select>
                       </td>
                       <td className={`text-right font-medium ${textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
-                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600">x</button></td>
+                      <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"><X size={16} /></button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-3 text-sm hover:underline" style={{color: couleur}}>+ Ajouter une ligne</button>
+              <button onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)} className="mt-3 text-sm flex items-center gap-1 hover:gap-2 transition-all" style={{color: couleur}}><Plus size={14} />Ajouter une ligne</button>
             </div>
           ))}
           
@@ -768,7 +913,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </div>
           </div>
           
-          <div className={`flex justify-end gap-3 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl" style={{background: couleur}}>Créer le {form.type}</button></div>
+          <div className={`flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}><X size={16} />Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}><Check size={16} />Créer</button></div>
         </div>
         {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
         <Snackbar />
@@ -779,38 +924,51 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === LIST VIEW ===
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4"><h1 className="text-2xl font-bold">Devis & Factures</h1><button onClick={() => setMode('create')} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>+ Nouveau</button></div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={`${cardBg} rounded-xl border p-4`}><p className={`text-xs ${textMuted}`}>Devis en attente</p><p className="text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
-        <div className={`${cardBg} rounded-xl border p-4`}><p className={`text-xs ${textMuted}`}>Devis acceptés</p><p className="text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
-        <div className={`${cardBg} rounded-xl border p-4`}><p className={`text-xs ${textMuted}`}>Factures non payées</p><p className="text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
-        <div className={`${cardBg} rounded-xl border p-4`}><p className={`text-xs ${textMuted}`}>À encaisser</p><p className="text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
+      <div className="flex justify-between items-center flex-wrap gap-3"><h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1><button onClick={() => setMode('create')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}><Plus size={16} /><span className="hidden sm:inline">Nouveau</span></button></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis en attente</p><p className="text-lg sm:text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
+        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis acceptés</p><p className="text-lg sm:text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
+        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Factures non payées</p><p className="text-lg sm:text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
+        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>À encaisser</p><p className="text-lg sm:text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
       </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-xs px-4 py-2 border rounded-xl ${inputBg}`} />
-        {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-lg text-sm ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+      <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
+        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
+        {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+        <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+        {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
-      {filtered.length === 0 ? <div className={`${cardBg} rounded-2xl border p-12 text-center`}><p className="text-5xl mb-4">📋</p><p className={textMuted}>Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl" style={{ background: couleur }}>Créer un devis</button></div> : (
+      {filtered.length === 0 ? <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-8 sm:p-12 text-center`}><p className="text-3xl sm:text-5xl mb-3 sm:mb-4">📋</p><p className={textMuted}>Aucun document</p><button onClick={() => setMode('create')} className="mt-4 px-4 py-2 text-white rounded-xl flex items-center gap-1.5 mx-auto hover:shadow-lg transition-all" style={{ background: couleur }}><Plus size={16} />Créer un devis</button></div> : (
         <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
           const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className={`${cardBg} rounded-xl border p-4 cursor-pointer hover:shadow-md transition-all`}>
-              <div className="flex items-center gap-4">
-                <span className="text-2xl">{d.type === 'facture' ? '' : ''}</span>
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[70px]`}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${d.type === 'facture' ? (isDark ? 'bg-purple-900/30' : 'bg-purple-100') : (isDark ? 'bg-blue-900/30' : 'bg-blue-100')}`}>
+                  {d.type === 'facture' ? <Receipt size={20} className="text-purple-600" /> : <FileText size={20} className="text-blue-600" />}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{d.numero}</p><span>{icon}</span>
-                    {hasAcompte && <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">Acompte</span>}
-                    {d.facture_type === 'acompte' && <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">Acompte</span>}
-                    {d.facture_type === 'solde' && <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Solde</span>}
-                    {d.facture_type === 'totale' && <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">Complète</span>}
+                    <span className="flex items-center gap-1.5 flex-shrink-0">
+                      <p className={`font-semibold ${textPrimary}`}>{d.numero}</p>
+                      {d.statut === 'brouillon' && <Clock size={14} className="text-slate-400 flex-shrink-0" />}
+                      {d.statut === 'envoye' && <Send size={14} className="text-blue-500 flex-shrink-0" />}
+                      {d.statut === 'accepte' && <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />}
+                      {d.statut === 'acompte_facture' && <CreditCard size={14} className="text-purple-500 flex-shrink-0" />}
+                      {d.statut === 'facture' && <Receipt size={14} className="text-green-500 flex-shrink-0" />}
+                      {d.statut === 'payee' && <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />}
+                      {d.statut === 'refuse' && <XCircle size={14} className="text-red-500 flex-shrink-0" />}
+                    </span>
+                    {hasAcompte && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
+                    {d.facture_type === 'acompte' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
+                    {d.facture_type === 'solde' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
+                    {d.facture_type === 'totale' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Complète</span>}
                   </div>
                   <p className={`text-sm ${textMuted}`}>{client?.nom} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="PDF">📥</button>
-                <p className="text-lg font-bold" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
+                <button onClick={(e) => { e.stopPropagation(); downloadPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Télécharger PDF"><Download size={18} className={textMuted} /></button>
+                <p className="text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );
