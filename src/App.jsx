@@ -212,18 +212,18 @@ export default function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
-  // CRUD functions
-  const addClient = (data) => { const c = { id: Date.now().toString(), ...data }; setClients([...clients, c]); return c; };
-  const addDevis = (data) => { const d = { id: Date.now().toString(), ...data }; setDevis([...devis, d]); return d; };
-  const updateDevis = (id, data) => setDevis(devis.map(d => d.id === id ? { ...d, ...data } : d));
-  const deleteDevis = (id) => setDevis(devis.filter(d => d.id !== id));
-  const addChantier = (data) => { const c = { id: Date.now().toString(), ...data }; setChantiers([...chantiers, c]); return c; };
-  const updateChantier = (id, data) => setChantiers(chantiers.map(c => c.id === id ? { ...c, ...data } : c));
-  const addEvent = (data) => { const e = { id: Date.now().toString(), ...data }; setEvents([...events, e]); return e; };
-  const addAjustement = (data) => { const a = { id: Date.now().toString(), ...data }; setAjustements([...ajustements, a]); return a; };
-  const deleteAjustement = (id) => setAjustements(ajustements.filter(a => a.id !== id));
-  const addEchange = (data) => { const e = { id: Date.now().toString(), date: new Date().toISOString(), ...data }; setEchanges([...echanges, e]); return e; };
-  const deductStock = (catalogueId, qty) => setCatalogue(catalogue.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
+  // CRUD functions - using functional setState to avoid stale closure issues
+  const addClient = (data) => { const c = { id: Date.now().toString(), ...data }; setClients(prev => [...prev, c]); return c; };
+  const addDevis = (data) => { const d = { id: Date.now().toString(), ...data }; setDevis(prev => [...prev, d]); return d; };
+  const updateDevis = (id, data) => setDevis(prev => prev.map(d => d.id === id ? { ...d, ...data } : d));
+  const deleteDevis = (id) => setDevis(prev => prev.filter(d => d.id !== id));
+  const addChantier = (data) => { const c = { id: Date.now().toString(), ...data }; setChantiers(prev => [...prev, c]); return c; };
+  const updateChantier = (id, data) => setChantiers(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  const addEvent = (data) => { const e = { id: Date.now().toString(), ...data }; setEvents(prev => [...prev, e]); return e; };
+  const addAjustement = (data) => { const a = { id: Date.now().toString(), ...data }; setAjustements(prev => [...prev, a]); return a; };
+  const deleteAjustement = (id) => setAjustements(prev => prev.filter(a => a.id !== id));
+  const addEchange = (data) => { const e = { id: Date.now().toString(), date: new Date().toISOString(), ...data }; setEchanges(prev => [...prev, e]); return e; };
+  const deductStock = (catalogueId, qty) => setCatalogue(prev => prev.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
 
   const getChantierBilan = (chantierId) => {
     const ch = chantiers.find(c => c.id === chantierId);
