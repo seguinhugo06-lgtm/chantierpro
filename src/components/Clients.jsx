@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap } from 'lucide-react';
+import QuickClientModal from './QuickClientModal';
+import { useConfirm } from '../context/AppContext';
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function Clients({ clients, setClients, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
+  const { confirm } = useConfirm();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
@@ -10,16 +15,18 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
   const textMuted = isDark ? "text-slate-400" : "text-slate-500";
 
   const [show, setShow] = useState(false);
+  const [showQuickModal, setShowQuickModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('chantiers');
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
-  const filtered = clients.filter(c => !search || c.nom?.toLowerCase().includes(search.toLowerCase()) || c.entreprise?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = clients.filter(c => !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
   const getSortedClients = () => {
     const sorted = [...filtered];
@@ -51,7 +58,16 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
-  const deleteClient = (id) => { if (confirm('Supprimer ce client ?')) setClients(clients.filter(c => c.id !== id)); };
+  const deleteClient = async (id) => {
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce client ?' });
+    if (confirmed) setClients(clients.filter(c => c.id !== id));
+  };
+
+  // Quick client creation handler
+  const handleQuickSubmit = (data) => {
+    onSubmit(data);
+    setShowQuickModal(false);
+  };
 
   // Ouvrir un document (devis/facture)
   const openDocument = (doc) => {
@@ -217,15 +233,15 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
         {activeTab === 'echanges' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
-              const clientEchanges = echanges.filter(e => e.client_id === cl.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+              const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
               if (clientEchanges.length === 0) return (
                 <div className="text-center py-8">
                   <p className={`${textMuted} mb-4`}>Aucun échange enregistré</p>
                   <div className="flex justify-center gap-3">
-                    <a href={`mailto:${cl.email || ''}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                    <a href={`mailto:${client.email || ''}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
                       <Mail size={16} /> Envoyer un email
                     </a>
-                    <a href={`sms:${cl.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
+                    <a href={`sms:${client.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
                       <MessageCircle size={16} /> Envoyer un SMS
                     </a>
                   </div>
@@ -234,10 +250,10 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
               return (
                 <div className="space-y-3">
                   <div className="flex justify-end gap-2 mb-4">
-                    <a href={`mailto:${cl.email || ''}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                    <a href={`mailto:${client.email || ''}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
                       <Mail size={14} /> Email
                     </a>
-                    <a href={`sms:${cl.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                    <a href={`sms:${client.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
                       <MessageCircle size={14} /> SMS
                     </a>
                   </div>
@@ -326,11 +342,30 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
   // Liste
   return (
     <div className="space-y-6">
+      {/* Quick Client Modal */}
+      <QuickClientModal
+        isOpen={showQuickModal}
+        onClose={() => setShowQuickModal(false)}
+        onSubmit={handleQuickSubmit}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
       <div className="flex justify-between items-center gap-3">
         <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
-        <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
-          <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowQuickModal(true)}
+            className="px-3 py-2.5 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all"
+            style={{background: `${couleur}20`, color: couleur}}
+            title="Ajout rapide"
+          >
+            <Zap size={16} /><span className="hidden sm:inline">Rapide</span>
+          </button>
+          <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -416,19 +451,25 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                 </div>
               </div>
 
-              <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-                <Plus size={18} />
-                Ajouter mon premier client
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                  <Zap size={18} />
+                  Ajout rapide
+                </button>
+                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                  <Plus size={18} />
+                  Formulaire complet
+                </button>
+              </div>
             </div>
           )}
 
           {/* Simple CTA for search empty state */}
           {search && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-                <Plus size={18} />
-                Ajouter un client
+              <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Zap size={18} />
+                Ajout rapide
               </button>
             </div>
           )}
@@ -453,7 +494,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                         </p>
                       )}
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} className={`p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all absolute top-3 right-3 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-white/80 text-slate-500'}`}>
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[40px] min-h-[40px] flex items-center justify-center sm:opacity-50 sm:hover:opacity-100 ${isDark ? 'bg-slate-700/80 hover:bg-slate-600 text-slate-300' : 'bg-white/90 hover:bg-white text-slate-600 shadow-sm'}`}>
                       <Edit3 size={16} />
                     </button>
                   </div>

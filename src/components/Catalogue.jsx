@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import { Plus, Minus, ArrowLeft, Star, Search, Edit3, Trash2, Package, AlertTriangle, Box, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { useConfirm, useToast } from '../context/AppContext';
+import { generateId } from '../lib/utils';
+import { useDebounce } from '../hooks/useDebounce';
 
 const CATEGORIES = ['Tous', 'Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Autre'];
 const UNITES = ['unité', 'h', 'm²', 'ml', 'forfait', 'jour', 'pot', 'sac', 'rouleau', 'kg', 'm³', 'palette'];
 
 export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) {
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -15,12 +21,13 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
   const [show, setShow] = useState(false);
   const [editId, setEditId] = useState(null);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [catFilter, setCatFilter] = useState('Tous');
   const [showStock, setShowStock] = useState(false);
   const [sortBy, setSortBy] = useState('name'); // name, price, stock
   const [form, setForm] = useState({ nom: '', prix: '', prixAchat: '', unite: 'unité', categorie: 'Autre', favori: false, stock_actuel: '', stock_seuil_alerte: '' });
 
-  const filtered = catalogue.filter(c => (catFilter === 'Tous' || c.categorie === catFilter) && (!search || c.nom?.toLowerCase().includes(search.toLowerCase())));
+  const filtered = catalogue.filter(c => (catFilter === 'Tous' || c.categorie === catFilter) && (!debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase())));
 
   const getSortedItems = () => {
     const sorted = [...filtered];
@@ -40,8 +47,8 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
   const getMargeBrute = (prix, prixAchat) => { const p = parseFloat(prix) || 0, a = parseFloat(prixAchat) || 0; return p === 0 ? 0 : ((p - a) / p) * 100; };
 
   const submit = () => {
-    if (!form.nom || !form.prix) return alert('Nom et prix requis');
-    const data = { id: editId || Date.now().toString(), ...form, prix: parseFloat(form.prix), prixAchat: parseFloat(form.prixAchat) || 0, stock_actuel: form.stock_actuel !== '' ? parseInt(form.stock_actuel) : undefined, stock_seuil_alerte: form.stock_seuil_alerte !== '' ? parseInt(form.stock_seuil_alerte) : undefined };
+    if (!form.nom || !form.prix) return showToast('Nom et prix requis', 'error');
+    const data = { id: editId || generateId(), ...form, prix: parseFloat(form.prix), prixAchat: parseFloat(form.prixAchat) || 0, stock_actuel: form.stock_actuel !== '' ? parseInt(form.stock_actuel) : undefined, stock_seuil_alerte: form.stock_seuil_alerte !== '' ? parseInt(form.stock_seuil_alerte) : undefined };
     if (editId) setCatalogue(catalogue.map(c => c.id === editId ? data : c));
     else setCatalogue([...catalogue, data]);
     setShow(false); setEditId(null); setForm({ nom: '', prix: '', prixAchat: '', unite: 'unité', categorie: 'Autre', favori: false, stock_actuel: '', stock_seuil_alerte: '' });
@@ -49,7 +56,10 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
 
   const startEdit = (item) => { setForm({ nom: item.nom || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '', unite: item.unite || 'unité', categorie: item.categorie || 'Autre', favori: item.favori || false, stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '' }); setEditId(item.id); setShow(true); };
   const toggleFavori = (id) => setCatalogue(catalogue.map(c => c.id === id ? { ...c, favori: !c.favori } : c));
-  const deleteItem = (id) => { if (confirm('Supprimer ?')) setCatalogue(catalogue.filter(c => c.id !== id)); };
+  const deleteItem = async (id) => {
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet article du catalogue ?' });
+    if (confirmed) setCatalogue(catalogue.filter(c => c.id !== id));
+  };
   const updateStock = (id, value) => setCatalogue(catalogue.map(c => c.id === id ? { ...c, stock_actuel: Math.max(0, parseInt(value) || 0) } : c));
   const incrementStock = (id) => setCatalogue(catalogue.map(c => c.id === id ? { ...c, stock_actuel: (c.stock_actuel || 0) + 1 } : c));
   const decrementStock = (id) => setCatalogue(catalogue.map(c => c.id === id ? { ...c, stock_actuel: Math.max(0, (c.stock_actuel || 0) - 1) } : c));

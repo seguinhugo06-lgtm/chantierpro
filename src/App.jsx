@@ -1,14 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { auth, clientsDB, devisDB } from './supabaseClient';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { auth } from './supabaseClient';
+
+// Eager load critical components
 import Dashboard from './components/Dashboard';
-import Chantiers from './components/Chantiers';
-import Planning from './components/Planning';
-import Clients from './components/Clients';
-import DevisPage from './components/DevisPage';
-import Equipe from './components/Equipe';
-import Catalogue from './components/Catalogue';
-import Settings from './components/Settings';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt } from 'lucide-react';
+import FABMenu from './components/FABMenu';
+
+// Lazy load heavy page components for code splitting
+const Chantiers = lazy(() => import('./components/Chantiers'));
+const Planning = lazy(() => import('./components/Planning'));
+const Clients = lazy(() => import('./components/Clients'));
+const DevisPage = lazy(() => import('./components/DevisPage'));
+const Equipe = lazy(() => import('./components/Equipe'));
+const Catalogue = lazy(() => import('./components/Catalogue'));
+const Settings = lazy(() => import('./components/Settings'));
+const AdminHelp = lazy(() => import('./components/admin-help/AdminHelp'));
+const DevisWizard = lazy(() => import('./components/DevisWizard'));
+const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
+const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
+import { useConfirm, useToast } from './context/AppContext';
+import { useData } from './context/DataContext';
+import ErrorBoundary from './components/ui/ErrorBoundary';
+import { ConfirmModal } from './components/ui/Modal';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff } from 'lucide-react';
+import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -22,160 +36,77 @@ const getThemeClasses = (isDark) => ({
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
 
-// Demo data for testing
-const DEMO_CLIENTS = [
-  { id: 'c1', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.fr', telephone: '06 12 34 56 78', adresse: '12 rue des Lilas, 75011 Paris', entreprise: '' },
-  { id: 'c2', nom: 'Martin', prenom: 'Jean', email: 'j.martin@gmail.com', telephone: '06 98 76 54 32', adresse: '45 avenue Victor Hugo, 69006 Lyon', entreprise: 'SCI Martin' },
-  { id: 'c3', nom: 'Bernard', prenom: 'Sophie', email: 'sophie.bernard@outlook.fr', telephone: '07 11 22 33 44', adresse: '8 place de la République, 33000 Bordeaux', entreprise: '' },
-  { id: 'c4', nom: 'Petit', prenom: 'Luc', email: 'luc.petit@entreprise.com', telephone: '06 55 44 33 22', adresse: '23 boulevard Gambetta, 13001 Marseille', entreprise: 'Petit & Fils' },
-  { id: 'c5', nom: 'Rousseau', prenom: 'Claire', email: 'claire.rousseau@mail.fr', telephone: '06 77 88 99 00', adresse: '56 rue Nationale, 44000 Nantes', entreprise: '' },
-  { id: 'c6', nom: 'Lefevre', prenom: 'Marc', email: 'marc.lefevre@pro.fr', telephone: '06 44 55 66 77', adresse: '7 allée des Roses, 31000 Toulouse', entreprise: 'Lefevre Immobilier' },
-  { id: 'c7', nom: 'Garcia', prenom: 'Elena', email: 'elena.garcia@gmail.com', telephone: '07 22 33 44 55', adresse: '120 cours Mirabeau, 13100 Aix-en-Provence', entreprise: '' },
-  { id: 'c8', nom: 'Dubois', prenom: 'Philippe', email: 'p.dubois@orange.fr', telephone: '06 88 99 00 11', adresse: '3 place du Marché, 67000 Strasbourg', entreprise: 'SCI Dubois' }
-];
-
-const DEMO_EQUIPE = [
-  { id: 'e1', nom: 'Moreau', prenom: 'Pierre', role: 'Chef de chantier', telephone: '06 11 11 11 11', email: 'p.moreau@chantier.fr', tauxHoraire: 45, coutHoraireCharge: 28, contrat: 'CDI' },
-  { id: 'e2', nom: 'Leroy', prenom: 'Thomas', role: 'Ouvrier qualifié', telephone: '06 22 22 22 22', email: 't.leroy@chantier.fr', tauxHoraire: 35, coutHoraireCharge: 22, contrat: 'CDI' },
-  { id: 'e3', nom: 'Garcia', prenom: 'Antoine', role: 'Apprenti', telephone: '06 33 33 33 33', email: 'a.garcia@chantier.fr', tauxHoraire: 20, coutHoraireCharge: 12, contrat: 'Apprentissage' },
-  { id: 'e4', nom: 'Benoit', prenom: 'Lucas', role: 'Électricien', telephone: '06 44 44 44 44', email: 'l.benoit@chantier.fr', tauxHoraire: 40, coutHoraireCharge: 25, contrat: 'CDI' }
-];
-
-const DEMO_CHANTIERS = [
-  { id: 'ch1', nom: 'Rénovation cuisine Dupont', client_id: 'c1', adresse: '12 rue des Lilas, 75011 Paris', date_debut: '2025-01-10', date_fin: '2025-02-15', statut: 'en_cours', avancement: 65, notes: 'Cuisine complète avec îlot central', budget_estime: 3760 },
-  { id: 'ch2', nom: 'Salle de bain Martin', client_id: 'c2', adresse: '45 avenue Victor Hugo, 69006 Lyon', date_debut: '2025-01-20', date_fin: '2025-02-28', statut: 'en_cours', avancement: 30, notes: 'SDB avec douche italienne', budget_estime: 4475 },
-  { id: 'ch3', nom: 'Peinture appartement Bernard', client_id: 'c3', adresse: '8 place de la République, 33000 Bordeaux', date_debut: '2024-12-01', date_fin: '2024-12-20', statut: 'termine', avancement: 100, notes: 'T3, peinture complète', budget_estime: 2125 },
-  { id: 'ch4', nom: 'Extension maison Petit', client_id: 'c4', adresse: '23 boulevard Gambetta, 13001 Marseille', date_debut: '2025-03-01', date_fin: '2025-06-30', statut: 'prospect', avancement: 0, notes: 'Extension 40m² + terrasse', budget_estime: 32600 },
-  { id: 'ch5', nom: 'Rénovation studio Rousseau', client_id: 'c5', adresse: '56 rue Nationale, 44000 Nantes', date_debut: '2025-01-05', date_fin: '2025-01-25', statut: 'en_cours', avancement: 85, notes: 'Studio 25m² rénovation complète', budget_estime: 8500 },
-  { id: 'ch6', nom: 'Aménagement bureau Lefevre', client_id: 'c6', adresse: '7 allée des Roses, 31000 Toulouse', date_debut: '2025-02-01', date_fin: '2025-02-20', statut: 'prospect', avancement: 0, notes: 'Bureau 45m² cloisons + électricité', budget_estime: 12000 },
-  { id: 'ch7', nom: 'Terrasse Garcia', client_id: 'c7', adresse: '120 cours Mirabeau, 13100 Aix-en-Provence', date_debut: '2024-11-15', date_fin: '2024-12-10', statut: 'termine', avancement: 100, notes: 'Terrasse bois 30m²', budget_estime: 6800 },
-  { id: 'ch8', nom: 'Rénovation appartement Dubois', client_id: 'c8', adresse: '3 place du Marché, 67000 Strasbourg', date_debut: '2025-01-15', date_fin: '2025-03-15', statut: 'en_cours', avancement: 45, notes: 'T4 rénovation complète plomberie électricité', budget_estime: 28000 }
-];
-
-const DEMO_CATALOGUE = [
-  { id: 'cat1', nom: 'Carrelage grès cérame 60x60', prix: 45, prixAchat: 28, unite: 'm²', categorie: 'Carrelage', favori: true },
-  { id: 'cat2', nom: 'Peinture acrylique blanc mat', prix: 35, prixAchat: 18, unite: 'pot', categorie: 'Peinture', favori: true },
-  { id: 'cat3', nom: 'Placo BA13 standard', prix: 12, prixAchat: 6, unite: 'm²', categorie: 'Matériaux', favori: false },
-  { id: 'cat4', nom: 'Câble électrique 2.5mm²', prix: 2.5, prixAchat: 1.2, unite: 'ml', categorie: 'Électricité', favori: false },
-  { id: 'cat5', nom: 'Tube PER 16mm', prix: 3, prixAchat: 1.5, unite: 'ml', categorie: 'Plomberie', favori: true },
-  { id: 'cat6', nom: 'Main d\'oeuvre pose carrelage', prix: 45, prixAchat: 0, unite: 'm²', categorie: 'Main d\'oeuvre', favori: true },
-  { id: 'cat7', nom: 'Main d\'oeuvre peinture', prix: 25, prixAchat: 0, unite: 'm²', categorie: 'Main d\'oeuvre', favori: true },
-  { id: 'cat8', nom: 'Sac de ciment 35kg', prix: 12, prixAchat: 7, unite: 'sac', categorie: 'Maçonnerie', favori: false }
-];
-
-const DEMO_DEVIS = [
-  { id: 'd1', numero: 'DEV-2025-001', type: 'devis', client_id: 'c1', chantier_id: 'ch1', date: '2025-01-05', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Dépose cuisine existante', quantite: 1, unite: 'forfait', prixUnitaire: 800, montant: 800 }, { id: 'l2', description: 'Pose carrelage sol', quantite: 18, unite: 'm²', prixUnitaire: 45, montant: 810 }, { id: 'l3', description: 'Plomberie cuisine', quantite: 1, unite: 'forfait', prixUnitaire: 1200, montant: 1200 }, { id: 'l4', description: 'Électricité', quantite: 1, unite: 'forfait', prixUnitaire: 950, montant: 950 }], total_ht: 3760, tva: 376, total_ttc: 4136 },
-  { id: 'd2', numero: 'DEV-2025-002', type: 'devis', client_id: 'c2', chantier_id: 'ch2', date: '2025-01-15', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Dépose salle de bain', quantite: 1, unite: 'forfait', prixUnitaire: 600, montant: 600 }, { id: 'l2', description: 'Pose douche italienne', quantite: 1, unite: 'forfait', prixUnitaire: 2500, montant: 2500 }, { id: 'l3', description: 'Carrelage mural', quantite: 25, unite: 'm²', prixUnitaire: 55, montant: 1375 }], total_ht: 4475, tva: 447.5, total_ttc: 4922.5 },
-  { id: 'd3', numero: 'FAC-2024-015', type: 'facture', client_id: 'c3', chantier_id: 'ch3', date: '2024-12-20', statut: 'payee', tvaRate: 10, lignes: [{ id: 'l1', description: 'Peinture T3 complet', quantite: 85, unite: 'm²', prixUnitaire: 25, montant: 2125 }], total_ht: 2125, tva: 212.5, total_ttc: 2337.5 },
-  { id: 'd4', numero: 'DEV-2025-003', type: 'devis', client_id: 'c4', chantier_id: 'ch4', date: '2025-01-25', validite: 60, statut: 'brouillon', tvaRate: 20, lignes: [{ id: 'l1', description: 'Gros oeuvre extension', quantite: 40, unite: 'm²', prixUnitaire: 450, montant: 18000 }, { id: 'l2', description: 'Toiture', quantite: 45, unite: 'm²', prixUnitaire: 180, montant: 8100 }, { id: 'l3', description: 'Menuiseries extérieures', quantite: 1, unite: 'forfait', prixUnitaire: 6500, montant: 6500 }], total_ht: 32600, tva: 6520, total_ttc: 39120 },
-  { id: 'd5', numero: 'DEV-2025-004', type: 'devis', client_id: 'c5', chantier_id: 'ch5', date: '2025-01-02', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Rénovation studio complète', quantite: 25, unite: 'm²', prixUnitaire: 280, montant: 7000 }, { id: 'l2', description: 'Électricité', quantite: 1, unite: 'forfait', prixUnitaire: 1500, montant: 1500 }], total_ht: 8500, tva: 850, total_ttc: 9350 },
-  { id: 'd6', numero: 'DEV-2025-005', type: 'devis', client_id: 'c6', chantier_id: 'ch6', date: '2025-01-20', validite: 45, statut: 'envoye', tvaRate: 20, lignes: [{ id: 'l1', description: 'Cloisons bureau', quantite: 30, unite: 'm²', prixUnitaire: 180, montant: 5400 }, { id: 'l2', description: 'Électricité complète', quantite: 1, unite: 'forfait', prixUnitaire: 4200, montant: 4200 }, { id: 'l3', description: 'Climatisation', quantite: 2, unite: 'unité', prixUnitaire: 1200, montant: 2400 }], total_ht: 12000, tva: 2400, total_ttc: 14400 },
-  { id: 'd7', numero: 'FAC-2024-012', type: 'facture', client_id: 'c7', chantier_id: 'ch7', date: '2024-12-10', statut: 'payee', tvaRate: 10, lignes: [{ id: 'l1', description: 'Terrasse bois composite', quantite: 30, unite: 'm²', prixUnitaire: 180, montant: 5400 }, { id: 'l2', description: 'Structure porteuse', quantite: 1, unite: 'forfait', prixUnitaire: 1400, montant: 1400 }], total_ht: 6800, tva: 680, total_ttc: 7480 },
-  { id: 'd8', numero: 'DEV-2025-006', type: 'devis', client_id: 'c8', chantier_id: 'ch8', date: '2025-01-10', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Rénovation plomberie complète', quantite: 1, unite: 'forfait', prixUnitaire: 8500, montant: 8500 }, { id: 'l2', description: 'Réfection électrique', quantite: 1, unite: 'forfait', prixUnitaire: 9500, montant: 9500 }, { id: 'l3', description: 'Peinture et finitions', quantite: 95, unite: 'm²', prixUnitaire: 65, montant: 6175 }, { id: 'l4', description: 'Sols', quantite: 75, unite: 'm²', prixUnitaire: 51, montant: 3825 }], total_ht: 28000, tva: 2800, total_ttc: 30800 },
-  { id: 'd9', numero: 'FAC-2025-001', type: 'facture', client_id: 'c5', chantier_id: 'ch5', date: '2025-01-15', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd5', lignes: [{ id: 'l1', description: 'Acompte 40% - Rénovation studio', quantite: 1, unite: 'forfait', prixUnitaire: 3400, montant: 3400 }], total_ht: 3400, tva: 340, total_ttc: 3740 }
-];
-
-const DEMO_DEPENSES = [
-  { id: 'dep1', chantierId: 'ch1', description: 'Carrelage cuisine', montant: 520, categorie: 'Matériaux', date: '2025-01-12' },
-  { id: 'dep2', chantierId: 'ch1', description: 'Robinetterie', montant: 380, categorie: 'Matériaux', date: '2025-01-14' },
-  { id: 'dep3', chantierId: 'ch1', description: 'Électroménager', montant: 1850, categorie: 'Matériaux', date: '2025-01-18' },
-  { id: 'dep4', chantierId: 'ch2', description: 'Receveur douche', montant: 450, categorie: 'Matériaux', date: '2025-01-22' },
-  { id: 'dep5', chantierId: 'ch2', description: 'Carrelage mural', montant: 680, categorie: 'Matériaux', date: '2025-01-23' },
-  { id: 'dep6', chantierId: 'ch3', description: 'Peinture + apprêt', montant: 320, categorie: 'Matériaux', date: '2024-12-05' },
-  { id: 'dep7', chantierId: 'ch5', description: 'Électricité - câbles', montant: 280, categorie: 'Matériaux', date: '2025-01-08' },
-  { id: 'dep8', chantierId: 'ch5', description: 'Plomberie - raccords', montant: 195, categorie: 'Matériaux', date: '2025-01-10' },
-  { id: 'dep9', chantierId: 'ch7', description: 'Lames terrasse composite', montant: 2400, categorie: 'Matériaux', date: '2024-11-20' },
-  { id: 'dep10', chantierId: 'ch7', description: 'Plots réglables', montant: 580, categorie: 'Matériaux', date: '2024-11-18' },
-  { id: 'dep11', chantierId: 'ch8', description: 'Tuyaux cuivre', montant: 890, categorie: 'Matériaux', date: '2025-01-18' },
-  { id: 'dep12', chantierId: 'ch8', description: 'Tableau électrique', montant: 1250, categorie: 'Matériaux', date: '2025-01-20' },
-  { id: 'dep13', chantierId: 'ch8', description: 'Peinture premium', montant: 780, categorie: 'Matériaux', date: '2025-01-22' }
-];
-
-const DEMO_POINTAGES = [
-  { id: 'p1', employeId: 'e1', chantierId: 'ch1', date: '2025-01-10', heures: 8, approuve: true, verrouille: true },
-  { id: 'p2', employeId: 'e2', chantierId: 'ch1', date: '2025-01-10', heures: 8, approuve: true, verrouille: true },
-  { id: 'p3', employeId: 'e1', chantierId: 'ch1', date: '2025-01-13', heures: 7.5, approuve: true },
-  { id: 'p4', employeId: 'e2', chantierId: 'ch1', date: '2025-01-13', heures: 8, approuve: true },
-  { id: 'p5', employeId: 'e4', chantierId: 'ch1', date: '2025-01-14', heures: 6, approuve: true },
-  { id: 'p6', employeId: 'e1', chantierId: 'ch2', date: '2025-01-22', heures: 8, approuve: true },
-  { id: 'p7', employeId: 'e3', chantierId: 'ch2', date: '2025-01-22', heures: 6, approuve: true },
-  { id: 'p8', employeId: 'e1', chantierId: 'ch3', date: '2024-12-05', heures: 8, approuve: true, verrouille: true },
-  { id: 'p9', employeId: 'e2', chantierId: 'ch3', date: '2024-12-05', heures: 8, approuve: true, verrouille: true },
-  { id: 'p10', employeId: 'e2', chantierId: 'ch3', date: '2024-12-06', heures: 8, approuve: true, verrouille: true },
-  { id: 'p11', employeId: 'e1', chantierId: 'ch5', date: '2025-01-06', heures: 8, approuve: true },
-  { id: 'p12', employeId: 'e3', chantierId: 'ch5', date: '2025-01-06', heures: 8, approuve: true },
-  { id: 'p13', employeId: 'e1', chantierId: 'ch5', date: '2025-01-07', heures: 8, approuve: true },
-  { id: 'p14', employeId: 'e4', chantierId: 'ch5', date: '2025-01-08', heures: 6, approuve: true },
-  { id: 'p15', employeId: 'e1', chantierId: 'ch7', date: '2024-11-18', heures: 8, approuve: true, verrouille: true },
-  { id: 'p16', employeId: 'e2', chantierId: 'ch7', date: '2024-11-18', heures: 8, approuve: true, verrouille: true },
-  { id: 'p17', employeId: 'e1', chantierId: 'ch7', date: '2024-11-19', heures: 8, approuve: true, verrouille: true },
-  { id: 'p18', employeId: 'e2', chantierId: 'ch7', date: '2024-11-19', heures: 8, approuve: true, verrouille: true },
-  { id: 'p19', employeId: 'e1', chantierId: 'ch8', date: '2025-01-16', heures: 8, approuve: true },
-  { id: 'p20', employeId: 'e2', chantierId: 'ch8', date: '2025-01-16', heures: 8, approuve: true },
-  { id: 'p21', employeId: 'e4', chantierId: 'ch8', date: '2025-01-17', heures: 8, approuve: false },
-  { id: 'p22', employeId: 'e1', chantierId: 'ch8', date: '2025-01-17', heures: 8, approuve: false }
-];
-
-const DEMO_EVENTS = [
-  { id: 'ev1', title: 'RDV devis M. Lefevre', date: '2025-01-18', type: 'rdv', time: '10:00', description: 'Visite pour devis aménagement bureau' },
-  { id: 'ev2', title: 'Livraison carrelage', date: '2025-01-19', chantierId: 'ch1', type: 'autre', description: 'Livraison Leroy Merlin' },
-  { id: 'ev3', title: 'Relance devis Lefevre', date: '2025-01-25', type: 'relance', description: 'Relancer pour acceptation devis bureau' },
-  { id: 'ev4', title: 'Fin chantier Rousseau', date: '2025-01-25', chantierId: 'ch5', type: 'chantier' },
-  { id: 'ev5', title: 'RDV réception Dubois', date: '2025-01-28', chantierId: 'ch8', type: 'rdv', time: '14:00', description: 'Point avancement avec le client' },
-  { id: 'ev6', title: 'Urgence fuite Martin', date: '2025-01-17', chantierId: 'ch2', type: 'urgence', description: 'Fuite détectée - intervention rapide' }
-];
-
 export default function App() {
+  // Global context hooks
+  const { confirmModal, closeConfirm } = useConfirm();
+  const { showToast, toast, hideToast } = useToast();
+
+  // Data from DataContext (replaces local state)
+  const {
+    clients, setClients, addClient: dataAddClient,
+    devis, setDevis, addDevis: dataAddDevis, updateDevis: dataUpdateDevis, deleteDevis: dataDeleteDevis,
+    chantiers, setChantiers, addChantier: dataAddChantier, updateChantier: dataUpdateChantier,
+    depenses, setDepenses, addDepense,
+    pointages, setPointages,
+    equipe, setEquipe,
+    ajustements, addAjustement: dataAddAjustement, deleteAjustement: dataDeleteAjustement,
+    catalogue, setCatalogue, deductStock,
+    paiements, addPaiement: dataAddPaiement,
+    echanges, addEchange: dataAddEchange,
+    getChantierBilan
+  } = useData();
+
+  // Events stored separately (not in DataContext yet)
+  const [events, setEvents] = useState([]);
+
+  // Auth state
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showSignUp, setShowSignUp] = useState(false);
+  const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
+  const [authError, setAuthError] = useState('');
+
+  // UI state
   const [page, setPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
-  // Initial test data for demo
-  const [clients, setClients] = useState([
-    { id: 'c1', nom: 'Dupont', prenom: 'Marie', email: 'marie.dupont@email.fr', telephone: '06 12 34 56 78', adresse: '12 rue des Lilas, 75011 Paris' },
-    { id: 'c2', nom: 'Martin', prenom: 'Jean', email: 'j.martin@gmail.com', telephone: '06 98 76 54 32', adresse: '45 avenue Victor Hugo, 69006 Lyon' }
-  ]);
-  const [devis, setDevis] = useState([
-    { id: 'd1', numero: 'DEV-2025-001', type: 'devis', client_id: 'c1', date: '2025-01-15', validite: 30, statut: 'accepte', tvaRate: 10, lignes: [{ id: 'l1', description: 'Rénovation cuisine complète', quantite: 1, unite: 'forfait', prixUnitaire: 5000, montant: 5000 }], total_ht: 5000, tva: 500, total_ttc: 5500 }
-  ]);
-  const [chantiers, setChantiers] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [equipe, setEquipe] = useState([
-    { id: 'e1', nom: 'Moreau', prenom: 'Pierre', role: 'Chef de chantier', telephone: '06 11 11 11 11', tauxHoraire: 45, coutHoraireCharge: 28 }
-  ]);
-  const [pointages, setPointages] = useState([]);
-  const [catalogue, setCatalogue] = useState([
-    { id: 'cat1', nom: 'Carrelage 60x60', prix: 45, prixAchat: 28, unite: 'm²', categorie: 'Carrelage', favori: true },
-    { id: 'cat2', nom: 'Peinture blanc mat', prix: 35, prixAchat: 18, unite: 'pot', categorie: 'Peinture', favori: true }
-  ]);
-  const [depenses, setDepenses] = useState([]);
-  const [echanges, setEchanges] = useState([]);
-  const [ajustements, setAjustements] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showFABDevisWizard, setShowFABDevisWizard] = useState(false);
+  const [showFABQuickClient, setShowFABQuickClient] = useState(false);
+  const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [toasts, setToasts] = useState([]);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    // Show onboarding if user hasn't seen it before
-    return !localStorage.getItem('onboarding_completed');
-  });
-  const [showSignUp, setShowSignUp] = useState(false);
-  const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
-  const [authError, setAuthError] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSync, setPendingSync] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('chantierpro_onboarding_complete'));
+
+  // Settings state
   const [theme, setTheme] = useState('light');
   const [modeDiscret, setModeDiscret] = useState(false);
-  const [entreprise, setEntreprise] = useState({ 
-    nom: 'Martin Renovation', logo: '', couleur: '#f97316', 
+  const [entreprise, setEntreprise] = useState({
+    nom: 'Martin Renovation', logo: '', couleur: '#f97316',
     formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
-    siret: '', codeApe: '', rcs: '', tvaIntra: '', validiteDevis: 30, tvaDefaut: 10, 
-    delaiPaiement: 30, acompteDefaut: 30, tauxFraisStructure: 15 
+    siret: '', codeApe: '', rcs: '', tvaIntra: '', validiteDevis: 30, tvaDefaut: 10,
+    delaiPaiement: 30, acompteDefaut: 30, tauxFraisStructure: 15
   });
+
+  // CRUD wrappers with toasts (delegate to DataContext)
+  const addClient = (data) => { const c = dataAddClient(data); showToast(`Client "${data.nom}" ajoute`, 'success'); return c; };
+  const addDevis = (data) => dataAddDevis(data);
+  const updateDevis = (id, data) => dataUpdateDevis(id, data);
+  const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprime', 'info'); };
+  const addChantier = (data) => { const c = dataAddChantier(data); showToast(`Chantier "${data.nom}" cree`, 'success'); return c; };
+  const updateChantier = (id, data) => dataUpdateChantier(id, data);
+  const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistre', 'success'); return a; };
+  const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprime', 'info'); };
+  const addEchange = (data) => dataAddEchange(data);
+  const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistre`, 'success'); return p; };
+  const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Evenement ajoute', 'success'); return e; };
 
   // Load settings from localStorage
   useEffect(() => { 
@@ -215,55 +146,6 @@ export default function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
-  // CRUD functions - using functional setState to avoid stale closure issues
-  const addClient = (data) => { const c = { id: Date.now().toString(), ...data }; setClients(prev => [...prev, c]); return c; };
-  const addDevis = (data) => { const d = { id: Date.now().toString(), ...data }; setDevis(prev => [...prev, d]); return d; };
-  const updateDevis = (id, data) => setDevis(prev => prev.map(d => d.id === id ? { ...d, ...data } : d));
-  const deleteDevis = (id) => setDevis(prev => prev.filter(d => d.id !== id));
-  const addChantier = (data) => { const c = { id: Date.now().toString(), ...data }; setChantiers(prev => [...prev, c]); return c; };
-  const updateChantier = (id, data) => setChantiers(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-  const addEvent = (data) => { const e = { id: Date.now().toString(), ...data }; setEvents(prev => [...prev, e]); return e; };
-  const addAjustement = (data) => { const a = { id: Date.now().toString(), ...data }; setAjustements(prev => [...prev, a]); return a; };
-  const deleteAjustement = (id) => setAjustements(prev => prev.filter(a => a.id !== id));
-  const addEchange = (data) => { const e = { id: Date.now().toString(), date: new Date().toISOString(), ...data }; setEchanges(prev => [...prev, e]); return e; };
-  const deductStock = (catalogueId, qty) => setCatalogue(prev => prev.map(c => c.id === catalogueId ? { ...c, stock: Math.max(0, (c.stock || 0) - qty) } : c));
-
-  const getChantierBilan = (chantierId) => {
-    const ch = chantiers.find(c => c.id === chantierId);
-    if (!ch) return { revenuPrevu: 0, revenuEncaisse: 0, coutMateriaux: 0, coutMO: 0, coutAutres: 0, margePrevisionnelle: 0, margeReelle: 0, tauxMargePrevi: 0, tauxMargeReelle: 0, heuresTotal: 0 };
-
-    // Revenus
-    const devisLie = devis.find(d => d.chantier_id === chantierId && d.type === 'devis');
-    const revenuPrevu = devisLie?.total_ht || ch.budget_estime || 0;
-    const revenuEncaisse = devis.filter(d => d.chantier_id === chantierId && d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.total_ht || 0), 0);
-    const facturesEnAttente = devis.filter(d => d.chantier_id === chantierId && d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ht || 0), 0);
-
-    // Dépenses
-    const coutMateriaux = depenses.filter(d => d.chantierId === chantierId).reduce((s, d) => s + (d.montant || 0), 0);
-    const coutMO = pointages.filter(p => p.chantierId === chantierId).reduce((s, p) => { const emp = equipe.find(e => e.id === p.employeId); return s + (p.heures || 0) * (emp?.coutHoraireCharge || 45); }, 0);
-    const chAjustements = ajustements.filter(a => a.chantierId === chantierId);
-    const adjRevenus = chAjustements.filter(a => a.type === 'REVENU').reduce((s, a) => s + (a.montant_ht || 0), 0);
-    const adjDepenses = chAjustements.filter(a => a.type === 'DEPENSE').reduce((s, a) => s + (a.montant_ht || 0), 0);
-    const coutAutres = adjDepenses;
-    const totalDepenses = coutMateriaux + coutMO + coutAutres;
-
-    // Marges
-    const revenuTotal = revenuPrevu + adjRevenus;
-    const margePrevisionnelle = revenuTotal - totalDepenses;
-    const tauxMargePrevi = revenuTotal > 0 ? (margePrevisionnelle / revenuTotal) * 100 : 0;
-    const margeReelle = revenuEncaisse - totalDepenses;
-    const tauxMargeReelle = revenuEncaisse > 0 ? (margeReelle / revenuEncaisse) * 100 : 0;
-
-    const heuresTotal = pointages.filter(p => p.chantierId === chantierId).reduce((s, p) => s + (p.heures || 0), 0);
-
-    // Legacy compatibility
-    const caHT = revenuPrevu || revenuEncaisse;
-    const marge = margePrevisionnelle;
-    const tauxMarge = tauxMargePrevi;
-
-    return { revenuPrevu, revenuEncaisse, facturesEnAttente, coutMateriaux, coutMO, coutAutres, adjRevenus, adjDepenses, totalDepenses, margePrevisionnelle, margeReelle, tauxMargePrevi, tauxMargeReelle, heuresTotal, caHT, marge, tauxMarge };
-  };
-
   const stats = { 
     devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length, 
     chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours').length 
@@ -287,7 +169,7 @@ export default function App() {
     try { 
       const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }); 
       if (error) setAuthError(error.message); 
-      else { alert('Compte cree avec succes!'); setShowSignUp(false); } 
+      else { showToast('Compte créé avec succès !', 'success'); setShowSignUp(false); } 
     } catch (e) { 
       setAuthError('Erreur lors de la creation du compte'); 
     } 
@@ -300,13 +182,6 @@ export default function App() {
   
   const markNotifRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
   const markAllNotifsRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
-
-  // Toast notification system
-  const showToast = (message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
-  };
 
   // Global search results
   const searchResults = searchQuery.length > 1 ? {
@@ -340,6 +215,29 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Network status listener for offline mode
+  useEffect(() => {
+    const updatePendingCount = async () => {
+      const count = await getPendingCount();
+      setPendingSync(count);
+    };
+
+    const unsubscribe = registerNetworkListeners(
+      () => {
+        setIsOnline(true);
+        updatePendingCount();
+        showToast('Connexion retablie', 'success');
+      },
+      () => {
+        setIsOnline(false);
+        showToast('Mode hors ligne active', 'info');
+      }
+    );
+
+    updatePendingCount();
+    return unsubscribe;
   }, []);
 
   // Loading screen
@@ -461,9 +359,10 @@ export default function App() {
     { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente + facturesImpayees, badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316' },
     { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours, badgeColor: '#22c55e' },
     { id: 'planning', icon: Calendar, label: 'Planning', badge: todayEvents, badgeColor: '#3b82f6' },
-    { id: 'clients', icon: Users, label: 'Clients', badge: clients.length > 0 ? null : null },
+    { id: 'clients', icon: Users, label: 'Clients' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'equipe', icon: HardHat, label: 'Equipe' },
+    { id: 'admin', icon: HelpCircle, label: 'Aide Admin' },
     { id: 'settings', icon: SettingsIcon, label: 'Parametres' }
   ];
   
@@ -535,9 +434,26 @@ export default function App() {
           <button
             onClick={() => setSidebarOpen(true)}
             className={`lg:hidden p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            aria-label="Ouvrir le menu"
           >
             <Menu size={22} />
           </button>
+
+          {/* Network status indicator */}
+          {!isOnline && (
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 bg-amber-500 text-white animate-pulse">
+              <WifiOff size={14} />
+              <span className="hidden sm:inline">Hors ligne</span>
+              {pendingSync > 0 && <span className="px-1.5 py-0.5 bg-white/20 rounded-full text-[10px]">{pendingSync}</span>}
+            </span>
+          )}
+          {isOnline && pendingSync > 0 && (
+            <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+              <Wifi size={14} />
+              <span className="hidden sm:inline">Sync...</span>
+              <span className="px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[10px]">{pendingSync}</span>
+            </span>
+          )}
 
           {modeDiscret && (
             <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
@@ -558,11 +474,22 @@ export default function App() {
 
           <div className="flex-1 sm:hidden" />
 
+          {/* Dark mode quick toggle */}
+          <button
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400 hover:text-amber-300' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
+            title={isDark ? 'Mode clair' : 'Mode sombre'}
+            aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
+          >
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+
           {/* Help button */}
           <button
             onClick={() => setShowHelp(true)}
             className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
             title="Aide"
+            aria-label="Ouvrir l'aide"
           >
             <HelpCircle size={20} />
           </button>
@@ -573,6 +500,7 @@ export default function App() {
             className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
             style={modeDiscret ? {background: couleur} : {}}
             title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
           >
             {modeDiscret ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -583,6 +511,8 @@ export default function App() {
               onClick={() => setShowNotifs(!showNotifs)}
               className={`relative p-2.5 rounded-xl transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
               style={showNotifs ? {background: couleur} : {}}
+              aria-label={`Notifications${unreadNotifs.length > 0 ? ` (${unreadNotifs.length} non lues)` : ''}`}
+              aria-expanded={showNotifs}
             >
               <Bell size={20} className={showNotifs ? 'animate-pulse' : ''} />
               {unreadNotifs.length > 0 && (
@@ -685,16 +615,102 @@ export default function App() {
 
         {/* Page content */}
         <main className={`p-3 sm:p-4 lg:p-6 ${tc.text}`}>
-          {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
-          {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} addEchange={addEchange} />}
-          {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
-          {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-          {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
-          {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
-          {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
-          {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
+          <ErrorBoundary isDark={isDark} showDetails={isDark}>
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
+              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
+              {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
+              {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
+              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
+              {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
+              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
+            </Suspense>
+          </ErrorBoundary>
         </main>
+
+        {/* Floating Action Button (FAB) for quick actions */}
+        <FABMenu
+          onNewDevis={() => setShowFABDevisWizard(true)}
+          onNewClient={() => setShowFABQuickClient(true)}
+          onNewChantier={() => setShowFABQuickChantier(true)}
+          isDark={isDark}
+          couleur={couleur}
+        />
       </div>
+
+      {/* FAB Devis Wizard */}
+      {showFABDevisWizard && (
+        <Suspense fallback={null}>
+          <DevisWizard
+            isOpen={showFABDevisWizard}
+            onClose={() => setShowFABDevisWizard(false)}
+            onSubmit={(data) => {
+              const newDevis = {
+                id: `d${Date.now()}`,
+                numero: `DEV-${new Date().getFullYear()}-${String(devis.filter(d => d.type === 'devis').length + 1).padStart(3, '0')}`,
+                ...data,
+                date: new Date().toISOString().split('T')[0],
+                statut: 'brouillon'
+              };
+              setDevis(prev => [...prev, newDevis]);
+              setShowFABDevisWizard(false);
+              showToast('Devis cree avec succes !', 'success');
+            }}
+            clients={clients}
+            catalogue={catalogue}
+            chantiers={chantiers}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        </Suspense>
+      )}
+
+      {/* FAB Quick Client Modal */}
+      {showFABQuickClient && (
+        <Suspense fallback={null}>
+          <QuickClientModal
+            isOpen={showFABQuickClient}
+            onClose={() => setShowFABQuickClient(false)}
+            onSubmit={(data) => {
+              const newClient = { id: `c${Date.now()}`, ...data };
+              setClients(prev => [...prev, newClient]);
+              setShowFABQuickClient(false);
+              showToast('Client ajoute !', 'success');
+            }}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        </Suspense>
+      )}
+
+      {/* FAB Quick Chantier Modal */}
+      {showFABQuickChantier && (
+        <Suspense fallback={null}>
+          <QuickChantierModal
+            isOpen={showFABQuickChantier}
+            onClose={() => setShowFABQuickChantier(false)}
+            onSubmit={(data) => {
+              const newChantier = {
+                id: `ch${Date.now()}`,
+                ...data,
+                statut: 'prospect',
+                avancement: 0,
+                photos: [],
+                taches: []
+              };
+              setChantiers(prev => [...prev, newChantier]);
+              setShowFABQuickChantier(false);
+              showToast('Chantier cree !', 'success');
+            }}
+            clients={clients}
+            devis={devis}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        </Suspense>
+      )}
 
       {/* Global Help Modal */}
       {showHelp && <HelpModal showHelp={showHelp} setShowHelp={setShowHelp} isDark={isDark} couleur={couleur} tc={tc} />}
@@ -807,10 +823,9 @@ export default function App() {
       )}
 
       {/* Toast Notifications */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-2">
-        {toasts.map(toast => (
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50">
           <div
-            key={toast.id}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up ${
               toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
               toast.type === 'error' ? (isDark ? 'bg-red-900/90 text-red-100' : 'bg-red-600 text-white') :
@@ -823,12 +838,26 @@ export default function App() {
             {toast.type === 'warning' && <AlertCircle size={18} />}
             {toast.type === 'info' && <Info size={18} />}
             <span className="text-sm font-medium">{toast.message}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-2 opacity-70 hover:opacity-100">
+            <button onClick={hideToast} className="ml-2 opacity-70 hover:opacity-100" aria-label="Fermer la notification">
               <X size={16} />
             </button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Global Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={confirmModal.onCancel || closeConfirm}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        loading={confirmModal.loading}
+        isDark={isDark}
+      />
     </div>
   );
 }

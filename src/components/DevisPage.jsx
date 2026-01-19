@@ -1,7 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, XCircle, Building2 } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool } from 'lucide-react';
+import PaymentModal from './PaymentModal';
+import TemplateSelector from './TemplateSelector';
+import SignaturePad from './SignaturePad';
+import SmartTemplateWizard from './SmartTemplateWizard';
+import DevisWizard from './DevisWizard';
+import { useConfirm, useToast } from '../context/AppContext';
+import { generateId } from '../lib/utils';
+import { useDebounce } from '../hooks/useDebounce';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, addEchange }) {
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, addEchange, paiements = [], addPaiement }) {
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -19,8 +30,10 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
   const [catalogueSearch, setCatalogueSearch] = useState('');
+  const debouncedCatalogueSearch = useDebounce(catalogueSearch, 300);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showAcompteModal, setShowAcompteModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -34,6 +47,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showSmartWizard, setShowSmartWizard] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [showDevisWizard, setShowDevisWizard] = useState(false);
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -71,16 +89,17 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     }
   }, [selectedDevis, setSelectedDevis]);
   
-  const [form, setForm] = useState({ 
-    type: 'devis', 
-    clientId: '', 
-    chantierId: '', 
-    date: new Date().toISOString().split('T')[0], 
-    validite: entreprise?.validiteDevis || 30, 
-    sections: [{ id: '1', titre: '', lignes: [] }], 
+  const [form, setForm] = useState({
+    type: 'devis',
+    clientId: '',
+    chantierId: '',
+    date: new Date().toISOString().split('T')[0],
+    validite: entreprise?.validiteDevis || 30,
+    sections: [{ id: '1', titre: '', lignes: [] }],
     tvaDefaut: entreprise?.tvaDefaut || 10,
-    remise: 0, 
-    notes: '' 
+    remise: 0,
+    retenueGarantie: false, // Retenue de garantie 5% (BTP)
+    notes: ''
   });
 
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
@@ -107,44 +126,61 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     if (filter === 'devis' && d.type !== 'devis') return false;
     if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
-    if (search && !d.numero?.toLowerCase().includes(search.toLowerCase())) return false;
+    if (debouncedSearch && !d.numero?.toLowerCase().includes(debouncedSearch.toLowerCase())) return false;
     return true;
   }));
 
-  // Calcul des totaux avec multi-taux TVA
+  // Calcul des totaux avec multi-taux TVA et marge
   const calculateTotals = () => {
     let totalHT = 0;
+    let totalCoutAchat = 0;
     const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
-    
+
     form.sections.forEach(s => s.lignes.forEach(l => {
       const montant = l.montant || 0;
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
+      const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
       totalHT += montant;
-      
+      totalCoutAchat += coutAchat;
+
       if (!tvaParTaux[taux]) tvaParTaux[taux] = { base: 0, montant: 0 };
       tvaParTaux[taux].base += montant;
       tvaParTaux[taux].montant += montant * (taux / 100);
     }));
-    
+
     const remiseAmount = totalHT * (form.remise / 100);
     const htApresRemise = totalHT - remiseAmount;
-    
+
     // Recalculer TVA après remise (proportionnel)
     const ratioRemise = totalHT > 0 ? htApresRemise / totalHT : 1;
     Object.keys(tvaParTaux).forEach(taux => {
       tvaParTaux[taux].base *= ratioRemise;
       tvaParTaux[taux].montant *= ratioRemise;
     });
-    
+
     const totalTVA = Object.values(tvaParTaux).reduce((s, t) => s + t.montant, 0);
-    
-    return { 
-      totalHT, 
-      remiseAmount, 
-      htApresRemise, 
+
+    // Calcul marge
+    const marge = htApresRemise - totalCoutAchat;
+    const tauxMarge = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
+
+    // Retenue de garantie (5% du TTC, applicable aux travaux BTP)
+    const ttcBrut = htApresRemise + (isMicro ? 0 : totalTVA);
+    const retenueGarantie = form.retenueGarantie ? ttcBrut * 0.05 : 0;
+    const ttcNet = ttcBrut - retenueGarantie;
+
+    return {
+      totalHT,
+      totalCoutAchat,
+      remiseAmount,
+      htApresRemise,
       tvaParTaux,
       totalTVA: isMicro ? 0 : totalTVA,
-      ttc: htApresRemise + (isMicro ? 0 : totalTVA)
+      ttc: ttcBrut,
+      retenueGarantie,
+      ttcNet,
+      marge,
+      tauxMarge
     };
   };
   const totals = calculateTotals();
@@ -152,7 +188,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // Ajouter ligne avec TVA par défaut
   const addLigne = (item, sectionId) => {
     const ligne = { 
-      id: Date.now().toString(), 
+      id: generateId(), 
       description: item.nom || '', 
       quantite: 1, 
       unite: item.unite || 'unité', 
@@ -191,11 +227,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   };
 
   const handleCreate = () => {
-    if (!form.clientId) return alert('Sélectionnez un client');
-    if (form.sections.every(s => s.lignes.length === 0)) return alert('Ajoutez des lignes');
-    
+    if (!form.clientId) return showToast('Sélectionnez un client', 'error');
+    if (form.sections.every(s => s.lignes.length === 0)) return showToast('Ajoutez des lignes', 'error');
+
     const client = clients.find(c => c.id === form.clientId);
-    
+
     onSubmit({
       numero: generateNumero(form.type),
       type: form.type,
@@ -214,20 +250,72 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       total_ht: totals.htApresRemise,
       tva: totals.totalTVA,
       total_ttc: totals.ttc,
+      retenueGarantie: form.retenueGarantie,
+      retenue_montant: totals.retenueGarantie,
+      ttc_net: totals.ttcNet,
+      marge: totals.marge,
+      tauxMarge: totals.tauxMarge,
       notes: form.notes
     });
-    
+
     setMode('list');
-    setForm({ 
-      type: 'devis', 
-      clientId: '', 
-      chantierId: '', 
-      date: new Date().toISOString().split('T')[0], 
-      validite: entreprise?.validiteDevis || 30, 
-      sections: [{ id: '1', titre: '', lignes: [] }], 
-      tvaDefaut: entreprise?.tvaDefaut || 10, 
-      remise: 0, 
-      notes: '' 
+    setForm({
+      type: 'devis',
+      clientId: '',
+      chantierId: '',
+      date: new Date().toISOString().split('T')[0],
+      validite: entreprise?.validiteDevis || 30,
+      sections: [{ id: '1', titre: '', lignes: [] }],
+      tvaDefaut: entreprise?.tvaDefaut || 10,
+      remise: 0,
+      retenueGarantie: false,
+      notes: ''
+    });
+  };
+
+  // Dupliquer un devis/facture
+  const duplicateDocument = (doc) => {
+    const newLignes = (doc.lignes || []).map(l => ({
+      ...l,
+      id: generateId()
+    }));
+    const newSections = doc.sections ? doc.sections.map(s => ({
+      ...s,
+      id: generateId(),
+      lignes: s.lignes.map(l => ({
+        ...l,
+        id: generateId()
+      }))
+    })) : [{ id: '1', titre: '', lignes: newLignes }];
+
+    const newDoc = {
+      id: generateId(),
+      numero: generateNumero('devis'),
+      type: 'devis',
+      client_id: doc.client_id,
+      client_nom: doc.client_nom,
+      chantier_id: '',
+      date: new Date().toISOString().split('T')[0],
+      validite: doc.validite || entreprise?.validiteDevis || 30,
+      statut: 'brouillon',
+      sections: newSections,
+      lignes: newLignes,
+      tvaParTaux: doc.tvaParTaux,
+      tvaDetails: doc.tvaDetails,
+      tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
+      remise: doc.remise || 0,
+      total_ht: doc.total_ht,
+      tva: doc.tva,
+      total_ttc: doc.total_ttc,
+      notes: doc.notes || ''
+    };
+
+    onSubmit(newDoc);
+    setSelected(newDoc);
+    setMode('preview');
+    setSnackbar({
+      type: 'success',
+      message: `Devis ${newDoc.numero} cree (copie de ${doc.numero})`
     });
   };
 
@@ -239,19 +327,119 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
   const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSnackbar({ type: 'success', message: '[OK] Devis signé et accepté !' }); };
 
+  // New signature pad handler (react-signature-canvas)
+  const handleSignatureSave = (signatureData) => {
+    if (!selected) return;
+    onUpdate(selected.id, {
+      signature: signatureData.signature,
+      signatureDate: signatureData.signatureDate,
+      signataire: signatureData.signataire,
+      statut: 'accepte'
+    });
+    setSelected(s => ({ ...s, signature: signatureData.signature, signatureDate: signatureData.signatureDate, statut: 'accepte' }));
+    setSnackbar({ type: 'success', message: 'Devis signe et accepte avec succes!' });
+  };
+
+  // Template selection handler
+  const handleTemplateSelect = (templateData) => {
+    setForm(prev => ({
+      ...prev,
+      sections: [{
+        id: '1',
+        titre: templateData.template.nom,
+        lignes: templateData.lignes
+      }]
+    }));
+    setSnackbar({ type: 'success', message: `Modele "${templateData.template.nom}" applique` });
+  };
+
+  // Smart Template Wizard handler - creates complete devis from wizard
+  const handleSmartDevisCreate = (devisData) => {
+    // Validate required data
+    if (!devisData || !devisData.clientId || !devisData.sections?.length) {
+      setSnackbar({ type: 'error', message: 'Donnees du devis incompletes' });
+      return;
+    }
+
+    // Generate numero
+    const numero = generateNumero('devis');
+
+    // Flatten all lines for total calculation and lignes array
+    const allLignes = [];
+    devisData.sections.forEach(section => {
+      if (section?.lignes) {
+        section.lignes.forEach(ligne => {
+          allLignes.push({
+            ...ligne,
+            section: section.titre
+          });
+        });
+      }
+    });
+
+    // Create the devis object
+    const newDevis = {
+      id: generateId(),
+      numero,
+      type: 'devis',
+      statut: 'brouillon',
+      client_id: devisData.clientId,
+      chantier_id: null,
+      date: devisData.date,
+      validite: devisData.validite,
+      sections: devisData.sections,
+      lignes: allLignes,
+      tvaRate: devisData.tvaDefaut || 10,
+      remise: devisData.remise || 0,
+      notes: devisData.notes,
+      total_ht: devisData.total_ht,
+      total_tva: devisData.total_tva,
+      total_ttc: devisData.total_ttc,
+      cout_revient: devisData.cout_revient,
+      marge: devisData.marge,
+      marge_pourcent: devisData.marge_pourcent,
+      template: devisData.template
+    };
+
+    // Submit the devis
+    onSubmit(newDevis);
+
+    // Close wizard and navigate directly to the new devis
+    setShowSmartWizard(false);
+    setSelected(newDevis);
+    setMode('preview');
+
+    // Show success notification
+    setSnackbar({
+      type: 'success',
+      message: `Devis ${numero} cree`
+    });
+  };
+
+  // Payment creation handler
+  const handlePaymentCreated = (paymentData) => {
+    if (addPaiement) {
+      addPaiement({
+        ...paymentData,
+        documentId: selected?.id,
+        documentNumero: selected?.numero
+      });
+    }
+  };
+
   // Workflow facturation
   const getAcompteFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
 
   const createAcompte = () => {
-    if (!selected || selected.statut !== 'accepte') return alert('Le devis doit être accepté');
-    if (getAcompteFacture(selected.id)) return alert('Un acompte existe déjà ');
+    if (!selected || selected.statut !== 'accepte') return showToast('Le devis doit être accepté', 'error');
+    if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     const montantHT = selected.total_ht * (acomptePct / 100);
     const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
     const tva = montantHT * (tvaRate / 100);
     const ttc = montantHT + tva;
-    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
+    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
     onSubmit(facture);
     onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
@@ -269,7 +457,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const ttc = montantSoldeHT + tva;
     const lignes = [...(selected.lignes || [])];
     if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
-    const facture = { id: Date.now().toString(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
+    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
     onSubmit(facture);
     onUpdate(selected.id, { statut: 'facture' });
     setSelected({ ...selected, statut: 'facture' });
@@ -524,7 +712,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     const content = downloadPDF(doc);
     const w = window.open('', '_blank');
     if (!w) {
-      alert('Veuillez autoriser les popups pour générer le PDF');
+      showToast('Veuillez autoriser les popups pour générer le PDF', 'error');
       return;
     }
     w.document.write(content);
@@ -614,6 +802,11 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         notes: `Cree depuis devis ${selected.numero}`,
         budget_estime: selected.total_ht
       });
+      // Check if chantier was created successfully
+      if (!newChantier?.id) {
+        setSnackbar({ type: 'error', message: 'Erreur lors de la creation du chantier' });
+        return;
+      }
       // Link devis to new chantier
       onUpdate(selected.id, { chantier_id: newChantier.id });
       setSelected({ ...selected, chantier_id: newChantier.id });
@@ -657,7 +850,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
-          {isDevis && selected.statut === 'envoye' && <Tooltip text="Le client peut signer directement sur l'écran pour accepter le devis" position="bottom"><button onClick={() => setMode('sign')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}>✍️ Faire signer</button></Tooltip>}
+          {isDevis && selected.statut === 'envoye' && <Tooltip text="Le client peut signer directement sur l'ecran pour accepter le devis" position="bottom"><button onClick={() => setShowSignaturePad(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}><PenTool size={14} /> Faire signer</button></Tooltip>}
+          {selected.type === 'facture' && selected.statut !== 'payee' && <Tooltip text="Generer un QR code pour paiement immediat par carte bancaire" position="bottom"><button onClick={() => setShowPaymentModal(true)} className="px-3 sm:px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-all hover:shadow-lg"><QrCode size={14} /><span>Paiement CB</span></button></Tooltip>}
           {canAcompte && <Tooltip text="Créer une facture d'acompte (ex: 30%) avant de commencer le chantier" position="bottom"><button onClick={() => setShowAcompteModal(true)} className="px-3 sm:px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><CreditCard size={14} /><span>Acompte</span></button></Tooltip>}
           {canFacturer && (
             <Tooltip text={acompteFacture ? "Créer la facture de solde pour le montant restant après l'acompte" : "Convertir ce devis en facture définitive"} position="bottom">
@@ -683,7 +877,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           )}
           <button onClick={() => sendWhatsApp(selected)} className="px-3 sm:px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><MessageCircle size={14} /><span>WhatsApp</span></button>
           <button onClick={() => sendEmail(selected)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Mail size={14} /><span>Email</span></button>
-          <button onClick={() => { if(confirm('Supprimer ce document ?')) { onDelete(selected.id); setSelected(null); setMode('list'); }}} className="px-3 sm:px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Trash2 size={14} /><span>Supprimer</span></button>
+          <Tooltip text="Creer un nouveau devis avec les memes lignes" position="bottom">
+            <button onClick={() => duplicateDocument(selected)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}><Copy size={14} /><span>Dupliquer</span></button>
+          </Tooltip>
+          <button onClick={async () => {
+            const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' });
+            if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); }
+          }} className="px-3 sm:px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Trash2 size={14} /><span>Supprimer</span></button>
         </div>
 
         {/* Info workflow */}
@@ -835,7 +1035,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                     className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                     value={chantierForm.nom}
                     onChange={e => setChantierForm(p => ({ ...p, nom: e.target.value }))}
-                    placeholder="Ex: Renovation cuisine"
+                    placeholder="Ex: Rénovation cuisine"
                   />
                 </div>
                 <div>
@@ -844,7 +1044,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                     className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                     value={chantierForm.adresse}
                     onChange={e => setChantierForm(p => ({ ...p, adresse: e.target.value }))}
-                    placeholder="Adresse"
+                    placeholder="Ex: 12 rue des Lilas, 75011 Paris"
                   />
                 </div>
               </div>
@@ -913,10 +1113,29 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === CREATE VIEW ===
   if (mode === 'create') {
     const favoris = catalogue?.filter(c => c.favori) || [];
-    const catalogueFiltered = catalogue?.filter(c => !catalogueSearch || c.nom?.toLowerCase().includes(catalogueSearch.toLowerCase())) || [];
+    const catalogueFiltered = catalogue?.filter(c => !debouncedCatalogueSearch || c.nom?.toLowerCase().includes(debouncedCatalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
+
+        {/* Smart Template Wizard button - 2-click devis creation */}
+        <button
+          onClick={() => setShowSmartWizard(true)}
+          className={`w-full p-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-3 transition-all hover:shadow-lg group ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform">
+            <Sparkles size={24} className="text-white" />
+          </div>
+          <div className="text-left flex-1">
+            <p className={`font-semibold ${textPrimary}`}>Partir d'un modèle métier</p>
+            <p className={`text-sm ${textMuted}`}>Devis pro en 2 clics • Plomberie, Peinture, Jardinage, Électricité</p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400">Nouveau</span>
+            <ChevronRight size={20} className={`${textMuted} group-hover:translate-x-1 transition-transform`} />
+          </div>
+        </button>
+
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
@@ -981,14 +1200,51 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           ))}
           
           {/* Options */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validité (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
+            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validite (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className={`block text-sm mb-1 ${textPrimary}`}>Retenue de garantie</label>
+              <label className={`flex items-center gap-3 px-4 py-2.5 border rounded-xl cursor-pointer ${form.retenueGarantie ? (isDark ? 'border-amber-500 bg-amber-900/20' : 'border-amber-400 bg-amber-50') : inputBg}`}>
+                <input type="checkbox" checked={form.retenueGarantie} onChange={e => setForm(p => ({...p, retenueGarantie: e.target.checked}))} className="w-4 h-4 rounded" />
+                <span className={`text-sm ${textPrimary}`}>5% (BTP)</span>
+              </label>
+            </div>
           </div>
           
-          {/* Totaux avec multi-TVA */}
-          <div className="flex justify-end">
-            <div className={`w-72 p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+          {/* Totaux avec multi-TVA et marge */}
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+            {/* Apercu marge (visible seulement pour l'artisan, pas sur le PDF) */}
+            {totals.totalCoutAchat > 0 && (
+              <div className={`w-full sm:w-64 p-4 rounded-xl border ${totals.marge >= 0 ? (isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200') : (isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp size={16} className={totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'} />
+                  <span className={`text-sm font-medium ${textPrimary}`}>Votre marge</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>prive</span>
+                </div>
+                <div className="space-y-1">
+                  <div className={`flex justify-between text-sm ${textSecondary}`}>
+                    <span>Cout d'achat</span>
+                    <span>{modeDiscret ? '·····' : formatMoney(totals.totalCoutAchat)}</span>
+                  </div>
+                  <div className={`flex justify-between font-medium ${totals.marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span>Marge brute</span>
+                    <span>{modeDiscret ? '·····' : formatMoney(totals.marge)}</span>
+                  </div>
+                  <div className={`flex justify-between text-sm ${totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <span>Taux de marge</span>
+                    <span>{modeDiscret ? '··' : totals.tauxMarge.toFixed(1)}%</span>
+                  </div>
+                </div>
+                {totals.tauxMarge < 20 && totals.tauxMarge >= 0 && (
+                  <p className={`text-xs mt-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Marge faible - verifiez vos prix</p>
+                )}
+                {totals.marge < 0 && (
+                  <p className={`text-xs mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>Attention: marge negative!</p>
+                )}
+              </div>
+            )}
+            <div className={`w-full sm:w-72 p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <div className={`flex justify-between py-1 ${textPrimary}`}><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>
               {form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
               {!isMicro && Object.entries(totals.tvaParTaux).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => (
@@ -999,12 +1255,25 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               ))}
               {isMicro && <div className={`text-xs py-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>TVA non applicable (art. 293B CGI)</div>}
               <div className={`flex justify-between py-2 border-t font-bold mt-1 ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
+              {form.retenueGarantie && (
+                <>
+                  <div className={`flex justify-between py-1 text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    <span>Retenue garantie 5%</span>
+                    <span>-{formatMoney(totals.retenueGarantie)}</span>
+                  </div>
+                  <div className={`flex justify-between py-1 font-medium ${textPrimary}`}>
+                    <span>Net a payer</span>
+                    <span>{formatMoney(totals.ttcNet)}</span>
+                  </div>
+                  <p className={`text-xs mt-1 ${textMuted}`}>Retenue liberee apres 1 an</p>
+                </>
+              )}
             </div>
           </div>
           
           <div className={`flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}><X size={16} />Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}><Check size={16} />Créer</button></div>
         </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: Date.now().toString(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
         <Snackbar />
       </div>
     );
@@ -1013,7 +1282,23 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
   // === LIST VIEW ===
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-3"><h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1><button onClick={() => setMode('create')} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}><Plus size={16} /><span className="hidden sm:inline">Nouveau</span></button></div>
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
+        <div className="flex items-center gap-2">
+          {/* Quick access to Smart Template Wizard */}
+          <button
+            onClick={() => setShowSmartWizard(true)}
+            className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
+          >
+            <Sparkles size={16} />
+            <span className="hidden sm:inline">Devis express</span>
+          </button>
+          <button onClick={() => setShowDevisWizard(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nouveau</span>
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis en attente</p><p className="text-lg sm:text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
         <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis acceptés</p><p className="text-lg sm:text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
@@ -1084,13 +1369,13 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'devis'})); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                   <FileText size={18} />
-                  Créer un devis
+                  Créer mon premier devis
                 </button>
                 <button onClick={() => { setMode('create'); setForm(p => ({...p, type: 'facture'})); }} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium border-2 ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
                   <Receipt size={18} />
-                  Créer une facture
+                  Ou créer une facture
                 </button>
               </div>
             </div>
@@ -1099,9 +1384,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => { setMode('create'); setForm(p => ({...p, type: filter === 'factures' ? 'facture' : 'devis'})); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                 <Plus size={18} />
-                {filter === 'factures' ? 'Créer une facture' : 'Créer un devis'}
+                Créer un nouveau document
               </button>
             </div>
           )}
@@ -1195,6 +1480,75 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        document={selected}
+        client={selected ? clients.find(c => c.id === selected.client_id) : null}
+        entreprise={entreprise}
+        onPaymentCreated={handlePaymentCreated}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
+      {/* Template Selector Modal (legacy) */}
+      <TemplateSelector
+        isOpen={showTemplateSelector}
+        onClose={() => setShowTemplateSelector(false)}
+        onSelectTemplate={handleTemplateSelect}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
+      {/* Smart Template Wizard - 2-click devis creation */}
+      <SmartTemplateWizard
+        isOpen={showSmartWizard}
+        onClose={() => setShowSmartWizard(false)}
+        onCreateDevis={handleSmartDevisCreate}
+        clients={clients}
+        entreprise={entreprise}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
+      {/* Devis Wizard - Step-by-step devis creation */}
+      <DevisWizard
+        isOpen={showDevisWizard}
+        onClose={() => setShowDevisWizard(false)}
+        onSubmit={(devisData) => {
+          const numero = generateNumero(devisData.type);
+          const newDevis = onSubmit({ ...devisData, numero });
+          if (newDevis?.id) {
+            setSelected(newDevis);
+            setMode('preview');
+          }
+        }}
+        clients={clients}
+        addClient={(data) => {
+          const c = { id: generateId(), ...data };
+          setClients(prev => [...prev, c]);
+          return c;
+        }}
+        catalogue={catalogue}
+        chantiers={chantiers}
+        entreprise={entreprise}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
+      {/* Signature Pad Modal */}
+      <SignaturePad
+        isOpen={showSignaturePad}
+        onClose={() => setShowSignaturePad(false)}
+        onSave={handleSignatureSave}
+        document={selected}
+        client={selected ? clients.find(c => c.id === selected.client_id) : null}
+        entreprise={entreprise}
+        isDark={isDark}
+        couleur={couleur}
+      />
     </div>
   );
 }

@@ -1,9 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Mode démo détection
-const isDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'true';
+// Mode demo detection - SECURE: Only allow in development, never in production
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const urlHasDemoParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'true';
+const envDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
-// En mode démo, on utilise des URLs factices pour éviter les erreurs 401
+// Demo mode only works in development OR if explicitly enabled via env var (for staging)
+const isDemo = (isDevelopment && urlHasDemoParam) || envDemoMode;
+
+// Log warning in production if someone tries to use demo param
+if (!isDevelopment && urlHasDemoParam && !envDemoMode) {
+  console.warn('Demo mode via URL is disabled in production for security reasons.');
+}
+
+// En mode demo, on utilise des URLs factices pour eviter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 

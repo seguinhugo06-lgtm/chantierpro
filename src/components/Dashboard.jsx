@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown, PieChart as PieChartIcon, Activity, Building2 } from 'lucide-react';
+import RentabilityDashboard from './RentabilityDashboard';
+import AccountingIntegration from './AccountingIntegration';
 
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const [showCADetail, setShowCADetail] = useState(null); // 'ca' | 'month' | null
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -11,6 +13,8 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
   const [showEncaisseDetail, setShowEncaisseDetail] = useState(false);
   const [showEnAttenteDetail, setShowEnAttenteDetail] = useState(false);
   const [showMargeDetail, setShowMargeDetail] = useState(false);
+  const [showRentabilityDashboard, setShowRentabilityDashboard] = useState(false);
+  const [showAccountingIntegration, setShowAccountingIntegration] = useState(false);
 
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
 
@@ -184,15 +188,15 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Exemple concret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise ChantierPro pour : creer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-            <h4 className={`font-semibold mb-2 ${textPrimary}`}>Par ou commencer ?</h4>
+            <h4 className={`font-semibold mb-2 ${textPrimary}`}>Par où commencer ?</h4>
             <ol className={`text-sm space-y-2 ${textSecondary}`}>
-              <li>1. Configurez votre entreprise dans <strong>Parametres</strong></li>
+              <li>1. Configurez votre entreprise dans <strong>Paramètres</strong></li>
               <li>2. Ajoutez vos prestations dans le <strong>Catalogue</strong></li>
-              <li>3. Creez votre premier <strong>Client</strong> et <strong>Devis</strong></li>
+              <li>3. Créez votre premier <strong>Client</strong> et <strong>Devis</strong></li>
             </ol>
           </div>
         </div>
@@ -200,14 +204,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
     },
     devis: {
       title: "Devis",
-      titleFull: "Creer et gerer vos devis",
+      titleFull: "Créer et gérer vos devis",
       icon: FileText,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Creez des devis professionnels et transformez-les en factures en un clic.</p>
+          <p className={textSecondary}>Créez des devis professionnels et transformez-les en factures en un clic.</p>
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Creer un devis</h5>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Créer un devis</h5>
               <p className={`text-sm ${textSecondary}`}>Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -234,14 +238,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
       icon: Hammer,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Suivez chaque chantier : depenses, heures, avancement et rentabilite.</p>
+          <p className={textSecondary}>Suivez chaque chantier : dépenses, heures, avancement et rentabilité.</p>
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>Suivi financier</h5>
-              <p className={`text-sm ${textSecondary}`}>Ajoutez vos depenses (materiaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
+              <p className={`text-sm ${textSecondary}`}>Ajoutez vos dépenses (matériaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>Photos avant/apres</h5>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Photos avant/après</h5>
               <p className={`text-sm ${textSecondary}`}>Documentez votre travail pour vos clients et en cas de litige.</p>
             </div>
           </div>
@@ -300,51 +304,51 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}><Lightbulb size={16} /> Astuce</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Lors de la creation d'un devis, vous pouvez creer un nouveau client directement sans quitter la page.
+              Lors de la création d'un devis, vous pouvez créer un nouveau client directement sans quitter la page.
             </p>
           </div>
         </div>
       )
     },
     equipe: {
-      title: "Equipe",
-      titleFull: "Gerer votre equipe",
+      title: "Équipe",
+      titleFull: "Gérer votre équipe",
       icon: Users,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>Gerez vos employes, suivez leurs heures et calculez le cout de main d'oeuvre par chantier.</p>
+          <p className={textSecondary}>Gérez vos employés, suivez leurs heures et calculez le coût de main d'œuvre par chantier.</p>
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiches employes</h5>
-              <p className={`text-sm ${textSecondary}`}>Nom, role, taux horaire et cout charge. Ces infos servent a calculer la rentabilite.</p>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiches employés</h5>
+              <p className={`text-sm ${textSecondary}`}>Nom, rôle, taux horaire et coût chargé. Ces infos servent à calculer la rentabilité.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>Pointages</h5>
-              <p className={`text-sm ${textSecondary}`}>Enregistrez les heures par chantier. Le cout MO se calcule automatiquement dans la marge.</p>
+              <p className={`text-sm ${textSecondary}`}>Enregistrez les heures par chantier. Le coût MO se calcule automatiquement dans la marge.</p>
             </div>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}><Lightbulb size={16} /> Cout charge</h4>
+            <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}><Lightbulb size={16} /> Coût chargé</h4>
             <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-              Le cout charge inclut salaire + charges sociales. C'est ce qui est utilise pour calculer la vraie marge de vos chantiers.
+              Le coût chargé inclut salaire + charges sociales. C'est ce qui est utilisé pour calculer la vraie marge de vos chantiers.
             </p>
           </div>
         </div>
       )
     },
     rentabilite: {
-      title: "Rentabilite",
+      title: "Rentabilité",
       titleFull: "Comprendre votre marge",
       icon: TrendingUp,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>La rentabilite est la cle de votre succes. Voici comment la lire :</p>
+          <p className={textSecondary}>La rentabilité est la clé de votre succès. Voici comment la lire :</p>
           <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
             <h5 className={`font-bold mb-3 ${textPrimary}`}>Calcul de la marge</h5>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className={textSecondary}>Chiffre d'affaires</span><span className={textPrimary}>10 000 EUR</span></div>
-              <div className="flex justify-between"><span className={textSecondary}>- Materiaux</span><span className="text-red-500">- 3 000 EUR</span></div>
-              <div className="flex justify-between"><span className={textSecondary}>- Main d'oeuvre</span><span className="text-red-500">- 2 000 EUR</span></div>
+              <div className="flex justify-between"><span className={textSecondary}>- Matériaux</span><span className="text-red-500">- 3 000 EUR</span></div>
+              <div className="flex justify-between"><span className={textSecondary}>- Main d'œuvre</span><span className="text-red-500">- 2 000 EUR</span></div>
               <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><span className="font-bold">= Marge nette</span><span className="font-bold text-emerald-500">5 000 EUR (50%)</span></div>
             </div>
           </div>
@@ -618,6 +622,24 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
         <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
       </div>
 
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setShowRentabilityDashboard(true)}
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+        >
+          <Activity size={16} style={{ color: couleur }} />
+          Analyse rentabilite
+        </button>
+        <button
+          onClick={() => setShowAccountingIntegration(true)}
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+        >
+          <Building2 size={16} style={{ color: couleur }} />
+          Comptabilite
+        </button>
+      </div>
+
       {/* Devis Pipeline - NEW SECTION */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
         <div className="flex items-center justify-between mb-4">
@@ -786,9 +808,18 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               </div>
               Rentabilité par chantier
             </h3>
-            <button onClick={() => { setShowHelp(true); setHelpSection('rentabilite'); }} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Comprendre la rentabilité">
-              <HelpCircle size={14} className={textMuted} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowRentabilityDashboard(true)}
+                className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
+              >
+                <Activity size={12} />
+                Analyse
+              </button>
+              <button onClick={() => { setShowHelp(true); setHelpSection('rentabilite'); }} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Comprendre la rentabilité">
+                <HelpCircle size={14} className={textMuted} />
+              </button>
+            </div>
           </div>
 
           {modeDiscret ? (
@@ -1147,6 +1178,42 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
             </div>
           </div>
         </div>
+      )}
+
+      {/* Rentability Dashboard Modal */}
+      {showRentabilityDashboard && (
+        <RentabilityDashboard
+          chantiers={chantiers}
+          devis={devis}
+          depenses={depenses}
+          pointages={pointages}
+          equipe={equipe}
+          ajustements={ajustements}
+          modeDiscret={modeDiscret}
+          isDark={isDark}
+          couleur={couleur}
+          onClose={() => setShowRentabilityDashboard(false)}
+          onSelectChantier={(id) => {
+            setShowRentabilityDashboard(false);
+            setSelectedChantier?.(id);
+            setPage?.('chantiers');
+          }}
+        />
+      )}
+
+      {/* Accounting Integration Modal */}
+      {showAccountingIntegration && (
+        <AccountingIntegration
+          isOpen={showAccountingIntegration}
+          onClose={() => setShowAccountingIntegration(false)}
+          devis={devis}
+          depenses={depenses}
+          clients={clients}
+          chantiers={chantiers}
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
       )}
     </div>
   );

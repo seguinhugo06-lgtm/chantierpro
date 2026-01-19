@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2 } from 'lucide-react';
+import { useConfirm, useToast } from '../context/AppContext';
+import { generateId } from '../lib/utils';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode }) {
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -39,15 +44,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const getMargeBg = (t) => t < 0 ? 'bg-red-50' : t < 15 ? 'bg-amber-50' : 'bg-emerald-50';
 
   // Handlers
-  const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: Date.now().toString(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
+  const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
-  const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: Date.now().toString(), text: newTache, done: false }] }); setNewTache(''); } };
+  const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false }] }); setNewTache(''); } };
   const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
   const addDepenseToChantier = () => {
     if (!newDepense.description || !newDepense.montant) return;
     const qty = parseInt(newDepense.quantite) || 1;
     setDepenses([...depenses, {
-      id: Date.now().toString(),
+      id: generateId(),
       chantierId: view,
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
       montant: parseFloat(newDepense.montant),
@@ -59,10 +64,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     setShowQuickMateriau(false);
   };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
-  const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) return; setPointages([...pointages, { id: Date.now().toString(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
+  const handleAddMO = () => { if (!moForm.employeId || !moForm.heures) return; setPointages([...pointages, { id: generateId(), employeId: moForm.employeId, chantierId: view, date: moForm.date, heures: parseFloat(moForm.heures), note: moForm.note, manuel: true, approuve: true }]); setMoForm({ employeId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' }); setShowAddMO(false); };
   const handleEditPointage = (id, field, value) => setPointages(pointages.map(p => p.id === id ? { ...p, [field]: field === 'heures' ? parseFloat(value) || 0 : value } : p));
-  const deletePointage = (id) => { if (confirm('Supprimer ?')) setPointages(pointages.filter(p => p.id !== id)); };
-  const submit = () => { if (!form.nom) return alert('Nom requis'); addChantier({ ...form, budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined }); setShow(false); setShowAdvanced(false); setForm({ nom: '', client_id: '', adresse: '', date_debut: new Date().toISOString().split('T')[0], date_fin: '', statut: 'prospect', avancement: 0, notes: '', budget_estime: '' }); };
+  const deletePointage = async (id) => {
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce pointage ?' });
+    if (confirmed) setPointages(pointages.filter(p => p.id !== id));
+  };
+  const submit = () => {
+    if (!form.nom) return showToast('Nom requis', 'error');
+    const newChantier = addChantier({ ...form, budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : undefined });
+    setShow(false);
+    setShowAdvanced(false);
+    setForm({ nom: '', client_id: '', adresse: '', date_debut: new Date().toISOString().split('T')[0], date_fin: '', statut: 'prospect', avancement: 0, notes: '', budget_estime: '' });
+    // Redirect to the new chantier details
+    if (newChantier?.id) setView(newChantier.id);
+  };
 
   // Vue détail chantier
   if (view) {
@@ -169,7 +185,27 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             )}
           </div>
 
-          {/* Grille Revenus vs Depenses */}
+          {/* Quick Stats - 3 key metrics for mobile */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
+              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Marge</p>
+              <p className={`text-lg font-bold ${bilan.tauxMarge < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                {formatPct(bilan.tauxMarge)}
+              </p>
+            </div>
+            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
+              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Reste</p>
+              <p className={`text-lg font-bold ${revenuTotal - bilan.totalDepenses < 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                {formatMoney(Math.max(0, revenuTotal - bilan.totalDepenses))}
+              </p>
+            </div>
+            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
+              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Avancement</p>
+              <p className={`text-lg font-bold ${textPrimary}`}>{avancement.toFixed(0)}%</p>
+            </div>
+          </div>
+
+          {/* Grille Revenus vs Dépenses */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Colonne Revenus */}
             <div className={`rounded-xl p-4 border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -180,21 +216,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className={`text-sm ${textSecondary}`}>Montant devis</span>
-                  <span className={`font-semibold ${textPrimary}`}>{bilan.revenuPrevu > 0 ? formatMoney(bilan.revenuPrevu) : <span className={textMuted}>Non defini</span>}</span>
+                  <span className={`font-semibold ${textPrimary}`}>{bilan.revenuPrevu > 0 ? formatMoney(bilan.revenuPrevu) : <span className={textMuted}>Non défini</span>}</span>
                 </div>
                 {(bilan.adjRevenus || 0) > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className={`text-sm ${textSecondary}`}>Travaux supplementaires</span>
+                    <span className={`text-sm ${textSecondary}`}>Travaux supplémentaires</span>
                     <span className="font-semibold text-emerald-600">+{formatMoney(bilan.adjRevenus)}</span>
                   </div>
                 )}
                 <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-emerald-800' : 'border-emerald-200'}`}>
-                  <span className={`font-medium ${textPrimary}`}>Total prevu</span>
+                  <span className={`font-medium ${textPrimary}`}>Total prévu</span>
                   <span className="font-bold text-lg" style={{ color: couleur }}>{formatMoney(revenuTotal)}</span>
                 </div>
                 {bilan.revenuEncaisse > 0 && (
                   <div className="flex justify-between items-center text-xs">
-                    <span className={textMuted}>Deja encaisse</span>
+                    <span className={textMuted}>Déjà encaissé</span>
                     <span className="text-emerald-600">{formatMoney(bilan.revenuEncaisse)}</span>
                   </div>
                 )}
@@ -204,15 +240,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </button>
             </div>
 
-            {/* Colonne Depenses */}
+            {/* Colonne Dépenses */}
             <div className={`rounded-xl p-4 border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
               <div className="flex items-center gap-2 mb-3">
                 <ArrowDownRight size={16} className="text-red-500" />
-                <h4 className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Depenses</h4>
+                <h4 className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Dépenses</h4>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowQuickMateriau(true)}>
-                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><Package size={14} /> Materiaux</span>
+                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><Package size={14} /> Matériaux</span>
                   <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
                 </div>
                 <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowMODetail(true)}>
@@ -226,12 +262,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 )}
                 <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-red-800' : 'border-red-200'}`}>
-                  <span className={`font-medium ${textPrimary}`}>Total depenses</span>
+                  <span className={`font-medium ${textPrimary}`}>Total dépenses</span>
                   <span className="font-bold text-lg text-red-500">{formatMoney(bilan.totalDepenses)}</span>
                 </div>
               </div>
               <button onClick={() => setShowQuickMateriau(true)} className={`mt-3 w-full py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
-                <Plus size={14} /> Ajouter une depense
+                <Plus size={14} /> Ajouter une dépense
               </button>
             </div>
           </div>
@@ -240,7 +276,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {revenuTotal > 0 && (
             <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${textSecondary}`}>Budget consomme</span>
+                <span className={`text-sm ${textSecondary}`}>Budget consommé</span>
                 <span className={`font-semibold ${bilan.totalDepenses > revenuTotal ? 'text-red-500' : textPrimary}`}>
                   {formatMoney(bilan.totalDepenses)} / {formatMoney(revenuTotal)} ({((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}%)
                 </span>
@@ -313,15 +349,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Depenses totales estimees</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Dépenses totales estimées</p>
                   <p className="font-bold text-red-500 text-lg">{formatMoney(depensesFinalesEstimees)}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Benefice projete</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Bénéfice projeté</p>
                   <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Marge projetee</p>
+                  <p className={`text-xs ${textMuted} mb-1`}>Marge projetée</p>
                   <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatPct(tauxMargeProjecte)}</p>
                 </div>
               </div>
@@ -333,7 +369,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
             { key: 'finances', label: 'Finances', icon: Wallet },
-            { key: 'taches', label: 'Taches', icon: CheckSquare },
+            { key: 'taches', label: 'Tâches', icon: CheckSquare },
             { key: 'photos', label: 'Photos', icon: Camera },
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'messages', label: 'Messages', icon: MessageSquare }
@@ -360,12 +396,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
-              <h3 className={`font-semibold mb-4 ${textPrimary}`}>Depenses Materiaux</h3>
-              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune depense</p>}</div>
+              <h3 className={`font-semibold mb-4 ${textPrimary}`}>Dépenses Matériaux</h3>
+              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}</div>
               <div className="flex gap-2 flex-wrap">
                 <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`}><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
-                <input placeholder="Description" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} />
-                <input type="number" placeholder="Montant" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className={`w-28 px-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <input placeholder="Ex: Carrelage, Peinture murale..." value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <input type="number" placeholder="€ HT" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} className={`w-28 px-4 py-2.5 border rounded-xl ${inputBg}`} />
                 <button onClick={addDepenseToChantier} className="px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{background: couleur}}>+</button>
               </div>
             </div>
@@ -377,7 +413,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <h3 className={`font-semibold mb-4 ${textPrimary}`}>✅ Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
             {tasksTotal > 0 && <div className={`w-full h-2 rounded-full mb-4 overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
             <div className="space-y-2 mb-4">{ch.taches?.map(t => (<div key={t.id} onClick={() => toggleTache(t.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${t.done ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}><span className="text-xl">{t.done ? '✅' : '⬜'}</span><span className={`${textPrimary} ${t.done ? 'line-through opacity-50' : ''}`}>{t.text}</span></div>))}</div>
-            <div className="flex gap-2"><input placeholder="Nouvelle tâche..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} /><button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button></div>
+            <div className="flex gap-2"><input placeholder="Ex: Poser le carrelage salle de bain..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} /><button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button></div>
           </div>
         )}
 
@@ -388,7 +424,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
             </div>
             {(!ch.photos || ch.photos.length === 0) ? <p className="text-slate-400 text-center py-8">Aucune photo</p> : (
-              <div className="space-y-4">{PHOTO_CATS.map(cat => { const catPhotos = (ch.photos || []).filter(p => p.categorie === cat); if (catPhotos.length === 0) return null; return (<div key={cat}><p className="text-sm font-medium mb-2 capitalize">{cat} ({catPhotos.length})</p><div className="flex gap-2 flex-wrap">{catPhotos.map(p => (<div key={p.id} className="relative group cursor-pointer" onClick={() => setPhotoPreview(p)}><img src={p.src} className="w-24 h-24 object-cover rounded-xl hover:opacity-90 transition-opacity" alt="" /><button onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center"><X size={12} /></button></div>))}</div></div>); })}</div>
+              <div className="space-y-4">{PHOTO_CATS.map(cat => { const catPhotos = (ch.photos || []).filter(p => p.categorie === cat); if (catPhotos.length === 0) return null; return (<div key={cat}><p className="text-sm font-medium mb-2 capitalize">{cat} ({catPhotos.length})</p><div className="flex gap-2 flex-wrap">{catPhotos.map(p => (<div key={p.id} className="relative group cursor-pointer" onClick={() => setPhotoPreview(p)}><img src={p.src} className="w-24 h-24 object-cover rounded-xl hover:opacity-90 transition-opacity" alt="" /><button onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }} className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-md"><X size={14} /></button></div>))}</div></div>); })}</div>
             )}
           </div>
         )}
@@ -396,21 +432,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {activeTab === 'notes' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><StickyNote size={18} /> Notes</h3>
-            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Notes internes..." />
+            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Contraintes d'accès, contacts sur site, détails importants..." />
           </div>
         )}
 
         {activeTab === 'messages' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} style={{ color: couleur }} /> Historique des echanges</h3>
-            <p className={`text-sm ${textMuted} mb-4`}>Centralisez ici tous vos echanges avec le client (emails, SMS, appels...).</p>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} style={{ color: couleur }} /> Historique des échanges</h3>
+            <p className={`text-sm ${textMuted} mb-4`}>Centralisez ici tous vos échanges avec le client (emails, SMS, appels...).</p>
 
             {/* Existing messages */}
             <div className="space-y-3 mb-4">
               {(!ch.messages || ch.messages.length === 0) ? (
                 <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                   <MessageSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                  <p className={textMuted}>Aucun echange enregistre</p>
+                  <p className={textMuted}>Aucun échange enregistré</p>
                 </div>
               ) : (
                 ch.messages.map(msg => (
@@ -435,10 +471,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </button>
                 ))}
               </div>
-              <textarea className={`w-full px-3 py-2 border rounded-xl text-sm ${inputBg}`} rows={2} placeholder="Resumer l'echange..." value={newMessage?.content || ''} onChange={e => setNewMessage && setNewMessage(p => ({ ...p, content: e.target.value }))} />
+              <textarea className={`w-full px-3 py-2 border rounded-xl text-sm ${inputBg}`} rows={2} placeholder="Résumer l'échange avec le client..." value={newMessage?.content || ''} onChange={e => setNewMessage && setNewMessage(p => ({ ...p, content: e.target.value }))} />
               <button onClick={() => {
                 if (!newMessage?.content) return;
-                const msg = { id: Date.now().toString(), type: newMessage.type || 'email', content: newMessage.content, date: new Date().toISOString() };
+                const msg = { id: generateId(), type: newMessage.type || 'email', content: newMessage.content, date: new Date().toISOString() };
                 updateChantier(ch.id, { messages: [...(ch.messages || []), msg] });
                 setNewMessage && setNewMessage({ type: 'email', content: '' });
               }} className="mt-2 px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2" style={{ background: couleur }}>
@@ -480,8 +516,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <h3 className={`text-lg font-bold mb-4 ${textPrimary}`}>{showAjustement === 'REVENU' ? ' Ajustement Revenu' : ' Ajustement Dépense'}</h3>
               <p className="text-sm text-slate-500 mb-4">{showAjustement === 'REVENU' ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</p>
               <div className="space-y-4">
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Libellé" value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
-                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Montant HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Travaux supplémentaires, Remise..." value={adjForm.libelle} onChange={e => setAdjForm(p => ({...p, libelle: e.target.value}))} />
+                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Montant € HT" value={adjForm.montant_ht} onChange={e => setAdjForm(p => ({...p, montant_ht: e.target.value}))} />
               </div>
               <div className="flex justify-end gap-3 mt-6"><button onClick={() => { setShowAjustement(null); setAdjForm({ libelle: '', montant_ht: '' }); }} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={handleAddAjustement} className="px-4 py-2 text-white rounded-xl" style={{background: showAjustement === 'REVENU' ? '#22c55e' : '#ef4444'}}>Ajouter</button></div>
             </div>
@@ -585,7 +621,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant total TTC *</label>
                   <div className="relative">
-                    <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="0.00" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                    <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: 150" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
                     <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
                   </div>
                 </div>
@@ -635,8 +671,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <h3 className={`text-lg font-bold mb-4 ${textPrimary}`}>+ Ajouter des heures</h3>
               <div className="space-y-4">
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.employeId} onChange={e => setMoForm(p => ({...p, employeId: e.target.value}))}><option value="">Employé *</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}</select>
-                <div className="grid grid-cols-2 gap-4"><input type="date" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.date} onChange={e => setMoForm(p => ({...p, date: e.target.value}))} /><input type="number" step="0.5" placeholder="Heures *" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.heures} onChange={e => setMoForm(p => ({...p, heures: e.target.value}))} /></div>
-                <input placeholder="Note (optionnel)" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.note} onChange={e => setMoForm(p => ({...p, note: e.target.value}))} />
+                <div className="grid grid-cols-2 gap-4"><input type="date" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.date} onChange={e => setMoForm(p => ({...p, date: e.target.value}))} /><input type="number" step="0.5" placeholder="Nb heures *" className={`px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.heures} onChange={e => setMoForm(p => ({...p, heures: e.target.value}))} /></div>
+                <input placeholder="Ex: Pose carrelage salle de bain..." className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={moForm.note} onChange={e => setMoForm(p => ({...p, note: e.target.value}))} />
               </div>
               <div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowAddMO(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={handleAddMO} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Ajouter</button></div>
             </div>
@@ -648,24 +684,24 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowEditBudget(false)}>
             <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
               <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Modifier le budget</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>Definissez le budget previsionnel HT pour ce chantier.</p>
+              <p className={`text-sm ${textMuted} mb-4`}>Définissez le budget prévisionnel HT pour ce chantier.</p>
               {devisLie && (
                 <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200'}`}>
                   <p className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                    Ce chantier est lie au devis <strong>{devisLie.numero}</strong> ({formatMoney(devisHT)}).
-                    Le budget du devis sera utilise par defaut.
+                    Ce chantier est lié au devis <strong>{devisLie.numero}</strong> ({formatMoney(devisHT)}).
+                    Le budget du devis sera utilisé par défaut.
                   </p>
                 </div>
               )}
               <div className="space-y-4">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Budget estime HT</label>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Budget estimé HT</label>
                   <div className="relative">
                     <DollarSign size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                     <input
                       type="number"
                       className={`w-full pl-9 pr-4 py-2.5 border rounded-xl ${inputBg}`}
-                      placeholder="0"
+                      placeholder="Ex: 15000"
                       value={budgetForm.budget_estime}
                       onChange={e => setBudgetForm({ budget_estime: e.target.value })}
                     />
@@ -804,7 +840,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
                 value={form.adresse}
                 onChange={e => setForm(p => ({...p, adresse: e.target.value}))}
-                placeholder="Adresse complète"
+                placeholder="Ex: 12 rue des Lilas, 75011 Paris"
               />
             </div>
           </div>
@@ -836,6 +872,52 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               />
             </div>
           </div>
+
+          {/* Budget - Visible by default with quick-fill */}
+          <div>
+            <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <DollarSign size={16} style={{ color: couleur }} />
+              Budget estimé HT
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                  value={form.budget_estime}
+                  onChange={e => setForm(p => ({...p, budget_estime: e.target.value}))}
+                  placeholder="Ex: 15000"
+                />
+                <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
+              </div>
+              {/* Quick-fill buttons from devis */}
+              {devisDisponibles.length > 0 && (
+                <div className="flex gap-1">
+                  {devisDisponibles.slice(0, 2).map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setForm(p => ({...p, budget_estime: d.total_ht?.toString() || ''}))}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all hover:scale-105 ${
+                        form.budget_estime === d.total_ht?.toString()
+                          ? 'text-white'
+                          : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                      }`}
+                      style={form.budget_estime === d.total_ht?.toString() ? { backgroundColor: couleur } : {}}
+                      title={`Depuis ${d.numero}`}
+                    >
+                      {(d.total_ht || 0).toLocaleString()}EUR
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {form.budget_estime && (
+              <p className={`text-xs mt-1 ${textMuted}`}>
+                Budget TTC (TVA 10%): {(parseFloat(form.budget_estime) * 1.1).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} EUR
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Options avancées toggle */}
@@ -846,39 +928,38 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${showAdvanced ? '' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`} style={showAdvanced ? { background: couleur } : {}}>
             <ChevronRight size={14} className={`transition-transform ${showAdvanced ? 'rotate-90 text-white' : ''}`} />
           </div>
-          Options avancées (statut, budget, notes)
+          Options avancees (statut, notes)
         </button>
 
         {/* Options avancées */}
         {showAdvanced && (
           <div className={`mt-4 pt-4 border-t space-y-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                  <Target size={16} style={{ color: couleur }} />
-                  Statut initial
-                </label>
-                <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={form.statut} onChange={e => setForm(p => ({...p, statut: e.target.value}))}>
-                  <option value="prospect">Prospect (en attente)</option>
-                  <option value="en_cours">En cours</option>
-                  <option value="termine">Terminé</option>
-                </select>
-              </div>
-              <div>
-                <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                  <DollarSign size={16} style={{ color: couleur }} />
-                  Budget estimé HT
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
-                    value={form.budget_estime}
-                    onChange={e => setForm(p => ({...p, budget_estime: e.target.value}))}
-                    placeholder="0"
-                  />
-                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
-                </div>
+            <div>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                <Target size={16} style={{ color: couleur }} />
+                Statut initial
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'prospect', label: 'Prospect', icon: '⏳' },
+                  { value: 'en_cours', label: 'En cours', icon: '🔨' },
+                  { value: 'termine', label: 'Termine', icon: '✅' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(p => ({...p, statut: opt.value}))}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all hover:scale-105 ${
+                      form.statut === opt.value
+                        ? 'text-white shadow-lg'
+                        : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                    }`}
+                    style={form.statut === opt.value ? { backgroundColor: couleur } : {}}
+                  >
+                    <span>{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div>
@@ -891,7 +972,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 rows={3}
                 value={form.notes}
                 onChange={e => setForm(p => ({...p, notes: e.target.value}))}
-                placeholder="Informations complémentaires, spécificités du chantier..."
+                placeholder="Contraintes d'accès, spécificités du chantier..."
               />
             </div>
           </div>

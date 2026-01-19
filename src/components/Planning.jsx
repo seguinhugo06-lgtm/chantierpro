@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info } from 'lucide-react';
+import { useConfirm } from '../context/AppContext';
+import { generateId } from '../lib/utils';
 
 export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
+  const { confirm } = useConfirm();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -92,15 +96,16 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
 
   const submit = () => {
     if (!form.title || !form.date) return;
-    addEvent({ ...form, id: Date.now().toString() });
+    addEvent({ ...form, id: generateId() });
     setShowAdd(false);
     setQuickAdd(null);
     setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' });
   };
 
-  const deleteEvent = (id) => {
+  const deleteEvent = async (id) => {
     if (id.startsWith('ch_')) return;
-    if (confirm('Supprimer cet événement ?')) { setEvents(events.filter(e => e.id !== id)); setShowDetail(null); }
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet événement ?' });
+    if (confirmed) { setEvents(events.filter(e => e.id !== id)); setShowDetail(null); }
   };
 
   const updateEvent = () => {
