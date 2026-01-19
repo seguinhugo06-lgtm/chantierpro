@@ -96,17 +96,17 @@ export default function App() {
   });
 
   // CRUD wrappers with toasts (delegate to DataContext)
-  const addClient = (data) => { const c = dataAddClient(data); showToast(`Client "${data.nom}" ajoute`, 'success'); return c; };
+  const addClient = (data) => { const c = dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
   const addDevis = (data) => dataAddDevis(data);
   const updateDevis = (id, data) => dataUpdateDevis(id, data);
-  const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprime', 'info'); };
-  const addChantier = (data) => { const c = dataAddChantier(data); showToast(`Chantier "${data.nom}" cree`, 'success'); return c; };
+  const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
+  const addChantier = (data) => { const c = dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
   const updateChantier = (id, data) => dataUpdateChantier(id, data);
-  const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistre', 'success'); return a; };
-  const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprime', 'info'); };
+  const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistré', 'success'); return a; };
+  const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprimé', 'info'); };
   const addEchange = (data) => dataAddEchange(data);
-  const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistre`, 'success'); return p; };
-  const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Evenement ajoute', 'success'); return e; };
+  const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistré`, 'success'); return p; };
+  const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Événement ajouté', 'success'); return e; };
 
   // Load settings from localStorage
   useEffect(() => { 
@@ -171,7 +171,7 @@ export default function App() {
       if (error) setAuthError(error.message); 
       else { showToast('Compte créé avec succès !', 'success'); setShowSignUp(false); } 
     } catch (e) { 
-      setAuthError('Erreur lors de la creation du compte'); 
+      setAuthError('Erreur lors de la création du compte'); 
     } 
   };
   
@@ -296,7 +296,7 @@ export default function App() {
             <span className="text-2xl font-bold text-white">ChantierPro</span>
           </div>
           
-          <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Creer un compte' : 'Connexion'}</h2>
+          <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
           <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accedez a votre espace'}</p>
           
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
@@ -333,7 +333,7 @@ export default function App() {
               type="submit" 
               className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all"
             >
-              {showSignUp ? 'Creer mon compte' : 'Se connecter'}
+              {showSignUp ? 'Créer mon compte' : 'Se connecter'}
             </button>
           </form>
           
@@ -614,11 +614,11 @@ export default function App() {
         </header>
 
         {/* Page content */}
-        <main className={`p-3 sm:p-4 lg:p-6 ${tc.text}`}>
+        <main className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={isDark}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}

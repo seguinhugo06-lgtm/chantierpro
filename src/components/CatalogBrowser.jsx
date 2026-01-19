@@ -223,7 +223,7 @@ export default function CatalogBrowser({
               ) : (
                 <div className={`text-center py-12 ${textMuted}`}>
                   <Package size={40} className="mx-auto mb-3 opacity-50" />
-                  <p>Aucun article trouve</p>
+                  <p>Aucun article trouvé</p>
                 </div>
               )}
             </div>
@@ -270,7 +270,7 @@ function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
     <button
       onClick={() => onSelect(item)}
       disabled={isAdded}
-      className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden ${
+      className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg relative overflow-hidden ${
         isAdded
           ? 'border-emerald-500 bg-emerald-500/10'
           : isDark
@@ -304,8 +304,8 @@ function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
         </div>
         <div className="flex items-center justify-between">
           <span className={`text-xs ${textMuted}`}>{item.unite || 'unite'}</span>
-          <span className="text-sm font-bold" style={{ color: couleur }}>
-            {(item.prix || 0).toLocaleString()}EUR
+          <span className="text-sm font-bold whitespace-nowrap" style={{ color: couleur }}>
+            {(item.prix || 0).toLocaleString('fr-FR')} €
           </span>
         </div>
       </div>

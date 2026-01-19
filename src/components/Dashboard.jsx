@@ -216,11 +216,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>2. Envoyer au client</h5>
-              <p className={`text-sm ${textSecondary}`}>Generez le PDF et envoyez-le par WhatsApp ou email directement.</p>
+              <p className={`text-sm ${textSecondary}`}>Générez le PDF et envoyez-le par WhatsApp ou email directement.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>3. Convertir en facture</h5>
-              <p className={`text-sm ${textSecondary}`}>Devis accepte ? Demandez un acompte ou facturez directement.</p>
+              <p className={`text-sm ${textSecondary}`}>Devis accepté ? Demandez un acompte ou facturez directement.</p>
             </div>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
@@ -268,17 +268,17 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>Vue mois ou semaine</h5>
-              <p className={`text-sm ${textSecondary}`}>Basculez entre les vues pour avoir une vision globale ou detaillee de votre emploi du temps.</p>
+              <p className={`text-sm ${textSecondary}`}>Basculez entre les vues pour avoir une vision globale ou détaillée de votre emploi du temps.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>Types d'evenements</h5>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Types d'événements</h5>
               <p className={`text-sm ${textSecondary}`}>Chantier (bleu), RDV Client (vert), Relance (orange), Urgence (rouge).</p>
             </div>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
             <h4 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}><Lightbulb size={16} /> Astuce</h4>
             <p className={`text-sm ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>
-              Cliquez sur un jour pour ajouter rapidement un evenement, ou sur un evenement pour le modifier.
+              Cliquez sur un jour pour ajouter rapidement un événement, ou sur un événement pour le modifier.
             </p>
           </div>
         </div>
@@ -286,19 +286,19 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
     },
     clients: {
       title: "Clients",
-      titleFull: "Gerer vos clients",
+      titleFull: "Gérer vos clients",
       icon: Users,
       content: (
         <div className="space-y-4">
           <p className={textSecondary}>Centralisez les informations de vos clients et retrouvez leur historique en un clic.</p>
           <div className="space-y-3">
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiche client complete</h5>
-              <p className={`text-sm ${textSecondary}`}>Nom, adresse, telephone, email - tout ce qu'il faut pour les contacter et facturer.</p>
+              <h5 className={`font-medium mb-1 ${textPrimary}`}>Fiche client complète</h5>
+              <p className={`text-sm ${textSecondary}`}>Nom, adresse, téléphone, email - tout ce qu'il faut pour les contacter et facturer.</p>
             </div>
             <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>Historique</h5>
-              <p className={`text-sm ${textSecondary}`}>Consultez tous les devis et chantiers lies a un client depuis sa fiche.</p>
+              <p className={`text-sm ${textSecondary}`}>Consultez tous les devis et chantiers liés à un client depuis sa fiche.</p>
             </div>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>

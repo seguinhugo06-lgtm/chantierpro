@@ -161,7 +161,7 @@ export default function SignaturePad({
                 <div>
                   <p className={`font-medium ${textPrimary}`}>J'accepte ce devis</p>
                   <p className={`text-sm ${textMuted}`}>
-                    En signant, j'accepte le devis et les conditions generales de vente de {entreprise?.nom || 'l\'entreprise'}.
+                    En signant, j'accepte le devis et les conditions générales de vente de {entreprise?.nom || 'l\'entreprise'}.
                   </p>
                 </div>
               </label>
@@ -245,9 +245,9 @@ export default function SignaturePad({
                 </button>
               </div>
 
-              {/* Mention legale */}
+              {/* Mention légale */}
               <p className={`text-xs text-center mt-4 ${textMuted}`}>
-                Cette signature electronique a valeur legale conformement au reglement eIDAS (UE 910/2014).
+                Cette signature électronique a valeur légale conformément au règlement eIDAS (UE 910/2014).
               </p>
             </>
           )}

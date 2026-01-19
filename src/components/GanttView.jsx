@@ -576,7 +576,7 @@ export default function GanttView({
                 style={{ background: couleur }}
               >
                 <Check size={18} />
-                {editingTask ? 'Enregistrer' : 'Creer'}
+                {editingTask ? 'Enregistrer' : 'Créer'}
               </button>
             </div>
           </div>

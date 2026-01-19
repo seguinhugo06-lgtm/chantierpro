@@ -421,7 +421,7 @@ export default function SmartTemplateWizard({
               ) : (
                 <>
                   <Check className="w-5 h-5" />
-                  Creer le devis
+                  Créer le devis
                 </>
               )}
             </button>

@@ -41,6 +41,155 @@ const REMINDER_PRESETS = [
   { label: '2 semaines avant', days: 14 },
 ];
 
+// Add Reminder Modal Component
+function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
+  const [form, setForm] = useState({
+    title: '',
+    date: new Date().toISOString().split('T')[0],
+    type: 'custom',
+    priority: 'medium',
+    notes: ''
+  });
+
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.title || !form.date) return;
+    onAdd(form);
+    setForm({ title: '', date: '', type: 'custom', priority: 'medium', notes: '' });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={`relative max-w-md w-full p-6 rounded-3xl ${cardBg} shadow-2xl`}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className={`text-lg font-bold ${textPrimary}`}>Ajouter un rappel</h3>
+          <button onClick={onClose} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <X size={20} className={textMuted} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Title */}
+          <div>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Titre du rappel *</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Ex: Relancer client Dupont"
+              className={`w-full px-4 py-3 rounded-xl border ${inputBg} focus:ring-2 focus:ring-opacity-50`}
+              style={{ focusRingColor: couleur }}
+              required
+            />
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Date *</label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm(f => ({ ...f, date: e.target.value }))}
+              className={`w-full px-4 py-3 rounded-xl border ${inputBg}`}
+              required
+            />
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Type</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'custom', label: '📅 Perso' },
+                { id: 'fiscal', label: '💰 Fiscal' },
+                { id: 'social', label: '👥 Social' },
+                { id: 'legal', label: '⚖️ Légal' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, type: t.id }))}
+                  className={`px-3 py-2 rounded-xl text-sm transition-all ${
+                    form.type === t.id
+                      ? 'text-white'
+                      : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  }`}
+                  style={form.type === t.id ? { background: couleur } : {}}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Priorité</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'low', label: 'Basse', color: 'bg-blue-500' },
+                { id: 'medium', label: 'Moyenne', color: 'bg-amber-500' },
+                { id: 'high', label: 'Haute', color: 'bg-red-500' },
+              ].map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, priority: p.id }))}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                    form.priority === p.id
+                      ? `${p.color} text-white`
+                      : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Notes (optionnel)</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Détails supplémentaires..."
+              rows={2}
+              className={`w-full px-4 py-3 rounded-xl border ${inputBg} resize-none`}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-3 rounded-xl font-medium text-white transition-all hover:shadow-lg"
+              style={{ background: couleur }}
+            >
+              Ajouter
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0)); // Janvier 2026
   const [selectedDate, setSelectedDate] = useState(null);
@@ -316,6 +465,20 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
           💬 <em>"Oups, l'URSSAF attend ta DSN – ne les fais pas attendre !"</em>
         </p>
       </div>
+
+      {/* Add Reminder Modal */}
+      {showAddReminder && (
+        <AddReminderModal
+          isOpen={showAddReminder}
+          onClose={() => setShowAddReminder(false)}
+          onAdd={(reminder) => {
+            setCustomReminders(prev => [...prev, { ...reminder, id: `custom-${Date.now()}` }]);
+            setShowAddReminder(false);
+          }}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
 
       {/* Event detail modal */}
       {selectedDate && (

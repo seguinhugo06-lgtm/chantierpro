@@ -100,7 +100,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       approuve: false,
       manuel: true,
       verrouille: false,
-      note: 'Saisie groupee'
+      note: 'Saisie groupée'
     }));
     setPointages([...pointages, ...newPointages]);
     setShowBulkEntry(false);
@@ -249,7 +249,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <option value="Auto-entrepreneur">Auto-entrepreneur</option>
             </select>
           </div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Telephone</label><input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" /></div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" /></div>
         </div>
 
@@ -259,10 +259,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <div>
               <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux facturation (EUR/h)</label>
               <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" />
-              <p className={`text-xs ${textMuted} mt-1`}>Prix facture au client</p>
+              <p className={`text-xs ${textMuted} mt-1`}>Prix facturé au client</p>
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Cout horaire charge (EUR/h) *</label>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Coût horaire chargé (EUR/h) *</label>
               <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
               <p className={`text-xs ${textMuted} mt-1`}>Salaire brut + charges (~45%)</p>
             </div>
@@ -286,7 +286,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupee</h1>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupée</h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <p className={`text-sm ${textMuted} mb-4`}>Ajoutez les heures pour plusieurs employes en une seule fois</p>
@@ -311,9 +311,9 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <label className={`text-sm font-medium ${textPrimary}`}>Employes ({bulkForm.selectedEmployees.length} selectionne{bulkForm.selectedEmployees.length > 1 ? 's' : ''})</label>
+            <label className={`text-sm font-medium ${textPrimary}`}>Employés ({bulkForm.selectedEmployees.length} sélectionné{bulkForm.selectedEmployees.length > 1 ? 's' : ''})</label>
             <button onClick={selectAllEmployees} className={`text-sm px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              {bulkForm.selectedEmployees.length === equipe.length ? 'Deselectionner tout' : 'Tout selectionner'}
+              {bulkForm.selectedEmployees.length === equipe.length ? 'Désélectionner tout' : 'Tout sélectionner'}
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -417,7 +417,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Equipe & Heures</h1>
         <div className="flex gap-2">
           <button onClick={() => setShowBulkEntry(true)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupee</span>
+            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
           </button>
           <button onClick={() => setShowAdd(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
             <Plus size={16} /> <span className="hidden sm:inline">Employe</span>

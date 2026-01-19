@@ -36,11 +36,16 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Better scroll containers */
+/* Better scroll containers - prevent layout shift */
 .overflow-y-auto,
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+html {
+  scrollbar-gutter: stable;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -62,14 +67,14 @@ html {
   background: rgba(100, 116, 139, 0.5);
 }
 
-/* Active/pressed state for buttons */
+/* Active/pressed state for buttons - no scale to prevent layout shift */
 button:active {
-  transform: scale(0.98);
+  opacity: 0.9;
 }
 
-/* Card hover lift effect */
+/* Card hover lift effect - shadow only, no transform to prevent layout shift */
 .hover\:shadow-lg:hover {
-  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 /* Subtle gradient backgrounds for cards */
@@ -316,4 +321,38 @@ button {
 
 .ripple-effect:active::after {
   animation: ripple 0.4s ease-out;
+}
+
+/* Currency and number display - prevent overflow */
+.currency-display {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Flex value display - prevent shrinking */
+.value-fixed {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: max-content;
+}
+
+/* Table cell overflow handling */
+.cell-truncate {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Money input fields */
+.money-input {
+  min-width: 120px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Badge with fixed minimum width */
+.badge-fixed {
+  min-width: 20px;
+  text-align: center;
 }

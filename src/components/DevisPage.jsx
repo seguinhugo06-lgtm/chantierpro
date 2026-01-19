@@ -9,7 +9,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, addEchange, paiements = [], addPaiement }) {
+export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -315,7 +315,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     setMode('preview');
     setSnackbar({
       type: 'success',
-      message: `Devis ${newDoc.numero} cree (copie de ${doc.numero})`
+      message: `Devis ${newDoc.numero} créé (copie de ${doc.numero})`
     });
   };
 
@@ -337,7 +337,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       statut: 'accepte'
     });
     setSelected(s => ({ ...s, signature: signatureData.signature, signatureDate: signatureData.signatureDate, statut: 'accepte' }));
-    setSnackbar({ type: 'success', message: 'Devis signe et accepte avec succes!' });
+    setSnackbar({ type: 'success', message: 'Devis signé et accepté avec succès !' });
   };
 
   // Template selection handler
@@ -350,14 +350,14 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         lignes: templateData.lignes
       }]
     }));
-    setSnackbar({ type: 'success', message: `Modele "${templateData.template.nom}" applique` });
+    setSnackbar({ type: 'success', message: `Modèle "${templateData.template.nom}" appliqué` });
   };
 
   // Smart Template Wizard handler - creates complete devis from wizard
   const handleSmartDevisCreate = (devisData) => {
     // Validate required data
     if (!devisData || !devisData.clientId || !devisData.sections?.length) {
-      setSnackbar({ type: 'error', message: 'Donnees du devis incompletes' });
+      setSnackbar({ type: 'error', message: 'Données du devis incomplètes' });
       return;
     }
 
@@ -412,7 +412,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
     // Show success notification
     setSnackbar({
       type: 'success',
-      message: `Devis ${numero} cree`
+      message: `Devis ${numero} créé`
     });
   };
 
@@ -799,12 +799,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         date_fin: '',
         statut: 'en_cours',
         avancement: 0,
-        notes: `Cree depuis devis ${selected.numero}`,
+        notes: `Créé depuis devis ${selected.numero}`,
         budget_estime: selected.total_ht
       });
       // Check if chantier was created successfully
       if (!newChantier?.id) {
-        setSnackbar({ type: 'error', message: 'Erreur lors de la creation du chantier' });
+        setSnackbar({ type: 'error', message: 'Erreur lors de la création du chantier' });
         return;
       }
       // Link devis to new chantier
@@ -813,8 +813,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       setShowChantierModal(false);
       setSnackbar({
         type: 'success',
-        message: `Chantier "${newChantier.nom}" cree`,
-        action: setPage ? { label: 'Voir le chantier', onClick: () => setPage('chantiers') } : null
+        message: `Chantier "${newChantier.nom}" créé`,
+        action: setPage ? { label: 'Voir le chantier', onClick: () => { setSelectedChantier?.(newChantier.id); setPage('chantiers'); } } : null
       });
     };
 
@@ -850,8 +850,8 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
         {/* Actions */}
         <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
-          {isDevis && selected.statut === 'envoye' && <Tooltip text="Le client peut signer directement sur l'ecran pour accepter le devis" position="bottom"><button onClick={() => setShowSignaturePad(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}><PenTool size={14} /> Faire signer</button></Tooltip>}
-          {selected.type === 'facture' && selected.statut !== 'payee' && <Tooltip text="Generer un QR code pour paiement immediat par carte bancaire" position="bottom"><button onClick={() => setShowPaymentModal(true)} className="px-3 sm:px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-all hover:shadow-lg"><QrCode size={14} /><span>Paiement CB</span></button></Tooltip>}
+          {isDevis && selected.statut === 'envoye' && <Tooltip text="Le client peut signer directement sur l'écran pour accepter le devis" position="bottom"><button onClick={() => setShowSignaturePad(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors hover:opacity-90" style={{background: couleur}}><PenTool size={14} /> Faire signer</button></Tooltip>}
+          {selected.type === 'facture' && selected.statut !== 'payee' && <Tooltip text="Générer un QR code pour paiement immédiat par carte bancaire" position="bottom"><button onClick={() => setShowPaymentModal(true)} className="px-3 sm:px-4 py-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-all hover:shadow-lg"><QrCode size={14} /><span>Paiement CB</span></button></Tooltip>}
           {canAcompte && <Tooltip text="Créer une facture d'acompte (ex: 30%) avant de commencer le chantier" position="bottom"><button onClick={() => setShowAcompteModal(true)} className="px-3 sm:px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 whitespace-nowrap transition-colors"><CreditCard size={14} /><span>Acompte</span></button></Tooltip>}
           {canFacturer && (
             <Tooltip text={acompteFacture ? "Créer la facture de solde pour le montant restant après l'acompte" : "Convertir ce devis en facture définitive"} position="bottom">
@@ -870,14 +870,14 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </Tooltip>
           )}
           {hasChantier && linkedChantier && (
-            <button onClick={() => setPage?.('chantiers')} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
+            <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>
               <Building2 size={14} />
               <span>{linkedChantier.nom}</span>
             </button>
           )}
           <button onClick={() => sendWhatsApp(selected)} className="px-3 sm:px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><MessageCircle size={14} /><span>WhatsApp</span></button>
           <button onClick={() => sendEmail(selected)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors"><Mail size={14} /><span>Email</span></button>
-          <Tooltip text="Creer un nouveau devis avec les memes lignes" position="bottom">
+          <Tooltip text="Créer un nouveau devis avec les mêmes lignes" position="bottom">
             <button onClick={() => duplicateDocument(selected)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}><Copy size={14} /><span>Dupliquer</span></button>
           </Tooltip>
           <button onClick={async () => {
@@ -1015,14 +1015,14 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   <Building2 size={20} style={{ color: couleur }} />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-bold ${textPrimary}`}>Creer un chantier</h3>
+                  <h3 className={`text-lg font-bold ${textPrimary}`}>Créer un chantier</h3>
                   <p className={`text-sm ${textMuted}`}>A partir du devis {selected.numero}</p>
                 </div>
               </div>
 
               {/* Récapitulatif financier */}
               <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
-                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prevu</p>
+                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prévu</p>
                 <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} € HT`}</p>
                 <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR')} € TTC</p>
               </div>
@@ -1051,7 +1051,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
               {/* Info */}
               <p className={`text-xs ${textMuted} mt-4`}>
-                Le chantier sera automatiquement lie a ce devis. Le revenu prevu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} €`}) sera utilise pour calculer la marge.
+                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} €`}) sera utilisé pour calculer la marge.
               </p>
 
               {/* Actions */}
@@ -1065,7 +1065,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
                   style={{ background: couleur }}
                 >
-                  <Building2 size={16} /> Creer le chantier
+                  <Building2 size={16} /> Créer le chantier
                 </button>
               </div>
             </div>
@@ -1168,9 +1168,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                     <th className={`text-left py-2 ${textPrimary}`}>Description</th>
                     <th className={`w-16 text-center py-2 ${textPrimary}`}>Qté</th>
                     <th className={`w-20 text-center py-2 ${textPrimary}`}>Unité</th>
-                    <th className={`w-24 text-right py-2 ${textPrimary}`}>PU HT</th>
+                    <th className={`w-28 text-right py-2 ${textPrimary}`}>PU HT</th>
                     <th className={`w-20 text-center py-2 ${textPrimary}`}>TVA</th>
-                    <th className={`w-24 text-right py-2 ${textPrimary}`}>Total HT</th>
+                    <th className={`w-28 text-right py-2 ${textPrimary}`}>Total HT</th>
                     <th className="w-8"></th>
                   </tr>
                 </thead>
@@ -1189,7 +1189,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                           <option value={0}>0%</option>
                         </select>
                       </td>
-                      <td className={`text-right font-medium ${textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+                      <td className={`text-right font-medium whitespace-nowrap tabular-nums ${textPrimary}`}>{(l.montant || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td>
                       <td><button onClick={() => removeLigne(section.id, l.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"><X size={16} /></button></td>
                     </tr>
                   ))}
@@ -1262,10 +1262,10 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                     <span>-{formatMoney(totals.retenueGarantie)}</span>
                   </div>
                   <div className={`flex justify-between py-1 font-medium ${textPrimary}`}>
-                    <span>Net a payer</span>
+                    <span>Net à payer</span>
                     <span>{formatMoney(totals.ttcNet)}</span>
                   </div>
-                  <p className={`text-xs mt-1 ${textMuted}`}>Retenue liberee apres 1 an</p>
+                  <p className={`text-xs mt-1 ${textMuted}`}>Retenue libérée après 1 an</p>
                 </>
               )}
             </div>

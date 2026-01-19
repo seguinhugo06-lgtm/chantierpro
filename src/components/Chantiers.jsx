@@ -139,14 +139,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               {margeNegative ? <TrendingDown size={24} className="text-red-500" /> : budgetDepasse ? <AlertTriangle size={24} className="text-amber-500" /> : <AlertCircle size={24} className="text-blue-500" />}
               <div>
                 <p className={`font-semibold ${margeNegative ? (isDark ? 'text-red-400' : 'text-red-700') : budgetDepasse ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-blue-400' : 'text-blue-700')}`}>
-                  {margeNegative ? 'Chantier en perte' : budgetDepasse ? 'Budget presque epuise' : 'Marge faible'}
+                  {margeNegative ? 'Chantier en perte' : budgetDepasse ? 'Budget presque épuisé' : 'Marge faible'}
                 </p>
                 <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                   {margeNegative
-                    ? `Les depenses (${formatMoney(bilan.totalDepenses)}) depassent le revenu prevu (${formatMoney(revenuTotal)}).`
+                    ? `Les dépenses (${formatMoney(bilan.totalDepenses)}) dépassent le revenu prévu (${formatMoney(revenuTotal)}).`
                     : budgetDepasse
-                    ? `Vous avez consomme ${((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}% du budget. Surveillez les couts.`
-                    : `Marge previsionnelle de ${formatPct(bilan.tauxMargePrevi)} - en dessous de 15%.`}
+                    ? `Vous avez consommé ${((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}% du budget. Surveillez les coûts.`
+                    : `Marge prévisionnelle de ${formatPct(bilan.tauxMargePrevi)} - en dessous de 15%.`}
                 </p>
               </div>
             </div>

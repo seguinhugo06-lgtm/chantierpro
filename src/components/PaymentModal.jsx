@@ -105,7 +105,7 @@ export default function PaymentModal({
 
     const subject = encodeURIComponent(`Lien de paiement - ${document.numero}`);
     const body = encodeURIComponent(
-      `Bonjour,\n\nVoici le lien pour regler votre ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero}.\n\nMontant : ${formatAmount(amount)}\n\nLien de paiement : ${paymentLink.paymentUrl}\n\nCordialement,\n${entreprise?.nom || ''}`
+      `Bonjour,\n\nVoici le lien pour régler votre ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero}.\n\nMontant : ${formatAmount(amount)}\n\nLien de paiement : ${paymentLink.paymentUrl}\n\nCordialement,\n${entreprise?.nom || ''}`
     );
 
     window.open(`mailto:${client.email}?subject=${subject}&body=${body}`);

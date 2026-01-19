@@ -498,8 +498,8 @@ export default function AccountingIntegration({
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
                     <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                      Ce resume TVA est indicatif et base sur les donnees saisies dans ChantierPro.
-                      Pour votre declaration officielle, consultez votre expert-comptable.
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans ChantierPro.
+                      Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
                   </div>
                 </div>

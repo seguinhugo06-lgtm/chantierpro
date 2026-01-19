@@ -136,7 +136,7 @@ export default function InvoiceScanner({
               <p className={textMuted}>
                 {step === 'capture' && 'Photographiez ou importez votre facture'}
                 {step === 'processing' && 'Analyse en cours...'}
-                {step === 'review' && 'Verifiez les informations'}
+                {step === 'review' && 'Vérifiez les informations'}
                 {step === 'edit' && 'Modifier les informations'}
               </p>
             </div>
@@ -213,8 +213,8 @@ export default function InvoiceScanner({
                   <div>
                     <p className={`font-medium ${textPrimary}`}>Reconnaissance intelligente</p>
                     <p className={`text-sm mt-1 ${textMuted}`}>
-                      Notre IA detecte automatiquement le fournisseur, la date, les montants HT/TTC et la TVA.
-                      Verifiez toujours les informations extraites avant de valider.
+                      Notre IA détecte automatiquement le fournisseur, la date, les montants HT/TTC et la TVA.
+                      Vérifiez toujours les informations extraites avant de valider.
                     </p>
                   </div>
                 </div>
@@ -229,7 +229,7 @@ export default function InvoiceScanner({
                 <Scan size={40} className="animate-pulse" style={{ color: couleur }} />
               </div>
               <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>Analyse en cours...</h3>
-              <p className={textMuted}>Detection du texte et extraction des informations</p>
+              <p className={textMuted}>Détection du texte et extraction des informations</p>
               <div className="mt-6 w-48 h-2 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto overflow-hidden">
                 <div className="h-full rounded-full animate-progress-bar" style={{ background: couleur }} />
               </div>

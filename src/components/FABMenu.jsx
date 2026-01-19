@@ -43,7 +43,7 @@ export default function FABMenu({
           <button
             key={action.label}
             onClick={() => handleAction(action)}
-            className="flex items-center gap-3 pl-4 pr-5 py-3 rounded-full text-white shadow-lg transition-all hover:scale-105 active:scale-95 animate-slide-up"
+            className="flex items-center gap-3 pl-4 pr-5 py-3 rounded-full text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110 animate-slide-up"
             style={{
               backgroundColor: action.color,
               animationDelay: `${i * 50}ms`
@@ -57,7 +57,7 @@ export default function FABMenu({
         {/* Main FAB button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:shadow-xl hover:brightness-110 ${
             isOpen ? 'rotate-45' : ''
           }`}
           style={{ backgroundColor: couleur }}

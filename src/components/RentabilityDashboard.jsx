@@ -81,8 +81,8 @@ export default function RentabilityDashboard({
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
             <BarChart3 size={32} style={{ color: couleur }} />
           </div>
-          <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Tableau de bord rentabilite</h3>
-          <p className={`${textMuted} mb-4`}>Creez votre premier chantier pour voir votre rentabilite</p>
+          <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Tableau de bord rentabilité</h3>
+          <p className={`${textMuted} mb-4`}>Créez votre premier chantier pour voir votre rentabilité</p>
           <button
             onClick={onClose}
             className="px-6 py-2 rounded-xl text-white font-medium"
@@ -286,11 +286,11 @@ export default function RentabilityDashboard({
                 </ResponsiveContainer>
               ) : (
                 <div className="h-[280px] flex items-center justify-center">
-                  <p className={textMuted}>Aucune donnee a afficher</p>
+                  <p className={textMuted}>Aucune donnée à afficher</p>
                 </div>
               )}
 
-              {/* Seuils legende */}
+              {/* Seuils légende */}
               <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -360,7 +360,7 @@ export default function RentabilityDashboard({
                 </>
               ) : (
                 <div className="h-[280px] flex items-center justify-center">
-                  <p className={textMuted}>Aucune depense enregistree</p>
+                  <p className={textMuted}>Aucune dépense enregistrée</p>
                 </div>
               )}
             </div>

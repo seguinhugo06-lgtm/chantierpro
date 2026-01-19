@@ -276,7 +276,7 @@ export default function DevisWizard({
               {filteredClients.length === 0 && (
                 <div className={`text-center py-8 ${textMuted}`}>
                   <User size={40} className="mx-auto mb-2 opacity-50" />
-                  <p>Aucun client trouve</p>
+                  <p>Aucun client trouvé</p>
                 </div>
               )}
             </div>
@@ -336,7 +336,7 @@ export default function DevisWizard({
               {form.lignes.length === 0 && (
                 <div className={`text-center py-8 ${textMuted}`}>
                   <FileText size={40} className="mx-auto mb-2 opacity-50" />
-                  <p>Aucun article ajoute</p>
+                  <p>Aucun article ajouté</p>
                   <p className="text-sm">Cliquez sur le bouton ci-dessus</p>
                 </div>
               )}
@@ -394,7 +394,7 @@ export default function DevisWizard({
 
               {/* TVA quick buttons */}
               <div>
-                <p className={`text-sm ${textMuted} mb-2`}>TVA par defaut</p>
+                <p className={`text-sm ${textMuted} mb-2`}>TVA par défaut</p>
                 <div className="flex gap-2">
                   {[20, 10, 5.5, 0].map(taux => (
                     <button
@@ -526,7 +526,7 @@ export default function DevisWizard({
             {step === 3 ? (
               <>
                 <Check size={18} />
-                Creer le {form.type}
+                Créer le {form.type}
               </>
             ) : (
               <>
