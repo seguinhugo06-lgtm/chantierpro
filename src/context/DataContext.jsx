@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { DEVIS_STATUS, CHANTIER_STATUS, AJUSTEMENT_TYPE } from '../lib/constants';
+import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
+import { calculateChantierMargin } from '../lib/business/margin-calculator';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -264,58 +265,20 @@ export function DataProvider({ children, initialData = {} }) {
   }, []);
 
   // ============ CALCULATED VALUES ============
+  // Uses the unified margin calculator - SINGLE SOURCE OF TRUTH
   const getChantierBilan = useCallback((chantierId) => {
-    const chantierDevis = devis.filter(d => d.chantier_id === chantierId);
-    const chantierDepenses = depenses.filter(d => d.chantierId === chantierId);
-    const chantierPointages = pointages.filter(p => p.chantierId === chantierId);
-    const chantierAjustements = ajustements.filter(a => a.chantierId === chantierId);
+    const chantier = chantiers.find(c => c.id === chantierId);
+    if (!chantier) return null;
 
-    // Revenue from accepted/paid devis
-    const revenuDevis = chantierDevis
-      .filter(d => ['accepte', 'acompte_facture', 'facture', 'payee'].includes(d.statut))
-      .reduce((sum, d) => sum + (d.total_ht || 0), 0);
-
-    // Revenue adjustments
-    const ajustementsRevenu = chantierAjustements
-      .filter(a => a.type === AJUSTEMENT_TYPE.REVENU)
-      .reduce((sum, a) => sum + (a.montant || 0), 0);
-
-    // Expense adjustments
-    const ajustementsDepense = chantierAjustements
-      .filter(a => a.type === AJUSTEMENT_TYPE.DEPENSE)
-      .reduce((sum, a) => sum + (a.montant || 0), 0);
-
-    // Total expenses (materials, supplies)
-    const totalDepenses = chantierDepenses.reduce((sum, d) => sum + (d.montant || 0), 0);
-
-    // Labor costs
-    const coutMainOeuvre = chantierPointages.reduce((sum, p) => {
-      const employee = equipe.find(e => e.id === p.employeId);
-      const tauxHoraire = employee?.tauxHoraire || 0;
-      return sum + ((p.heures || 0) * tauxHoraire);
-    }, []);
-
-    // Totals
-    const revenuTotal = revenuDevis + ajustementsRevenu;
-    const depensesTotal = totalDepenses + coutMainOeuvre + ajustementsDepense;
-    const marge = revenuTotal - depensesTotal;
-    const tauxMarge = revenuTotal > 0 ? (marge / revenuTotal) * 100 : 0;
-
-    return {
-      revenuDevis,
-      ajustementsRevenu,
-      ajustementsDepense,
-      totalDepenses,
-      coutMainOeuvre,
-      revenuTotal,
-      depensesTotal,
-      marge,
-      tauxMarge,
-      devisCount: chantierDevis.length,
-      depensesCount: chantierDepenses.length,
-      pointagesCount: chantierPointages.length
-    };
-  }, [devis, depenses, pointages, ajustements, equipe]);
+    // Use the unified margin calculator
+    return calculateChantierMargin(chantier, {
+      devis,
+      depenses,
+      pointages,
+      equipe,
+      ajustements
+    });
+  }, [chantiers, devis, depenses, pointages, ajustements, equipe]);
 
   // ============ CONTEXT VALUE ============
   const value = useMemo(() => ({
