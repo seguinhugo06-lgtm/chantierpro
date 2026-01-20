@@ -8,6 +8,42 @@ import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
+/**
+ * Calculate smart progression from multiple signals
+ * Weighted average of: tasks (40%), hours (30%), costs (30%)
+ */
+const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
+  const signals = [];
+
+  // Signal 1: Task completion (weight: 40%)
+  if (tasksTotal > 0) {
+    signals.push({ value: (tasksDone / tasksTotal) * 100, weight: 0.4 });
+  }
+
+  // Signal 2: Hours worked vs estimated (weight: 30%)
+  if (chantier.heures_estimees > 0 && bilan?.heuresTotal > 0) {
+    const hoursProgress = Math.min(100, (bilan.heuresTotal / chantier.heures_estimees) * 100);
+    signals.push({ value: hoursProgress, weight: 0.3 });
+  }
+
+  // Signal 3: Costs spent vs budget (weight: 30%)
+  if (chantier.budget_materiaux > 0 && bilan?.coutMateriaux > 0) {
+    const costProgress = Math.min(100, (bilan.coutMateriaux / chantier.budget_materiaux) * 100);
+    signals.push({ value: costProgress, weight: 0.3 });
+  }
+
+  // If no signals available, fall back to manual or 0
+  if (signals.length === 0) {
+    return chantier.avancement || 0;
+  }
+
+  // Normalize weights if not all signals are present
+  const totalWeight = signals.reduce((sum, s) => sum + s.weight, 0);
+  const normalizedProgress = signals.reduce((sum, s) => sum + (s.value * s.weight / totalWeight), 0);
+
+  return Math.round(normalizedProgress);
+};
+
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -102,8 +138,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
     const devisHT = devisLie?.total_ht || 0;
 
-    // Projections
-    const avancement = ch.avancement || (tasksTotal > 0 ? (tasksDone / tasksTotal) * 100 : 0);
+    // Projections - use smart progression from real data signals
+    const avancement = calculateSmartProgression(ch, bilan, tasksDone, tasksTotal);
     const depensesFinalesEstimees = avancement > 0 ? bilan.totalDepenses / (avancement / 100) : bilan.totalDepenses * 2;
     const beneficeProjecte = bilan.revenuPrevu - depensesFinalesEstimees;
     const tauxMargeProjecte = bilan.revenuPrevu > 0 ? (beneficeProjecte / bilan.revenuPrevu) * 100 : 0;
@@ -163,7 +199,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-red-100">
                 <Coins size={20} className="text-red-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Depense</span>
+              <span className={`text-xs font-medium ${textPrimary}`}>Dépense</span>
             </button>
             <button
               onClick={() => document.getElementById(`photo-quick-${ch.id}`)?.click()}
@@ -182,7 +218,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-100">
                 <CheckSquare size={20} className="text-emerald-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Taches</span>
+              <span className={`text-xs font-medium ${textPrimary}`}>Tâches</span>
               {tasksTotal > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
                   {tasksDone}/{tasksTotal}
@@ -244,7 +280,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </div>
               )}
               <div>
-                <p className={`text-xs ${textMuted}`}>Marge previsionnelle</p>
+                <p className={`text-xs ${textMuted}`}>Marge prévisionnelle</p>
                 <p className={`font-bold text-xl ${bilan.margeBrute < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
                   {formatMoney(bilan.margeBrute)} <span className="text-sm opacity-80">({formatPct(bilan.tauxMarge)})</span>
                 </p>
@@ -405,7 +441,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 />
               </div>
               <p className={`text-xs mt-2 ${textMuted}`}>
-                Definissez un objectif de couts pour suivre votre budget plus precisement.
+                Définissez un objectif de coûts pour suivre votre budget plus précisément.
               </p>
             </div>
           )}
@@ -583,7 +619,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
           return (
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>Taches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
+            <h3 className={`font-semibold mb-4 ${textPrimary}`}>Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
             {tasksTotal > 0 && <div className={`w-full h-2 rounded-full mb-4 overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
 
             {/* Quick Template Buttons */}
@@ -1010,7 +1046,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="p-5 overflow-y-auto max-h-[60vh]">
                 {/* Quick Tasks */}
                 <div className="mb-6">
-                  <p className={`text-xs font-medium uppercase tracking-wide mb-3 ${textMuted}`}>Taches rapides</p>
+                  <p className={`text-xs font-medium uppercase tracking-wide mb-3 ${textMuted}`}>Tâches rapides</p>
                   <div className="flex flex-wrap gap-2">
                     {QUICK_TASKS.map(qt => (
                       <button
