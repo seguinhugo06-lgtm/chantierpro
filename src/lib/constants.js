@@ -73,6 +73,18 @@ export const CHANTIER_STATUS_TRANSITIONS = {
   [CHANTIER_STATUS.ABANDONNE]: [CHANTIER_STATUS.PROSPECT, CHANTIER_STATUS.EN_COURS] // Can reactivate
 };
 
+// Helper to check if a status transition is valid
+export const canTransitionChantierStatus = (currentStatus, newStatus) => {
+  if (currentStatus === newStatus) return true; // Same status is always valid
+  const validTransitions = CHANTIER_STATUS_TRANSITIONS[currentStatus];
+  return validTransitions?.includes(newStatus) ?? false;
+};
+
+// Get available transitions for a status
+export const getAvailableChantierTransitions = (currentStatus) => {
+  return CHANTIER_STATUS_TRANSITIONS[currentStatus] || [];
+};
+
 // Ajustement types
 export const AJUSTEMENT_TYPE = {
   REVENU: 'REVENU',

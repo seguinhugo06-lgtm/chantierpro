@@ -4,6 +4,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis } from '../lib/templates/task-templates';
+import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -121,7 +122,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h1><p className={`text-xs sm:text-sm ${textMuted} truncate`}>{client?.nom} · {ch.adresse}</p></div>
           <select
             value={ch.statut}
-            onChange={e => updateChantier(ch.id, { statut: e.target.value })}
+            onChange={e => {
+              const newStatus = e.target.value;
+              updateChantier(ch.id, { statut: newStatus });
+              showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
+            }}
             className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer border-0 outline-none appearance-none pr-7 bg-no-repeat bg-right min-h-[44px] ${
               ch.statut === 'en_cours' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
               : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
@@ -130,10 +135,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             }`}
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '16px', backgroundPosition: 'right 8px center' }}
           >
-            <option value="prospect">Prospect</option>
-            <option value="en_cours">En cours</option>
-            <option value="termine">Terminé</option>
-            <option value="abandonne">Abandonné</option>
+            {/* Current status always shown */}
+            <option value={ch.statut}>{CHANTIER_STATUS_LABELS[ch.statut]}</option>
+            {/* Only show valid transitions */}
+            {getAvailableChantierTransitions(ch.statut).map(status => (
+              <option key={status} value={status}>{CHANTIER_STATUS_LABELS[status]}</option>
+            ))}
           </select>
         </div>
 
