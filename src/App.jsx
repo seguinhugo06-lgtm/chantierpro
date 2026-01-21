@@ -538,10 +538,13 @@ export default function App() {
             </button>
 
             {showNotifs && (
-              <>
-                <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowNotifs(false)} />
-                <div className={`fixed left-1/2 top-24 -translate-x-1/2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl shadow-2xl z-50 overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
-                  {/* Header with close button */}
+              <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4" onClick={() => setShowNotifs(false)}>
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                <div
+                  className={`relative w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Header */}
                   <div className="px-4 py-3 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -549,7 +552,7 @@ export default function App() {
                         <h3 className={`font-semibold ${tc.text}`}>Notifications</h3>
                         {unreadNotifs.length > 0 && (
                           <span className="px-1.5 py-0.5 text-[10px] font-bold text-white rounded-full" style={{background: couleur}}>
-                            {unreadNotifs.length} nouveau{unreadNotifs.length > 1 ? 'x' : ''}
+                            {unreadNotifs.length}
                           </span>
                         )}
                       </div>
@@ -561,10 +564,9 @@ export default function App() {
                         )}
                         <button
                           onClick={() => setShowNotifs(false)}
-                          className={`p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                          aria-label="Fermer"
+                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
                         >
-                          <ChevronDown size={18} className={tc.textMuted} />
+                          <X size={18} className={tc.textMuted} />
                         </button>
                       </div>
                     </div>
@@ -599,7 +601,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
           
