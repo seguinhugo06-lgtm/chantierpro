@@ -540,7 +540,7 @@ export default function App() {
             {showNotifs && (
               <>
                 <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowNotifs(false)} />
-                <div className={`absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl shadow-2xl z-50 overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                <div className={`fixed left-1/2 top-24 -translate-x-1/2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl shadow-2xl z-50 overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
                   {/* Header with close button */}
                   <div className="px-4 py-3 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
                     <div className="flex items-center justify-between">
