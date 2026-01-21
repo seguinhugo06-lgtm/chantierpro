@@ -17,11 +17,15 @@ const AdminHelp = lazy(() => import('./components/admin-help/AdminHelp'));
 const DevisWizard = lazy(() => import('./components/DevisWizard'));
 const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
 const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
+const CommandPalette = lazy(() => import('./components/CommandPalette'));
+const VoiceJournal = lazy(() => import('./components/VoiceJournal'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff } from 'lucide-react';
+import ToastContainer from './components/ui/ToastContainer';
+import ModalContainer from './components/ui/ModalContainer';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 
 // Theme classes helper
@@ -30,8 +34,8 @@ const getThemeClasses = (isDark) => ({
   cardHover: isDark ? "hover:bg-slate-700" : "hover:bg-slate-50",
   input: isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300 text-slate-900 placeholder-slate-400",
   text: isDark ? "text-slate-100" : "text-slate-900",
-  textSecondary: isDark ? "text-slate-300" : "text-slate-600",
-  textMuted: isDark ? "text-slate-400" : "text-slate-500",
+  textSecondary: isDark ? "text-slate-300" : "text-slate-700",
+  textMuted: isDark ? "text-slate-400" : "text-slate-600",
   bg: isDark ? "bg-slate-900" : "bg-slate-100",
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
@@ -80,6 +84,7 @@ export default function App() {
   const [showFABDevisWizard, setShowFABDevisWizard] = useState(false);
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
+  const [showVoiceJournal, setShowVoiceJournal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
@@ -371,6 +376,15 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${tc.bg}`}>
+      {/* Skip to main content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:text-slate-900 focus:rounded-lg focus:shadow-lg focus:ring-2 focus:ring-offset-2"
+        style={{ '--tw-ring-color': couleur }}
+      >
+        Aller au contenu principal
+      </a>
+
       {/* Mobile overlay */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
@@ -386,17 +400,18 @@ export default function App() {
           </div>
         </div>
         
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-1" aria-label="Navigation principale">
           {nav.map(n => (
-            <button 
-              key={n.id} 
-              onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }} 
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`} 
+            <button
+              key={n.id}
+              onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               style={page === n.id ? {background: couleur} : {}}
+              aria-current={page === n.id ? 'page' : undefined}
             >
-              <n.icon size={18} />
+              <n.icon size={18} aria-hidden="true" />
               <span className="flex-1 text-left">{n.label}</span>
-              {n.badge > 0 && <span className="px-2 py-0.5 text-white text-xs rounded-full" style={{ background: n.badgeColor || '#ef4444' }}>{n.badge}</span>}
+              {n.badge > 0 && <span className="px-2 py-0.5 text-white text-xs rounded-full" style={{ background: n.badgeColor || '#ef4444' }} aria-label={`${n.badge} elements`}>{n.badge}</span>}
             </button>
           ))}
         </nav>
@@ -524,8 +539,9 @@ export default function App() {
 
             {showNotifs && (
               <>
-                <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm animate-fade-in" onClick={() => setShowNotifs(false)} />
+                <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowNotifs(false)} />
                 <div className={`absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl shadow-2xl z-50 overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                  {/* Header with close button */}
                   <div className="px-4 py-3 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -537,21 +553,31 @@ export default function App() {
                           </span>
                         )}
                       </div>
-                      {unreadNotifs.length > 0 && (
-                        <button onClick={markAllNotifsRead} className="text-xs hover:underline" style={{color: couleur}}>
-                          Tout marquer lu
+                      <div className="flex items-center gap-2">
+                        {unreadNotifs.length > 0 && (
+                          <button onClick={markAllNotifsRead} className="text-xs hover:underline" style={{color: couleur}}>
+                            Tout lire
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setShowNotifs(false)}
+                          className={`p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                          aria-label="Fermer"
+                        >
+                          <ChevronDown size={18} className={tc.textMuted} />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  {/* Content */}
+                  <div className="max-h-64 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <div className="w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center" style={{background: `${couleur}15`}}>
-                          <Bell size={28} style={{color: couleur}} />
+                      <div className="px-4 py-6 text-center">
+                        <div className="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center" style={{background: `${couleur}15`}}>
+                          <Bell size={18} style={{color: couleur}} />
                         </div>
-                        <p className={`font-medium ${tc.text}`}>Tout est à jour</p>
-                        <p className={`text-sm mt-1 ${tc.textMuted}`}>Aucune notification pour le moment</p>
+                        <p className={`text-sm font-medium ${tc.text}`}>Tout est à jour</p>
+                        <p className={`text-xs mt-0.5 ${tc.textMuted}`}>Aucune notification</p>
                       </div>
                     ) : (
                       notifications.map(n => (
@@ -614,7 +640,7 @@ export default function App() {
         </header>
 
         {/* Page content */}
-        <main className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
+        <main id="main-content" className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={isDark}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
@@ -630,13 +656,19 @@ export default function App() {
           </ErrorBoundary>
         </main>
 
-        {/* Floating Action Button (FAB) for quick actions */}
+        {/* Floating Action Button (FAB) for quick actions - hidden on form pages */}
         <FABMenu
           onNewDevis={() => setShowFABDevisWizard(true)}
           onNewClient={() => setShowFABQuickClient(true)}
           onNewChantier={() => setShowFABQuickChantier(true)}
           isDark={isDark}
           couleur={couleur}
+          hidden={
+            createMode.devis || createMode.chantier || createMode.client ||
+            selectedChantier !== null ||
+            showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
+            showVoiceJournal || showSearch
+          }
         />
       </div>
 
@@ -718,109 +750,44 @@ export default function App() {
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
 
-      {/* Global Search Modal */}
-      {showSearch && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 pt-20 sm:pt-32 p-4 animate-fade-in" onClick={() => { setShowSearch(false); setSearchQuery(''); }}>
-          <div className={`w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`} onClick={e => e.stopPropagation()}>
-            {/* Search input */}
-            <div className={`flex items-center gap-3 px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <Search size={20} className={tc.textMuted} />
-              <input
-                autoFocus
-                type="text"
-                placeholder="Rechercher clients, chantiers, devis..."
-                className={`flex-1 bg-transparent outline-none text-lg ${tc.text}`}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              <kbd className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>ESC</kbd>
-            </div>
+      {/* Command Palette (⌘K) */}
+      <Suspense fallback={null}>
+        <CommandPalette
+          isOpen={showSearch}
+          onClose={() => setShowSearch(false)}
+          setPage={setPage}
+          setSelectedChantier={setSelectedChantier}
+          setSelectedDevis={setSelectedDevis}
+          clients={clients}
+          chantiers={chantiers}
+          devis={devis}
+          onNewDevis={(type) => {
+            setCreateMode(p => ({ ...p, devis: true }));
+            setPage('devis');
+          }}
+          onNewClient={() => setShowQuickClient(true)}
+          onNewChantier={() => setShowQuickChantier(true)}
+          onStartVoiceNote={() => setShowVoiceJournal(true)}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      </Suspense>
 
-            {/* Results */}
-            <div className="max-h-80 overflow-y-auto">
-              {searchQuery.length > 1 ? (
-                hasSearchResults ? (
-                  <div className="py-2">
-                    {/* Clients */}
-                    {searchResults.clients.length > 0 && (
-                      <div className="px-3 py-2">
-                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Clients</p>
-                        {searchResults.clients.map(c => (
-                          <button key={c.id} onClick={() => { setPage('clients'); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>{c.nom?.[0]}{c.prenom?.[0]}</div>
-                            <div className="flex-1 text-left">
-                              <p className={`font-medium ${tc.text}`}>{c.nom} {c.prenom}</p>
-                              <p className={`text-sm ${tc.textMuted}`}>{c.telephone}</p>
-                            </div>
-                            <ChevronRight size={16} className={tc.textMuted} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {/* Chantiers */}
-                    {searchResults.chantiers.length > 0 && (
-                      <div className="px-3 py-2">
-                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Chantiers</p>
-                        {searchResults.chantiers.map(c => (
-                          <button key={c.id} onClick={() => { setPage('chantiers'); setSelectedChantier(c.id); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.statut === 'en_cours' ? 'bg-emerald-100 text-emerald-600' : c.statut === 'termine' ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-600'}`}>
-                              <Building2 size={18} />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className={`font-medium ${tc.text}`}>{c.nom}</p>
-                              <p className={`text-sm ${tc.textMuted}`}>{c.adresse?.substring(0, 30)}...</p>
-                            </div>
-                            <ChevronRight size={16} className={tc.textMuted} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {/* Devis */}
-                    {searchResults.devis.length > 0 && (
-                      <div className="px-3 py-2">
-                        <p className={`text-xs font-medium uppercase tracking-wider px-2 mb-2 ${tc.textMuted}`}>Documents</p>
-                        {searchResults.devis.map(d => (
-                          <button key={d.id} onClick={() => { setPage('devis'); setSelectedDevis(d.id); setShowSearch(false); setSearchQuery(''); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${d.type === 'facture' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600'}`}>
-                              {d.type === 'facture' ? <Receipt size={18} /> : <FileText size={18} />}
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className={`font-medium ${tc.text}`}>{d.numero}</p>
-                              <p className={`text-sm ${tc.textMuted}`}>{clients.find(c => c.id === d.client_id)?.nom || ''} - {d.total_ttc?.toLocaleString('fr-FR')}€</p>
-                            </div>
-                            <ChevronRight size={16} className={tc.textMuted} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center">
-                    <Search size={32} className={`mx-auto mb-2 ${tc.textMuted} opacity-30`} />
-                    <p className={tc.textMuted}>Aucun résultat pour "{searchQuery}"</p>
-                  </div>
-                )
-              ) : (
-                <div className="p-6">
-                  <p className={`text-xs font-medium uppercase tracking-wider mb-3 ${tc.textMuted}`}>Accès rapide</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: 'Devis', icon: FileText, page: 'devis', color: '#f97316' },
-                      { label: 'Chantiers', icon: Building2, page: 'chantiers', color: '#22c55e' },
-                      { label: 'Clients', icon: Users, page: 'clients', color: '#3b82f6' }
-                    ].map(item => (
-                      <button key={item.label} onClick={() => { setPage(item.page); setShowSearch(false); }} className={`p-4 rounded-xl text-center transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                        <item.icon size={24} className="mx-auto mb-2" style={{ color: item.color }} />
-                        <span className={`text-sm font-medium ${tc.text}`}>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Voice Journal Modal */}
+      <Suspense fallback={null}>
+        <VoiceJournal
+          isOpen={showVoiceJournal}
+          onClose={() => setShowVoiceJournal(false)}
+          onSave={(data) => {
+            console.log('Voice note saved:', data);
+            showToast('Note vocale enregistree', 'success');
+          }}
+          currentChantier={selectedChantier}
+          chantiers={chantiers}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      </Suspense>
 
       {/* Toast Notifications */}
       {toast && (
@@ -845,7 +812,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Global Confirm Modal */}
+      {/* Global Confirm Modal (Legacy) */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={confirmModal.onCancel || closeConfirm}
@@ -858,6 +825,12 @@ export default function App() {
         loading={confirmModal.loading}
         isDark={isDark}
       />
+
+      {/* New Zustand-based Modal System */}
+      <ModalContainer isDark={isDark} />
+
+      {/* New Zustand-based Toast System */}
+      <ToastContainer position="bottom-right" />
     </div>
   );
 }
@@ -867,7 +840,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const [helpSection, setHelpSection] = useState('overview');
 
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-700';
 
   const helpSections = {
     overview: {
@@ -1024,6 +997,29 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           </div>
         </div>
 
+        {/* Tabs - Mobile only */}
+        <div className={`md:hidden border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
+            {Object.entries(helpSections).map(([key, section]) => (
+              <button
+                key={key}
+                onClick={() => setHelpSection(key)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm whitespace-nowrap min-h-[40px] transition-colors flex-shrink-0 ${
+                  helpSection === key
+                    ? 'text-white'
+                    : isDark
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                style={helpSection === key ? { background: couleur } : {}}
+              >
+                <span>{section.icon}</span>
+                <span>{section.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Content with sidebar for desktop */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar - Desktop only */}
@@ -1039,29 +1035,6 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
                       : isDark
                         ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                  style={helpSection === key ? { background: couleur } : {}}
-                >
-                  <span>{section.icon}</span>
-                  <span>{section.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tabs - Mobile only */}
-          <div className={`md:hidden border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} flex-shrink-0`}>
-            <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
-              {Object.entries(helpSections).map(([key, section]) => (
-                <button
-                  key={key}
-                  onClick={() => setHelpSection(key)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm whitespace-nowrap min-h-[40px] transition-colors flex-shrink-0 ${
-                    helpSection === key
-                      ? 'text-white'
-                      : isDark
-                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                   style={helpSection === key ? { background: couleur } : {}}
                 >
@@ -1091,7 +1064,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const [step, setStep] = useState(0);
 
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-700';
 
   const steps = [
     {
@@ -1129,7 +1102,9 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
           <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full" style={{ background: couleur + '30' }}></div>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: couleur + '30' }}>
+                  <FileText size={18} style={{ color: couleur }} />
+                </div>
                 <div>
                   <p className={`font-medium ${textPrimary}`}>DEV-2025-001</p>
                   <p className={`text-sm ${textSecondary}`}>Client: Dupont Marie</p>
@@ -1137,13 +1112,13 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
               <span className={`px-3 py-1 rounded-full text-xs ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-white'} space-y-2`}>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800/80' : 'bg-white'} space-y-2`}>
               <div className="flex justify-between text-sm">
                 <span className={textSecondary}>Rénovation cuisine complète</span>
                 <span className={textPrimary}>5 000 €</span>
               </div>
               <div className={`pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'} flex justify-between`}>
-                <span className="font-medium">Total TTC</span>
+                <span className={`font-medium ${textPrimary}`}>Total TTC</span>
                 <span className="font-bold text-lg" style={{ color: couleur }}>5 500 €</span>
               </div>
             </div>
@@ -1260,43 +1235,35 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
         </div>
 
         {/* Footer */}
-        <div className={`p-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'} flex items-center justify-between`}>
-          <div className="flex gap-1.5">
-            {steps.map((_, i) => (
+        <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1">
+              {steps.map((_, i) => (
+                <div
+                  key={i}
+                  onClick={() => setStep(i)}
+                  className={`w-2 h-2 rounded-full cursor-pointer transition-all ${i === step ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                  style={i === step ? { background: couleur } : {}}
+                />
+              ))}
+            </div>
+            <div className="flex gap-2">
+              {step > 0 && (
+                <button
+                  onClick={() => setStep(step - 1)}
+                  className={`px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  Retour
+                </button>
+              )}
               <button
-                key={i}
-                onClick={() => setStep(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-all ${i === step ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                style={i === step ? { background: couleur } : {}}
-              />
-            ))}
-          </div>
-          <div className="flex gap-3">
-            {step > 0 && (
-              <button
-                onClick={() => setStep(step - 1)}
-                className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-              >
-                Précédent
-              </button>
-            )}
-            {step < steps.length - 1 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                className="px-6 py-2.5 text-white rounded-xl min-h-[44px] hover:shadow-lg transition-all"
+                onClick={() => step < steps.length - 1 ? setStep(step + 1) : completeOnboarding()}
+                className="px-4 py-2 text-white rounded-xl text-sm hover:shadow-lg transition-all"
                 style={{ background: couleur }}
               >
-                Suivant
+                {step < steps.length - 1 ? 'Suivant' : 'Terminer'}
               </button>
-            ) : (
-              <button
-                onClick={completeOnboarding}
-                className="px-6 py-2.5 text-white rounded-xl min-h-[44px] hover:shadow-lg transition-all"
-                style={{ background: couleur }}
-              >
-                C'est parti ! 🚀
-              </button>
-            )}
+            </div>
           </div>
         </div>
       </div>
