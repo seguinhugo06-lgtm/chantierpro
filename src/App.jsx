@@ -1217,9 +1217,23 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
     setShowOnboarding(false);
   };
 
+  const skipOnboarding = () => {
+    localStorage.setItem('onboarding_completed', 'true');
+    setShowOnboarding(false);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
-      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden`}>
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
+        {/* Close button */}
+        <button
+          onClick={skipOnboarding}
+          className={`absolute top-4 right-4 p-2 rounded-xl z-10 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
+          aria-label="Fermer"
+        >
+          <X size={20} />
+        </button>
+
         {/* Progress bar */}
         <div className={`h-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
           <div className="h-full transition-all duration-300" style={{ width: `${((step + 1) / steps.length) * 100}%`, background: couleur }}></div>
@@ -1239,15 +1253,23 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
         {/* Footer */}
         <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1">
-              {steps.map((_, i) => (
-                <div
-                  key={i}
-                  onClick={() => setStep(i)}
-                  className={`w-2 h-2 rounded-full cursor-pointer transition-all ${i === step ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                  style={i === step ? { background: couleur } : {}}
-                />
-              ))}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {steps.map((_, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setStep(i)}
+                    className={`w-2 h-2 rounded-full cursor-pointer transition-all ${i === step ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                    style={i === step ? { background: couleur } : {}}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={skipOnboarding}
+                className={`text-xs ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Passer
+              </button>
             </div>
             <div className="flex gap-2">
               {step > 0 && (
