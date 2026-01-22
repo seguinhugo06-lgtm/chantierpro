@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
 import { generateId } from '../lib/utils';
+
+// Draft localStorage key
+const DRAFT_KEY = 'chantierpro_devis_draft';
 
 /**
  * DevisWizard - 3-step wizard for devis/facture creation
@@ -38,13 +41,81 @@ export default function DevisWizard({
   const [showCatalog, setShowCatalog] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [showDetails, setShowDetails] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  // Load draft from localStorage when opening
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const saved = localStorage.getItem(DRAFT_KEY);
+        if (saved) {
+          const draft = JSON.parse(saved);
+          // Only restore if draft has meaningful data (client or items)
+          if (draft.clientId || draft.lignes?.length > 0) {
+            setForm(prev => ({
+              ...prev,
+              ...draft,
+              date: new Date().toISOString().split('T')[0] // Always use today's date
+            }));
+            setStep(draft.clientId ? 2 : 1);
+            setDraftRestored(true);
+            // Auto-dismiss draft banner after 5s
+            setTimeout(() => setDraftRestored(false), 5000);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+  }, [isOpen]);
+
+  // Save draft to localStorage when form changes (debounced)
+  useEffect(() => {
+    if (!isOpen) return;
+    // Only save if there's meaningful data
+    if (form.clientId || form.lignes.length > 0) {
+      const timeout = setTimeout(() => {
+        try {
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+        } catch { /* ignore */ }
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [form, isOpen]);
+
+  // Clear draft
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Reset form when closing (but keep draft in storage)
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(1);
+      setForm({
+        type: 'devis',
+        clientId: '',
+        chantierId: '',
+        date: new Date().toISOString().split('T')[0],
+        validite: entreprise?.validiteDevis || 30,
+        tvaDefaut: entreprise?.tvaDefaut || 10,
+        lignes: [],
+        remise: 0,
+        notes: ''
+      });
+      setDraftRestored(false);
+      setErrors({});
+      setClientSearch('');
+    }
+  }, [isOpen, entreprise?.validiteDevis, entreprise?.tvaDefaut]);
 
   // Theme classes
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
   // Filter clients
   const filteredClients = useMemo(() => {
@@ -57,15 +128,18 @@ export default function DevisWizard({
     );
   }, [clients, clientSearch]);
 
-  // Calculate totals
+  // Calculate totals and margin
   const totals = useMemo(() => {
     let totalHT = 0;
     let tvaTotal = 0;
+    let totalCost = 0;
 
     form.lignes.forEach(l => {
       const montant = (l.quantite || 1) * (l.prixUnitaire || 0);
+      const cost = (l.quantite || 1) * (l.prixAchat || 0);
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       totalHT += montant;
+      totalCost += cost;
       tvaTotal += montant * (taux / 100);
     });
 
@@ -74,12 +148,39 @@ export default function DevisWizard({
     const tvaApresRemise = tvaTotal * (1 - form.remise / 100);
     const totalTTC = htApresRemise + tvaApresRemise;
 
-    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC };
+    // Calculate margin (after discount)
+    const costAfterRemise = totalCost * (1 - form.remise / 100);
+    const marge = htApresRemise - costAfterRemise;
+    const margePercent = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
+
+    return { totalHT, tvaTotal, remiseAmount, htApresRemise, tvaApresRemise, totalTTC, totalCost, marge, margePercent };
   }, [form.lignes, form.tvaDefaut, form.remise]);
+
+  // MRU (Most Recently Used) clients
+  const MRU_KEY = 'chantierpro_recent_clients';
+  const MAX_RECENT = 5;
+
+  const addToRecentClients = (clientId) => {
+    try {
+      const recent = JSON.parse(localStorage.getItem(MRU_KEY) || '[]').filter(id => id !== clientId);
+      recent.unshift(clientId);
+      localStorage.setItem(MRU_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
+    } catch { /* ignore */ }
+  };
+
+  const getRecentClients = () => {
+    try {
+      const ids = JSON.parse(localStorage.getItem(MRU_KEY) || '[]');
+      return ids.map(id => clients.find(c => c.id === id)).filter(Boolean);
+    } catch { return []; }
+  };
+
+  const recentClients = getRecentClients();
 
   // Handlers
   const selectClient = (clientId) => {
     setForm(p => ({ ...p, clientId }));
+    addToRecentClients(clientId);
     setStep(2);
   };
 
@@ -117,11 +218,27 @@ export default function DevisWizard({
   };
 
   const removeLigne = (id) => {
+    if (!window.confirm('Supprimer cette ligne ?')) return;
     setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
   };
 
   const handleSubmit = () => {
-    if (!form.clientId || form.lignes.length === 0) return;
+    // Validate
+    const newErrors = {};
+    if (!form.clientId) {
+      newErrors.client = 'Veuillez sélectionner un client';
+    }
+    if (form.lignes.length === 0) {
+      newErrors.lignes = 'Ajoutez au moins un article';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      // Go back to the step with the error
+      if (newErrors.client) setStep(1);
+      else if (newErrors.lignes) setStep(2);
+      return;
+    }
 
     // Transform lignes to expected format
     const lignesFormatted = form.lignes.map(l => ({
@@ -144,6 +261,9 @@ export default function DevisWizard({
       tva: totals.tvaApresRemise,
       total_ttc: totals.totalTTC
     };
+
+    // Clear draft on successful submit
+    clearDraft();
 
     onSubmit?.(devisData);
     onClose?.();
@@ -178,7 +298,7 @@ export default function DevisWizard({
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+            <button onClick={onClose} className="p-3 hover:bg-white/20 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
               <X size={20} className="text-white" />
             </button>
           </div>
@@ -193,6 +313,45 @@ export default function DevisWizard({
             ))}
           </div>
         </div>
+
+        {/* Draft restored banner */}
+        {draftRestored && (
+          <div className="mx-5 mt-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between animate-slide-up">
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <RotateCcw size={16} />
+              <span className="text-sm font-medium">Brouillon restauré</span>
+            </div>
+            <button
+              onClick={() => {
+                clearDraft();
+                setForm({
+                  type: 'devis',
+                  clientId: '',
+                  chantierId: '',
+                  date: new Date().toISOString().split('T')[0],
+                  validite: entreprise?.validiteDevis || 30,
+                  tvaDefaut: entreprise?.tvaDefaut || 10,
+                  lignes: [],
+                  remise: 0,
+                  notes: ''
+                });
+                setStep(1);
+                setDraftRestored(false);
+              }}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Recommencer
+            </button>
+          </div>
+        )}
+
+        {/* Error banner */}
+        {(errors.client || errors.lignes) && (
+          <div className="mx-5 mt-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-2 text-red-600 animate-shake">
+            <AlertCircle size={16} />
+            <span className="text-sm font-medium">{errors.client || errors.lignes}</span>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
@@ -243,9 +402,52 @@ export default function DevisWizard({
                 <span className={textSecondary}>Nouveau client</span>
               </button>
 
+              {/* Recent clients section */}
+              {!clientSearch && recentClients.length > 0 && (
+                <div className="space-y-2">
+                  <div className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wider ${textMuted}`}>
+                    <Clock size={12} />
+                    <span>Récents</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {recentClients.map(client => (
+                      <button
+                        key={`recent-${client.id}`}
+                        onClick={() => selectClient(client.id)}
+                        className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] ${
+                          form.clientId === client.id
+                            ? 'border-current shadow-lg'
+                            : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                        style={form.clientId === client.id ? { borderColor: couleur, backgroundColor: `${couleur}10` } : { borderColor: `${couleur}30` }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                            style={{ backgroundColor: couleur }}
+                          >
+                            {client.nom?.[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium text-sm truncate ${textPrimary}`}>{client.nom} {client.prenom}</p>
+                            {client.entreprise && <p className={`text-xs truncate ${textMuted}`}>{client.entreprise}</p>}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Clients grid */}
+              {(!clientSearch && recentClients.length > 0) && (
+                <div className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wider ${textMuted}`}>
+                  <User size={12} />
+                  <span>Tous les clients</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 animate-stagger">
-                {filteredClients.map(client => (
+                {filteredClients.filter(c => clientSearch || !recentClients.some(r => r.id === c.id)).map(client => (
                   <button
                     key={client.id}
                     onClick={() => selectClient(client.id)}
@@ -499,6 +701,22 @@ export default function DevisWizard({
                       {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
                     </span>
                   </div>
+                  {/* Margin display - only show if cost data exists */}
+                  {totals.totalCost > 0 && (
+                    <div className={`flex justify-between pt-2 mt-2 border-t ${isDark ? 'border-emerald-700' : 'border-emerald-200'}`}>
+                      <span className={textSecondary}>Marge estimée</span>
+                      <span className={`font-semibold ${
+                        totals.margePercent >= 25 ? 'text-emerald-600' :
+                        totals.margePercent >= 15 ? 'text-amber-600' :
+                        'text-red-500'
+                      }`}>
+                        {totals.marge.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                        <span className="ml-1 text-sm">
+                          ({totals.margePercent.toFixed(1)}%)
+                        </span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -570,7 +788,7 @@ export default function DevisWizard({
 // Ligne card component
 function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefaut }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const inputBg = isDark ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-slate-200';
 
   const montant = (ligne.quantite || 1) * (ligne.prixUnitaire || 0);

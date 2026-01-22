@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles } from 'lucide-react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, Mic, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle } from 'lucide-react';
+import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis } from '../lib/templates/task-templates';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
+import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -47,6 +49,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
 export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+  const isOnline = useOnlineStatus();
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -72,9 +75,25 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [budgetForm, setBudgetForm] = useState({ budget_estime: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, status, margin
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
+  const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
+  const [weather, setWeather] = useState(null); // Weather data for active chantier
+  const [showTaskModal, setShowTaskModal] = useState(false); // Efficient task management modal
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+
+  // Fetch weather for active chantier
+  useEffect(() => {
+    const activeChantier = chantiers.find(c => c.statut === 'en_cours');
+    if (activeChantier) {
+      if (activeChantier.latitude && activeChantier.longitude) {
+        getChantierWeather(activeChantier).then(setWeather).catch(() => setWeather(null));
+      } else {
+        // Fallback to user location weather
+        getUserWeather().then(setWeather).catch(() => setWeather(null));
+      }
+    }
+  }, [chantiers]);
 
   // Scroll to top when opening chantier detail
   useEffect(() => {
@@ -91,7 +110,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Handlers
   const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
-  const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false }] }); setNewTache(''); } };
+  const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical }] }); setNewTache(''); setNewTaskCritical(false); } };
   const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
   const addDepenseToChantier = () => {
     if (!newDepense.description || !newDepense.montant) return;
@@ -152,6 +171,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
     return (
       <div className="space-y-4 sm:space-y-6">
+        {/* Breadcrumb navigation */}
+        <div className={`flex items-center gap-1.5 text-sm ${textMuted}`}>
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="hover:underline flex items-center gap-1">
+            <Building2 size={14} />
+            <span>Chantiers</span>
+          </button>
+          <ChevronRight size={14} />
+          <span className={textPrimary}>{ch.nom}</span>
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
@@ -461,10 +490,88 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               />
             </div>
 
-            {/* Signaux de progression */}
+            {/* Quick Tasks - Next actions */}
+            {(() => {
+              const pendingTasks = (ch.taches || []).filter(t => !t.done);
+              const nextTasks = pendingTasks.slice(0, 3);
+
+              if (nextTasks.length > 0) {
+                return (
+                  <div className={`mb-3 p-3 rounded-xl border-2 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`text-xs font-bold uppercase tracking-wide ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                        À faire maintenant
+                      </p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-200 text-blue-700'}`}>
+                        {pendingTasks.length} restante{pendingTasks.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {nextTasks.map((t, idx) => (
+                        <button
+                          key={t.id}
+                          onClick={() => toggleTache(t.id)}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-all active:scale-[0.98] ${
+                            idx === 0
+                              ? (isDark ? 'bg-blue-800/50 hover:bg-blue-800' : 'bg-white hover:bg-blue-100 shadow-sm')
+                              : (isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-white/50 hover:bg-white')
+                          }`}
+                        >
+                          <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
+                            idx === 0 ? 'border-blue-500' : (isDark ? 'border-slate-500' : 'border-slate-300')
+                          }`}>
+                            {idx === 0 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                          </div>
+                          <span className={`text-sm ${idx === 0 ? 'font-medium' : ''} ${textPrimary}`}>
+                            {t.text.length > 40 ? t.text.substring(0, 40) + '...' : t.text}
+                          </span>
+                          {idx === 0 && (
+                            <span className={`ml-auto text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                              Valider ✓
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {pendingTasks.length > 3 && (
+                      <button
+                        onClick={() => setActiveTab('taches')}
+                        className={`w-full mt-2 text-xs py-1.5 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >
+                        Voir les {pendingTasks.length - 3} autres →
+                      </button>
+                    )}
+                  </div>
+                );
+              } else if (tasksTotal === 0) {
+                return (
+                  <button
+                    onClick={() => setActiveTab('taches')}
+                    className={`mb-3 w-full p-3 rounded-xl border-2 border-dashed text-center transition-colors ${
+                      isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-700/50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className={`text-sm font-medium ${textMuted}`}>+ Ajouter des tâches pour suivre l'avancement</p>
+                  </button>
+                );
+              } else {
+                return (
+                  <div className={`mb-3 p-3 rounded-xl ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
+                    <p className={`text-sm font-medium text-center ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                      ✓ Toutes les tâches sont terminées!
+                    </p>
+                  </div>
+                );
+              }
+            })()}
+
+            {/* Signaux de progression - Compact */}
             <div className="grid grid-cols-3 gap-2 mb-3">
               {/* Taches */}
-              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+              <button
+                onClick={() => setActiveTab('taches')}
+                className={`p-2 rounded-lg text-center transition-colors ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
+              >
                 <p className={`text-xs ${textMuted} mb-1`}>Tâches</p>
                 <p className={`text-sm font-bold ${tasksDone === tasksTotal && tasksTotal > 0 ? 'text-emerald-500' : textPrimary}`}>
                   {tasksTotal > 0 ? `${tasksDone}/${tasksTotal}` : '-'}
@@ -474,7 +581,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="h-full rounded-full bg-blue-500" style={{ width: `${(tasksDone / tasksTotal) * 100}%` }} />
                   </div>
                 )}
-              </div>
+              </button>
               {/* Heures */}
               <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
                 <p className={`text-xs ${textMuted} mb-1`}>Heures</p>
@@ -489,7 +596,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               {/* Couts */}
               <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-                <p className={`text-xs ${textMuted} mb-1`}>Couts</p>
+                <p className={`text-xs ${textMuted} mb-1`}>Coûts</p>
                 <p className={`text-sm font-bold ${ch.budget_materiaux > 0 && bilan.coutMateriaux >= ch.budget_materiaux ? 'text-amber-500' : textPrimary}`}>
                   {ch.budget_materiaux > 0 ? `${((bilan.coutMateriaux / ch.budget_materiaux) * 100).toFixed(0)}%` : formatMoney(bilan.totalDepenses)}
                 </p>
@@ -616,26 +723,81 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const metierTemplates = getTaskTemplatesForMetier(entreprise?.metier);
           const devisSuggestions = devisLie ? suggestTasksFromDevis(devisLie.lignes) : [];
           const existingTexts = (ch.taches || []).map(t => t.text.toLowerCase());
+          const pendingTasks = (ch.taches || []).filter(t => !t.done);
+          const completedTasks = (ch.taches || []).filter(t => t.done);
+          // Task weight in progression: 40% of total / number of tasks
+          const taskWeight = tasksTotal > 0 ? (40 / tasksTotal) : 0;
 
           return (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>Tâches {tasksTotal > 0 && `(${tasksDone}/${tasksTotal})`}</h3>
-            {tasksTotal > 0 && <div className={`w-full h-2 rounded-full mb-4 overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="h-full rounded-full" style={{width: `${(tasksDone/tasksTotal)*100}%`, background: couleur}} /></div>}
+          <div className="space-y-4">
+            {/* Progression Impact Card */}
+            <div className={`${cardBg} rounded-2xl border p-4`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                    <CheckSquare size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${textPrimary}`}>Tâches</h3>
+                    <p className={`text-xs ${textMuted}`}>Comptent pour 40% de la progression</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowTaskModal(true)}
+                    className="px-3 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-[40px]"
+                    style={{ background: couleur }}
+                  >
+                    <GripVertical size={14} /> Gérer
+                  </button>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold" style={{ color: tasksDone === tasksTotal && tasksTotal > 0 ? '#10b981' : couleur }}>
+                      {tasksDone}/{tasksTotal}
+                    </p>
+                    <p className={`text-xs ${textMuted}`}>terminées</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual progress bar with task segments */}
+              {tasksTotal > 0 && (
+                <div className="relative">
+                  <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex`}>
+                    {(ch.taches || []).map((t, idx) => (
+                      <div
+                        key={t.id}
+                        className={`h-full transition-all ${idx > 0 ? 'border-l border-white/30' : ''}`}
+                        style={{
+                          width: `${100 / tasksTotal}%`,
+                          background: t.done ? '#10b981' : (isDark ? '#475569' : '#e2e8f0')
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {/* Impact indicator */}
+                  {pendingTasks.length > 0 && (
+                    <p className={`mt-2 text-xs text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                      Compléter 1 tâche = +{taskWeight.toFixed(1)}% progression
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Quick Template Buttons */}
             {tasksTotal === 0 && (
-              <div className={`mb-4 p-4 rounded-xl border-2 border-dashed ${isDark ? 'border-slate-600 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className={`${cardBg} rounded-2xl border p-4`}>
                 <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
                   <Zap size={14} className="inline mr-1" style={{ color: couleur }} />
-                  Demarrer rapidement
+                  Démarrer rapidement
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowTaskTemplates(true)}
-                    className="px-3 py-2 text-white rounded-lg text-sm flex items-center gap-1.5"
+                    className="px-3 py-2.5 text-white rounded-xl text-sm flex items-center gap-1.5 min-h-[44px]"
                     style={{ background: couleur }}
                   >
-                    <Sparkles size={14} /> Modeles {metierTemplates.label}
+                    <Sparkles size={14} /> Modèles {metierTemplates.label}
                   </button>
                   {QUICK_TASKS.slice(0, 4).map(qt => (
                     <button
@@ -643,7 +805,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       onClick={() => {
                         updateChantier(ch.id, { taches: [...(ch.taches || []), { id: generateId(), text: qt.text, done: false }] });
                       }}
-                      className={`px-3 py-2 rounded-lg text-sm ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border'}`}
+                      className={`px-3 py-2.5 rounded-xl text-sm min-h-[44px] ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border'}`}
                     >
                       + {qt.text}
                     </button>
@@ -654,44 +816,200 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             {/* Suggestions from Devis */}
             {devisSuggestions.length > 0 && devisSuggestions.filter(s => !existingTexts.includes(s.text.toLowerCase())).length > 0 && (
-              <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+              <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
                 <p className={`text-xs font-medium mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
                   <FileText size={12} className="inline mr-1" />
                   Suggestions depuis le devis
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {devisSuggestions.filter(s => !existingTexts.includes(s.text.toLowerCase())).slice(0, 5).map((s, i) => (
                     <button
                       key={i}
                       onClick={() => {
                         updateChantier(ch.id, { taches: [...(ch.taches || []), { id: generateId(), text: s.text, done: false, source: 'devis' }] });
                       }}
-                      className={`px-2 py-1 rounded text-xs ${isDark ? 'bg-blue-800/50 hover:bg-blue-800 text-blue-200' : 'bg-white hover:bg-blue-100 text-blue-700'}`}
+                      className={`px-3 py-2 rounded-lg text-sm min-h-[44px] ${isDark ? 'bg-blue-800/50 hover:bg-blue-800 text-blue-200' : 'bg-white hover:bg-blue-100 text-blue-700'}`}
                     >
-                      + {s.text.length > 30 ? s.text.substring(0, 30) + '...' : s.text}
+                      + {s.text.length > 25 ? s.text.substring(0, 25) + '...' : s.text}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Existing Tasks */}
-            <div className="space-y-2 mb-4">{ch.taches?.map(t => (<div key={t.id} onClick={() => toggleTache(t.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer ${t.done ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}><span className="text-xl">{t.done ? '✅' : '⬜'}</span><span className={`${textPrimary} ${t.done ? 'line-through opacity-50' : ''}`}>{t.text}</span></div>))}</div>
+            {/* Critical Tasks - Blocking for chantier closure */}
+            {pendingTasks.filter(t => t.critical).length > 0 && (
+              <div className={`${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} rounded-2xl border-2 p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className={`font-medium flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                    <AlertCircle size={18} />
+                    Points critiques ({pendingTasks.filter(t => t.critical).length})
+                  </h4>
+                  <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-600'}`}>
+                    Bloquent la clôture
+                  </span>
+                </div>
+                <p className={`text-xs mb-3 ${isDark ? 'text-red-400/80' : 'text-red-600/80'}`}>
+                  Ces tâches doivent être complétées avant de terminer le chantier
+                </p>
+                <div className="space-y-2">
+                  {pendingTasks.filter(t => t.critical).map((t) => (
+                    <div
+                      key={t.id}
+                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        isDark ? 'bg-red-900/30 border border-red-800' : 'bg-white border border-red-200'
+                      }`}
+                    >
+                      <button
+                        onClick={() => toggleTache(t.id)}
+                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 ${
+                          isDark ? 'border-red-500 bg-red-500/10 hover:bg-red-500/20' : 'border-red-400 hover:bg-red-50'
+                        }`}
+                      />
+                      <span className={`flex-1 font-medium ${textPrimary}`}>{t.text}</span>
+                      <button
+                        onClick={() => updateChantier(ch.id, { taches: ch.taches.map(task => task.id === t.id ? { ...task, critical: false } : task) })}
+                        className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700 text-red-400' : 'hover:bg-slate-100 text-red-500'}`}
+                        title="Retirer des points critiques"
+                      >
+                        <AlertCircle size={16} />
+                      </button>
+                      <button
+                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
+                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Pending Tasks */}
+            {pendingTasks.filter(t => !t.critical).length > 0 && (
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className={`font-medium ${textPrimary}`}>À faire ({pendingTasks.filter(t => !t.critical).length})</h4>
+                  <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                    +{(taskWeight * pendingTasks.filter(t => !t.critical).length).toFixed(0)}% restant
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {pendingTasks.filter(t => !t.critical).map((t, idx) => (
+                    <div
+                      key={t.id}
+                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
+                        idx === 0
+                          ? (isDark ? 'bg-blue-900/30 border-2 border-blue-700' : 'bg-blue-50 border-2 border-blue-200')
+                          : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')
+                      }`}
+                    >
+                      <button
+                        onClick={() => toggleTache(t.id)}
+                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 ${
+                          idx === 0
+                            ? 'border-blue-500 bg-blue-500/10 hover:bg-blue-500/20'
+                            : (isDark ? 'border-slate-500 hover:border-slate-400' : 'border-slate-300 hover:border-slate-400')
+                        }`}
+                      >
+                        {idx === 0 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                      </button>
+                      <span className={`flex-1 ${textPrimary} ${idx === 0 ? 'font-medium' : ''}`}>{t.text}</span>
+                      {idx === 0 && (
+                        <span className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                          +{taskWeight.toFixed(1)}%
+                        </span>
+                      )}
+                      <button
+                        onClick={() => updateChantier(ch.id, { taches: ch.taches.map(task => task.id === t.id ? { ...task, critical: true } : task) })}
+                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}
+                        title="Marquer comme critique"
+                      >
+                        <AlertCircle size={16} />
+                      </button>
+                      <button
+                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
+                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Add Task Input */}
-            <div className="flex gap-2">
-              <input placeholder="Nouvelle tache..." value={newTache} onChange={e => setNewTache(e.target.value)} onKeyPress={e => e.key === 'Enter' && addTache()} className={`flex-1 px-4 py-2.5 border rounded-xl ${inputBg}`} />
-              <button onClick={addTache} className="px-4 py-2.5 text-white rounded-xl" style={{background: couleur}}>+</button>
-            </div>
-
-            {/* Templates Button (when tasks exist) */}
-            {tasksTotal > 0 && (
+            <div className={`${cardBg} rounded-2xl border p-4`}>
+              <div className="flex gap-2">
+                <input
+                  placeholder="Ajouter une tâche..."
+                  value={newTache}
+                  onChange={e => setNewTache(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addTache()}
+                  className={`flex-1 px-4 py-3 border rounded-xl min-h-[44px] ${inputBg}`}
+                />
+                <button onClick={addTache} className="px-5 py-3 text-white rounded-xl min-h-[44px] font-medium" style={{ background: couleur }}>
+                  Ajouter
+                </button>
+              </div>
+              {/* Critical task toggle */}
+              <button
+                onClick={() => setNewTaskCritical(!newTaskCritical)}
+                className={`mt-3 w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 min-h-[48px] transition-all border-2 ${
+                  newTaskCritical
+                    ? (isDark ? 'bg-red-900/30 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600')
+                    : (isDark ? 'bg-slate-700 border-slate-600 hover:border-slate-500 text-slate-400' : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-500')
+                }`}
+              >
+                <AlertCircle size={18} className={newTaskCritical ? (isDark ? 'text-red-400' : 'text-red-500') : ''} />
+                {newTaskCritical ? 'Tâche critique (bloque la clôture)' : 'Marquer comme critique'}
+                {newTaskCritical && <Check size={16} className={isDark ? 'text-red-400' : 'text-red-500'} />}
+              </button>
+              {/* Templates Button */}
               <button
                 onClick={() => setShowTaskTemplates(true)}
-                className={`mt-3 w-full py-2 rounded-xl text-sm flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                className={`mt-2 w-full py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 min-h-[44px] ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
               >
-                <Sparkles size={14} /> Ajouter depuis modeles
+                <Sparkles size={14} /> Ajouter depuis modèles
               </button>
+            </div>
+
+            {/* Completed Tasks */}
+            {completedTasks.length > 0 && (
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className={`font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                    ✓ Terminées ({completedTasks.length})
+                  </h4>
+                  <span className={`text-xs ${textMuted}`}>
+                    +{(taskWeight * completedTasks.length).toFixed(0)}% acquis
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {completedTasks.map(t => (
+                    <div
+                      key={t.id}
+                      className={`group flex items-center gap-3 p-2.5 rounded-lg ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/50'}`}
+                    >
+                      <button
+                        onClick={() => toggleTache(t.id)}
+                        className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center flex-shrink-0"
+                      >
+                        <Check size={14} className="text-white" />
+                      </button>
+                      <span className={`flex-1 text-sm line-through ${textMuted}`}>{t.text}</span>
+                      <button
+                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
+                        className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
           );
@@ -699,12 +1017,74 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'photos' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-              <h3 className="font-semibold"> Carnet Photos</h3>
-              <div className="flex gap-2 flex-wrap">{PHOTO_CATS.map(cat => (<label key={cat} className="px-3 py-1.5 text-white rounded-lg cursor-pointer text-xs" style={{background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur}}>+ {cat}<input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" /></label>))}</div>
+            {/* Header with bigger touch targets for photo buttons */}
+            <div className="flex justify-between items-start mb-4 flex-wrap gap-3">
+              <div>
+                <h3 className={`font-semibold ${textPrimary}`}>📸 Carnet Photos</h3>
+                <p className={`text-xs ${textMuted} mt-1`}>Photos horodatées = preuves en cas de litige</p>
+              </div>
             </div>
-            {(!ch.photos || ch.photos.length === 0) ? <p className="text-slate-400 text-center py-8">Aucune photo</p> : (
-              <div className="space-y-4">{PHOTO_CATS.map(cat => { const catPhotos = (ch.photos || []).filter(p => p.categorie === cat); if (catPhotos.length === 0) return null; return (<div key={cat}><p className="text-sm font-medium mb-2 capitalize">{cat} ({catPhotos.length})</p><div className="flex gap-2 flex-wrap">{catPhotos.map(p => (<div key={p.id} className="relative group cursor-pointer" onClick={() => setPhotoPreview(p)}><img src={p.src} className="w-24 h-24 object-cover rounded-xl hover:opacity-90 transition-opacity" alt="" /><button onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }} className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-md"><X size={14} /></button></div>))}</div></div>); })}</div>
+
+            {/* Photo capture buttons - Big touch targets */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+              {PHOTO_CATS.map(cat => (
+                <label
+                  key={cat}
+                  className="flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-xl cursor-pointer text-white font-medium min-h-[64px] transition-all active:scale-95"
+                  style={{ background: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur }}
+                >
+                  <Camera size={20} />
+                  <span className="text-xs capitalize">+ {cat}</span>
+                  <input type="file" accept="image/*" capture="environment" onChange={e => handlePhotoAdd(e, cat)} className="hidden" />
+                </label>
+              ))}
+            </div>
+
+            {/* Photos grid with timestamp badges */}
+            {(!ch.photos || ch.photos.length === 0) ? (
+              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                <Camera size={40} className={`mx-auto mb-3 ${textMuted}`} />
+                <p className={`font-medium ${textPrimary}`}>Aucune photo</p>
+                <p className={`text-sm ${textMuted} mt-1`}>Prenez des photos pour documenter le chantier</p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {PHOTO_CATS.map(cat => {
+                  const catPhotos = (ch.photos || []).filter(p => p.categorie === cat);
+                  if (catPhotos.length === 0) return null;
+                  return (
+                    <div key={cat}>
+                      <p className={`text-sm font-bold uppercase tracking-wider mb-3 flex items-center gap-2`}
+                         style={{ color: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : couleur }}>
+                        {cat === 'litige' && '⚠️'} {cat} ({catPhotos.length})
+                      </p>
+                      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                        {catPhotos.map(p => (
+                          <div key={p.id} className="relative group cursor-pointer flex-shrink-0" onClick={() => setPhotoPreview(p)}>
+                            <img src={p.src} className="w-28 h-28 object-cover rounded-xl hover:opacity-90 transition-opacity border-2"
+                                 style={{ borderColor: cat === 'litige' ? '#ef4444' : cat === 'avant' ? '#3b82f6' : cat === 'après' ? '#22c55e' : `${couleur}40` }}
+                                 alt="" />
+                            {/* Timestamp badge - Proof for litigation */}
+                            <div className={`absolute bottom-0 left-0 right-0 px-2 py-1 rounded-b-lg text-xs text-white font-medium ${
+                              cat === 'litige' ? 'bg-red-600/90' : 'bg-black/70'
+                            }`}>
+                              {p.date ? new Date(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+                              {p.date && <span className="ml-1 opacity-75">{new Date(p.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>}
+                            </div>
+                            {/* Delete button */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deletePhoto(p.id); }}
+                              className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full text-xs sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg transition-opacity"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
@@ -764,27 +1144,78 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
-        {/* Photo Preview Modal */}
+        {/* Photo Preview Modal - Enhanced for litigation proof */}
         {photoPreview && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setPhotoPreview(null)}>
-            {/* Top buttons */}
-            <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-              <a
-                href={photoPreview.src}
-                download={`photo_${photoPreview.categorie}_${new Date(photoPreview.date).toISOString().split('T')[0]}.jpg`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors flex items-center gap-2"
-                title="Telecharger"
-              >
-                <Download size={20} />
-              </a>
-              <button onClick={() => setPhotoPreview(null)} className="text-white p-2.5 hover:bg-white/20 rounded-xl transition-colors">
-                <X size={20} />
-              </button>
+          <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-4" onClick={() => setPhotoPreview(null)}>
+            {/* Top bar with chantier info */}
+            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-10">
+              <div className="flex items-start justify-between max-w-4xl mx-auto">
+                <div className="text-white">
+                  <p className="font-bold text-lg">{ch.nom}</p>
+                  <p className="text-sm opacity-75">{ch.adresse || 'Adresse non renseignée'}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={photoPreview.src}
+                    download={`${ch.nom?.replace(/\s+/g, '_')}_${photoPreview.categorie}_${photoPreview.date ? new Date(photoPreview.date).toISOString().split('T')[0] : 'photo'}.jpg`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-white p-3 hover:bg-white/20 rounded-xl transition-colors flex items-center gap-2 min-h-[48px]"
+                    title="Télécharger"
+                  >
+                    <Download size={22} />
+                  </a>
+                  <button onClick={() => setPhotoPreview(null)} className="text-white p-3 hover:bg-white/20 rounded-xl transition-colors min-h-[48px]">
+                    <X size={22} />
+                  </button>
+                </div>
+              </div>
             </div>
-            <img src={photoPreview.src} className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl" alt="" onClick={(e) => e.stopPropagation()} />
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-xl backdrop-blur-sm">
-              <span className="capitalize">{photoPreview.categorie}</span> · {new Date(photoPreview.date).toLocaleDateString('fr-FR')}
+
+            {/* Photo */}
+            <img src={photoPreview.src} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl" alt="" onClick={(e) => e.stopPropagation()} />
+
+            {/* Bottom bar - Timestamp proof for litigation */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent z-10">
+              <div className="max-w-4xl mx-auto">
+                {/* Category badge */}
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  <span className={`px-4 py-2 rounded-lg font-bold text-sm uppercase ${
+                    photoPreview.categorie === 'litige'
+                      ? 'bg-red-500 text-white'
+                      : photoPreview.categorie === 'avant'
+                      ? 'bg-blue-500 text-white'
+                      : photoPreview.categorie === 'après'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-white/20 text-white'
+                  }`}>
+                    {photoPreview.categorie === 'litige' && '⚠️ '}{photoPreview.categorie}
+                  </span>
+                </div>
+
+                {/* Timestamp - Large and clear for proof */}
+                <div className="text-center text-white">
+                  <p className="text-2xl font-bold tracking-wide">
+                    {photoPreview.date ? new Date(photoPreview.date).toLocaleDateString('fr-FR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    }) : 'Date non disponible'}
+                  </p>
+                  <p className="text-lg opacity-90 mt-1">
+                    {photoPreview.date ? new Date(photoPreview.date).toLocaleTimeString('fr-FR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    }) : ''}
+                  </p>
+                </div>
+
+                {/* Proof notice */}
+                <p className="text-center text-white/60 text-xs mt-3 flex items-center justify-center gap-1">
+                  <Clock size={12} /> Photo horodatée - Valeur de preuve en cas de litige
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -804,19 +1235,52 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
-        {/* Modal Ajouter une dépense */}
+        {/* Modal Ajouter une dépense / Besoin de matériel */}
         {showQuickMateriau && (
           <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowQuickMateriau(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
-              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>💰 Ajouter une dépense</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>Enregistrez un achat ou une dépense sur ce chantier</p>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+              <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>📦 Besoin de matériel</h3>
+              <p className={`text-sm ${textMuted} mb-4`}>Enregistrez un achat ou signalez un besoin urgent</p>
+
+              {/* Quick picks - Missing materials from devis */}
+              {(() => {
+                const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
+                const plannedItems = devisLie?.lignes || [];
+                const chDepenses = depenses.filter(d => d.chantierId === ch.id);
+                const missingItems = plannedItems.filter(item =>
+                  !chDepenses.some(d => d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0]))
+                ).slice(0, 4);
+
+                if (missingItems.length === 0) return null;
+
+                return (
+                  <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-amber-900/20 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                      ⚠️ Matériaux prévus non achetés
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {missingItems.map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setNewDepense(p => ({ ...p, description: item.description, montant: item.prixUnitaire ? (item.prixUnitaire * (item.quantite || 1)).toString() : '' }))}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-95 min-h-[44px] ${
+                            isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-50 text-slate-700 shadow-sm'
+                          }`}
+                        >
+                          {item.description}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Sélection depuis catalogue */}
               {catalogue && catalogue.length > 0 && (
                 <div className="mb-4">
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Depuis le catalogue</label>
                   <select
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                    className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`}
                     value={newDepense.catalogueId}
                     onChange={e => {
                       const item = catalogue.find(c => c.id === e.target.value);
@@ -841,7 +1305,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <div className="space-y-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Description *</label>
-                  <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
+                  <input className={`w-full px-4 py-3 border rounded-xl min-h-[48px] text-base ${inputBg}`} placeholder="Ex: Sac de ciment 35kg" value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} />
                 </div>
 
                 {/* Quantité et prix unitaire */}
@@ -856,12 +1320,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             const prix = parseFloat(newDepense.prixUnitaire) || 0;
                             setNewDepense(p => ({...p, quantite: qty, montant: (prix * qty).toString()}));
                           }}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                          className={`w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
                         >-</button>
                         <input
                           type="number"
                           min="1"
-                          className={`flex-1 px-3 py-2.5 border rounded-xl text-center ${inputBg}`}
+                          className={`flex-1 px-3 py-3 border rounded-xl text-center text-lg font-semibold ${inputBg}`}
                           value={newDepense.quantite}
                           onChange={e => {
                             const qty = parseInt(e.target.value) || 1;
@@ -875,7 +1339,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             const prix = parseFloat(newDepense.prixUnitaire) || 0;
                             setNewDepense(p => ({...p, quantite: qty, montant: (prix * qty).toString()}));
                           }}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                          className={`w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
                         >+</button>
                       </div>
                     </div>
@@ -884,7 +1348,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <div className="relative">
                         <input
                           type="number"
-                          className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                          className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`}
                           value={newDepense.prixUnitaire}
                           onChange={e => {
                             const prix = parseFloat(e.target.value) || 0;
@@ -901,14 +1365,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Montant total TTC *</label>
                   <div className="relative">
-                    <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: 150" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
+                    <input type="number" className={`w-full px-4 py-3 border rounded-xl min-h-[48px] text-lg font-semibold ${inputBg}`} placeholder="Ex: 150" value={newDepense.montant} onChange={e => setNewDepense(p => ({...p, montant: e.target.value}))} />
                     <span className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted}`}>€</span>
                   </div>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Catégorie</label>
-                  <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
+                  <select className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
                     <option value="Matériaux">Matériaux</option>
                     <option value="Outillage">Outillage</option>
                     <option value="Location">Location</option>
@@ -919,10 +1383,45 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </div>
               </div>
 
+              {/* Action buttons - Big touch targets */}
               <div className="flex gap-3 mt-6">
-                <button onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' }); }} className={`flex-1 px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
-                <button onClick={addDepenseToChantier} disabled={!newDepense.description || !newDepense.montant} className="flex-1 px-4 py-2.5 text-white rounded-xl disabled:opacity-50 min-h-[44px]" style={{background: couleur}}>Ajouter</button>
+                <button
+                  onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' }); }}
+                  className={`flex-1 px-4 py-3 rounded-xl min-h-[52px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={addDepenseToChantier}
+                  disabled={!newDepense.description || !newDepense.montant}
+                  className="flex-1 px-4 py-3 text-white rounded-xl disabled:opacity-50 min-h-[52px] font-semibold"
+                  style={{background: couleur}}
+                >
+                  ✓ Acheté
+                </button>
               </div>
+
+              {/* Urgent request button */}
+              <button
+                onClick={() => {
+                  if (!newDepense.description) {
+                    showToast?.('Entrez une description', 'error');
+                    return;
+                  }
+                  // Simulate urgent notification (in real app would send push/SMS)
+                  showToast?.(`🚨 Demande urgente envoyée: ${newDepense.description}`, 'success');
+                  setShowQuickMateriau(false);
+                  setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+                }}
+                disabled={!newDepense.description}
+                className={`w-full mt-3 px-4 py-3 rounded-xl min-h-[52px] font-semibold border-2 transition-all disabled:opacity-50 ${
+                  isDark
+                    ? 'bg-red-900/30 border-red-700 text-red-400 hover:bg-red-900/50'
+                    : 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                🚨 Besoin urgent (notifier le patron)
+              </button>
             </div>
           </div>
         )}
@@ -1261,7 +1760,353 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         </div>
       ) : (
-        <div className="grid gap-3 sm:gap-4">
+        <>
+          {/* Quick Overview Card - Calm Guide */}
+          {(() => {
+            const activeChantiers = chantiers.filter(c => c.statut === 'en_cours');
+            if (activeChantiers.length === 0) return null;
+
+            const current = activeChantiers.sort((a, b) => (a.avancement || 0) - (b.avancement || 0))[0];
+            const client = clients.find(c => c.id === current.client_id);
+            const bilan = getChantierBilan(current.id);
+            const allTasks = current.taches || [];
+            const pendingTasks = allTasks.filter(t => !t.done);
+            const tasksDone = allTasks.filter(t => t.done).length;
+            const tasksTotal = allTasks.length;
+
+            // Team from pointages
+            const chPointages = pointages.filter(p => p.chantierId === current.id);
+            const teamIds = [...new Set(chPointages.map(p => p.employeId))];
+            const teamMembers = teamIds.map(id => equipe.find(e => e.id === id)).filter(Boolean);
+
+            // Materials
+            const devisLie = devis?.find(d => d.chantier_id === current.id && d.type === 'devis');
+            const plannedItems = devisLie?.lignes || [];
+            const chDepenses = depenses.filter(d => d.chantierId === current.id);
+            const purchasedCount = plannedItems.filter(item =>
+              chDepenses.some(d => d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0]))
+            ).length;
+
+            // Timeline
+            const start = current.date_debut ? new Date(current.date_debut) : null;
+            const end = current.date_fin ? new Date(current.date_fin) : null;
+            const today = new Date();
+            let daysRemaining = null;
+            if (start && end) {
+              daysRemaining = Math.max(0, Math.ceil((end - today) / 86400000));
+            }
+
+            // Smart progression
+            const avancement = calculateSmartProgression(current, bilan, tasksDone, tasksTotal);
+
+            // Weather icon helper
+            const WeatherIcon = ({ condition, size = 16 }) => {
+              if (condition === 'sunny') return <Sun size={size} className="text-amber-500" />;
+              if (condition === 'rainy') return <CloudRain size={size} className="text-blue-500" />;
+              if (condition === 'windy') return <Wind size={size} className="text-slate-500" />;
+              return <Cloud size={size} className="text-slate-400" />;
+            };
+
+            // Quick photo
+            const handleQuickPhoto = () => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.capture = 'environment';
+              input.onchange = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  updateChantier(current.id, {
+                    photos: [...(current.photos || []), { id: generateId(), src: reader.result, categorie: 'pendant', date: new Date().toISOString() }]
+                  });
+                  showToast?.('Photo ajoutée', 'success');
+                };
+                reader.readAsDataURL(file);
+              };
+              input.click();
+            };
+
+            // Complete task handler
+            const completeTask = (taskId) => {
+              const ch = chantiers.find(c => c.id === current.id);
+              if (ch) {
+                updateChantier(current.id, {
+                  taches: ch.taches.map(t => t.id === taskId ? { ...t, done: true } : t)
+                });
+                showToast?.('Tâche complétée', 'success');
+              }
+            };
+
+            // Next task to focus on
+            const nextTask = pendingTasks[0];
+
+            return (
+              <div
+                className={`mb-4 ${cardBg} rounded-2xl border overflow-hidden transition-all hover:shadow-md`}
+                style={{ borderColor: `${couleur}30` }}
+              >
+                {/* Header - Friendly label + chantier name */}
+                <div
+                  className="p-4 cursor-pointer"
+                  onClick={() => setView(current.id)}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: couleur }}>
+                      En cours
+                    </span>
+                    {daysRemaining !== null && (
+                      <span className={`text-xs ${textMuted}`}>· {daysRemaining}j restants</span>
+                    )}
+                    <ChevronRight size={16} className={`${textMuted} ml-auto`} />
+                  </div>
+                  <h3 className={`font-bold text-lg ${textPrimary}`}>{current.nom}</h3>
+                  <p className={`text-sm ${textMuted}`}>
+                    {client?.nom || 'Sans client'}{current.adresse && ` · ${current.adresse}`}
+                  </p>
+                </div>
+
+                {/* Progress Bar - Simple, always accent color */}
+                <div className={`mx-4 mb-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className="h-2 rounded-full transition-all duration-300" style={{
+                    width: `${Math.min(100, Math.max(5, avancement))}%`,
+                    background: couleur
+                  }} />
+                </div>
+                <div className="px-4 mb-3 flex items-center justify-between">
+                  <span className={`text-sm font-semibold`} style={{ color: couleur }}>{avancement}% avancé</span>
+                  {tasksDone > 0 && (
+                    <span className={`text-xs ${textMuted}`}>{tasksDone}/{tasksTotal} tâches faites</span>
+                  )}
+                </div>
+
+                {/* Info Row: Weather | Team | Materials */}
+                <div className={`px-4 py-2.5 flex items-center gap-4 overflow-x-auto border-t border-b ${isDark ? 'border-slate-700 bg-slate-800/30' : 'border-slate-100 bg-slate-50/50'}`}>
+                  {/* Weather */}
+                  {weather && !weather.isDefault && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0" title={weather.description}>
+                      <WeatherIcon condition={weather.condition} size={18} />
+                      <span className={`text-sm font-medium ${textPrimary}`}>{weather.temp}°</span>
+                    </div>
+                  )}
+
+                  {/* Team */}
+                  <div
+                    className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('finances'); }}
+                    title={teamMembers.map(m => `${m.prenom} ${m.nom}`).join(', ') || 'Aucune équipe'}
+                  >
+                    <Users size={16} style={{ color: couleur }} />
+                    <span className={`text-sm font-medium ${textPrimary}`}>
+                      {teamMembers.length > 0 ? `${teamMembers.length} pers.` : '-'}
+                    </span>
+                  </div>
+
+                  {/* Materials */}
+                  {(plannedItems.length > 0 || chDepenses.length > 0) && (
+                    <div
+                      className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
+                      onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('finances'); setShowQuickMateriau(true); }}
+                      title="Matériaux"
+                    >
+                      <Package size={16} style={{ color: couleur }} />
+                      <span className={`text-sm font-medium ${textPrimary}`}>
+                        {purchasedCount}/{plannedItems.length || chDepenses.length} mat.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Offline indicator */}
+                  {!isOnline && (
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
+                      <WifiOff size={14} className={textMuted} />
+                      <span className={`text-xs ${textMuted}`}>Hors ligne</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Team + Materials Grid */}
+                {(teamMembers.length > 0 || plannedItems.length > 0 || chDepenses.length > 0) && (
+                  <div className="px-4 py-3 grid grid-cols-2 gap-4">
+                    {/* Team Column */}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: couleur }}>
+                        Équipe ({teamMembers.length})
+                      </p>
+                      {teamMembers.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {teamMembers.slice(0, 4).map((member, idx) => (
+                            <div key={member.id} className="flex items-center gap-2">
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                style={{ background: couleur }}
+                              >
+                                {member.prenom?.[0]}{member.nom?.[0]}
+                              </div>
+                              <span className={`text-sm truncate ${textPrimary}`}>
+                                {member.prenom} {member.nom?.[0]}.
+                              </span>
+                              {member.role && (
+                                <span className={`text-xs ${textMuted} truncate`}>({member.role})</span>
+                              )}
+                            </div>
+                          ))}
+                          {teamMembers.length > 4 && (
+                            <p className={`text-xs ${textMuted}`}>+{teamMembers.length - 4} autres</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className={`text-sm ${textMuted}`}>Aucune équipe</p>
+                      )}
+                    </div>
+
+                    {/* Materials Column */}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: couleur }}>
+                        Matériaux ({purchasedCount}/{plannedItems.length || chDepenses.length})
+                      </p>
+                      {plannedItems.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {plannedItems.slice(0, 4).map((item, idx) => {
+                            const isPurchased = chDepenses.some(d =>
+                              d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0])
+                            );
+                            return (
+                              <div key={idx} className="flex items-center gap-2">
+                                {isPurchased ? (
+                                  <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
+                                )}
+                                <span className={`text-sm truncate ${isPurchased ? textMuted : textPrimary}`}>
+                                  {item.description.length > 20 ? item.description.substring(0, 20) + '...' : item.description}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {plannedItems.length > 4 && (
+                            <p className={`text-xs ${textMuted}`}>+{plannedItems.length - 4} autres</p>
+                          )}
+                        </div>
+                      ) : chDepenses.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {chDepenses.slice(0, 4).map((dep, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                              <span className={`text-sm truncate ${textMuted}`}>
+                                {dep.description.length > 20 ? dep.description.substring(0, 20) + '...' : dep.description}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className={`text-sm ${textMuted}`}>Aucun matériau</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Task - Gentle highlight of what to do */}
+                {nextTask && (
+                  <div className="p-4">
+                    <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${textMuted}`}>
+                      Prochaine étape
+                    </p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); completeTask(nextTask.id); }}
+                      className={`w-full min-h-[52px] px-4 rounded-xl flex items-center gap-3 transition-all active:scale-[0.98] ${
+                        isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-white border border-slate-200'
+                      }`}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
+                        style={{ borderColor: couleur }}
+                      >
+                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: couleur }} />
+                      </div>
+                      <span className={`text-base flex-1 text-left ${textPrimary} font-medium`}>
+                        {nextTask.text}
+                      </span>
+                      <Check size={20} style={{ color: couleur }} />
+                    </button>
+
+                    {/* Other pending tasks - compact list */}
+                    {pendingTasks.length > 1 && (
+                      <div className="mt-3 space-y-1">
+                        {pendingTasks.slice(1, 4).map(task => (
+                          <button
+                            key={task.id}
+                            onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
+                            className={`w-full min-h-[40px] px-3 rounded-lg flex items-center gap-2 transition-all active:scale-[0.98] ${
+                              isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
+                            <span className={`text-sm flex-1 text-left truncate ${textMuted}`}>
+                              {task.text}
+                            </span>
+                          </button>
+                        ))}
+                        {pendingTasks.length > 4 && (
+                          <button
+                            onClick={() => setView(current.id)}
+                            className={`w-full py-2 text-xs font-medium ${textMuted} hover:underline text-center`}
+                          >
+                            Voir {pendingTasks.length - 4} autres tâches
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No tasks - gentle prompt */}
+                {tasksTotal === 0 && (
+                  <div className="p-4">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setView(current.id); }}
+                      className={`w-full py-4 rounded-xl border-2 border-dashed text-sm font-medium transition-colors ${
+                        isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      Définir les tâches pour ce chantier
+                    </button>
+                  </div>
+                )}
+
+                {/* All tasks done - celebration */}
+                {tasksTotal > 0 && pendingTasks.length === 0 && (
+                  <div className="p-4">
+                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <p className={`text-sm font-medium ${textPrimary} mb-2`}>Toutes les tâches sont faites</p>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleQuickPhoto(); }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+                        style={{ background: couleur }}
+                      >
+                        Prendre une photo
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick actions footer */}
+                <div className={`px-4 py-2 flex items-center justify-end gap-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                  <button onClick={(e) => { e.stopPropagation(); handleQuickPhoto(); }}
+                    className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Photo">
+                    <Camera size={18} className={textMuted} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('notes'); }}
+                    className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Note">
+                    <StickyNote size={18} className={textMuted} />
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="grid gap-3 sm:gap-4">
           {getSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilan = getChantierBilan(ch.id);
@@ -1299,8 +2144,218 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
+
+      {/* Efficient Task Management Modal */}
+      {showTaskModal && view && (() => {
+        const ch = chantiers.find(c => c.id === view);
+        if (!ch) return null;
+        const tasks = ch.taches || [];
+        const pendingTasks = tasks.filter(t => !t.done);
+        const completedTasks = tasks.filter(t => t.done);
+        const criticalTasks = pendingTasks.filter(t => t.critical);
+
+        const addTask = (text, critical = false) => {
+          if (!text.trim()) return;
+          updateChantier(ch.id, {
+            taches: [...tasks, { id: generateId(), text: text.trim(), done: false, critical }]
+          });
+        };
+
+        const toggleTask = (id) => {
+          updateChantier(ch.id, {
+            taches: tasks.map(t => t.id === id ? { ...t, done: !t.done } : t)
+          });
+        };
+
+        const toggleCritical = (id) => {
+          updateChantier(ch.id, {
+            taches: tasks.map(t => t.id === id ? { ...t, critical: !t.critical } : t)
+          });
+        };
+
+        const deleteTask = (id) => {
+          updateChantier(ch.id, {
+            taches: tasks.filter(t => t.id !== id)
+          });
+        };
+
+        const clearCompleted = () => {
+          updateChantier(ch.id, {
+            taches: tasks.filter(t => !t.done)
+          });
+          showToast?.(`${completedTasks.length} tâche(s) supprimée(s)`, 'success');
+        };
+
+        const markAllDone = () => {
+          updateChantier(ch.id, {
+            taches: tasks.map(t => ({ ...t, done: true }))
+          });
+          showToast?.('Toutes les tâches marquées comme terminées', 'success');
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowTaskModal(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col animate-slide-up sm:animate-fade-in`} onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <div>
+                  <h3 className={`text-lg font-bold ${textPrimary}`}>Gestion des tâches</h3>
+                  <p className={`text-sm ${textMuted}`}>{pendingTasks.length} en cours · {completedTasks.length} terminées</p>
+                </div>
+                <button onClick={() => setShowTaskModal(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                  <X size={20} className={textMuted} />
+                </button>
+              </div>
+
+              {/* Quick Add */}
+              <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = e.target.elements.taskInput;
+                  addTask(input.value, newTaskCritical);
+                  input.value = '';
+                  setNewTaskCritical(false);
+                }} className="flex gap-2">
+                  <input
+                    name="taskInput"
+                    placeholder="Ajouter une tâche..."
+                    className={`flex-1 px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`}
+                    autoFocus
+                  />
+                  <button type="submit" className="px-4 py-3 text-white rounded-xl min-h-[48px] font-medium" style={{ background: couleur }}>
+                    <Plus size={20} />
+                  </button>
+                </form>
+                <button
+                  onClick={() => setNewTaskCritical(!newTaskCritical)}
+                  className={`mt-2 text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                    newTaskCritical
+                      ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600')
+                      : (isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100')
+                  }`}
+                >
+                  <AlertCircle size={14} />
+                  {newTaskCritical ? 'Critique (activé)' : 'Marquer comme critique'}
+                </button>
+              </div>
+
+              {/* Task List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Critical Tasks */}
+                {criticalTasks.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                      ⚠️ Points critiques ({criticalTasks.length})
+                    </p>
+                    <div className="space-y-1">
+                      {criticalTasks.map(task => (
+                        <div key={task.id} className={`flex items-center gap-2 p-3 rounded-xl group ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                          <button onClick={() => toggleTask(task.id)}
+                            className={`w-6 h-6 rounded-md border-2 flex-shrink-0 flex items-center justify-center ${isDark ? 'border-red-500' : 'border-red-400'}`}>
+                            {task.done && <Check size={14} className="text-red-500" />}
+                          </button>
+                          <span className={`flex-1 text-sm ${task.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-red-400' : 'text-red-700'}`}>{task.text}</span>
+                          <button onClick={() => toggleCritical(task.id)} className={`p-1.5 rounded opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
+                            <AlertCircle size={14} className="text-red-500" />
+                          </button>
+                          <button onClick={() => deleteTask(task.id)} className={`p-1.5 rounded opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending Tasks */}
+                {pendingTasks.filter(t => !t.critical).length > 0 && (
+                  <div>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>
+                      À faire ({pendingTasks.filter(t => !t.critical).length})
+                    </p>
+                    <div className="space-y-1">
+                      {pendingTasks.filter(t => !t.critical).map(task => (
+                        <div key={task.id} className={`flex items-center gap-2 p-3 rounded-xl group ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <button onClick={() => toggleTask(task.id)}
+                            className={`w-6 h-6 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
+                          <span className={`flex-1 text-sm ${textPrimary}`}>{task.text}</span>
+                          <button onClick={() => toggleCritical(task.id)} className={`p-1.5 rounded opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} title="Marquer critique">
+                            <AlertCircle size={14} />
+                          </button>
+                          <button onClick={() => deleteTask(task.id)} className={`p-1.5 rounded opacity-0 group-hover:opacity-100 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Completed Tasks */}
+                {completedTasks.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        ✓ Terminées ({completedTasks.length})
+                      </p>
+                      <button onClick={clearCompleted} className={`text-xs ${isDark ? 'text-slate-400 hover:text-red-400' : 'text-slate-500 hover:text-red-500'}`}>
+                        Supprimer
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      {completedTasks.slice(0, 5).map(task => (
+                        <div key={task.id} className={`flex items-center gap-2 p-2 rounded-lg group ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                          <button onClick={() => toggleTask(task.id)}
+                            className="w-5 h-5 rounded-md bg-emerald-500 flex-shrink-0 flex items-center justify-center">
+                            <Check size={12} className="text-white" />
+                          </button>
+                          <span className={`flex-1 text-sm line-through ${textMuted}`}>{task.text}</span>
+                        </div>
+                      ))}
+                      {completedTasks.length > 5 && (
+                        <p className={`text-xs ${textMuted} text-center py-1`}>+{completedTasks.length - 5} autres</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {tasks.length === 0 && (
+                  <div className="text-center py-8">
+                    <CheckSquare size={40} className={`mx-auto mb-3 ${textMuted}`} />
+                    <p className={`font-medium ${textPrimary}`}>Aucune tâche</p>
+                    <p className={`text-sm ${textMuted}`}>Ajoutez des tâches pour suivre l'avancement</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              {tasks.length > 0 && (
+                <div className={`p-4 border-t flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <button
+                    onClick={() => setShowTaskTemplates(true)}
+                    className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    <Sparkles size={14} /> Modèles
+                  </button>
+                  {pendingTasks.length > 0 && (
+                    <button
+                      onClick={markAllDone}
+                      className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg ${isDark ? 'text-emerald-400 hover:bg-emerald-900/30' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                    >
+                      <Check size={14} /> Tout terminer
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick Chantier Modal */}
       <QuickChantierModal

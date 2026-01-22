@@ -9,7 +9,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
@@ -177,7 +177,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['documents', '📄 Documents'],
           ['rentabilite', '📊 Rentabilité']
         ].map(([k, v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 rounded-t-xl font-medium whitespace-nowrap ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
       </div>
 

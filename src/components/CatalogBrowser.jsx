@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { Search, Star, Package, Zap, Droplets, PaintBucket, Hammer, Wrench, X, Plus, Check } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 
@@ -39,7 +41,7 @@ export default function CatalogBrowser({
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
   // Group items by category
   const groupedItems = useMemo(() => {
@@ -97,18 +99,33 @@ export default function CatalogBrowser({
     }, 1500);
   };
 
-  if (!isOpen) return null;
+  const modalContent = (
+    <AnimatePresence mode="wait">
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div className={`relative w-full sm:max-w-2xl max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col animate-slide-up overflow-hidden`}>
+          {/* Panel */}
+          <motion.div
+            className={`relative w-full sm:max-w-2xl max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
 
         {/* Header */}
         <div className="px-5 pt-5 pb-4 border-b flex items-center justify-between"
@@ -119,7 +136,7 @@ export default function CatalogBrowser({
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`p-3 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
           >
             <X size={20} className={textMuted} />
           </button>
@@ -238,32 +255,19 @@ export default function CatalogBrowser({
             </div>
           )}
         </div>
-      </div>
-
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-        @keyframes slide-up {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-      `}</style>
-    </div>
+        </motion.div>
+      </motion.div>
+      )}
+    </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 // Individual item card component
 function ItemCard({ item, onSelect, isAdded, isDark, couleur }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const catConfig = CATEGORY_CONFIG[item.categorie] || CATEGORY_CONFIG['Autre'];
 
   return (

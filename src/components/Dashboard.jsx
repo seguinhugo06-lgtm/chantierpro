@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown, PieChart as PieChartIcon, Activity, Building2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown, PieChart as PieChartIcon, Activity, Building2, Mail, Phone, Bell } from 'lucide-react';
 import RentabilityDashboard from './RentabilityDashboard';
 import AccountingIntegration from './AccountingIntegration';
+import MorningBrief from './MorningBrief';
+import { getPendingRelances, formatRelanceForDisplay, RELANCE_TEMPLATES } from '../services/RelanceService';
 
 
 export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
@@ -134,11 +136,11 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
     const items = [], now = new Date();
     safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `d-${d.id}`, type: 'devis', icon: FileText, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString('fr-FR')}€`, priority: days > 7 ? 'urgent' : days > 3 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(d => {
       const client = safeClients.find(c => c.id === d.client_id), days = Math.floor((now - new Date(d.date)) / 86400000);
-      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString()}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
+      items.push({ id: `f-${d.id}`, type: 'facture', icon: DollarSign, title: `Relancer ${d.numero}`, desc: `${client?.nom || ''} · ${(d.total_ttc || 0).toLocaleString('fr-FR')}€`, priority: days > 30 ? 'urgent' : days > 15 ? 'high' : 'normal', days, action: () => setActiveModule?.('devis') });
     });
     safeChantiers.filter(ch => ch.statut === 'en_cours').forEach(ch => {
       const bilan = getChantierBilan?.(ch.id);
@@ -146,6 +148,15 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
     });
     return items.sort((a, b) => ({ urgent: 0, high: 1, normal: 2 }[a.priority] - { urgent: 0, high: 1, normal: 2 }[b.priority]));
   }, [safeDevis, safeClients, safeChantiers, getChantierBilan, setActiveModule, setSelectedChantier, setPage]);
+
+  // Compute pending relances using RelanceService
+  const pendingRelances = useMemo(() => {
+    const factures = safeDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
+    // For now, assume no relances have been sent (empty history) - this would come from a relances table
+    const relanceHistory = {};
+    const pending = getPendingRelances(factures, safeClients, relanceHistory);
+    return pending.map(r => formatRelanceForDisplay(r, entreprise)).slice(0, 5);
+  }, [safeDevis, safeClients, entreprise]);
 
   const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
   const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
@@ -604,14 +615,63 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Tableau de bord</h1>
-          <p className={`text-sm sm:text-base ${textSecondary}`}>Vue d'ensemble de votre activité</p>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-        </div>
+      {/* Morning Brief - Daily summary for field workers */}
+      <MorningBrief
+        chantiers={safeChantiers}
+        devis={safeDevis}
+        clients={safeClients}
+        equipe={safeEquipe}
+        events={events}
+        pointages={safePointages}
+        isDark={isDark}
+        couleur={couleur}
+        modeDiscret={modeDiscret}
+        onNavigate={(page, id, type = 'chantier') => {
+          setPage?.(page);
+          if (id) {
+            if (type === 'devis' && setSelectedDevis) {
+              setSelectedDevis(id);
+            } else if (setSelectedChantier) {
+              setSelectedChantier(id);
+            }
+          }
+        }}
+      />
+
+      {/* HERO ACTION STRIP - 3 big buttons like Obat/Costructor */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <button
+          onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }}
+          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <FileText size={24} className="mx-auto mb-2 sm:mb-3" />
+          <span className="block text-sm sm:text-base">Nouveau devis</span>
+          <span className="block text-[10px] sm:text-xs opacity-80 mt-1">En 5 min</span>
+        </button>
+        <button
+          onClick={() => setPage?.('planning')}
+          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Clock size={24} className="mx-auto mb-2 sm:mb-3" />
+          <span className="block text-sm sm:text-base">Pointer heures</span>
+          {safePointages.filter(p => p.date === new Date().toISOString().split('T')[0]).length > 0 && (
+            <span className="block text-[10px] sm:text-xs opacity-80 mt-1">{safePointages.filter(p => p.date === new Date().toISOString().split('T')[0]).length} aujourd'hui</span>
+          )}
+        </button>
+        <button
+          onClick={() => setPage?.('chantiers')}
+          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Building2 size={24} className="mx-auto mb-2 sm:mb-3" />
+          <span className="block text-sm sm:text-base">Chantiers</span>
+          {stats.chantiersActifs > 0 && (
+            <span className="block text-[10px] sm:text-xs opacity-80 mt-1">{stats.chantiersActifs} en cours</span>
+          )}
+        </button>
       </div>
 
       {/* KPI Cards - now clickable */}
@@ -622,107 +682,87 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
         <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setShowRentabilityDashboard(true)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-        >
-          <Activity size={16} style={{ color: couleur }} />
-          Analyse rentabilite
-        </button>
-        <button
-          onClick={() => setShowAccountingIntegration(true)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-        >
-          <Building2 size={16} style={{ color: couleur }} />
-          Comptabilite
-        </button>
-      </div>
-
-      {/* Devis Pipeline - NEW SECTION */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-            <FileText size={18} style={{ color: couleur }} />
-            Pipeline des devis
-          </h3>
-          {stats.tauxConversion > 0 && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
-              <Target size={14} className="text-emerald-500" />
-              <span className={isDark ? 'text-emerald-400' : 'text-emerald-700'}>
-                <strong>{stats.tauxConversion.toFixed(0)}%</strong> taux de conversion
-              </span>
+      {/* UNIFIED ACTIVITY BOARD - Pipeline + Actions in one place */}
+      <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+          <div className="flex items-center justify-between">
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+              <FileText size={18} style={{ color: couleur }} />
+              Activité commerciale
+            </h3>
+            <div className="flex items-center gap-2">
+              {stats.tauxConversion > 0 && (
+                <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {stats.tauxConversion.toFixed(0)}% conversion
+                </span>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* Pipeline Grid with integrated details */}
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {/* Brouillons */}
+            <div
+              onClick={() => setPage?.('devis')}
+              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{stats.devisPipeline.brouillon.length}</span>
+              </div>
+              <p className={`text-xs sm:text-sm font-medium ${textSecondary}`}>Brouillons</p>
+            </div>
+            {/* Envoyés */}
+            <div
+              onClick={() => setPage?.('devis')}
+              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/40' : 'bg-blue-50 hover:bg-blue-100'}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{stats.devisPipeline.envoye.length}</span>
+              </div>
+              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>En attente</p>
+              {stats.montantDevisEnAttente > 0 && <p className={`text-[10px] sm:text-xs ${textMuted}`}>{formatMoney(stats.montantDevisEnAttente)}</p>}
+            </div>
+            {/* Acceptés */}
+            <div
+              onClick={() => setPage?.('devis')}
+              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/40' : 'bg-emerald-50 hover:bg-emerald-100'}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{stats.devisPipeline.accepte.length}</span>
+              </div>
+              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Acceptés</p>
+            </div>
+            {/* Refusés */}
+            <div
+              onClick={() => setPage?.('devis')}
+              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100'}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{stats.devisPipeline.refuse.length}</span>
+              </div>
+              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Refusés</p>
+            </div>
+          </div>
+
+          {/* Quick link to action center if items exist */}
+          {(stats.facturesOverdue?.length > 0 || actions.length > 0) && (
+            <a
+              href="#actions-section"
+              className={`mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+            >
+              <Zap size={14} style={{ color: couleur }} />
+              Voir les actions à traiter
+              <ChevronRight size={14} />
+            </a>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* Brouillons */}
-          <div
-            onClick={() => { setPage?.('devis'); }}
-            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`w-3 h-3 rounded-full bg-slate-400`}></span>
-              <span className={`text-2xl font-bold ${textPrimary}`}>{stats.devisPipeline.brouillon.length}</span>
-            </div>
-            <p className={`text-sm font-medium ${textSecondary}`}>Brouillons</p>
-            <p className={`text-xs ${textMuted}`}>À finaliser</p>
-          </div>
-          {/* Envoyés */}
-          <div
-            onClick={() => { setPage?.('devis'); }}
-            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/40' : 'bg-blue-50 hover:bg-blue-100'}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`w-3 h-3 rounded-full bg-blue-500`}></span>
-              <span className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{stats.devisPipeline.envoye.length}</span>
-            </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>En attente</p>
-            <p className={`text-xs ${textMuted}`}>{formatMoney(stats.montantDevisEnAttente)}</p>
-          </div>
-          {/* Acceptés */}
-          <div
-            onClick={() => { setPage?.('devis'); }}
-            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/40' : 'bg-emerald-50 hover:bg-emerald-100'}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`w-3 h-3 rounded-full bg-emerald-500`}></span>
-              <span className={`text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{stats.devisPipeline.accepte.length}</span>
-            </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Acceptés</p>
-            <p className={`text-xs ${textMuted}`}>Signés</p>
-          </div>
-          {/* Refusés */}
-          <div
-            onClick={() => { setPage?.('devis'); }}
-            className={`p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100'}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`w-3 h-3 rounded-full bg-red-500`}></span>
-              <span className={`text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{stats.devisPipeline.refuse.length}</span>
-            </div>
-            <p className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Refusés</p>
-            <p className={`text-xs ${textMuted}`}>Perdus</p>
-          </div>
-        </div>
-        {/* Overdue Alert */}
-        {stats.facturesOverdue.length > 0 && (
-          <div className={`mt-4 p-3 rounded-xl flex items-center justify-between ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
-            <div className="flex items-center gap-3">
-              <AlertTriangle size={18} className="text-red-500" />
-              <div>
-                <p className={`font-medium text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                  {stats.facturesOverdue.length} facture{stats.facturesOverdue.length > 1 ? 's' : ''} en retard (+30j)
-                </p>
-                <p className={`text-xs ${isDark ? 'text-red-400' : 'text-red-600'}`}>{formatMoney(stats.montantOverdue)} à relancer</p>
-              </div>
-            </div>
-            <button onClick={() => setShowEnAttenteDetail(true)} className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors">
-              Voir
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Today's Events - Quick view */}
@@ -776,6 +816,101 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
         return null;
       })()}
 
+      {/* Relances Urgentes Banner - Prominent display of overdue invoices */}
+      {pendingRelances.length > 0 && (
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`} style={{ borderColor: pendingRelances.some(r => r.priority === 'critical') ? '#ef4444' : pendingRelances.some(r => r.priority === 'high') ? '#f59e0b' : `${couleur}40` }}>
+          {/* Header with urgency indicator */}
+          <div className={`px-4 py-3 flex items-center justify-between ${
+            pendingRelances.some(r => r.priority === 'critical')
+              ? (isDark ? 'bg-red-900/30' : 'bg-red-50')
+              : pendingRelances.some(r => r.priority === 'high')
+                ? (isDark ? 'bg-amber-900/30' : 'bg-amber-50')
+                : (isDark ? 'bg-slate-700/50' : 'bg-slate-50')
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${
+                pendingRelances.some(r => r.priority === 'critical')
+                  ? (isDark ? 'bg-red-900/50' : 'bg-red-100')
+                  : (isDark ? 'bg-amber-900/50' : 'bg-amber-100')
+              }`}>
+                <Bell size={18} className={pendingRelances.some(r => r.priority === 'critical') ? 'text-red-500' : 'text-amber-500'} />
+              </div>
+              <div>
+                <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+                  Relances à envoyer
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                    pendingRelances.some(r => r.priority === 'critical')
+                      ? (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700')
+                      : (isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700')
+                  }`}>
+                    {pendingRelances.length}
+                  </span>
+                </h3>
+                <p className={`text-xs ${textSecondary}`}>
+                  {formatMoney(pendingRelances.reduce((sum, r) => sum + (r.montant || 0), 0))} TTC en attente
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveModule?.('devis')}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-white hover:bg-slate-100 text-slate-700'}`}
+            >
+              Voir toutes
+            </button>
+          </div>
+
+          {/* Relances list */}
+          <div className="p-4 space-y-2">
+            {pendingRelances.map(relance => {
+              const priorityStyles = {
+                critical: { bg: isDark ? 'bg-red-900/20 border-red-500/50' : 'bg-red-50 border-red-200', badge: isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700', label: 'Critique' },
+                high: { bg: isDark ? 'bg-amber-900/20 border-amber-500/50' : 'bg-amber-50 border-amber-200', badge: isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700', label: 'Urgent' },
+                medium: { bg: isDark ? 'bg-orange-900/20 border-orange-500/50' : 'bg-orange-50 border-orange-200', badge: isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700', label: 'Important' },
+                low: { bg: isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200', badge: isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600', label: 'Rappel' }
+              };
+              const style = priorityStyles[relance.priority] || priorityStyles.low;
+
+              return (
+                <div key={relance.id} className={`flex items-center gap-3 p-3 rounded-xl border ${style.bg} hover:shadow-md transition-all`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`font-medium text-sm ${textPrimary}`}>{relance.factureNumero}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${style.badge}`}>{style.label}</span>
+                      <span className={`text-xs ${textMuted}`}>• {relance.joursRetard}j de retard</span>
+                    </div>
+                    <p className={`text-xs ${textSecondary} truncate`}>
+                      {relance.clientNom} • {formatMoney(relance.montant)} • {relance.templateName}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {relance.canSendEmail && relance.clientEmail && (
+                      <a
+                        href={`mailto:${relance.clientEmail}?subject=${encodeURIComponent(relance.subject)}&body=${encodeURIComponent(relance.body)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`p-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/50 text-blue-400' : 'bg-blue-100 hover:bg-blue-200 text-blue-600'}`}
+                        title="Envoyer email"
+                      >
+                        <Mail size={16} />
+                      </a>
+                    )}
+                    {relance.clientTelephone && (
+                      <a
+                        href={`tel:${relance.clientTelephone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`p-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-600'}`}
+                        title="Appeler"
+                      >
+                        <Phone size={16} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
@@ -790,7 +925,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <BarChart data={stats.caParMois}>
                 <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} width={35} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString()} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
+                <Tooltip formatter={(v) => [`${v.toLocaleString('fr-FR')} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
                 <Bar dataKey="ca" radius={[6, 6, 0, 0]} onClick={(data) => { setSelectedMonth(data.moisFull); setShowCADetail('month'); }} cursor="pointer">
                   {stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 </Bar>
@@ -830,8 +965,9 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <p className="text-sm">Aucun chantier</p>
             </div>
           ) : (
-            <div className="space-y-2 sm:space-y-3 max-h-[180px] sm:max-h-[220px] overflow-y-auto pr-1">
-              {stats.margesChantiers.slice(0, 6).map((ch, idx) => {
+            <div className="relative">
+              <div className="space-y-2 sm:space-y-3 max-h-[180px] sm:max-h-[220px] overflow-y-auto pr-1">
+                {stats.margesChantiers.slice(0, 6).map((ch, idx) => {
                 const isPositive = ch.marge >= 0;
                 const isGood = ch.marge >= 30;
                 const isWarning = ch.marge >= 0 && ch.marge < 15;
@@ -879,70 +1015,179 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Actions + Top/Flop */}
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className={`lg:col-span-2 rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
-            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><AlertCircle size={16} style={{ color: couleur }} />À faire{actions.length > 0 && <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold text-white" style={{ background: couleur }}>{actions.length}</span>}</h3>
-            <div className="flex gap-1 overflow-x-auto pb-1 -mb-1">{[['all', 'Tout'], ['devis', 'Devis'], ['facture', 'Fact.'], ['alerte', 'Alert.']].map(([k, v]) => <button key={k} onClick={() => setTodoFilter(k)} className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-medium whitespace-nowrap min-h-[32px] ${todoFilter === k ? 'text-white' : (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')}`} style={todoFilter === k ? { background: couleur } : {}}>{v}</button>)}</div>
-          </div>
-          {filteredActions.length === 0 ? (
-            <div className={`rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}><div className={`w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}><CheckCircle size={24} className={`sm:w-8 sm:h-8 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} /></div><h4 className={`text-base sm:text-lg font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour !</h4></div>
-          ) : (
-            <div className="space-y-2 max-h-[240px] sm:max-h-[280px] overflow-y-auto">{filteredActions.map(a => {
-              const pBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : a.priority === 'high' ? (isDark ? 'bg-orange-900/30' : 'bg-orange-50') : (isDark ? 'bg-slate-800' : 'bg-white');
-              const pBorder = a.priority === 'urgent' ? 'border-l-4 border-red-500' : a.priority === 'high' ? 'border-l-4 border-orange-400' : 'border-l-4 border-slate-200';
-              const iconBg = a.priority === 'urgent' ? (isDark ? 'bg-red-900/50' : 'bg-red-100') : a.priority === 'high' ? (isDark ? 'bg-orange-900/50' : 'bg-orange-100') : (isDark ? 'bg-slate-700' : 'bg-slate-100');
-              const iconColor = a.priority === 'urgent' ? (isDark ? 'text-red-400' : 'text-red-600') : a.priority === 'high' ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-slate-500';
-              return (
-                <div key={a.id} onClick={a.action} className={`group flex items-center gap-2 sm:gap-4 p-2.5 sm:p-4 rounded-lg sm:rounded-xl cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[52px] ${pBorder} ${pBg}`}>
-                  <div className={`w-8 sm:w-10 h-8 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}><a.icon size={16} className={`sm:w-5 sm:h-5 ${iconColor}`} /></div>
-                  <div className="flex-1 min-w-0"><div className="flex items-center gap-1.5 sm:gap-2"><p className={`text-sm sm:text-base font-medium truncate ${textPrimary}`}>{a.title}</p>{a.priority === 'urgent' && <span className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold text-white rounded bg-red-500 animate-pulse">URGENT</span>}</div><p className={`text-xs sm:text-sm ${textSecondary} truncate`}>{a.desc}</p></div>
-                  {a.days !== undefined && <span className={`text-[10px] sm:text-xs ${textSecondary} flex-shrink-0`}>{a.days}j</span>}
-                </div>
-              );
-            })}</div>
-          )}
-        </div>
-
-        <div className="space-y-3 sm:space-y-4">
-          <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
-            <h3 className={`font-medium sm:font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><Trophy size={16} className="text-yellow-500" /> Top Rentabilité</h3>
-            {top3.length === 0 ? <p className={`text-center text-sm ${textSecondary} py-3 sm:py-4`}>Aucun chantier</p> : top3.map((ch, i) => (
-              <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-2 sm:p-3 rounded-lg sm:rounded-xl cursor-pointer transition-colors min-h-[44px] ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0"><span className="text-base sm:text-xl">{i === 0 ? <Medal size={18} className="text-yellow-500" /> : i === 1 ? <Medal size={18} className="text-slate-400" /> : <Medal size={18} className="text-amber-600" />}</span><p className={`font-medium text-xs sm:text-sm ${textPrimary} truncate`}>{ch.nom}</p></div>
-                <span className="font-bold text-sm sm:text-base flex-shrink-0 ml-2" style={{ color: getMargeColor(ch.marge) }}>{ch.marge.toFixed(0)}%</span>
               </div>
-            ))}
-          </div>
-          {aSurveiller.length > 0 && (
-            <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <h3 className={`font-medium sm:font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base ${isDark ? 'text-red-300' : 'text-red-800'}`}><AlertTriangle size={16} /> À surveiller</h3>
-              {aSurveiller.slice(0, 3).map(ch => (
-                <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`flex items-center justify-between p-2 sm:p-3 rounded-lg sm:rounded-xl mb-2 cursor-pointer hover:shadow-sm border min-h-[44px] ${isDark ? 'bg-slate-800 border-red-900' : 'bg-white border-red-100'}`}>
-                  <p className={`font-medium text-xs sm:text-sm ${isDark ? 'text-red-300' : 'text-red-800'} truncate`}>{ch.nom}</p>
-                  <span className={`text-xs font-bold flex-shrink-0 ml-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>{ch.marge.toFixed(0)}%</span>
-                </div>
-              ))}
+              {/* Scroll indicator gradient */}
+              {stats.margesChantiers.length > 3 && (
+                <div className={`absolute bottom-0 left-0 right-0 h-4 pointer-events-none bg-gradient-to-t ${isDark ? 'from-slate-800' : 'from-white'} to-transparent`} />
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-        {[{ icon: FileText, label: 'Nouveau devis', labelShort: 'Devis', sub: `${stats.devisEnAttente} en attente`, color: '#3b82f6', target: 'devis', create: 'devis' }, { icon: Hammer, label: 'Nouveau chantier', labelShort: 'Chantier', sub: `${stats.chantiersActifs} actifs`, color: couleur, target: 'chantiers', create: 'chantier' }, { icon: Users, label: 'Nouveau client', labelShort: 'Client', sub: `${safeClients.length} clients`, color: '#10b981', target: 'clients', create: 'client' }, { icon: Calendar, label: 'Planning', labelShort: 'Agenda', sub: 'Voir agenda', color: '#8b5cf6', target: 'planning' }].map(b => (
-          <button key={b.target} onClick={() => { if (b.create && setCreateMode) setCreateMode(p => ({...p, [b.create]: true})); setPage?.(b.target); }} className={`group flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 min-h-[80px] sm:min-h-[100px] ${cardBg}`}>
-            <div className="p-2 rounded-lg transition-colors group-hover:scale-110" style={{ background: `${b.color}15` }}><b.icon size={18} className="sm:w-5 sm:h-5 transition-transform" style={{ color: b.color }} /></div>
-            <span className={`text-xs sm:text-sm font-medium text-center ${textPrimary}`}><span className="sm:hidden">{b.labelShort}</span><span className="hidden sm:inline">{b.label}</span></span>
-            <span className={`text-[10px] sm:text-xs ${textSecondary} text-center`}>{b.sub}</span>
-          </button>
-        ))}
+      {/* À FAIRE - Unified action center */}
+      <div id="actions-section" className={`rounded-xl sm:rounded-2xl border ${cardBg} scroll-mt-4 overflow-hidden`}>
+        {/* Header avec compteurs */}
+        <div className="p-4 sm:p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+              <Zap size={18} style={{ color: couleur }} />
+              À faire
+            </h3>
+            {/* Compteurs rapides */}
+            <div className="flex items-center gap-2">
+              {actions.filter(a => a.type === 'devis').length > 0 && (
+                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                  <FileText size={12} /> {actions.filter(a => a.type === 'devis').length} devis
+                </span>
+              )}
+              {actions.filter(a => a.type === 'facture').length > 0 && (
+                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                  <DollarSign size={12} /> {actions.filter(a => a.type === 'facture').length} fact.
+                </span>
+              )}
+              {aSurveiller.length > 0 && (
+                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700'}`}>
+                  <AlertTriangle size={12} /> {aSurveiller.length} marge
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Contenu principal */}
+        <div className="p-4 sm:p-5">
+          {actions.length === 0 && aSurveiller.length === 0 ? (
+            /* État vide - tout va bien */
+            <div className={`rounded-xl p-6 text-center ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+              <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
+                <CheckCircle size={24} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+              </div>
+              <p className={`font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour !</p>
+              <p className={`text-sm mt-1 ${textSecondary}`}>Aucune action requise</p>
+            </div>
+          ) : (
+            /* Liste d'actions groupées */
+            <div className="relative">
+              <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
+              {/* Urgents d'abord */}
+              {actions.filter(a => a.priority === 'urgent').length > 0 && (
+                <div>
+                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                    Urgent
+                  </p>
+                  <div className="space-y-2">
+                    {actions.filter(a => a.priority === 'urgent').map(a => (
+                      <div key={a.id} onClick={a.action} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md border-l-4 border-red-500 ${isDark ? 'bg-red-900/20 hover:bg-red-900/30' : 'bg-red-50 hover:bg-red-100'}`}>
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
+                          <a.icon size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${textPrimary}`}>{a.title}</p>
+                          <p className={`text-xs ${textSecondary} truncate`}>{a.desc}</p>
+                        </div>
+                        <ChevronRight size={16} className={textMuted} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* À traiter */}
+              {actions.filter(a => a.priority !== 'urgent').length > 0 && (
+                <div>
+                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${textSecondary}`}>
+                    À traiter
+                  </p>
+                  <div className="space-y-2">
+                    {actions.filter(a => a.priority !== 'urgent').slice(0, 5).map(a => (
+                      <div key={a.id} onClick={a.action} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${a.type === 'devis' ? (isDark ? 'bg-blue-900/50' : 'bg-blue-100') : a.type === 'facture' ? (isDark ? 'bg-amber-900/50' : 'bg-amber-100') : (isDark ? 'bg-slate-600' : 'bg-slate-200')}`}>
+                          <a.icon size={16} className={a.type === 'devis' ? (isDark ? 'text-blue-400' : 'text-blue-600') : a.type === 'facture' ? (isDark ? 'text-amber-400' : 'text-amber-600') : textSecondary} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${textPrimary}`}>{a.title}</p>
+                          <p className={`text-xs ${textSecondary} truncate`}>{a.desc}</p>
+                        </div>
+                        {a.days !== undefined && <span className={`text-xs ${textSecondary}`}>{a.days}j</span>}
+                        <ChevronRight size={16} className={textMuted} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Marges à surveiller */}
+              {aSurveiller.length > 0 && (
+                <div>
+                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    Marges à surveiller
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {aSurveiller.slice(0, 6).map(ch => (
+                      <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`p-3 rounded-xl cursor-pointer transition-all hover:shadow-md ${ch.marge < 0 ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : (isDark ? 'bg-amber-900/20' : 'bg-amber-50')}`}>
+                        <p className={`text-xs font-medium truncate ${textPrimary}`}>{ch.nom}</p>
+                        <p className={`text-lg font-bold ${ch.marge < 0 ? 'text-red-500' : 'text-amber-500'}`}>{ch.marge.toFixed(0)}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </div>
+              {/* Scroll indicator gradient */}
+              {actions.length > 4 && (
+                <div className={`absolute bottom-0 left-0 right-0 h-6 pointer-events-none bg-gradient-to-t ${isDark ? 'from-slate-800' : 'from-white'} to-transparent`} />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer avec actions rapides */}
+        <div className={`px-4 sm:px-5 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}`}>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mb-1">
+            <button onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <FileText size={14} style={{ color: couleur }} /> Devis
+            </button>
+            <button onClick={() => { setCreateMode?.({ chantier: true }); setPage?.('chantiers'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <Hammer size={14} className="text-emerald-500" /> Chantier
+            </button>
+            <button onClick={() => { setCreateMode?.({ client: true }); setPage?.('clients'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <Users size={14} className="text-blue-500" /> Client
+            </button>
+            <div className={`w-px h-6 ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`} />
+            <button onClick={() => setShowRentabilityDashboard(true)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+              <Activity size={14} /> Rentabilité
+            </button>
+            <button onClick={() => setShowAccountingIntegration(true)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+              <PiggyBank size={14} /> Comptabilité
+            </button>
+            <button onClick={() => setPage?.('planning')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+              <Calendar size={14} /> Planning
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* FREEMIUM BANNER - Pricing transparency */}
+      <div className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
+        <p className={`text-xs ${textSecondary}`}>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Plan Free</span>
+          </span>
+          <span className="mx-2">·</span>
+          <span>{stats.chantiersActifs}/3 chantiers actifs</span>
+          <span className="mx-2">·</span>
+          <span>{safeDevis.length} devis</span>
+          {stats.chantiersActifs >= 3 && (
+            <>
+              <span className="mx-2">·</span>
+              <button className="font-medium text-blue-500 hover:text-blue-600">
+                Passer à Pro →
+              </button>
+            </>
+          )}
+        </p>
       </div>
 
       {/* === MODALS (rendered as overlays to keep dashboard visible) === */}
@@ -961,7 +1206,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
                     <div className="p-2 rounded-lg" style={{ background: `${couleur}20` }}><DollarSign size={20} style={{ color: couleur }} /></div>
                     <h2 className={`font-bold text-lg ${textPrimary}`}>{isMonthView ? `CA ${monthData?.moisFull}` : 'Détail du Chiffre d\'Affaires'}</h2>
                   </div>
-                  <button onClick={() => { setShowCADetail(null); setSelectedMonth(null); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+                  <button onClick={() => { setShowCADetail(null); setSelectedMonth(null); }} className={`p-3 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
                 </div>
               </div>
               <div className="p-5 space-y-5">
@@ -1029,7 +1274,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
             <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/50"><CheckCircle size={20} className="text-emerald-600 dark:text-emerald-400" /></div><h2 className={`font-bold text-lg ${textPrimary}`}>Factures encaissées</h2></div>
-                <button onClick={() => setShowEncaisseDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+                <button onClick={() => setShowEncaisseDetail(false)} className={`p-3 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
               </div>
             </div>
             <div className="p-5 space-y-4">
@@ -1063,7 +1308,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
             <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'} sticky top-0 ${isDark ? 'bg-slate-800' : 'bg-white'} z-10`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50"><Clock size={20} className="text-amber-600 dark:text-amber-400" /></div><h2 className={`font-bold text-lg ${textPrimary}`}>Factures en attente</h2></div>
-                <button onClick={() => setShowEnAttenteDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+                <button onClick={() => setShowEnAttenteDetail(false)} className={`p-3 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
               </div>
             </div>
             <div className="p-5 space-y-4">
@@ -1104,7 +1349,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
                   </div>
                   <h2 className={`font-bold text-lg ${textPrimary}`}>Détail de la Marge</h2>
                 </div>
-                <button onClick={() => setShowMargeDetail(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
+                <button onClick={() => setShowMargeDetail(false)} className={`p-3 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textPrimary} /></button>
               </div>
             </div>
             <div className="p-5 space-y-5">

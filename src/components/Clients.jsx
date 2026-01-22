@@ -12,7 +12,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   const [show, setShow] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);
@@ -162,7 +162,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
           </div>
           <div className={`${cardBg} rounded-xl border p-4 text-center`}>
-            <p className="text-2xl font-bold text-emerald-500">{stats.ca.toLocaleString()}€</p>
+            <p className="text-2xl font-bold text-emerald-500">{stats.ca.toLocaleString('fr-FR')}€</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
             ['echanges', <MessageSquare size={14} />, 'Échanges'],
             ['photos', <Camera size={14} />, 'Photos']
           ].map(([k, icon, label]) => (
-            <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
+            <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2.5 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[44px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
               {icon} {label}
             </button>
           ))}
@@ -220,7 +220,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                         </div>
                         <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                       </div>
-                      <p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString()}€</p>
+                      <p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
                       <ChevronRight size={18} className={textMuted} />
                     </div>
                   );
@@ -276,7 +276,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                           <span className={`text-xs ${textMuted}`}>{new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         {e.objet && <p className={`text-sm ${textSecondary} mt-1`}>{e.objet}</p>}
-                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{e.montant.toLocaleString()}€</p>}
+                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{e.montant.toLocaleString('fr-FR')}€</p>}
                       </div>
                     </div>
                   ))}
@@ -549,7 +549,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                       <FileText size={12} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  <span className="font-bold text-sm" style={{color: couleur}}>{s.ca.toLocaleString()}€</span>
+                  <span className="font-bold text-sm" style={{color: couleur}}>{s.ca.toLocaleString('fr-FR')}€</span>
                 </div>
               </div>
             );
