@@ -1839,12 +1839,223 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis en attente</p><p className="text-lg sm:text-2xl font-bold text-amber-500">{devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length}</p></div>
-        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Devis acceptés</p><p className="text-lg sm:text-2xl font-bold text-emerald-500">{devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut)).length}</p></div>
-        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>Factures non payées</p><p className="text-lg sm:text-2xl font-bold text-blue-500">{devis.filter(d => d.type === 'facture' && d.statut !== 'payee').length}</p></div>
-        <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4`}><p className={`text-[10px] sm:text-xs ${textMuted}`}>À encaisser</p><p className="text-lg sm:text-2xl font-bold text-purple-500">{formatMoney(devis.filter(d => d.type === 'facture' && d.statut !== 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0))}</p></div>
-      </div>
+      {/* Unified Pipeline View */}
+      {(() => {
+        // Calculate pipeline stats
+        const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
+        const devisEnvoye = devis.filter(d => d.type === 'devis' && d.statut === 'envoye');
+        const devisAccepte = devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut));
+        const devisRefuse = devis.filter(d => d.type === 'devis' && d.statut === 'refuse');
+
+        const facturesEnAttente = devis.filter(d => d.type === 'facture' && d.statut !== 'payee');
+        const facturesPayees = devis.filter(d => d.type === 'facture' && d.statut === 'payee');
+        const facturesEnRetard = facturesEnAttente.filter(f => {
+          const days = Math.floor((new Date() - new Date(f.date)) / 86400000);
+          return days > 30;
+        });
+        const montantEnRetard = facturesEnRetard.reduce((s, f) => s + (f.total_ttc || 0), 0);
+        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
+
+        // Group documents by client for "Accès rapide"
+        const clientsWithDocs = {};
+        devis.forEach(d => {
+          if (!d.client_id) return;
+          if (!clientsWithDocs[d.client_id]) {
+            const client = clients.find(c => c.id === d.client_id);
+            clientsWithDocs[d.client_id] = { client, devis: [], factures: [] };
+          }
+          if (d.type === 'devis') clientsWithDocs[d.client_id].devis.push(d);
+          else clientsWithDocs[d.client_id].factures.push(d);
+        });
+        const activeClients = Object.values(clientsWithDocs)
+          .filter(c => c.devis.some(d => d.statut !== 'refuse') || c.factures.some(f => f.statut !== 'payee'))
+          .slice(0, 5);
+
+        return (
+          <div className="space-y-4">
+            {/* Two-column pipeline: Devis + Factures */}
+            <div className="grid md:grid-cols-2 gap-3">
+              {/* DEVIS Pipeline */}
+              <div className={`${cardBg} rounded-xl border p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+                    <FileText size={18} className="text-blue-500" />
+                    Pipeline Devis
+                  </h3>
+                  <span className={`text-xs ${textMuted}`}>{devis.filter(d => d.type === 'devis').length} total</span>
+                </div>
+                <div className="flex items-center gap-1 overflow-x-auto pb-2">
+                  {/* Brouillon */}
+                  <button
+                    onClick={() => { setFilter('devis'); setSortBy('status'); }}
+                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisBrouillon.length > 0 ? (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
+                  >
+                    <p className={`text-lg font-bold ${devisBrouillon.length > 0 ? (isDark ? 'text-slate-300' : 'text-slate-700') : textMuted}`}>{devisBrouillon.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Brouillon</p>
+                  </button>
+                  <ChevronRight size={14} className={textMuted} />
+                  {/* Envoyé */}
+                  <button
+                    onClick={() => { setFilter('attente'); }}
+                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisEnvoye.length > 0 ? (isDark ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-amber-50 hover:bg-amber-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
+                  >
+                    <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-500' : textMuted}`}>{devisEnvoye.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>En attente</p>
+                  </button>
+                  <ChevronRight size={14} className={textMuted} />
+                  {/* Accepté */}
+                  <button
+                    onClick={() => { setFilter('devis'); }}
+                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisAccepte.length > 0 ? (isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50' : 'bg-emerald-50 hover:bg-emerald-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
+                  >
+                    <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-500' : textMuted}`}>{devisAccepte.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Accepté</p>
+                  </button>
+                  {devisRefuse.length > 0 && (
+                    <>
+                      <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+                      <button
+                        onClick={() => { setFilter('devis'); }}
+                        className={`min-w-[50px] p-2 rounded-lg text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}
+                      >
+                        <p className="text-lg font-bold text-red-500">{devisRefuse.length}</p>
+                        <p className={`text-[10px] ${textMuted}`}>Refusé</p>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* FACTURES Pipeline */}
+              <div className={`${cardBg} rounded-xl border p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+                    <Receipt size={18} className="text-indigo-500" />
+                    Pipeline Factures
+                  </h3>
+                  <span className={`text-xs font-medium ${montantAEncaisser > 0 ? 'text-indigo-500' : textMuted}`}>
+                    {formatMoney(montantAEncaisser)} à encaisser
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 overflow-x-auto pb-2">
+                  {/* En attente */}
+                  <button
+                    onClick={() => { setFilter('factures'); }}
+                    className={`flex-1 min-w-[80px] p-2 rounded-lg text-center transition-all ${facturesEnAttente.length > 0 ? (isDark ? 'bg-indigo-900/30 hover:bg-indigo-900/50' : 'bg-indigo-50 hover:bg-indigo-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
+                  >
+                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-500' : textMuted}`}>{facturesEnAttente.length - facturesEnRetard.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>En attente</p>
+                  </button>
+                  <ChevronRight size={14} className={textMuted} />
+                  {/* Payée */}
+                  <button
+                    onClick={() => { setFilter('factures'); }}
+                    className={`flex-1 min-w-[80px] p-2 rounded-lg text-center transition-all ${facturesPayees.length > 0 ? (isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50' : 'bg-emerald-50 hover:bg-emerald-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
+                  >
+                    <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-500' : textMuted}`}>{facturesPayees.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Payée</p>
+                  </button>
+                  {facturesEnRetard.length > 0 && (
+                    <>
+                      <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+                      <button
+                        onClick={() => { setFilter('factures'); }}
+                        className={`min-w-[70px] p-2 rounded-lg text-center ${isDark ? 'bg-red-900/30' : 'bg-red-50'} animate-pulse`}
+                      >
+                        <p className="text-lg font-bold text-red-500">{facturesEnRetard.length}</p>
+                        <p className={`text-[10px] text-red-500`}>En retard</p>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Alert: Overdue invoices */}
+            {facturesEnRetard.length > 0 && (
+              <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${isDark ? 'bg-red-900/20 border border-red-500/30' : 'bg-red-50 border border-red-200'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
+                    <AlertTriangle size={20} className="text-red-500" />
+                  </div>
+                  <div>
+                    <p className={`font-semibold ${isDark ? 'text-red-300' : 'text-red-800'}`}>
+                      {facturesEnRetard.length} facture{facturesEnRetard.length > 1 ? 's' : ''} en retard
+                    </p>
+                    <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                      {formatMoney(montantEnRetard)} à récupérer
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowRelanceCenter?.(true)}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium min-h-[44px] transition-colors"
+                >
+                  Relancer
+                </button>
+              </div>
+            )}
+
+            {/* Quick status badges */}
+            <div className="flex gap-2 flex-wrap">
+              {devisBrouillon.length > 0 && (
+                <button
+                  onClick={() => { setFilter('devis'); setSortBy('status'); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <FileText size={14} />
+                  {devisBrouillon.length} brouillon{devisBrouillon.length > 1 ? 's' : ''}
+                </button>
+              )}
+              {devisEnvoye.length > 0 && (
+                <button
+                  onClick={() => { setFilter('attente'); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-amber-900/30 text-amber-300 hover:bg-amber-900/50' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                >
+                  <Send size={14} />
+                  {devisEnvoye.length} en attente de réponse
+                </button>
+              )}
+            </div>
+
+            {/* Accès rapide - grouped by client */}
+            {activeClients.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`font-semibold ${textPrimary}`}>Accès rapide</h3>
+                  <button onClick={() => setFilter('all')} className={`text-sm flex items-center gap-1 ${textMuted} hover:underline`}>
+                    Tout voir <ChevronRight size={14} />
+                  </button>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {activeClients.map(({ client, devis: clientDevis, factures: clientFactures }) => {
+                    const pendingDevis = clientDevis.filter(d => d.statut === 'envoye');
+                    const unpaidFactures = clientFactures.filter(f => f.statut !== 'payee');
+                    const totalPending = pendingDevis.reduce((s, d) => s + (d.total_ttc || 0), 0) + unpaidFactures.reduce((s, f) => s + (f.total_ttc || 0), 0);
+                    const mostRecent = [...clientDevis, ...clientFactures].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                    return (
+                      <div
+                        key={client?.id || 'unknown'}
+                        onClick={() => { if (mostRecent) { setSelected(mostRecent); setMode('preview'); }}}
+                        className={`flex-shrink-0 w-44 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${cardBg}`}
+                      >
+                        <p className={`font-medium text-sm truncate ${textPrimary}`}>{client?.nom || 'Sans client'}</p>
+                        <p className={`text-xs ${textMuted} mb-2`}>
+                          {pendingDevis.length > 0 && `${pendingDevis.length} devis`}
+                          {pendingDevis.length > 0 && unpaidFactures.length > 0 && ' · '}
+                          {unpaidFactures.length > 0 && `${unpaidFactures.length} fact.`}
+                        </p>
+                        <p className="text-lg font-bold" style={{ color: couleur }}>{formatMoney(totalPending)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
         <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
         {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
