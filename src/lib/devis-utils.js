@@ -3,6 +3,16 @@
  */
 
 /**
+ * Round to 2 decimal places for euro calculations
+ * Using Math.round with multiplication to avoid floating-point errors
+ * @param {number} value
+ * @returns {number}
+ */
+export function roundEuro(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
  * Generate unique document number
  * @param {string} type - 'devis' or 'facture'
  * @param {Array} existingDocuments - Existing devis/factures to check for uniqueness
@@ -34,39 +44,46 @@ export function calculateDevisTotals(form, isMicro = false) {
   const sections = form.sections || [{ lignes: form.lignes || [] }];
 
   sections.forEach(s => (s.lignes || []).forEach(l => {
-    const montant = l.montant || (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0);
+    // Round line amounts to avoid floating-point accumulation
+    const montant = roundEuro(l.montant || (parseFloat(l.quantite) || 0) * (parseFloat(l.prixUnitaire) || 0));
     const taux = l.tva !== undefined ? l.tva : (form.tvaDefaut || 10);
-    const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
+    const coutAchat = roundEuro((l.prixAchat || 0) * (l.quantite || 0));
 
     totalHT += montant;
     totalCoutAchat += coutAchat;
 
     if (!tvaParTaux[taux]) tvaParTaux[taux] = { base: 0, montant: 0 };
     tvaParTaux[taux].base += montant;
-    tvaParTaux[taux].montant += montant * (taux / 100);
+    // Round TVA per line to ensure accuracy
+    tvaParTaux[taux].montant += roundEuro(montant * (taux / 100));
   }));
 
-  const remisePercent = form.remise || 0;
-  const remiseAmount = totalHT * (remisePercent / 100);
-  const htApresRemise = totalHT - remiseAmount;
+  // Round accumulated totals
+  totalHT = roundEuro(totalHT);
+  totalCoutAchat = roundEuro(totalCoutAchat);
 
-  // Recalculate TVA after discount (proportional)
+  const remisePercent = form.remise || 0;
+  const remiseAmount = roundEuro(totalHT * (remisePercent / 100));
+  const htApresRemise = roundEuro(totalHT - remiseAmount);
+
+  // Recalculate TVA after discount (proportional) with proper rounding
   const ratioRemise = totalHT > 0 ? htApresRemise / totalHT : 1;
   Object.keys(tvaParTaux).forEach(taux => {
-    tvaParTaux[taux].base *= ratioRemise;
-    tvaParTaux[taux].montant *= ratioRemise;
+    tvaParTaux[taux].base = roundEuro(tvaParTaux[taux].base * ratioRemise);
+    tvaParTaux[taux].montant = roundEuro(tvaParTaux[taux].montant * ratioRemise);
   });
 
-  const totalTVA = isMicro ? 0 : Object.values(tvaParTaux).reduce((s, t) => s + t.montant, 0);
+  const totalTVA = isMicro ? 0 : roundEuro(Object.values(tvaParTaux).reduce((s, t) => s + t.montant, 0));
 
   // Margin calculation
-  const marge = htApresRemise - totalCoutAchat;
-  const tauxMarge = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
+  const marge = roundEuro(htApresRemise - totalCoutAchat);
+  const tauxMarge = htApresRemise > 0 ? roundEuro((marge / htApresRemise) * 100) : 0;
 
-  // Retention guarantee (5% of TTC, for BTP)
-  const ttcBrut = htApresRemise + totalTVA;
-  const retenueGarantie = form.retenueGarantie ? ttcBrut * 0.05 : 0;
-  const ttcNet = ttcBrut - retenueGarantie;
+  // Retention guarantee (5% of HT, not TTC - per French BTP law)
+  // Note: Changed from TTC to HT for legal compliance
+  const ttcBrut = roundEuro(htApresRemise + totalTVA);
+  const retenueGarantie = form.retenueGarantie ? roundEuro(htApresRemise * 0.05) : 0;
+  const ttcNet = roundEuro(ttcBrut - retenueGarantie);
 
   return {
     totalHT,

@@ -1,24 +1,32 @@
 import { useState } from 'react';
-import { Plus, X, FileText, Users, Building2 } from 'lucide-react';
+import { Plus, X, FileText, Users, Building2, Zap, Activity, Calculator } from 'lucide-react';
 
 /**
  * Floating Action Button Menu
- * Quick access to create new items from anywhere
+ * Quick access to create new items and tools from anywhere
  */
 export default function FABMenu({
   onNewDevis,
   onNewClient,
   onNewChantier,
+  onRentabilite,
+  onComptabilite,
   isDark = false,
-  couleur = '#f97316'
+  couleur = '#f97316',
+  hidden = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // All actions use brand color for consistency
+  // Don't render when hidden (on form pages, detail views, etc.)
+  if (hidden) return null;
+
+  // Actions: creation first, then tools
   const actions = [
-    { icon: FileText, label: 'Nouveau devis', onClick: onNewDevis, color: couleur, description: 'Créer un devis ou facture' },
+    { icon: Zap, label: 'Devis Express', onClick: onNewDevis, color: couleur, description: 'Créer rapidement un devis' },
     { icon: Users, label: 'Nouveau client', onClick: onNewClient, color: couleur, description: 'Ajouter un contact' },
     { icon: Building2, label: 'Nouveau chantier', onClick: onNewChantier, color: couleur, description: 'Démarrer un projet' },
+    { icon: Activity, label: 'Rentabilité', onClick: onRentabilite, color: '#10b981', description: 'Analyse rentabilité' },
+    { icon: Calculator, label: 'Comptabilité', onClick: onComptabilite, color: '#6366f1', description: 'Export comptable' },
   ];
 
   const handleAction = (action) => {

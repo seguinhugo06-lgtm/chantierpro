@@ -27,7 +27,7 @@ export default function InvoiceScanner({
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const modalBg = isDark ? "bg-slate-900" : "bg-slate-50";
 
@@ -39,7 +39,7 @@ export default function InvoiceScanner({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Veuillez selectionner une image');
+      setError('Veuillez sélectionner une image');
       return;
     }
 

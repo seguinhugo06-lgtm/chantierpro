@@ -1,6 +1,8 @@
 /**
  * Utility functions for ChantierPro
  */
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 // ============================================
 // ID GENERATION
@@ -387,15 +389,11 @@ export function removeStorageItem(key) {
 // ============================================
 
 /**
- * Conditional class names (like clsx/classnames)
+ * Merge class names with Tailwind CSS deduplication
+ * Uses clsx for conditional classes + tailwind-merge for deduplication
  */
-export function cn(...classes) {
-  return classes
-    .flat()
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+export function cn(...inputs) {
+  return twMerge(clsx(inputs));
 }
 
 // ============================================

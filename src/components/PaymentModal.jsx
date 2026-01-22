@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2 } from 'lucide-react';
+import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info } from 'lucide-react';
 import { createPaymentLink, formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
+
+// Check if Stripe is configured
+const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
 
 /**
  * Modal de paiement avec QR Code Stripe
@@ -28,7 +31,7 @@ export default function PaymentModal({
   const cardBg = isDark ? "bg-slate-800" : "bg-white";
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
-  const textMuted = isDark ? "text-slate-400" : "text-slate-500";
+  const textMuted = isDark ? "text-slate-400" : "text-slate-600";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
 
   // Reset state when modal opens
@@ -135,6 +138,19 @@ export default function PaymentModal({
 
         {/* Content */}
         <div className="p-5">
+          {/* Demo Mode Banner */}
+          {!STRIPE_CONFIGURED && (
+            <div className={`rounded-xl p-3 mb-4 flex items-start gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
+              <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+              <div>
+                <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode demonstration</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                  Le paiement CB necessite une integration Stripe. Contactez le support pour activer les paiements reels.
+                </p>
+              </div>
+            </div>
+          )}
+
           {step === 'amount' && (
             <>
               {/* Montant total */}
@@ -184,7 +200,7 @@ export default function PaymentModal({
               {paymentType === 'custom' && (
                 <div className="mb-5 space-y-3">
                   {/* Boutons raccourcis */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     {ACOMPTE_OPTIONS.map(opt => (
                       <button
                         key={opt.value}
@@ -260,7 +276,9 @@ export default function PaymentModal({
                   <div>
                     <p className={`font-medium text-sm ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Comment ca marche ?</p>
                     <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                      Le client scanne le QR code avec son telephone, puis paie par carte bancaire de maniere securisee.
+                      {STRIPE_CONFIGURED
+                        ? 'Le client scanne le QR code avec son telephone, puis paie par carte bancaire de maniere securisee.'
+                        : 'En mode demo, le lien de paiement n\'est pas fonctionnel. Activez Stripe pour encaisser de vrais paiements.'}
                     </p>
                   </div>
                 </div>

@@ -135,7 +135,7 @@ export default function SmartTemplateWizard({
 
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-300';
   const hoverBg = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50';
 
