@@ -145,7 +145,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const ch = chantiers.find(c => c.id === view);
     if (!ch) { setView(null); return null; }
     const client = clients.find(c => c.id === ch.client_id);
-    const bilan = getChantierBilan(ch.id);
+    const bilanRaw = getChantierBilan(ch.id);
+    const bilan = bilanRaw || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0, adjRevenus: 0, adjDepenses: 0, mainOeuvre: 0 };
     const chDepenses = depenses.filter(d => d.chantierId === ch.id);
     const chPointages = pointages.filter(p => p.chantierId === ch.id);
     const chAjustements = (ajustements || []).filter(a => a.chantierId === ch.id);
@@ -1688,7 +1689,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         const statusOrder = { en_cours: 0, prospect: 1, termine: 2 };
         return sorted.sort((a, b) => (statusOrder[a.statut] || 2) - (statusOrder[b.statut] || 2));
       case 'margin':
-        return sorted.sort((a, b) => getChantierBilan(b.id).tauxMarge - getChantierBilan(a.id).tauxMarge);
+        return sorted.sort((a, b) => (getChantierBilan(b.id)?.tauxMarge || 0) - (getChantierBilan(a.id)?.tauxMarge || 0));
       case 'recent':
       default:
         return sorted.sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
@@ -1787,7 +1788,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             const current = activeChantiers.sort((a, b) => (a.avancement || 0) - (b.avancement || 0))[0];
             const client = clients.find(c => c.id === current.client_id);
-            const bilan = getChantierBilan(current.id);
+            const bilanRaw2 = getChantierBilan(current.id);
+            const bilan = bilanRaw2 || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
             const allTasks = current.taches || [];
             const pendingTasks = allTasks.filter(t => !t.done);
             const tasksDone = allTasks.filter(t => t.done).length;
@@ -1916,7 +1918,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="grid gap-3 sm:gap-4">
           {getSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
-            const bilan = getChantierBilan(ch.id);
+            const bilanRaw3 = getChantierBilan(ch.id);
+            const bilan = bilanRaw3 || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
             const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
             const budgetPrevu = devisLie?.total_ht || ch.budget_estime || 0;
             const hasAlert = bilan.tauxMarge < 0;
