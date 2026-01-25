@@ -22,7 +22,7 @@ import {
   Progress,
   Skeleton,
   Avatar,
-} from '@/components/ui';
+} from './ui';
 import { Plus, ArrowRight, Trash2, Check, Edit, Settings, X, Copy, Download, Upload, Search, Filter, MoreVertical, Mail, User, Lock, Info } from 'lucide-react';
 
 export default function DesignSystemDemo() {
