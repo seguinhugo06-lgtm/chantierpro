@@ -53,7 +53,7 @@ const ModalOverlay = memo(function ModalOverlay({ show, onClose, children, isDar
 });
 
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp, user }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp, user, onOpenSearch }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const [showCADetail, setShowCADetail] = useState(null); // 'ca' | 'month' | null
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -69,8 +69,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
   const [selectedPeriod, setSelectedPeriod] = useState('month'); // day, week, month, quarter, year
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearchFocus, setShowSearchFocus] = useState(false);
 
   // Simulate weather data with 7-day forecast
   useEffect(() => {
@@ -835,18 +833,14 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
 
           {/* Search - Centered, max-w-2xl */}
           <div className="flex-1 max-w-2xl mx-auto">
-            <div className={`h-10 flex items-center gap-3 px-4 rounded-lg border transition-all duration-200 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'} ${showSearchFocus ? 'ring-2 ring-blue-500 border-transparent' : ''}`}>
+            <button
+              onClick={() => onOpenSearch?.()}
+              className={`w-full h-10 flex items-center gap-3 px-4 rounded-lg border transition-all duration-200 ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}
+            >
               <Search size={16} className={textMuted} />
-              <input
-                type="text"
-                placeholder="Rechercher devis, clients, chantiers... ⌘K"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setShowSearchFocus(true)}
-                onBlur={() => setShowSearchFocus(false)}
-                className={`flex-1 bg-transparent outline-none text-sm ${textPrimary}`}
-              />
-            </div>
+              <span className={`flex-1 text-left text-sm ${textMuted}`}>Rechercher devis, clients, chantiers...</span>
+              <kbd className={`text-xs px-1.5 py-0.5 rounded font-mono ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-200 text-gray-500'}`}>⌘K</kbd>
+            </button>
           </div>
 
           {/* Right: Notification + Avatar - gap-4 */}

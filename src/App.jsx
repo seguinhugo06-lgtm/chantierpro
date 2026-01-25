@@ -119,16 +119,16 @@ export default function App() {
   const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Événement ajouté', 'success'); return e; };
 
   // Load settings from localStorage
-  useEffect(() => { 
-    try { 
-      const e = localStorage.getItem('cp_entreprise'); if (e) setEntreprise(JSON.parse(e)); 
-      const t = localStorage.getItem('cp_theme'); if (t) setTheme(t); 
+  useEffect(() => {
+    try {
+      const e = localStorage.getItem('cp_entreprise'); if (e) setEntreprise(JSON.parse(e));
+      const t = localStorage.getItem('cp_theme'); if (t) setTheme(t);
       const m = localStorage.getItem('cp_mode_discret'); if (m) setModeDiscret(JSON.parse(m));
-    } catch (err) {} 
+    } catch (err) { console.warn('Failed to load settings from localStorage:', err.message); }
   }, []);
-  useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) {} }, [entreprise]);
-  useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) {} }, [theme]);
-  useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) {} }, [modeDiscret]);
+  useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
+  useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
+  useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
 
   // Auth state listener - persists session across page refreshes
   useEffect(() => {
@@ -137,7 +137,7 @@ export default function App() {
       try {
         const u = await auth.getCurrentUser();
         setUser(u);
-      } catch (e) {}
+      } catch (e) { console.warn('Auth check failed:', e.message); }
       finally { setLoading(false); }
     };
     checkAuth();
@@ -186,7 +186,7 @@ export default function App() {
   };
   
   const handleSignOut = async () => {
-    try { await auth.signOut(); } catch (e) {}
+    try { await auth.signOut(); } catch (e) { console.warn('Sign out error:', e.message); }
     setUser(null);
   };
   
@@ -679,7 +679,7 @@ export default function App() {
         <main id="main-content" className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={isDark}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} />}
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
