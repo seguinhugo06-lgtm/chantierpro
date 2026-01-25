@@ -1,0 +1,529 @@
+{
+  "version": "2024.1",
+  "last_updated": "2024-01-01",
+  "sources": [
+    "Code de commerce (Art. L441-3)",
+    "Code de la consommation (Art. L111-1 à L111-3)",
+    "Code général des impôts (Art. 278-0 bis, 279-0 bis)",
+    "Décret n°2021-1908 du 30 décembre 2021",
+    "ANAH - MaPrimeRénov' 2024"
+  ],
+
+  "mentions_obligatoires_devis": {
+    "entreprise": {
+      "raison_sociale": {
+        "required": true,
+        "field": "company.nom",
+        "label": "Raison sociale",
+        "message_missing": "La raison sociale de l'entreprise est obligatoire"
+      },
+      "forme_juridique": {
+        "required": true,
+        "field": "company.forme_juridique",
+        "label": "Forme juridique",
+        "message_missing": "La forme juridique (SARL, SAS, EI, etc.) est obligatoire"
+      },
+      "siret": {
+        "required": true,
+        "field": "company.siret",
+        "pattern": "^\\d{14}$",
+        "label": "SIRET",
+        "message_missing": "Le numéro SIRET (14 chiffres) est obligatoire",
+        "message_invalid": "Le SIRET doit comporter exactement 14 chiffres"
+      },
+      "adresse_siege": {
+        "required": true,
+        "field": "company.adresse",
+        "label": "Adresse du siège",
+        "message_missing": "L'adresse du siège social est obligatoire"
+      },
+      "code_postal": {
+        "required": true,
+        "field": "company.code_postal",
+        "pattern": "^\\d{5}$",
+        "label": "Code postal",
+        "message_missing": "Le code postal est obligatoire"
+      },
+      "ville": {
+        "required": true,
+        "field": "company.ville",
+        "label": "Ville",
+        "message_missing": "La ville est obligatoire"
+      },
+      "rcs": {
+        "required": true,
+        "field": "company.rcs",
+        "label": "Numéro RCS",
+        "message_missing": "Le numéro d'immatriculation au RCS est obligatoire",
+        "condition": "company.forme_juridique !== 'EI' && company.forme_juridique !== 'Micro-entreprise'"
+      },
+      "capital_social": {
+        "required": false,
+        "field": "company.capital",
+        "label": "Capital social",
+        "condition": "company.forme_juridique === 'SARL' || company.forme_juridique === 'SAS' || company.forme_juridique === 'SA'"
+      },
+      "tva_intra": {
+        "required": true,
+        "field": "company.tva_intra",
+        "pattern": "^FR\\d{2}\\s?\\d{9}$",
+        "label": "Numéro TVA intracommunautaire",
+        "message_missing": "Le numéro de TVA intracommunautaire est obligatoire",
+        "message_invalid": "Le numéro TVA doit être au format FR + 11 chiffres",
+        "condition": "company.assujetti_tva !== false"
+      },
+      "telephone": {
+        "required": true,
+        "field": "company.telephone",
+        "label": "Téléphone",
+        "message_missing": "Le numéro de téléphone est obligatoire"
+      },
+      "email": {
+        "required": true,
+        "field": "company.email",
+        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+        "label": "Email",
+        "message_missing": "L'adresse email est obligatoire",
+        "message_invalid": "L'adresse email est invalide"
+      }
+    },
+
+    "assurance": {
+      "rc_pro": {
+        "required": true,
+        "field": "company.assurance_rc_pro",
+        "label": "Assurance RC Professionnelle",
+        "message_missing": "L'attestation d'assurance responsabilité civile professionnelle est obligatoire",
+        "details_fields": ["company.assurance_rc_numero", "company.assurance_rc_assureur"]
+      },
+      "decennale": {
+        "required": true,
+        "field": "company.assurance_decennale",
+        "label": "Assurance décennale",
+        "message_missing": "L'attestation d'assurance décennale est obligatoire pour les travaux du bâtiment",
+        "details_fields": ["company.assurance_decennale_numero", "company.assurance_decennale_assureur", "company.assurance_decennale_validite"],
+        "condition": "travaux_batiment === true"
+      }
+    },
+
+    "qualifications": {
+      "rge": {
+        "required": false,
+        "field": "company.rge",
+        "label": "Qualification RGE",
+        "recommended_for": ["renovation_energetique", "maprimerenov"],
+        "message_recommended": "La qualification RGE est nécessaire pour que le client bénéficie des aides MaPrimeRénov'"
+      },
+      "qualibat": {
+        "required": false,
+        "field": "company.qualibat",
+        "label": "Qualification Qualibat"
+      }
+    },
+
+    "client": {
+      "nom": {
+        "required": true,
+        "field": "client.nom",
+        "label": "Nom du client",
+        "message_missing": "Le nom du client est obligatoire"
+      },
+      "prenom": {
+        "required": false,
+        "field": "client.prenom",
+        "label": "Prénom du client"
+      },
+      "adresse": {
+        "required": true,
+        "field": "client.adresse",
+        "label": "Adresse du client",
+        "message_missing": "L'adresse du client est obligatoire"
+      },
+      "code_postal": {
+        "required": true,
+        "field": "client.code_postal",
+        "label": "Code postal client",
+        "pattern": "^\\d{5}$"
+      },
+      "ville": {
+        "required": true,
+        "field": "client.ville",
+        "label": "Ville client"
+      },
+      "type": {
+        "required": false,
+        "field": "client.type",
+        "label": "Type de client",
+        "values": ["particulier", "professionnel"]
+      }
+    },
+
+    "chantier": {
+      "adresse_travaux": {
+        "required": true,
+        "field": "chantier.adresse",
+        "label": "Adresse des travaux",
+        "message_missing": "L'adresse d'exécution des travaux est obligatoire si différente de l'adresse du client"
+      }
+    },
+
+    "devis": {
+      "numero": {
+        "required": true,
+        "field": "devis.numero",
+        "label": "Numéro de devis",
+        "message_missing": "Le numéro de devis est obligatoire"
+      },
+      "date_emission": {
+        "required": true,
+        "field": "devis.created_at",
+        "label": "Date d'émission",
+        "message_missing": "La date d'émission est obligatoire"
+      },
+      "duree_validite": {
+        "required": true,
+        "field": "devis.validite",
+        "label": "Durée de validité",
+        "default": "30 jours",
+        "message_missing": "La durée de validité du devis est obligatoire"
+      },
+      "description_travaux": {
+        "required": true,
+        "field": "devis.description",
+        "label": "Description des travaux",
+        "message_missing": "La description détaillée des travaux est obligatoire"
+      },
+      "prix_unitaires": {
+        "required": true,
+        "field": "devis.lignes",
+        "label": "Prix unitaires",
+        "message_missing": "Chaque prestation doit indiquer son prix unitaire"
+      },
+      "quantites": {
+        "required": true,
+        "field": "devis.lignes",
+        "label": "Quantités",
+        "message_missing": "Les quantités doivent être précisées pour chaque ligne"
+      },
+      "prix_ht": {
+        "required": true,
+        "field": "devis.montant_ht",
+        "label": "Total HT",
+        "message_missing": "Le montant total HT est obligatoire"
+      },
+      "tva": {
+        "required": true,
+        "field": "devis.tva",
+        "label": "TVA",
+        "message_missing": "Le montant de la TVA est obligatoire"
+      },
+      "prix_ttc": {
+        "required": true,
+        "field": "devis.montant_ttc",
+        "label": "Total TTC",
+        "message_missing": "Le montant total TTC est obligatoire"
+      },
+      "delai_execution": {
+        "required": false,
+        "field": "devis.delai",
+        "label": "Délai d'exécution",
+        "recommended": true,
+        "message_recommended": "Il est recommandé d'indiquer le délai d'exécution prévu"
+      },
+      "modalites_paiement": {
+        "required": true,
+        "field": "devis.modalites_paiement",
+        "label": "Modalités de paiement",
+        "message_missing": "Les modalités de paiement doivent être précisées"
+      }
+    }
+  },
+
+  "mentions_specifiques": {
+    "delai_retractation": {
+      "required": true,
+      "condition": "client.type === 'particulier' && vente_hors_etablissement === true",
+      "text": "Le client dispose d'un délai de 14 jours à compter de la signature pour exercer son droit de rétractation conformément à l'article L221-18 du Code de la consommation.",
+      "label": "Droit de rétractation",
+      "article": "L221-18 Code de la consommation"
+    },
+    "acompte_interdit": {
+      "required": true,
+      "condition": "client.type === 'particulier' && devis.montant_ttc < 1500 && vente_hors_etablissement === true",
+      "text": "Conformément à l'article L221-10 du Code de la consommation, aucun paiement ne peut être exigé avant l'expiration du délai de rétractation pour les contrats conclus hors établissement.",
+      "label": "Interdiction d'acompte",
+      "article": "L221-10 Code de la consommation"
+    },
+    "devis_gratuit": {
+      "required": false,
+      "recommended": true,
+      "text": "Devis gratuit",
+      "label": "Gratuité du devis"
+    },
+    "penalites_retard": {
+      "required": true,
+      "condition": "client.type === 'professionnel'",
+      "text": "En cas de retard de paiement, des pénalités de retard seront appliquées au taux de 3 fois le taux d'intérêt légal. Une indemnité forfaitaire de 40€ pour frais de recouvrement sera également due.",
+      "label": "Pénalités de retard",
+      "article": "L441-10 Code de commerce"
+    },
+    "mediateur": {
+      "required": true,
+      "condition": "client.type === 'particulier'",
+      "text": "En cas de litige, le client peut recourir gratuitement au service de médiation de la consommation.",
+      "label": "Médiation",
+      "article": "L612-1 Code de la consommation",
+      "fields": ["company.mediateur_nom", "company.mediateur_adresse", "company.mediateur_site"]
+    },
+    "garantie_parfait_achevement": {
+      "required": true,
+      "condition": "type_travaux === 'construction' || type_travaux === 'renovation_importante'",
+      "text": "Garantie de parfait achèvement d'un an à compter de la réception des travaux.",
+      "label": "Garantie parfait achèvement",
+      "article": "Art. 1792-6 Code civil"
+    },
+    "garantie_biennale": {
+      "required": true,
+      "condition": "type_travaux === 'construction' || type_travaux === 'renovation_importante'",
+      "text": "Garantie de bon fonctionnement de 2 ans pour les éléments d'équipement dissociables.",
+      "label": "Garantie biennale",
+      "article": "Art. 1792-3 Code civil"
+    },
+    "garantie_decennale": {
+      "required": true,
+      "condition": "travaux_gros_oeuvre === true",
+      "text": "Garantie décennale de 10 ans couvrant les dommages compromettant la solidité de l'ouvrage ou le rendant impropre à sa destination.",
+      "label": "Garantie décennale",
+      "article": "Art. 1792 Code civil"
+    }
+  },
+
+  "tva_rates": {
+    "taux_normal": {
+      "rate": 20,
+      "label": "TVA 20%",
+      "description": "Taux normal applicable par défaut",
+      "conditions": []
+    },
+    "taux_intermediaire": {
+      "rate": 10,
+      "label": "TVA 10% (travaux d'amélioration)",
+      "description": "Travaux d'amélioration, transformation, aménagement sur logements de plus de 2 ans",
+      "conditions": [
+        "Logement achevé depuis plus de 2 ans",
+        "Travaux d'amélioration, transformation, aménagement",
+        "Travaux réalisés par une entreprise",
+        "Logement à usage d'habitation"
+      ],
+      "attestation_required": true,
+      "attestation_form": "CERFA 1301-SD",
+      "exclusions": [
+        "Travaux de construction neuve",
+        "Agrandissement > 10% surface",
+        "Surélévation",
+        "Remise à l'état neuf > 2/3 gros oeuvre"
+      ],
+      "article": "Art. 279-0 bis CGI"
+    },
+    "taux_reduit": {
+      "rate": 5.5,
+      "label": "TVA 5,5% (rénovation énergétique)",
+      "description": "Travaux d'amélioration de la qualité énergétique",
+      "conditions": [
+        "Logement achevé depuis plus de 2 ans",
+        "Travaux de rénovation énergétique",
+        "Travaux réalisés par une entreprise",
+        "Logement à usage d'habitation"
+      ],
+      "attestation_required": true,
+      "attestation_form": "CERFA 1301-SD (simplifiée) ou 1300-SD (normale)",
+      "travaux_eligibles": [
+        "Isolation thermique",
+        "Chaudière à condensation",
+        "Pompe à chaleur",
+        "Système solaire thermique",
+        "Appareil de régulation chauffage",
+        "Calorifugeage",
+        "Equipement de production d'énergie renouvelable"
+      ],
+      "article": "Art. 278-0 bis CGI"
+    },
+    "taux_dom": {
+      "rate": 8.5,
+      "label": "TVA 8,5% (DOM)",
+      "description": "Taux applicable dans les départements d'outre-mer",
+      "conditions": ["Territoire DOM (Guadeloupe, Martinique, Réunion)"],
+      "article": "Art. 296 CGI"
+    }
+  },
+
+  "tva_travaux_mapping": {
+    "isolation_combles": { "rate": 5.5, "category": "renovation_energetique" },
+    "isolation_murs": { "rate": 5.5, "category": "renovation_energetique" },
+    "isolation_planchers": { "rate": 5.5, "category": "renovation_energetique" },
+    "isolation_toiture": { "rate": 5.5, "category": "renovation_energetique" },
+    "pompe_chaleur": { "rate": 5.5, "category": "renovation_energetique" },
+    "chaudiere_condensation": { "rate": 5.5, "category": "renovation_energetique" },
+    "chaudiere_biomasse": { "rate": 5.5, "category": "renovation_energetique" },
+    "panneaux_solaires": { "rate": 5.5, "category": "renovation_energetique" },
+    "vmc_double_flux": { "rate": 5.5, "category": "renovation_energetique" },
+    "fenetres_double_vitrage": { "rate": 5.5, "category": "renovation_energetique" },
+    "volets_isolants": { "rate": 5.5, "category": "renovation_energetique" },
+
+    "peinture": { "rate": 10, "category": "amelioration" },
+    "carrelage": { "rate": 10, "category": "amelioration" },
+    "plomberie": { "rate": 10, "category": "amelioration" },
+    "electricite": { "rate": 10, "category": "amelioration" },
+    "menuiserie_interieure": { "rate": 10, "category": "amelioration" },
+    "salle_de_bain": { "rate": 10, "category": "amelioration" },
+    "cuisine": { "rate": 10, "category": "amelioration" },
+    "revetement_sol": { "rate": 10, "category": "amelioration" },
+    "cloison": { "rate": 10, "category": "amelioration" },
+    "faux_plafond": { "rate": 10, "category": "amelioration" },
+
+    "construction_neuve": { "rate": 20, "category": "construction" },
+    "extension": { "rate": 20, "category": "construction" },
+    "surelevation": { "rate": 20, "category": "construction" },
+    "piscine": { "rate": 20, "category": "construction" },
+    "veranda": { "rate": 20, "category": "construction" }
+  },
+
+  "maprimerenov_eligibility": {
+    "travaux_eligibles": [
+      "Isolation des combles",
+      "Isolation des murs",
+      "Isolation des planchers",
+      "Isolation de la toiture",
+      "Pompe à chaleur air/eau",
+      "Pompe à chaleur air/air",
+      "Pompe à chaleur géothermique",
+      "Chaudière à granulés",
+      "Chaudière à bûches",
+      "Poêle à granulés",
+      "Poêle à bûches",
+      "Insert cheminée",
+      "Chauffe-eau solaire",
+      "Chauffe-eau thermodynamique",
+      "Système solaire combiné",
+      "VMC double flux",
+      "Fenêtres double/triple vitrage",
+      "Audit énergétique",
+      "Dépose cuve fioul"
+    ],
+
+    "conditions": {
+      "type_logement": {
+        "required": "residence_principale",
+        "description": "Le logement doit être la résidence principale du propriétaire"
+      },
+      "anciennete_minimum": {
+        "required": 15,
+        "unit": "ans",
+        "description": "Le logement doit avoir plus de 15 ans (sauf dépose cuve fioul: 2 ans)"
+      },
+      "type_client": {
+        "required": "particulier",
+        "description": "Réservé aux particuliers propriétaires occupants ou bailleurs"
+      },
+      "entreprise_rge": {
+        "required": true,
+        "description": "Les travaux doivent être réalisés par un artisan RGE"
+      },
+      "domicile_fiscal": {
+        "required": "france",
+        "description": "Le demandeur doit avoir son domicile fiscal en France"
+      }
+    },
+
+    "plafonds_revenus_2024": {
+      "tres_modestes": {
+        "ile_de_france": {
+          "1": 23541,
+          "2": 34551,
+          "3": 41493,
+          "4": 48447,
+          "5": 55427,
+          "par_personne_supplementaire": 6970
+        },
+        "autres_regions": {
+          "1": 17009,
+          "2": 24875,
+          "3": 29917,
+          "4": 34948,
+          "5": 40002,
+          "par_personne_supplementaire": 5045
+        }
+      },
+      "modestes": {
+        "ile_de_france": {
+          "1": 28657,
+          "2": 42058,
+          "3": 50513,
+          "4": 58981,
+          "5": 67473,
+          "par_personne_supplementaire": 8486
+        },
+        "autres_regions": {
+          "1": 21805,
+          "2": 31889,
+          "3": 38349,
+          "4": 44802,
+          "5": 51281,
+          "par_personne_supplementaire": 6462
+        }
+      },
+      "intermediaires": {
+        "ile_de_france": {
+          "1": 40018,
+          "2": 58827,
+          "3": 70382,
+          "4": 82839,
+          "5": 94844,
+          "par_personne_supplementaire": 11966
+        },
+        "autres_regions": {
+          "1": 30549,
+          "2": 44907,
+          "3": 54071,
+          "4": 63235,
+          "5": 72400,
+          "par_personne_supplementaire": 9165
+        }
+      },
+      "superieurs": {
+        "description": "Revenus supérieurs aux plafonds intermédiaires",
+        "eligibilite": "Limitée à certains travaux"
+      }
+    }
+  },
+
+  "facture_mentions_supplementaires": {
+    "numero_facture": {
+      "required": true,
+      "field": "facture.numero",
+      "label": "Numéro de facture",
+      "rules": "Numérotation chronologique et continue"
+    },
+    "date_facture": {
+      "required": true,
+      "field": "facture.date",
+      "label": "Date de facturation"
+    },
+    "date_livraison": {
+      "required": true,
+      "field": "facture.date_livraison",
+      "label": "Date de livraison ou d'exécution"
+    },
+    "echeance": {
+      "required": true,
+      "field": "facture.echeance",
+      "label": "Date d'échéance"
+    },
+    "escompte": {
+      "required": true,
+      "condition": "client.type === 'professionnel'",
+      "text": "Escompte pour paiement anticipé : Néant",
+      "label": "Conditions d'escompte"
+    }
+  }
+}
