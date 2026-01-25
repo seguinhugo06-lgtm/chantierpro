@@ -17,8 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
-import {
-  Widget,
+import Widget, {
   WidgetHeader,
   WidgetContent,
   WidgetFooter,

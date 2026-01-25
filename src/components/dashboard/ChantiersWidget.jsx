@@ -23,8 +23,7 @@ import { cn } from '../../lib/utils';
 import { useChantiers, useClients } from '../../context/DataContext';
 import { CHANTIER_STATUS } from '../../lib/constants';
 import { Button, IconButton } from '../ui/Button';
-import {
-  Widget,
+import Widget, {
   WidgetHeader,
   WidgetContent,
   WidgetFooter,

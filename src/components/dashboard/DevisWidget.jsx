@@ -14,8 +14,7 @@ import { useDevis, useClients } from '../../context/DataContext';
 import { DEVIS_STATUS } from '../../lib/constants';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import {
-  Widget,
+import Widget, {
   WidgetHeader,
   WidgetContent,
   WidgetFooter,

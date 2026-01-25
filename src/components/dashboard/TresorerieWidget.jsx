@@ -11,8 +11,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useDevis, useClients } from '../../context/DataContext';
 import { Button } from '../ui/Button';
-import {
-  Widget,
+import Widget, {
   WidgetHeader,
   WidgetContent,
   WidgetFooter,
