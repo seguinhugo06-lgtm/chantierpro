@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Wallet,
   AlertCircle,
@@ -252,8 +252,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
  *
  * @param {TresorerieWidgetProps} props
  */
-export default function TresorerieWidget({ userId, className }) {
-  const navigate = useNavigate();
+export default function TresorerieWidget({ userId, className, setPage }) {
   const { devis: allDevis } = useDevis();
   const { getClient } = useClients();
 
@@ -375,7 +374,7 @@ export default function TresorerieWidget({ userId, className }) {
 
   // Handle manage factures
   const handleManageFactures = () => {
-    navigate('/devis?type=facture&statut=impayee');
+    setPage?.('devis');
   };
 
   // Empty state

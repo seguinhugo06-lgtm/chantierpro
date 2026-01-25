@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Package,
   AlertTriangle,
@@ -377,8 +377,7 @@ function GroupPurchaseModal({ isOpen, onClose, opportunity }) {
  *
  * @param {StockWidgetProps} props
  */
-export default function StockWidget({ userId, className }) {
-  const navigate = useNavigate();
+export default function StockWidget({ userId, className, setPage }) {
 
   // State
   const [loading, setLoading] = React.useState(true);
@@ -460,11 +459,11 @@ export default function StockWidget({ userId, className }) {
 
   // Handle navigate
   const handleManageStock = () => {
-    navigate('/catalogue?view=stock');
+    setPage?.('catalogue');
   };
 
   const handleViewMovements = () => {
-    navigate('/stock/mouvements');
+    setPage?.('catalogue');
   };
 
   // Alerts to display

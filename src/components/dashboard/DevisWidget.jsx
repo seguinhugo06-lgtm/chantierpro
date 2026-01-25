@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   CheckCircle,
@@ -187,8 +186,10 @@ export default function DevisWidget({
   limit = 3,
   onRelance: customOnRelance,
   className,
+  setPage,
+  setSelectedDevis,
+  setCreateMode,
 }) {
-  const navigate = useNavigate();
   const { devis: allDevis } = useDevis();
   const { clients, getClient } = useClients();
 
@@ -282,23 +283,26 @@ export default function DevisWidget({
 
     setRelancingId(null);
 
-    // For now, just navigate to the devis
-    navigate(`/devis/${devis.id}`);
+    // Navigate to the devis
+    setSelectedDevis?.(devis);
+    setPage?.('devis');
   };
 
   // Handle view action
   const handleView = (devis) => {
-    navigate(`/devis/${devis.id}`);
+    setSelectedDevis?.(devis);
+    setPage?.('devis');
   };
 
   // Handle create new devis
   const handleCreateDevis = () => {
-    navigate('/devis/nouveau');
+    setCreateMode?.({ devis: true });
+    setPage?.('devis');
   };
 
   // Handle view all
   const handleViewAll = () => {
-    navigate('/devis?statut=en_attente');
+    setPage?.('devis');
   };
 
   // Get client for a devis (from embedded data or context)

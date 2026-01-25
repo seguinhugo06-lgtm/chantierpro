@@ -1,0 +1,511 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🤖 AI MULTI-AGENT WORKFLOW SYSTEM - CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# Version: 1.0.0
+# Description: Configuration centrale pour l'orchestration des agents IA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+system:
+  name: "AI Development Workflow"
+  version: "1.0.0"
+  log_level: "INFO"  # DEBUG, INFO, WARN, ERROR
+  max_retries: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 300
+  checkpoint_enabled: true
+  parallel_execution: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DES AGENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+agents:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PHASE 1: ANALYSE
+  # ─────────────────────────────────────────────────────────────────────────────
+  product_manager:
+    id: "pm-001"
+    name: "Product Manager AI"
+    emoji: "📋"
+    description: "Analyse les besoins et crée les spécifications"
+    phase: "analysis"
+    priority: 1
+    
+    prompt_file: "prompts/product_manager.md"
+    
+    inputs:
+      - "user_request"
+      - "project_context"
+    
+    outputs:
+      - "specs.json"
+      - "user_stories.json"
+      - "acceptance_criteria.json"
+      - "project_brief.md"
+    
+    dependencies: []
+    
+    validation:
+      required_fields:
+        - "project_name"
+        - "core_features"
+        - "user_personas"
+        - "success_criteria"
+      min_user_stories: 5
+      
+    handoff:
+      success: "architect"
+      clarification_needed: "orchestrator"
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 8000
+      temperature: 0.7
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PHASE 2: CONCEPTION
+  # ─────────────────────────────────────────────────────────────────────────────
+  architect:
+    id: "arch-001"
+    name: "Architect AI"
+    emoji: "🏗️"
+    description: "Conçoit l'architecture technique et choisit les technologies"
+    phase: "design"
+    priority: 2
+    
+    prompt_file: "prompts/architect.md"
+    
+    inputs:
+      - "specs.json"
+      - "user_stories.json"
+      - "project_brief.md"
+    
+    outputs:
+      - "architecture.json"
+      - "tech_stack.json"
+      - "db_schema.json"
+      - "api_design.json"
+      - "folder_structure.json"
+      - "architecture_decision_records/"
+    
+    dependencies:
+      - "product_manager"
+    
+    validation:
+      required_sections:
+        - "frontend_architecture"
+        - "backend_architecture"
+        - "database_design"
+        - "api_design"
+        - "security_considerations"
+        - "scalability_plan"
+    
+    handoff:
+      success: ["frontend_developer", "backend_developer"]
+      tech_conflict: "product_manager"
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 12000
+      temperature: 0.5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PHASE 3: DÉVELOPPEMENT
+  # ─────────────────────────────────────────────────────────────────────────────
+  frontend_developer:
+    id: "fe-001"
+    name: "Frontend Developer AI"
+    emoji: "🎨"
+    description: "Implémente l'interface utilisateur et les composants React"
+    phase: "development"
+    priority: 3
+    
+    prompt_file: "prompts/frontend_developer.md"
+    
+    inputs:
+      - "architecture.json"
+      - "tech_stack.json"
+      - "user_stories.json"
+      - "api_design.json"
+    
+    outputs:
+      - "src/components/**"
+      - "src/pages/**"
+      - "src/hooks/**"
+      - "src/styles/**"
+      - "src/utils/**"
+      - "src/types/**"
+      - "package.json"
+      - "tailwind.config.js"
+      - "tsconfig.json"
+    
+    dependencies:
+      - "architect"
+    
+    validation:
+      linting: true
+      typescript_strict: true
+      component_tests: true
+      accessibility_check: true
+    
+    handoff:
+      success: "qa_tester"
+      api_dependency: "backend_developer"
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 16000
+      temperature: 0.3
+
+  backend_developer:
+    id: "be-001"
+    name: "Backend Developer AI"
+    emoji: "⚙️"
+    description: "Développe l'API, la base de données et la logique métier"
+    phase: "development"
+    priority: 3
+    
+    prompt_file: "prompts/backend_developer.md"
+    
+    inputs:
+      - "architecture.json"
+      - "tech_stack.json"
+      - "db_schema.json"
+      - "api_design.json"
+      - "user_stories.json"
+    
+    outputs:
+      - "src/api/**"
+      - "src/db/**"
+      - "src/services/**"
+      - "src/middleware/**"
+      - "src/utils/**"
+      - "prisma/schema.prisma"
+      - "supabase/"
+    
+    dependencies:
+      - "architect"
+    
+    validation:
+      api_tests: true
+      security_scan: true
+      performance_check: true
+    
+    handoff:
+      success: ["frontend_developer", "qa_tester"]
+      db_change: "architect"
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 16000
+      temperature: 0.3
+
+  devops:
+    id: "devops-001"
+    name: "DevOps AI"
+    emoji: "🚀"
+    description: "Configure le déploiement, CI/CD et l'infrastructure"
+    phase: "development"
+    priority: 3
+    
+    prompt_file: "prompts/devops.md"
+    
+    inputs:
+      - "architecture.json"
+      - "tech_stack.json"
+      - "folder_structure.json"
+    
+    outputs:
+      - "docker-compose.yml"
+      - "Dockerfile"
+      - ".github/workflows/"
+      - "vercel.json"
+      - ".env.example"
+      - "scripts/"
+      - "nginx.conf"
+    
+    dependencies:
+      - "architect"
+    
+    validation:
+      docker_build: true
+      security_scan: true
+      env_check: true
+    
+    handoff:
+      success: "integration"
+      security_issue: "code_reviewer"
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 8000
+      temperature: 0.3
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PHASE 4: QUALITÉ
+  # ─────────────────────────────────────────────────────────────────────────────
+  qa_tester:
+    id: "qa-001"
+    name: "QA Tester AI"
+    emoji: "🧪"
+    description: "Crée et exécute les tests automatisés"
+    phase: "quality"
+    priority: 4
+    
+    prompt_file: "prompts/qa_tester.md"
+    
+    inputs:
+      - "user_stories.json"
+      - "acceptance_criteria.json"
+      - "src/**"
+      - "api_design.json"
+    
+    outputs:
+      - "tests/unit/**"
+      - "tests/integration/**"
+      - "tests/e2e/**"
+      - "coverage/"
+      - "test_report.json"
+      - "playwright.config.ts"
+      - "vitest.config.ts"
+    
+    dependencies:
+      - "frontend_developer"
+      - "backend_developer"
+    
+    validation:
+      min_coverage: 80
+      all_user_stories_tested: true
+      e2e_critical_paths: true
+    
+    handoff:
+      success: "code_reviewer"
+      critical_bug: ["frontend_developer", "backend_developer"]
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 12000
+      temperature: 0.2
+
+  code_reviewer:
+    id: "cr-001"
+    name: "Code Reviewer AI"
+    emoji: "🔍"
+    description: "Revue de code, standards et suggestions d'amélioration"
+    phase: "quality"
+    priority: 5
+    
+    prompt_file: "prompts/code_reviewer.md"
+    
+    inputs:
+      - "src/**"
+      - "tests/**"
+      - "architecture.json"
+      - "test_report.json"
+    
+    outputs:
+      - "review_report.json"
+      - "suggestions/"
+      - "security_audit.json"
+      - "performance_audit.json"
+    
+    dependencies:
+      - "qa_tester"
+    
+    validation:
+      security_passed: true
+      code_quality_score: 8
+      no_critical_issues: true
+    
+    handoff:
+      success: "integration"
+      changes_requested: ["frontend_developer", "backend_developer"]
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 10000
+      temperature: 0.3
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PHASE 5: INTÉGRATION
+  # ─────────────────────────────────────────────────────────────────────────────
+  integration:
+    id: "int-001"
+    name: "Integration AI"
+    emoji: "🔗"
+    description: "Assemble tous les modules et valide le build final"
+    phase: "integration"
+    priority: 6
+    
+    prompt_file: "prompts/integration.md"
+    
+    inputs:
+      - "src/**"
+      - "tests/**"
+      - "review_report.json"
+      - "architecture.json"
+    
+    outputs:
+      - "build/"
+      - "integration_report.json"
+      - "deployment_checklist.md"
+      - "README.md"
+      - "CHANGELOG.md"
+    
+    dependencies:
+      - "code_reviewer"
+      - "devops"
+    
+    validation:
+      build_success: true
+      all_tests_pass: true
+      documentation_complete: true
+    
+    handoff:
+      success: "complete"
+      integration_error: ["frontend_developer", "backend_developer"]
+      
+    config:
+      model: "claude-sonnet-4-20250514"
+      max_tokens: 8000
+      temperature: 0.2
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASES DU WORKFLOW
+# ═══════════════════════════════════════════════════════════════════════════════
+
+phases:
+  analysis:
+    name: "Analyse"
+    order: 1
+    agents: ["product_manager"]
+    parallel: false
+    checkpoint: true
+    
+  design:
+    name: "Conception"
+    order: 2
+    agents: ["architect"]
+    parallel: false
+    checkpoint: true
+    
+  development:
+    name: "Développement"
+    order: 3
+    agents: ["frontend_developer", "backend_developer", "devops"]
+    parallel: true  # Ces agents peuvent travailler en parallèle
+    checkpoint: true
+    
+  quality:
+    name: "Qualité"
+    order: 4
+    agents: ["qa_tester", "code_reviewer"]
+    parallel: false  # Séquentiel: QA puis Review
+    checkpoint: true
+    
+  integration:
+    name: "Intégration"
+    order: 5
+    agents: ["integration"]
+    parallel: false
+    checkpoint: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DU CACHE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+cache:
+  enabled: true
+  ttl_hours: 24
+  storage: ".ai-workflow/cache/"
+  invalidation_rules:
+    - "specs_change_invalidates": ["architecture", "frontend", "backend"]
+    - "architecture_change_invalidates": ["frontend", "backend", "devops"]
+    - "api_change_invalidates": ["frontend", "tests"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION DES CHECKPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+checkpoints:
+  enabled: true
+  storage: ".ai-workflow/checkpoints/"
+  auto_save_interval_minutes: 5
+  keep_last_n: 10
+  
+# ═══════════════════════════════════════════════════════════════════════════════
+# NOTIFICATIONS ET LOGGING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+logging:
+  level: "INFO"
+  format: "json"
+  output:
+    - "console"
+    - "file:.ai-workflow/logs/workflow.log"
+  retention_days: 30
+
+notifications:
+  enabled: true
+  channels:
+    console:
+      enabled: true
+      colors: true
+    file:
+      enabled: true
+      path: ".ai-workflow/logs/notifications.log"
+    # webhook:
+    #   enabled: false
+    #   url: "https://hooks.slack.com/..."
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEMPLATES DE PROJET
+# ═══════════════════════════════════════════════════════════════════════════════
+
+templates:
+  react_fullstack:
+    name: "React Full-Stack Application"
+    description: "Application React avec API Node.js et base de données"
+    tech_stack:
+      frontend: ["react", "typescript", "tailwindcss", "tanstack-query"]
+      backend: ["node", "express", "prisma"]
+      database: ["postgresql", "supabase"]
+      testing: ["vitest", "playwright", "testing-library"]
+      deployment: ["vercel", "docker", "github-actions"]
+    
+  nextjs_saas:
+    name: "Next.js SaaS Application"
+    description: "Application SaaS avec Next.js, authentification et paiements"
+    tech_stack:
+      frontend: ["nextjs", "typescript", "tailwindcss", "shadcn-ui"]
+      backend: ["nextjs-api", "prisma", "trpc"]
+      database: ["postgresql", "supabase"]
+      auth: ["nextauth", "supabase-auth"]
+      payments: ["stripe"]
+      testing: ["vitest", "playwright"]
+      deployment: ["vercel"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RÈGLES DE QUALITÉ
+# ═══════════════════════════════════════════════════════════════════════════════
+
+quality_gates:
+  code_coverage:
+    minimum: 80
+    target: 90
+    
+  code_quality:
+    complexity_max: 10
+    duplication_max: 3
+    
+  security:
+    vulnerabilities_allowed: 0
+    dependency_audit: true
+    
+  performance:
+    lighthouse_score_min: 90
+    bundle_size_max_kb: 500
+    
+  accessibility:
+    wcag_level: "AA"
+    automated_checks: true

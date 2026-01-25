@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   HardHat,
   MapPin,
@@ -329,8 +329,7 @@ function ChantierCardSkeleton() {
  *
  * @param {ChantiersWidgetProps} props
  */
-export default function ChantiersWidget({ userId, className }) {
-  const navigate = useNavigate();
+export default function ChantiersWidget({ userId, className, setPage, setSelectedChantier }) {
   const { chantiers: allChantiers } = useChantiers();
   const { getClient } = useClients();
 
@@ -444,17 +443,18 @@ export default function ChantiersWidget({ userId, className }) {
 
   // Handle Photos action
   const handlePhotos = (chantier) => {
-    navigate(`/chantiers/${chantier.id}/photos`);
+    setSelectedChantier?.(chantier);
+    setPage?.('chantiers');
   };
 
   // Handle create new chantier
   const handleCreateChantier = () => {
-    navigate('/chantiers/nouveau');
+    setPage?.('chantiers');
   };
 
   // Handle view planning
   const handleViewPlanning = () => {
-    navigate('/planning');
+    setPage?.('planning');
   };
 
   // Get client for a chantier

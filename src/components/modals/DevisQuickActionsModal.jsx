@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Mail,
   CheckCircle,
@@ -198,8 +198,9 @@ export default function DevisQuickActionsModal({
   isOpen,
   onClose,
   onUpdate,
+  setPage,
+  setSelectedDevis,
 }) {
-  const navigate = useNavigate();
   const { devis: allDevis, getDevis, updateDevis, deleteDevis, addDevis } = useDevis();
   const { getClient } = useClients();
   const { showToast } = useToast();
@@ -355,7 +356,12 @@ export default function DevisQuickActionsModal({
 
       showToast(`Facture ${newNumero} créée`, 'success');
       onClose();
-      navigate(`/devis/${newFactureId}`);
+      // Navigate to the new facture
+      if (newFactureId) {
+        const newFacture = { id: newFactureId, numero: newNumero };
+        setSelectedDevis?.(newFacture);
+        setPage?.('devis');
+      }
     } catch (err) {
       console.error('Error converting to facture:', err);
       showToast('Erreur lors de la création de la facture', 'error');
@@ -405,7 +411,12 @@ export default function DevisQuickActionsModal({
 
       showToast(`Devis ${newNumero} créé`, 'success');
       onClose();
-      navigate(`/devis/${newDevisId}?edit=true`);
+      // Navigate to the new devis
+      if (newDevisId) {
+        const newDevis = { id: newDevisId, numero: newNumero };
+        setSelectedDevis?.(newDevis);
+        setPage?.('devis');
+      }
     } catch (err) {
       console.error('Error duplicating devis:', err);
       showToast('Erreur lors de la duplication', 'error');
@@ -444,7 +455,10 @@ export default function DevisQuickActionsModal({
   // View detail
   const handleViewDetail = () => {
     onClose();
-    navigate(`/devis/${devisId}`);
+    if (devisData) {
+      setSelectedDevis?.(devisData);
+      setPage?.('devis');
+    }
   };
 
   if (!isOpen) return null;

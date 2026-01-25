@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Zap,
@@ -246,8 +246,8 @@ export default function SuggestionsSection({
   userId,
   maxDisplay = 3,
   className,
+  setPage,
 }) {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const data = useData();
 
@@ -304,20 +304,10 @@ export default function SuggestionsSection({
     try {
       // Execute action
       if (suggestion.action?.route) {
-        // Navigate to route
+        // Navigate to route - extract page name from route
         const route = suggestion.action.route;
-        const params = suggestion.action.params;
-
-        if (params) {
-          // Build query string from params
-          const searchParams = new URLSearchParams();
-          Object.entries(params).forEach(([key, value]) => {
-            if (value !== undefined) searchParams.set(key, String(value));
-          });
-          navigate(`${route}?${searchParams.toString()}`);
-        } else {
-          navigate(route);
-        }
+        const pageName = route.replace(/^\//, '').split('/')[0] || 'dashboard';
+        setPage?.(pageName);
 
         // Auto-dismiss after navigation if dismissible
         if (suggestion.dismissible) {
@@ -357,7 +347,8 @@ export default function SuggestionsSection({
 
   // Handle view all
   const handleViewAll = () => {
-    navigate('/suggestions');
+    // Suggestions are shown inline, no separate page needed
+    console.log('View all suggestions');
   };
 
   // Total count for header
