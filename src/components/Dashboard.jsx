@@ -1466,9 +1466,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <Activity size={20} className="text-blue-500" />
               <span className={`font-semibold ${textPrimary}`}>Activité récente</span>
             </div>
-            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
-              <MoreHorizontal size={16} className={textMuted} />
-            </button>
           </div>
 
           {/* Body */}
@@ -1513,7 +1510,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
 
           {/* Footer */}
           <div className={`flex items-center justify-end p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-            <button className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+            <button onClick={() => setPage?.('admin')} className="text-sm text-blue-500 hover:text-blue-600 font-medium">
               Voir historique →
             </button>
           </div>
@@ -1527,9 +1524,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <Users size={20} className="text-indigo-500" />
               <span className={`font-semibold ${textPrimary}`}>Clients récents</span>
             </div>
-            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
-              <MoreHorizontal size={16} className={textMuted} />
-            </button>
           </div>
 
           {/* Body */}
@@ -1599,9 +1593,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <Target size={20} className="text-rose-500" />
               <span className={`font-semibold ${textPrimary}`}>Performance {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</span>
             </div>
-            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
-              <MoreHorizontal size={16} className={textMuted} />
-            </button>
           </div>
 
           {/* Body */}
@@ -1663,7 +1654,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
 
           {/* Footer */}
           <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-            <button className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+            <button onClick={() => setPage?.('parametres')} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
               Ajuster objectifs
             </button>
             <button onClick={() => setShowRentabilityDashboard(true)} className="text-sm text-blue-500 hover:text-blue-600 font-medium">
@@ -1681,9 +1672,6 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
                 <Sun size={20} className="text-amber-500" />
                 <span className={`font-semibold ${textPrimary}`}>Météo {weather.city}</span>
               </div>
-              <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
-                <MoreHorizontal size={16} className={textMuted} />
-              </button>
             </div>
 
             {/* Body */}
@@ -1733,7 +1721,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
 
             {/* Footer */}
             <div className={`flex items-center justify-end p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
-              <button className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+              <button onClick={() => setPage?.('parametres')} className="text-sm text-blue-500 hover:text-blue-600 font-medium">
                 Changer localisation →
               </button>
             </div>
