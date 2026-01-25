@@ -5,7 +5,7 @@ import RentabilityDashboard from './RentabilityDashboard';
 import AccountingIntegration from './AccountingIntegration';
 import MorningBrief from './MorningBrief';
 import { getPendingRelances, formatRelanceForDisplay, RELANCE_TEMPLATES } from '../services/RelanceService';
-import { WeatherAlertsWidget } from './dashboard';
+import { WeatherAlertsWidget } from './dashboard/index.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // MEMOIZED COMPONENTS & PURE UTILITIES (extracted for performance)
