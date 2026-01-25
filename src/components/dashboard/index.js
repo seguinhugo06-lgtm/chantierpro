@@ -3,6 +3,7 @@
  * Import all dashboard components from here
  */
 
+export { default as HeroSection, HeroSectionSkeleton } from './HeroSection';
 export { default as KPICard, KPICardSkeleton, MiniKPICard } from './KPICard';
 export { default as ActionBanner, ActionBannerStack } from './ActionBanner';
 export {
