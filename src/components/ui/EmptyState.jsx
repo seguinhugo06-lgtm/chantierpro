@@ -39,7 +39,7 @@ export default function EmptyState({
 }) {
   const Icon = IconProp || DEFAULT_ICONS[iconType] || DEFAULT_ICONS.default;
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
   if (compact) {
     return (
@@ -199,7 +199,7 @@ export function SearchEmptyState({
   couleur = '#f97316'
 }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
   return (
     <div className={`text-center py-12 px-4 rounded-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
@@ -253,7 +253,7 @@ export function ErrorEmptyState({
   isDark = false
 }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
   return (
     <div className={`text-center py-12 px-4 rounded-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>

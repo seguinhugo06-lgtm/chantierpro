@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Nouvelles photos de votre chantier</title>
+  <style type="text/css">
+    body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f4f4f5; }
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; padding: 10px !important; }
+      .content { padding: 20px !important; }
+      .button { display: block !important; width: 100% !important; text-align: center !important; }
+      .photo-grid td { display: block !important; width: 100% !important; margin-bottom: 10px !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: Arial, Helvetica, sans-serif;">
+  <div style="display: none; max-height: 0; overflow: hidden;">
+    {{photo_count}} nouvelles photos de votre chantier "{{chantier_name}}" - Consultez l'avancement !
+  </div>
+
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 10px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="container" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+
+          <!-- Header purple (photos) -->
+          <tr>
+            <td align="center" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px 40px;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">ChantierPro</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td class="content" style="padding: 40px;">
+              <!-- Camera icon -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom: 25px;">
+                    <div style="width: 70px; height: 70px; background-color: #f5f3ff; border-radius: 50%; display: inline-block; text-align: center; line-height: 70px;">
+                      <span style="font-size: 35px;">&#128247;</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px; font-weight: 600; text-align: center;">
+                Nouvelles photos !
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Bonjour {{client_name}},
+              </p>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                De nouvelles photos de votre chantier <strong style="color: #1f2937;">"{{chantier_name}}"</strong> sont disponibles.
+              </p>
+
+              <!-- Stats box -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 20px; text-align: center; border-right: 1px solid #e5e7eb; width: 50%;">
+                    <p style="margin: 0 0 5px 0; font-size: 32px; font-weight: 700; color: #8b5cf6;">{{new_photo_count}}</p>
+                    <p style="margin: 0; color: #6b7280; font-size: 14px;">nouvelles photos</p>
+                  </td>
+                  <td style="padding: 20px; text-align: center; width: 50%;">
+                    <p style="margin: 0 0 5px 0; font-size: 32px; font-weight: 700; color: #4b5563;">{{total_photo_count}}</p>
+                    <p style="margin: 0; color: #6b7280; font-size: 14px;">photos au total</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Photo preview placeholder -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0;">
+                <tr>
+                  <td style="background-color: #f5f3ff; border-radius: 8px; padding: 30px; text-align: center;">
+                    <p style="margin: 0 0 15px 0; font-size: 48px;">&#128248;</p>
+                    <p style="margin: 0 0 5px 0; font-weight: 600; color: #5b21b6;">Chantier : {{chantier_name}}</p>
+                    <p style="margin: 0; color: #7c3aed; font-size: 14px;">Ajoutees le {{upload_date}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Info about photos -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0; background-color: #f5f3ff; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #5b21b6;">&#128161; Suivi en temps reel</p>
+                    <p style="margin: 0; color: #6d28d9; font-size: 14px;">
+                      Suivez l'avancement de vos travaux grace aux photos prises par notre equipe. Toutes les photos sont conservees dans votre espace client.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="border-radius: 8px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                          <a href="{{photos_url}}" target="_blank" class="button" style="display: inline-block; padding: 16px 32px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                            &#128247; Voir les photos
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Signature -->
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;" width="100%">
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+                    <p style="margin: 0 0 5px 0;">Cordialement,</p>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937;">{{artisan_name}}</p>
+                    <p style="margin: 5px 0 0 0;">{{artisan_phone}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 25px 40px; border-top: 1px solid #e5e7eb;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="color: #9ca3af; font-size: 12px; line-height: 1.6;">
+                    <p style="margin: 0 0 10px 0;">Cet email a ete envoye automatiquement par ChantierPro</p>
+                    <p style="margin: 0;">
+                      <a href="{{portal_url}}" style="color: #8b5cf6; text-decoration: none;">Voir mon espace client</a>
+                      &nbsp;&bull;&nbsp;
+                      <a href="mailto:{{artisan_email}}" style="color: #8b5cf6; text-decoration: none;">Contacter {{artisan_name}}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="container">
+          <tr>
+            <td align="center" style="padding: 20px; color: #9ca3af; font-size: 11px;">
+              &copy; {{year}} ChantierPro. Tous droits reserves.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

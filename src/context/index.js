@@ -19,3 +19,10 @@ export {
   useDevis,
   useChantiers
 } from './DataContext';
+
+// Modal context (global modal management)
+export {
+  ModalProvider,
+  useModalContext,
+  useModalState
+} from '../contexts/ModalContext';

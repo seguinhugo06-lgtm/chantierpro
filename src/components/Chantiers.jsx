@@ -209,8 +209,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </select>
         </div>
 
-        {/* Quick Actions Bar - One tap actions */}
+        {/* === SECTION: ACTIONS RAPIDES === */}
         <div className={`${cardBg} rounded-xl border p-3`}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Actions rapides</span>
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             <button
               onClick={() => setShowAddMO(true)}
@@ -290,8 +294,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
-        {/* Résumé Financier Principal */}
+        {/* === SECTION: FINANCES === */}
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Finances du chantier</span>
+            <span className={`text-[10px] ${textMuted}`}>— Revenus, dépenses et marge</span>
+          </div>
           {/* Titre et marge */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-3">
@@ -372,8 +381,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 )}
               </div>
-              <button onClick={() => setShowAjustement('REVENU')} className={`mt-3 w-full py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 ${isDark ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
-                <Plus size={14} /> Ajouter un revenu
+              <button onClick={() => setShowAjustement('REVENU')} className={`mt-3 w-full min-h-[48px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} active:scale-[0.98] transition-all`}>
+                <Plus size={16} /> Ajouter un revenu
               </button>
             </div>
 
@@ -383,17 +392,17 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <ArrowDownRight size={16} className="text-red-500" />
                 <h4 className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Dépenses</h4>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowQuickMateriau(true)}>
-                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><Package size={14} /> Matériaux</span>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowQuickMateriau(true)}>
+                  <span className={`text-sm ${textSecondary} flex items-center gap-2`}><Package size={16} /> Matériaux</span>
                   <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
                 </div>
-                <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowMODetail(true)}>
-                  <span className={`text-sm ${textSecondary} flex items-center gap-1.5`}><UserCog size={14} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
+                <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowMODetail(true)}>
+                  <span className={`text-sm ${textSecondary} flex items-center gap-2`}><UserCog size={16} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
                   <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
                 </div>
                 {(bilan.coutAutres || 0) > 0 && (
-                  <div className="flex justify-between items-center cursor-pointer hover:opacity-80" onClick={() => setShowAjustement('DEPENSE')}>
+                  <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowAjustement('DEPENSE')}>
                     <span className={`text-sm ${textSecondary}`}>Autres frais</span>
                     <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutAutres)}</span>
                   </div>
@@ -403,8 +412,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <span className="font-bold text-lg text-red-500">{formatMoney(bilan.totalDepenses)}</span>
                 </div>
               </div>
-              <button onClick={() => setShowQuickMateriau(true)} className={`mt-3 w-full py-2 rounded-lg text-sm flex items-center justify-center gap-1.5 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
-                <Plus size={14} /> Ajouter une dépense
+              <button onClick={() => setShowQuickMateriau(true)} className={`mt-3 w-full min-h-[48px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'} active:scale-[0.98] transition-all`}>
+                <Plus size={16} /> Ajouter une dépense
               </button>
             </div>
           </div>
@@ -676,6 +685,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           )}
         </div>
 
+        {/* === SECTION: DÉTAILS DU CHANTIER === */}
+        <div className="flex items-center gap-2 mt-2 mb-2">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
+        </div>
         {/* Onglets */}
         <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
@@ -1042,10 +1056,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             {/* Photos grid with timestamp badges */}
             {(!ch.photos || ch.photos.length === 0) ? (
-              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                <Camera size={40} className={`mx-auto mb-3 ${textMuted}`} />
-                <p className={`font-medium ${textPrimary}`}>Aucune photo</p>
-                <p className={`text-sm ${textMuted} mt-1`}>Prenez des photos pour documenter le chantier</p>
+              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50 border border-dashed border-slate-300'}`}>
+                <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                  <Camera size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                </div>
+                <p className={`font-semibold mb-1 ${textPrimary}`}>Documentez votre chantier</p>
+                <p className={`text-sm mb-4 ${textMuted}`}>Les photos horodatées sont essentielles en cas de litige</p>
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => handlePhotoUpload(e, 'travaux')} />
+                  <span
+                    className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                    style={{ background: couleur }}
+                  >
+                    <Camera size={18} /> Prendre une photo
+                  </span>
+                </label>
               </div>
             ) : (
               <div className="space-y-5">
@@ -1672,34 +1697,27 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Liste
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-3">
+      <div className="flex justify-between items-center gap-3">
         <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers ({chantiers.length})</h1>
-        <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
-          <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
-        </button>
-      </div>
-
-      {/* Sorting options */}
-      {chantiers.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <span className={`text-sm ${textMuted} flex items-center gap-1`}><ArrowUpDown size={14} /> Trier:</span>
-          {[
-            { key: 'recent', label: 'Recent' },
-            { key: 'name', label: 'Nom' },
-            { key: 'status', label: 'Statut' },
-            { key: 'margin', label: 'Marge' }
-          ].map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => setSortBy(opt.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              style={sortBy === opt.key ? { background: couleur } : {}}
+        <div className="flex items-center gap-2">
+          {/* Sorting dropdown - compact */}
+          {chantiers.length > 1 && (
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={`px-3 py-2 rounded-lg text-sm min-h-[44px] border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
             >
-              {opt.label}
-            </button>
-          ))}
+              <option value="recent">Récent</option>
+              <option value="name">Nom</option>
+              <option value="status">Statut</option>
+              <option value="margin">Marge</option>
+            </select>
+          )}
+          <button onClick={() => setShow(true)} className="px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {chantiers.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -1761,7 +1779,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
       ) : (
         <>
-          {/* Quick Overview Card - Calm Guide */}
+          {/* En Cours Card - Simplified: Progression, Équipe, Tasks only */}
           {(() => {
             const activeChantiers = chantiers.filter(c => c.statut === 'en_cours');
             if (activeChantiers.length === 0) return null;
@@ -1779,54 +1797,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const teamIds = [...new Set(chPointages.map(p => p.employeId))];
             const teamMembers = teamIds.map(id => equipe.find(e => e.id === id)).filter(Boolean);
 
-            // Materials
-            const devisLie = devis?.find(d => d.chantier_id === current.id && d.type === 'devis');
-            const plannedItems = devisLie?.lignes || [];
-            const chDepenses = depenses.filter(d => d.chantierId === current.id);
-            const purchasedCount = plannedItems.filter(item =>
-              chDepenses.some(d => d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0]))
-            ).length;
-
-            // Timeline
-            const start = current.date_debut ? new Date(current.date_debut) : null;
-            const end = current.date_fin ? new Date(current.date_fin) : null;
-            const today = new Date();
-            let daysRemaining = null;
-            if (start && end) {
-              daysRemaining = Math.max(0, Math.ceil((end - today) / 86400000));
-            }
-
             // Smart progression
             const avancement = calculateSmartProgression(current, bilan, tasksDone, tasksTotal);
-
-            // Weather icon helper
-            const WeatherIcon = ({ condition, size = 16 }) => {
-              if (condition === 'sunny') return <Sun size={size} className="text-amber-500" />;
-              if (condition === 'rainy') return <CloudRain size={size} className="text-blue-500" />;
-              if (condition === 'windy') return <Wind size={size} className="text-slate-500" />;
-              return <Cloud size={size} className="text-slate-400" />;
-            };
-
-            // Quick photo
-            const handleQuickPhoto = () => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = 'image/*';
-              input.capture = 'environment';
-              input.onchange = (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                  updateChantier(current.id, {
-                    photos: [...(current.photos || []), { id: generateId(), src: reader.result, categorie: 'pendant', date: new Date().toISOString() }]
-                  });
-                  showToast?.('Photo ajoutée', 'success');
-                };
-                reader.readAsDataURL(file);
-              };
-              input.click();
-            };
 
             // Complete task handler
             const completeTask = (taskId) => {
@@ -1839,273 +1811,107 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               }
             };
 
-            // Next task to focus on
-            const nextTask = pendingTasks[0];
+            // Date calculation
+            const dateFin = current.date_fin ? new Date(current.date_fin) : null;
+            const dateFinFormatted = dateFin ? dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
 
             return (
               <div
-                className={`mb-4 ${cardBg} rounded-2xl border overflow-hidden transition-all hover:shadow-md`}
+                onClick={() => setView(current.id)}
+                className={`mb-4 ${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md`}
                 style={{ borderColor: `${couleur}30` }}
               >
-                {/* Header - Friendly label + chantier name */}
-                <div
-                  className="p-4 cursor-pointer"
-                  onClick={() => setView(current.id)}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: couleur }}>
-                      En cours
+                {/* Header with status badge */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>
+                      EN COURS
                     </span>
-                    {daysRemaining !== null && (
-                      <span className={`text-xs ${textMuted}`}>· {daysRemaining}j restants</span>
-                    )}
-                    <ChevronRight size={16} className={`${textMuted} ml-auto`} />
-                  </div>
-                  <h3 className={`font-bold text-lg ${textPrimary}`}>{current.nom}</h3>
-                  <p className={`text-sm ${textMuted}`}>
-                    {client?.nom || 'Sans client'}{current.adresse && ` · ${current.adresse}`}
-                  </p>
-                </div>
-
-                {/* Progress Bar - Simple, always accent color */}
-                <div className={`mx-4 mb-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <div className="h-2 rounded-full transition-all duration-300" style={{
-                    width: `${Math.min(100, Math.max(5, avancement))}%`,
-                    background: couleur
-                  }} />
-                </div>
-                <div className="px-4 mb-3 flex items-center justify-between">
-                  <span className={`text-sm font-semibold`} style={{ color: couleur }}>{avancement}% avancé</span>
-                  {tasksDone > 0 && (
-                    <span className={`text-xs ${textMuted}`}>{tasksDone}/{tasksTotal} tâches faites</span>
-                  )}
-                </div>
-
-                {/* Info Row: Weather | Team | Materials */}
-                <div className={`px-4 py-2.5 flex items-center gap-4 overflow-x-auto border-t border-b ${isDark ? 'border-slate-700 bg-slate-800/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  {/* Weather */}
-                  {weather && !weather.isDefault && (
-                    <div className="flex items-center gap-1.5 flex-shrink-0" title={weather.description}>
-                      <WeatherIcon condition={weather.condition} size={18} />
-                      <span className={`text-sm font-medium ${textPrimary}`}>{weather.temp}°</span>
-                    </div>
-                  )}
-
-                  {/* Team */}
-                  <div
-                    className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
-                    onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('finances'); }}
-                    title={teamMembers.map(m => `${m.prenom} ${m.nom}`).join(', ') || 'Aucune équipe'}
-                  >
-                    <Users size={16} style={{ color: couleur }} />
-                    <span className={`text-sm font-medium ${textPrimary}`}>
-                      {teamMembers.length > 0 ? `${teamMembers.length} pers.` : '-'}
-                    </span>
-                  </div>
-
-                  {/* Materials */}
-                  {(plannedItems.length > 0 || chDepenses.length > 0) && (
-                    <div
-                      className="flex items-center gap-1.5 flex-shrink-0 cursor-pointer"
-                      onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('finances'); setShowQuickMateriau(true); }}
-                      title="Matériaux"
-                    >
-                      <Package size={16} style={{ color: couleur }} />
-                      <span className={`text-sm font-medium ${textPrimary}`}>
-                        {purchasedCount}/{plannedItems.length || chDepenses.length} mat.
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Offline indicator */}
-                  {!isOnline && (
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
-                      <WifiOff size={14} className={textMuted} />
-                      <span className={`text-xs ${textMuted}`}>Hors ligne</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Detailed Team + Materials Grid */}
-                {(teamMembers.length > 0 || plannedItems.length > 0 || chDepenses.length > 0) && (
-                  <div className="px-4 py-3 grid grid-cols-2 gap-4">
-                    {/* Team Column */}
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: couleur }}>
-                        Équipe ({teamMembers.length})
-                      </p>
-                      {teamMembers.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {teamMembers.slice(0, 4).map((member, idx) => (
-                            <div key={member.id} className="flex items-center gap-2">
-                              <div
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                                style={{ background: couleur }}
-                              >
-                                {member.prenom?.[0]}{member.nom?.[0]}
-                              </div>
-                              <span className={`text-sm truncate ${textPrimary}`}>
-                                {member.prenom} {member.nom?.[0]}.
-                              </span>
-                              {member.role && (
-                                <span className={`text-xs ${textMuted} truncate`}>({member.role})</span>
-                              )}
-                            </div>
-                          ))}
-                          {teamMembers.length > 4 && (
-                            <p className={`text-xs ${textMuted}`}>+{teamMembers.length - 4} autres</p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className={`text-sm ${textMuted}`}>Aucune équipe</p>
-                      )}
-                    </div>
-
-                    {/* Materials Column */}
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: couleur }}>
-                        Matériaux ({purchasedCount}/{plannedItems.length || chDepenses.length})
-                      </p>
-                      {plannedItems.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {plannedItems.slice(0, 4).map((item, idx) => {
-                            const isPurchased = chDepenses.some(d =>
-                              d.description.toLowerCase().includes(item.description.toLowerCase().split(' ')[0])
-                            );
-                            return (
-                              <div key={idx} className="flex items-center gap-2">
-                                {isPurchased ? (
-                                  <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
-                                ) : (
-                                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
-                                )}
-                                <span className={`text-sm truncate ${isPurchased ? textMuted : textPrimary}`}>
-                                  {item.description.length > 20 ? item.description.substring(0, 20) + '...' : item.description}
-                                </span>
-                              </div>
-                            );
-                          })}
-                          {plannedItems.length > 4 && (
-                            <p className={`text-xs ${textMuted}`}>+{plannedItems.length - 4} autres</p>
-                          )}
-                        </div>
-                      ) : chDepenses.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {chDepenses.slice(0, 4).map((dep, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
-                              <span className={`text-sm truncate ${textMuted}`}>
-                                {dep.description.length > 20 ? dep.description.substring(0, 20) + '...' : dep.description}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className={`text-sm ${textMuted}`}>Aucun matériau</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Next Task - Gentle highlight of what to do */}
-                {nextTask && (
-                  <div className="p-4">
-                    <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${textMuted}`}>
-                      Prochaine étape
-                    </p>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); completeTask(nextTask.id); }}
-                      className={`w-full min-h-[52px] px-4 rounded-xl flex items-center gap-3 transition-all active:scale-[0.98] ${
-                        isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-white border border-slate-200'
-                      }`}
-                    >
-                      <div
-                        className="w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-                        style={{ borderColor: couleur }}
-                      >
-                        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: couleur }} />
-                      </div>
-                      <span className={`text-base flex-1 text-left ${textPrimary} font-medium`}>
-                        {nextTask.text}
-                      </span>
-                      <Check size={20} style={{ color: couleur }} />
-                    </button>
-
-                    {/* Other pending tasks - compact list */}
-                    {pendingTasks.length > 1 && (
-                      <div className="mt-3 space-y-1">
-                        {pendingTasks.slice(1, 4).map(task => (
-                          <button
-                            key={task.id}
-                            onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
-                            className={`w-full min-h-[40px] px-3 rounded-lg flex items-center gap-2 transition-all active:scale-[0.98] ${
-                              isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className={`w-4 h-4 rounded border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
-                            <span className={`text-sm flex-1 text-left truncate ${textMuted}`}>
-                              {task.text}
-                            </span>
-                          </button>
-                        ))}
-                        {pendingTasks.length > 4 && (
-                          <button
-                            onClick={() => setView(current.id)}
-                            className={`w-full py-2 text-xs font-medium ${textMuted} hover:underline text-center`}
-                          >
-                            Voir {pendingTasks.length - 4} autres tâches
-                          </button>
-                        )}
-                      </div>
+                    {dateFinFormatted && (
+                      <span className={`text-xs ${textMuted}`}>Fin: {dateFinFormatted}</span>
                     )}
                   </div>
-                )}
+                  <ChevronRight size={18} className={textMuted} />
+                </div>
 
-                {/* No tasks - gentle prompt */}
-                {tasksTotal === 0 && (
-                  <div className="p-4">
+                {/* Name + Client */}
+                <h3 className={`font-bold text-lg ${textPrimary}`}>{current.nom}</h3>
+                <p className={`text-sm ${textMuted} mb-3`}>{client?.nom || 'Sans client'}</p>
+
+                {/* Progress Bar */}
+                <div className={`mb-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className="h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(5, avancement))}%`, background: couleur }} />
+                </div>
+                <p className={`text-sm font-semibold mb-4`} style={{ color: couleur }}>{avancement}%</p>
+
+                {/* Équipe - Full names */}
+                <div className="mb-4">
+                  <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Équipe ({teamMembers.length})</p>
+                  {teamMembers.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {teamMembers.slice(0, 3).map(member => (
+                        <div key={member.id} className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>
+                            {member.prenom?.[0]}{member.nom?.[0]}
+                          </div>
+                          <span className={`text-sm ${textPrimary}`}>{member.prenom} {member.nom}</span>
+                          {member.role && <span className={`text-xs ${textMuted}`}>({member.role})</span>}
+                        </div>
+                      ))}
+                      {teamMembers.length > 3 && (
+                        <p className={`text-xs ${textMuted} pl-9`}>+{teamMembers.length - 3} autres</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className={`text-sm ${textMuted}`}>Aucune équipe assignée</p>
+                  )}
+                </div>
+
+                {/* Tasks with quick complete */}
+                <div>
+                  <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Tâches ({tasksDone}/{tasksTotal})</p>
+                  {pendingTasks.length > 0 ? (
+                    <div className="space-y-1">
+                      {pendingTasks.slice(0, 4).map(task => (
+                        <button
+                          key={task.id}
+                          onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
+                          className={`w-full min-h-[44px] py-2 px-3 rounded-lg flex items-center gap-3 text-left transition-all active:scale-[0.98] ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
+                        >
+                          <div className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center" style={{ borderColor: couleur }}>
+                            <Check size={12} className="opacity-0 group-hover:opacity-100" style={{ color: couleur }} />
+                          </div>
+                          <span className={`text-sm flex-1 ${textPrimary}`}>{task.text}</span>
+                          <Check size={18} style={{ color: couleur }} />
+                        </button>
+                      ))}
+                      {pendingTasks.length > 4 && (
+                        <p className={`text-xs ${textMuted} text-center py-1`}>+{pendingTasks.length - 4} autres</p>
+                      )}
+                    </div>
+                  ) : tasksTotal === 0 ? (
                     <button
                       onClick={(e) => { e.stopPropagation(); setView(current.id); }}
-                      className={`w-full py-4 rounded-xl border-2 border-dashed text-sm font-medium transition-colors ${
-                        isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                      }`}
+                      className={`w-full py-3 rounded-lg border-2 border-dashed text-sm ${isDark ? 'border-slate-600 text-slate-400' : 'border-slate-200 text-slate-500'}`}
                     >
-                      Définir les tâches pour ce chantier
+                      + Ajouter des tâches
                     </button>
-                  </div>
-                )}
-
-                {/* All tasks done - celebration */}
-                {tasksTotal > 0 && pendingTasks.length === 0 && (
-                  <div className="p-4">
-                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                      <p className={`text-sm font-medium ${textPrimary} mb-2`}>Toutes les tâches sont faites</p>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleQuickPhoto(); }}
-                        className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                        style={{ background: couleur }}
-                      >
-                        Prendre une photo
-                      </button>
+                  ) : (
+                    <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+                      <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Toutes les tâches terminées</p>
                     </div>
-                  </div>
-                )}
-
-                {/* Quick actions footer */}
-                <div className={`px-4 py-2 flex items-center justify-end gap-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                  <button onClick={(e) => { e.stopPropagation(); handleQuickPhoto(); }}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Photo">
-                    <Camera size={18} className={textMuted} />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setView(current.id); setActiveTab('notes'); }}
-                    className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Note">
-                    <StickyNote size={18} className={textMuted} />
-                  </button>
+                  )}
                 </div>
               </div>
             );
           })()}
 
+          {/* === SECTION: LISTE DES CHANTIERS === */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+            <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tous les chantiers</span>
+            <span className={`text-[10px] ${textMuted}`}>— {chantiers.length} projet{chantiers.length > 1 ? 's' : ''}</span>
+          </div>
           <div className="grid gap-3 sm:gap-4">
           {getSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
@@ -2113,33 +1919,47 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
             const budgetPrevu = devisLie?.total_ht || ch.budget_estime || 0;
             const hasAlert = bilan.tauxMarge < 0;
-            const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Termine' : 'Prospect';
+            const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
               ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
               : ch.statut === 'termine'
               ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600')
               : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
+
+            // Task counts
+            const allTasks = ch.taches || [];
+            const pendingTasks = allTasks.filter(t => !t.done);
+            const tasksDone = allTasks.filter(t => t.done).length;
+
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${hasAlert ? (isDark ? 'border-red-700' : 'border-red-300') : ''}`}>
-                {/* Header with status */}
-                <div className="flex items-start gap-2 mb-2">
-                  <div className="flex-1 min-w-0 overflow-hidden pr-1">
-                    <h3 className={`font-semibold text-base truncate ${textPrimary}`}>{ch.nom}</h3>
-                    <p className={`text-sm ${textMuted} truncate`}>{client?.nom || 'Sans client'}{ch.adresse ? ` - ${ch.adresse}` : ''}</p>
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md ${hasAlert ? (isDark ? 'border-red-700' : 'border-red-300') : ''}`}>
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <h3 className={`font-semibold truncate ${textPrimary}`}>{ch.nom}</h3>
+                    <p className={`text-xs ${textMuted} truncate`}>{client?.nom || 'Sans client'}</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${statusColor}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
                     {statusLabel}
                   </span>
                 </div>
+
                 {/* Stats row */}
-                <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                  <span className={`font-bold flex-shrink-0 ${getMargeColor(bilan.tauxMarge)}`}>{formatMoney(bilan.marge)}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-600') : bilan.tauxMarge < 15 ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-600') : (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600')}`}>{formatPct(bilan.tauxMarge)}</span>
-                  <span className={`text-sm ${textMuted} flex-1 text-right truncate min-w-0`}>
-                    {budgetPrevu > 0 ? `Budget: ${formatMoney(budgetPrevu)}` : bilan.revenuTotal > 0 ? `CA: ${formatMoney(bilan.revenuTotal)}` : ''}
-                  </span>
-                  {hasAlert && <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />}
-                  <ChevronRight size={16} className={`${textMuted} flex-shrink-0`} />
+                <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                  <div className="flex items-center gap-3">
+                    <span className={`font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
+                    {hasAlert && <AlertTriangle size={14} className="text-red-500" />}
+                    {/* Task indicator */}
+                    {allTasks.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <CheckSquare size={14} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
+                        <span className={`text-xs font-medium ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          {tasksDone}/{allTasks.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-sm ${textMuted}`}>{budgetPrevu > 0 ? formatMoney(budgetPrevu) : ''}</span>
                 </div>
               </div>
             );
@@ -2323,12 +2143,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 )}
 
-                {/* Empty state */}
+                {/* Empty state with CTA */}
                 {tasks.length === 0 && (
-                  <div className="text-center py-8">
-                    <CheckSquare size={40} className={`mx-auto mb-3 ${textMuted}`} />
-                    <p className={`font-medium ${textPrimary}`}>Aucune tâche</p>
-                    <p className={`text-sm ${textMuted}`}>Ajoutez des tâches pour suivre l'avancement</p>
+                  <div className={`text-center py-8 px-4 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                    <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                      <CheckSquare size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                    </div>
+                    <p className={`font-semibold mb-1 ${textPrimary}`}>Aucune tâche définie</p>
+                    <p className={`text-sm mb-4 ${textMuted}`}>Les tâches vous aident à suivre l'avancement du chantier</p>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      <button
+                        onClick={() => setShowTaskTemplates(true)}
+                        className="px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 text-white transition-all hover:opacity-90"
+                        style={{ background: couleur }}
+                      >
+                        <Sparkles size={16} /> Utiliser un modèle
+                      </button>
+                      <button
+                        onClick={() => document.querySelector('input[placeholder="Ajouter une tâche..."]')?.focus()}
+                        className={`px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                      >
+                        <Plus size={16} /> Créer manuellement
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

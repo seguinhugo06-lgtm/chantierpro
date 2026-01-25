@@ -1,67 +1,112 @@
-import { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, createContext, useContext, forwardRef } from 'react';
 import { X } from 'lucide-react';
-import { IconButton } from './Button';
+import { cn } from '../../lib/utils';
 
 /**
- * Modal - Accessible modal with focus trap and proper ARIA
- *
- * @param {boolean} isOpen - Controls visibility
- * @param {function} onClose - Called when modal should close
- * @param {string} title - Modal title (required for accessibility)
- * @param {string} size - 'sm' | 'md' | 'lg' | 'xl' | 'full'
- * @param {boolean} showClose - Show close button
- * @param {boolean} closeOnBackdrop - Close when clicking backdrop
- * @param {boolean} closeOnEscape - Close on Escape key
- * @param {boolean} bottomSheet - Mobile bottom sheet style
+ * Modal Context for sub-components
+ * @private
  */
-export default function Modal({
+const ModalContext = createContext(null);
+
+/**
+ * @typedef {Object} ModalProps
+ * @property {boolean} isOpen - Controls modal visibility
+ * @property {function} onClose - Called when modal should close
+ * @property {'sm'|'md'|'lg'|'xl'|'full'} [size='md'] - Modal size
+ * @property {boolean} [closeOnBackdrop=true] - Close when clicking backdrop
+ * @property {boolean} [closeOnEscape=true] - Close on ESC key
+ * @property {boolean} [showBackdrop=true] - Show backdrop overlay
+ * @property {boolean} [centered=true] - Center modal vertically
+ * @property {string} [className] - Additional CSS classes
+ * @property {React.ReactNode} children - Modal content
+ */
+
+/**
+ * Size configuration for modal widths
+ */
+const sizeClasses = {
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-full h-full m-0 rounded-none sm:m-4 sm:rounded-2xl sm:h-auto sm:max-h-[95vh]',
+};
+
+/**
+ * Modal - Accessible modal dialog component
+ *
+ * @description
+ * A fully accessible modal with focus trap, keyboard navigation,
+ * and scroll lock. Supports composable sub-components.
+ *
+ * @example
+ * // Basic usage with sub-components
+ * <Modal isOpen={isOpen} onClose={onClose}>
+ *   <ModalHeader>
+ *     <ModalTitle>Edit Profile</ModalTitle>
+ *     <ModalDescription>Update your information</ModalDescription>
+ *   </ModalHeader>
+ *   <ModalBody>
+ *     <form>...</form>
+ *   </ModalBody>
+ *   <ModalFooter>
+ *     <Button variant="ghost" onClick={onClose}>Cancel</Button>
+ *     <Button onClick={handleSave}>Save</Button>
+ *   </ModalFooter>
+ * </Modal>
+ *
+ * @example
+ * // Simple usage with title prop
+ * <Modal isOpen={isOpen} onClose={onClose} title="Confirm Action">
+ *   <p>Are you sure you want to continue?</p>
+ * </Modal>
+ *
+ * @param {ModalProps} props
+ */
+function Modal({
   isOpen,
   onClose,
-  title,
-  description,
-  children,
   size = 'md',
-  showClose = true,
   closeOnBackdrop = true,
   closeOnEscape = true,
+  showBackdrop = true,
+  centered = true,
+  className = '',
+  children,
+  // Legacy props for backwards compatibility
+  title,
+  description,
+  footer,
+  showClose = true,
   bottomSheet = true,
   isDark = false,
-  footer,
-  className = ''
 }) {
   const modalRef = useRef(null);
   const previousActiveElement = useRef(null);
+  const isAnimatingOut = useRef(false);
 
-  // Size classes
-  const sizeClasses = {
-    sm: 'sm:max-w-sm',
-    md: 'sm:max-w-lg',
-    lg: 'sm:max-w-2xl',
-    xl: 'sm:max-w-4xl',
-    full: 'sm:max-w-[95vw] sm:max-h-[95vh]'
-  };
-
-  // Theme classes
-  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
-  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
-
-  // Focus trap
+  /**
+   * Get all focusable elements within the modal
+   */
   const getFocusableElements = useCallback(() => {
     if (!modalRef.current) return [];
-    return modalRef.current.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
+    return Array.from(modalRef.current.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+    ));
   }, []);
 
+  /**
+   * Handle keyboard events (ESC and Tab for focus trap)
+   */
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape' && closeOnEscape) {
       e.preventDefault();
+      e.stopPropagation();
       onClose();
       return;
     }
 
+    // Focus trap
     if (e.key === 'Tab') {
       const focusable = getFocusableElements();
       if (focusable.length === 0) return;
@@ -83,13 +128,29 @@ export default function Modal({
     }
   }, [closeOnEscape, onClose, getFocusableElements]);
 
-  // Store previous focus and manage body scroll
+  /**
+   * Handle backdrop click
+   */
+  const handleBackdropClick = useCallback((e) => {
+    if (closeOnBackdrop && e.target === e.currentTarget) {
+      onClose();
+    }
+  }, [closeOnBackdrop, onClose]);
+
+  /**
+   * Manage focus and scroll lock
+   */
   useEffect(() => {
     if (isOpen) {
+      // Store current focus
       previousActiveElement.current = document.activeElement;
-      document.body.style.overflow = 'hidden';
 
-      // Focus first focusable element or modal itself
+      // Lock body scroll
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+
+      // Focus first focusable element or modal
       requestAnimationFrame(() => {
         const focusable = getFocusableElements();
         if (focusable.length > 0) {
@@ -98,135 +159,384 @@ export default function Modal({
           modalRef.current?.focus();
         }
       });
+
+      // Add keydown listener
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
     } else {
+      // Restore body scroll
       document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+
       // Restore focus
-      if (previousActiveElement.current) {
+      if (previousActiveElement.current && !isAnimatingOut.current) {
         previousActiveElement.current.focus();
       }
     }
 
     return () => {
       document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
     };
-  }, [isOpen, getFocusableElements]);
-
-  // Add keydown listener
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen, getFocusableElements, handleKeyDown]);
 
   if (!isOpen) return null;
 
-  const modalId = title ? `modal-${title.toLowerCase().replace(/\s+/g, '-')}` : 'modal';
+  // Generate IDs for ARIA
+  const modalId = `modal-${Math.random().toString(36).substr(2, 9)}`;
   const titleId = `${modalId}-title`;
-  const descId = `${modalId}-description`;
+  const descId = `${modalId}-desc`;
+
+  // Determine if using legacy mode (title/footer props) or composition mode
+  const isLegacyMode = title !== undefined || footer !== undefined;
+
+  // Theme classes for legacy mode
+  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const borderColor = isDark ? 'border-slate-700' : 'border-gray-200';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className={cn(
+        'fixed inset-0 z-modal flex',
+        centered ? 'items-center' : 'items-start pt-20',
+        'justify-center p-4',
+        bottomSheet && 'items-end sm:items-center'
+      )}
       role="presentation"
     >
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={closeOnBackdrop ? onClose : undefined}
-        aria-hidden="true"
-      />
+      {showBackdrop && (
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm modal-backdrop-enter"
+          onClick={handleBackdropClick}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Modal */}
+      {/* Modal Panel */}
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={title ? titleId : undefined}
-        aria-describedby={description ? descId : undefined}
+        aria-labelledby={titleId}
+        aria-describedby={descId}
         tabIndex={-1}
-        className={`
-          relative w-full ${sizeClasses[size]}
-          ${cardBg}
-          ${bottomSheet ? 'rounded-t-3xl sm:rounded-2xl' : 'rounded-2xl'}
-          shadow-2xl
-          flex flex-col
-          max-h-[90vh] sm:max-h-[85vh]
-          animate-slide-up sm:animate-scale-pop
-          ${className}
-        `.trim().replace(/\s+/g, ' ')}
+        className={cn(
+          'relative w-full',
+          sizeClasses[size],
+          cardBg,
+          'rounded-2xl shadow-2xl',
+          'flex flex-col',
+          'max-h-[90vh]',
+          'modal-enter',
+          bottomSheet && 'rounded-t-3xl sm:rounded-2xl',
+          className
+        )}
       >
-        {/* Header */}
-        {(title || showClose) && (
-          <div className={`flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b ${borderColor}`}>
-            <div className="flex-1 min-w-0">
-              {title && (
-                <h2 id={titleId} className={`text-lg font-bold ${textPrimary}`}>
-                  {title}
-                </h2>
+        <ModalContext.Provider value={{ titleId, descId, onClose, isDark, showClose }}>
+          {isLegacyMode ? (
+            // Legacy mode: render with title/footer props
+            <>
+              {(title || showClose) && (
+                <div className={cn('flex items-start justify-between gap-4 px-6 pt-6 pb-4 border-b', borderColor)}>
+                  <div className="flex-1 min-w-0">
+                    {title && (
+                      <h2 id={titleId} className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+                        {title}
+                      </h2>
+                    )}
+                    {description && (
+                      <p id={descId} className={cn('text-sm mt-1', isDark ? 'text-gray-400' : 'text-gray-600')}>
+                        {description}
+                      </p>
+                    )}
+                  </div>
+                  {showClose && (
+                    <button
+                      onClick={onClose}
+                      className={cn(
+                        'p-2 rounded-lg transition-colors',
+                        isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+                      )}
+                      aria-label="Fermer"
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
               )}
-              {description && (
-                <p id={descId} className={`text-sm mt-1 ${textMuted}`}>
-                  {description}
-                </p>
+              <div className="flex-1 overflow-y-auto px-6 py-4">
+                {children}
+              </div>
+              {footer && (
+                <div className={cn('px-6 py-4 border-t flex justify-end gap-3', borderColor)}>
+                  {footer}
+                </div>
               )}
-            </div>
-            {showClose && (
-              <IconButton
-                onClick={onClose}
-                isDark={isDark}
-                aria-label="Fermer"
-                size="sm"
-              >
-                <X size={20} />
-              </IconButton>
-            )}
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className={`px-5 py-4 border-t ${borderColor} flex justify-end gap-3`}>
-            {footer}
-          </div>
-        )}
+            </>
+          ) : (
+            // Composition mode: render children directly
+            children
+          )}
+        </ModalContext.Provider>
       </div>
 
       {/* Animations */}
       <style>{`
-        @keyframes fade-in {
+        @keyframes modal-backdrop-enter {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
+        @keyframes modal-enter {
+          from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
-        @keyframes slide-up {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+        @keyframes modal-exit {
+          from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(16px) scale(0.98);
+          }
         }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
+        .modal-backdrop-enter {
+          animation: modal-backdrop-enter 0.2s ease-out forwards;
         }
-        @keyframes scale-pop {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
+        .modal-enter {
+          animation: modal-enter 0.2s ease-out forwards;
         }
-        .animate-scale-pop {
-          animation: scale-pop 0.2s ease-out;
+        .modal-exit {
+          animation: modal-exit 0.15s ease-in forwards;
         }
       `}</style>
     </div>
   );
 }
 
+// ============ MODAL HEADER ============
+
 /**
- * ConfirmModal - Confirmation dialog with yes/no
+ * ModalHeader - Container for modal title and close button
+ *
+ * @example
+ * <ModalHeader>
+ *   <ModalTitle>Settings</ModalTitle>
+ *   <ModalDescription>Manage your preferences</ModalDescription>
+ * </ModalHeader>
+ *
+ * @example
+ * // With custom content
+ * <ModalHeader className="flex items-center gap-3">
+ *   <Icon />
+ *   <ModalTitle>With Icon</ModalTitle>
+ * </ModalHeader>
+ */
+export const ModalHeader = forwardRef(({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}, ref) => {
+  const context = useContext(ModalContext);
+  const isDark = context?.isDark ?? false;
+  const onClose = context?.onClose;
+  const showClose = context?.showClose ?? showCloseButton;
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'flex items-start justify-between gap-4 px-6 pt-6 pb-4',
+        'border-b',
+        isDark ? 'border-slate-700' : 'border-gray-200',
+        className
+      )}
+      {...props}
+    >
+      <div className="flex-1 min-w-0 space-y-1">
+        {children}
+      </div>
+      {showClose && onClose && (
+        <button
+          onClick={onClose}
+          className={cn(
+            'p-2 rounded-lg transition-colors flex-shrink-0',
+            isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+          )}
+          aria-label="Fermer"
+        >
+          <X size={20} />
+        </button>
+      )}
+    </div>
+  );
+});
+ModalHeader.displayName = 'ModalHeader';
+
+// ============ MODAL TITLE ============
+
+/**
+ * ModalTitle - Accessible modal title (h2)
+ *
+ * @example
+ * <ModalTitle>Edit Profile</ModalTitle>
+ */
+export const ModalTitle = forwardRef(({
+  className,
+  children,
+  ...props
+}, ref) => {
+  const context = useContext(ModalContext);
+  const isDark = context?.isDark ?? false;
+
+  return (
+    <h2
+      ref={ref}
+      id={context?.titleId}
+      className={cn(
+        'text-lg font-bold',
+        isDark ? 'text-white' : 'text-gray-900',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </h2>
+  );
+});
+ModalTitle.displayName = 'ModalTitle';
+
+// ============ MODAL DESCRIPTION ============
+
+/**
+ * ModalDescription - Modal subtitle/description text
+ *
+ * @example
+ * <ModalDescription>Update your account settings</ModalDescription>
+ */
+export const ModalDescription = forwardRef(({
+  className,
+  children,
+  ...props
+}, ref) => {
+  const context = useContext(ModalContext);
+  const isDark = context?.isDark ?? false;
+
+  return (
+    <p
+      ref={ref}
+      id={context?.descId}
+      className={cn(
+        'text-sm',
+        isDark ? 'text-gray-400' : 'text-gray-600',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </p>
+  );
+});
+ModalDescription.displayName = 'ModalDescription';
+
+// ============ MODAL BODY ============
+
+/**
+ * ModalBody - Scrollable content area
+ *
+ * @example
+ * <ModalBody>
+ *   <form>
+ *     <Input label="Name" />
+ *     <Input label="Email" />
+ *   </form>
+ * </ModalBody>
+ */
+export const ModalBody = forwardRef(({
+  className,
+  children,
+  ...props
+}, ref) => {
+  return (
+    <div
+      ref={ref}
+      className={cn('flex-1 overflow-y-auto px-6 py-4', className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+ModalBody.displayName = 'ModalBody';
+
+// ============ MODAL FOOTER ============
+
+/**
+ * ModalFooter - Action buttons container
+ *
+ * @example
+ * <ModalFooter>
+ *   <Button variant="ghost" onClick={onClose}>Cancel</Button>
+ *   <Button onClick={handleSave}>Save Changes</Button>
+ * </ModalFooter>
+ *
+ * @example
+ * // With divider
+ * <ModalFooter bordered>
+ *   <Button>Submit</Button>
+ * </ModalFooter>
+ */
+export const ModalFooter = forwardRef(({
+  className,
+  children,
+  bordered = true,
+  ...props
+}, ref) => {
+  const context = useContext(ModalContext);
+  const isDark = context?.isDark ?? false;
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'px-6 py-4 flex items-center justify-end gap-3',
+        bordered && 'border-t',
+        bordered && (isDark ? 'border-slate-700' : 'border-gray-200'),
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+});
+ModalFooter.displayName = 'ModalFooter';
+
+// ============ CONFIRM MODAL ============
+
+/**
+ * ConfirmModal - Pre-built confirmation dialog
+ *
+ * @example
+ * <ConfirmModal
+ *   isOpen={showConfirm}
+ *   onClose={() => setShowConfirm(false)}
+ *   onConfirm={handleDelete}
+ *   title="Delete Item"
+ *   message="Are you sure? This cannot be undone."
+ *   variant="danger"
+ * />
  */
 export function ConfirmModal({
   isOpen,
@@ -236,55 +546,70 @@ export function ConfirmModal({
   message,
   confirmText = 'Confirmer',
   cancelText = 'Annuler',
-  variant = 'danger', // 'danger' | 'warning' | 'info'
+  variant = 'danger',
   loading = false,
-  isDark = false
+  isDark = false,
 }) {
   const variantColors = {
-    danger: 'bg-red-500 hover:bg-red-600',
-    warning: 'bg-amber-500 hover:bg-amber-600',
-    info: 'bg-blue-500 hover:bg-blue-600'
+    danger: 'bg-danger-500 hover:bg-danger-600 focus:ring-danger-500',
+    warning: 'bg-warning-500 hover:bg-warning-600 focus:ring-warning-500',
+    info: 'bg-primary-500 hover:bg-primary-600 focus:ring-primary-500',
+    success: 'bg-success-500 hover:bg-success-600 focus:ring-success-500',
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      size="sm"
-      isDark={isDark}
-      footer={
-        <>
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className={`px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${variantColors[variant]} disabled:opacity-50`}
-          >
-            {loading ? 'Chargement...' : confirmText}
-          </button>
-        </>
-      }
-    >
-      <p className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-        {message}
-      </p>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" isDark={isDark}>
+      <ModalHeader showCloseButton={false}>
+        <ModalTitle>{title}</ModalTitle>
+      </ModalHeader>
+      <ModalBody>
+        <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
+          {message}
+        </p>
+      </ModalBody>
+      <ModalFooter>
+        <button
+          onClick={onClose}
+          disabled={loading}
+          className={cn(
+            'px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+            isDark
+              ? 'bg-slate-700 text-gray-200 hover:bg-slate-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+            'disabled:opacity-50'
+          )}
+        >
+          {cancelText}
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className={cn(
+            'px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors',
+            'focus:outline-none focus:ring-2 focus:ring-offset-2',
+            variantColors[variant],
+            'disabled:opacity-50'
+          )}
+        >
+          {loading ? 'Chargement...' : confirmText}
+        </button>
+      </ModalFooter>
     </Modal>
   );
 }
 
+// ============ ALERT MODAL ============
+
 /**
- * AlertModal - Simple alert/info modal
+ * AlertModal - Simple alert/information dialog
+ *
+ * @example
+ * <AlertModal
+ *   isOpen={showAlert}
+ *   onClose={() => setShowAlert(false)}
+ *   title="Success!"
+ *   message="Your changes have been saved."
+ * />
  */
 export function AlertModal({
   isOpen,
@@ -292,27 +617,28 @@ export function AlertModal({
   title,
   message,
   buttonText = 'OK',
-  isDark = false
+  isDark = false,
 }) {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      size="sm"
-      isDark={isDark}
-      footer={
+    <Modal isOpen={isOpen} onClose={onClose} size="sm" isDark={isDark}>
+      <ModalHeader showCloseButton={false}>
+        <ModalTitle>{title}</ModalTitle>
+      </ModalHeader>
+      <ModalBody>
+        <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
+          {message}
+        </p>
+      </ModalBody>
+      <ModalFooter>
         <button
           onClick={onClose}
-          className={`px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 transition-colors`}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors"
         >
           {buttonText}
         </button>
-      }
-    >
-      <p className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-        {message}
-      </p>
+      </ModalFooter>
     </Modal>
   );
 }
+
+export default Modal;

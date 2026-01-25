@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { auth } from './supabaseClient';
+import { auth, isDemo } from './supabaseClient';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -19,13 +19,16 @@ const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
 const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const VoiceJournal = lazy(() => import('./components/VoiceJournal'));
+const RentabilityDashboard = lazy(() => import('./components/RentabilityDashboard'));
+const AccountingIntegration = lazy(() => import('./components/AccountingIntegration'));
+const DesignSystemDemo = lazy(() => import('./components/DesignSystemDemo'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 
 // Theme classes helper
@@ -85,10 +88,12 @@ export default function App() {
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
   const [showVoiceJournal, setShowVoiceJournal] = useState(false);
+  const [showRentabilityDashboard, setShowRentabilityDashboard] = useState(false);
+  const [showAccountingIntegration, setShowAccountingIntegration] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('chantierpro_onboarding_complete'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('chantierpro_onboarding_complete'));
 
   // Settings state
   const [theme, setTheme] = useState('light');
@@ -206,11 +211,39 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ignore if typing in input/textarea
+      const target = e.target;
+      const tagName = target.tagName.toLowerCase();
+      const isInput = ['input', 'textarea', 'select'].includes(tagName) || target.isContentEditable;
+
       // Cmd/Ctrl + K for search
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setShowSearch(true);
+        return;
       }
+
+      // Cmd/Ctrl + D for new devis
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd' && !isInput) {
+        e.preventDefault();
+        setShowFABDevisWizard(true);
+        return;
+      }
+
+      // Cmd/Ctrl + H for new chantier
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h' && !isInput) {
+        e.preventDefault();
+        setShowFABQuickChantier(true);
+        return;
+      }
+
+      // Cmd/Ctrl + N for new client
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !isInput) {
+        e.preventDefault();
+        setShowFABQuickClient(true);
+        return;
+      }
+
       // Escape to close modals
       if (e.key === 'Escape') {
         setShowSearch(false);
@@ -368,7 +401,8 @@ export default function App() {
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'equipe', icon: HardHat, label: 'Equipe' },
     { id: 'admin', icon: HelpCircle, label: 'Aide Admin' },
-    { id: 'settings', icon: SettingsIcon, label: 'Parametres' }
+    { id: 'settings', icon: SettingsIcon, label: 'Parametres' },
+    { id: 'design-system', icon: Palette, label: 'Design System' }
   ];
   
   const couleur = entreprise.couleur || '#f97316';
@@ -645,7 +679,7 @@ export default function App() {
         <main id="main-content" className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={isDark}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} />}
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
@@ -654,6 +688,7 @@ export default function App() {
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
+              {page === 'design-system' && <DesignSystemDemo />}
             </Suspense>
           </ErrorBoundary>
         </main>
@@ -663,13 +698,16 @@ export default function App() {
           onNewDevis={() => setShowFABDevisWizard(true)}
           onNewClient={() => setShowFABQuickClient(true)}
           onNewChantier={() => setShowFABQuickChantier(true)}
+          onRentabilite={() => setShowRentabilityDashboard(true)}
+          onComptabilite={() => setShowAccountingIntegration(true)}
           isDark={isDark}
           couleur={couleur}
           hidden={
             createMode.devis || createMode.chantier || createMode.client ||
             selectedChantier !== null ||
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
-            showVoiceJournal || showSearch
+            showVoiceJournal || showSearch ||
+            showRentabilityDashboard || showAccountingIntegration
           }
         />
       </div>
@@ -790,6 +828,46 @@ export default function App() {
           couleur={couleur}
         />
       </Suspense>
+
+      {/* Rentability Dashboard Modal */}
+      {showRentabilityDashboard && (
+        <Suspense fallback={null}>
+          <RentabilityDashboard
+            chantiers={chantiers}
+            devis={devis}
+            depenses={depenses}
+            pointages={pointages}
+            equipe={equipe}
+            ajustements={ajustements}
+            modeDiscret={modeDiscret}
+            isDark={isDark}
+            couleur={couleur}
+            onClose={() => setShowRentabilityDashboard(false)}
+            onSelectChantier={(id) => {
+              setShowRentabilityDashboard(false);
+              setSelectedChantier(id);
+              setPage('chantiers');
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Accounting Integration Modal */}
+      {showAccountingIntegration && (
+        <Suspense fallback={null}>
+          <AccountingIntegration
+            isOpen={showAccountingIntegration}
+            onClose={() => setShowAccountingIntegration(false)}
+            devis={devis}
+            depenses={depenses}
+            clients={clients}
+            chantiers={chantiers}
+            entreprise={entreprise}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        </Suspense>
+      )}
 
       {/* Toast Notifications */}
       {toast && (

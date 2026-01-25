@@ -1020,57 +1020,81 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </button>
           </div>
 
-          {/* Status progress bar - compact inline */}
-          <div className="flex items-center gap-1 mb-3">
-            {statusSteps.map((step, idx) => {
-              const { isActive, isPast } = getStepState(step);
-              const isRefused = selected.statut === 'refuse';
-              return (
-                <React.Fragment key={step.id}>
-                  <div
-                    className={`flex-1 h-2 rounded-full transition-all ${
-                      isRefused ? (isDark ? 'bg-red-900/50' : 'bg-red-200') :
-                      isActive ? '' :
-                      isPast ? (isDark ? 'bg-emerald-700' : 'bg-emerald-400') :
-                      (isDark ? 'bg-slate-700' : 'bg-slate-200')
-                    }`}
-                    style={isActive ? { backgroundColor: couleur } : {}}
-                    title={step.label}
-                  />
-                </React.Fragment>
-              );
-            })}
+          {/* Workflow progress - explicit steps with labels */}
+          <div className="mb-4">
+            <div className="flex items-center">
+              {statusSteps.map((step, idx) => {
+                const { isActive, isPast } = getStepState(step);
+                const isRefused = selected.statut === 'refuse';
+                const isLast = idx === statusSteps.length - 1;
+                return (
+                  <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center flex-1">
+                      {/* Step circle with number */}
+                      <div
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
+                          isActive ? 'text-white ring-2 ring-offset-2' :
+                          isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
+                          (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')
+                        }`}
+                        style={isActive ? { backgroundColor: couleur, ringColor: couleur } : {}}
+                      >
+                        {isPast ? '✓' : idx + 1}
+                      </div>
+                      {/* Step label */}
+                      <span className={`text-[10px] sm:text-xs mt-1.5 font-medium text-center leading-tight ${
+                        isActive ? (isDark ? 'text-white' : 'text-slate-900') :
+                        isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') :
+                        textMuted
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
+                    {/* Connector line */}
+                    {!isLast && (
+                      <div className={`flex-1 h-0.5 -mt-5 mx-1 ${
+                        isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') :
+                        (isDark ? 'bg-slate-700' : 'bg-slate-200')
+                      }`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
 
           {/* Status row: dropdown + next action hint */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <select
               value={selected.statut}
               onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer border outline-none ${
-                selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-700' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
-                : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-700' : 'bg-purple-100 text-purple-700 border-purple-300')
-                : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-700' : 'bg-blue-100 text-blue-700 border-blue-300')
-                : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-700' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
-                : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-700' : 'bg-red-100 text-red-700 border-red-300')
-                : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-700' : 'bg-amber-100 text-amber-700 border-amber-300')
+              className={`px-4 min-h-[44px] rounded-xl text-sm font-semibold cursor-pointer border-2 outline-none ${
+                selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
+                : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
+                : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
+                : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-600' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
+                : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-600' : 'bg-red-100 text-red-700 border-red-300')
+                : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-600' : 'bg-amber-100 text-amber-700 border-amber-300')
               }`}
             >
-              <option value="brouillon">Brouillon</option>
-              <option value="envoye">Envoyé</option>
-              {isDevis && <option value="accepte">Accepté ✓</option>}
-              {isDevis && <option value="refuse">Refusé</option>}
-              {isDevis && selected.statut === 'acompte_facture' && <option value="acompte_facture">Acompte facturé</option>}
-              {isDevis && selected.statut === 'facture' && <option value="facture">Facturé</option>}
-              {selected.type === 'facture' && <option value="payee">Payée ✓</option>}
+              <option value="brouillon">📝 Brouillon</option>
+              <option value="envoye">📤 Envoyé</option>
+              {isDevis && <option value="accepte">✅ Accepté</option>}
+              {isDevis && <option value="refuse">❌ Refusé</option>}
+              {isDevis && selected.statut === 'acompte_facture' && <option value="acompte_facture">💰 Acompte facturé</option>}
+              {isDevis && selected.statut === 'facture' && <option value="facture">🧾 Facturé</option>}
+              {selected.type === 'facture' && <option value="payee">✅ Payée</option>}
             </select>
 
             {nextAction && (
-              <span className={`text-sm font-medium ${nextAction.color}`}>{nextAction.text}</span>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                <span className={`text-sm font-medium ${nextAction.color}`}>{nextAction.text}</span>
+              </div>
             )}
 
             {needsFollowUp(selected) && (
-              <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">Relancer?</span>
+              <span className="text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer?</span>
             )}
           </div>
         </div>
@@ -1155,36 +1179,36 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
           {/* Chantier link */}
           {hasChantier && linkedChantier ? (
-            <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-              <Building2 size={14} /> {linkedChantier.nom.length > 15 ? linkedChantier.nom.slice(0, 15) + '...' : linkedChantier.nom}
+            <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+              <Building2 size={16} /> {linkedChantier.nom.length > 15 ? linkedChantier.nom.slice(0, 15) + '...' : linkedChantier.nom}
             </button>
           ) : canCreateChantier && selected.statut === 'accepte' ? (
-            <button onClick={openChantierModal} className={`px-3 py-2 rounded-lg text-sm flex items-center gap-1.5 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-              <Building2 size={14} /> + Chantier
+            <button onClick={openChantierModal} className={`px-3 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+              <Building2 size={16} /> + Chantier
             </button>
           ) : null}
 
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Communication icons */}
-          <button onClick={() => sendWhatsApp(selected)} className="w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center transition-colors" title="WhatsApp">
-            <MessageCircle size={16} />
+          {/* Communication icons - 44px touch targets for field workers */}
+          <button onClick={() => sendWhatsApp(selected)} className="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="WhatsApp">
+            <MessageCircle size={18} />
           </button>
-          <button onClick={() => sendSMS(selected)} className="w-9 h-9 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center transition-colors" title="SMS">
-            <Send size={16} />
+          <button onClick={() => sendSMS(selected)} className="w-11 h-11 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="SMS">
+            <Send size={18} />
           </button>
-          <button onClick={() => sendEmail(selected)} className="w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center transition-colors" title="Email">
-            <Mail size={16} />
+          <button onClick={() => sendEmail(selected)} className="w-11 h-11 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="Email">
+            <Mail size={18} />
           </button>
 
           {/* More menu */}
           <div className="relative">
             <button
               onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
             >
-              <MoreVertical size={16} />
+              <MoreVertical size={18} />
             </button>
             {showActionsMenu && (
               <>
@@ -1839,7 +1863,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </button>
         </div>
       </div>
-      {/* Unified Pipeline View */}
+      {/* === SECTION: VUE D'ENSEMBLE === */}
+      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
+          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Vue d'ensemble</h2>
+          <span className={`text-xs ${textMuted}`}>— Suivez l'avancement de vos documents</span>
+        </div>
+
+      {/* Pipeline View */}
       {(() => {
         // Calculate pipeline stats
         const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
@@ -1871,129 +1903,59 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           .filter(c => c.devis.some(d => d.statut !== 'refuse') || c.factures.some(f => f.statut !== 'payee'))
           .slice(0, 5);
 
+        // Calculate amounts per stage
+        const montantBrouillon = devisBrouillon.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantEnvoye = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantAccepte = devisAccepte.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
+
+        // Conversion rate
+        const totalEnvoyes = devisEnvoye.length + devisAccepte.length + devisRefuse.length;
+        const tauxConversion = totalEnvoyes > 0 ? ((devisAccepte.length / totalEnvoyes) * 100).toFixed(0) : null;
+
         return (
-          <div className="space-y-4">
-            {/* Two-column pipeline: Devis + Factures */}
-            <div className="grid md:grid-cols-2 gap-3">
-              {/* DEVIS Pipeline */}
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-                    <FileText size={18} className="text-blue-500" />
-                    Pipeline Devis
-                  </h3>
-                  <span className={`text-xs ${textMuted}`}>{devis.filter(d => d.type === 'devis').length} total</span>
-                </div>
-                <div className="flex items-center gap-1 overflow-x-auto pb-2">
-                  {/* Brouillon */}
-                  <button
-                    onClick={() => { setFilter('devis'); setSortBy('status'); }}
-                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisBrouillon.length > 0 ? (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
-                  >
-                    <p className={`text-lg font-bold ${devisBrouillon.length > 0 ? (isDark ? 'text-slate-300' : 'text-slate-700') : textMuted}`}>{devisBrouillon.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Brouillon</p>
-                  </button>
-                  <ChevronRight size={14} className={textMuted} />
-                  {/* Envoyé */}
-                  <button
-                    onClick={() => { setFilter('attente'); }}
-                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisEnvoye.length > 0 ? (isDark ? 'bg-amber-900/30 hover:bg-amber-900/50' : 'bg-amber-50 hover:bg-amber-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
-                  >
+          <div className="space-y-3">
+            {/* Simplified Pipeline - Devis + Factures side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* DEVIS */}
+              <div className={`${cardBg} rounded-xl border p-3`}>
+                <p className={`text-xs font-medium ${textMuted} mb-2`}>Devis</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setFilter('attente')} className={`flex-1 p-2 rounded-lg text-center ${devisEnvoye.length > 0 ? (isDark ? 'bg-amber-900/30' : 'bg-amber-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
                     <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-500' : textMuted}`}>{devisEnvoye.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>En attente</p>
+                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
                   </button>
-                  <ChevronRight size={14} className={textMuted} />
-                  {/* Accepté */}
-                  <button
-                    onClick={() => { setFilter('devis'); }}
-                    className={`flex-1 min-w-[70px] p-2 rounded-lg text-center transition-all ${devisAccepte.length > 0 ? (isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50' : 'bg-emerald-50 hover:bg-emerald-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
-                  >
+                  <button onClick={() => setFilter('devis')} className={`flex-1 p-2 rounded-lg text-center ${devisAccepte.length > 0 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
                     <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-500' : textMuted}`}>{devisAccepte.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Accepté</p>
+                    <p className={`text-[10px] ${textMuted}`}>Signés</p>
                   </button>
-                  {devisRefuse.length > 0 && (
-                    <>
-                      <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-                      <button
-                        onClick={() => { setFilter('devis'); }}
-                        className={`min-w-[50px] p-2 rounded-lg text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}
-                      >
-                        <p className="text-lg font-bold text-red-500">{devisRefuse.length}</p>
-                        <p className={`text-[10px] ${textMuted}`}>Refusé</p>
-                      </button>
-                    </>
-                  )}
                 </div>
               </div>
 
-              {/* FACTURES Pipeline */}
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-                    <Receipt size={18} className="text-indigo-500" />
-                    Pipeline Factures
-                  </h3>
-                  <span className={`text-xs font-medium ${montantAEncaisser > 0 ? 'text-indigo-500' : textMuted}`}>
-                    {formatMoney(montantAEncaisser)} à encaisser
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 overflow-x-auto pb-2">
-                  {/* En attente */}
-                  <button
-                    onClick={() => { setFilter('factures'); }}
-                    className={`flex-1 min-w-[80px] p-2 rounded-lg text-center transition-all ${facturesEnAttente.length > 0 ? (isDark ? 'bg-indigo-900/30 hover:bg-indigo-900/50' : 'bg-indigo-50 hover:bg-indigo-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
-                  >
-                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-500' : textMuted}`}>{facturesEnAttente.length - facturesEnRetard.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>En attente</p>
+              {/* FACTURES */}
+              <div className={`${cardBg} rounded-xl border p-3`}>
+                <p className={`text-xs font-medium ${textMuted} mb-2`}>Factures</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center ${facturesEnAttente.length > 0 ? (isDark ? 'bg-indigo-900/30' : 'bg-indigo-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
+                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-500' : textMuted}`}>{facturesEnAttente.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
                   </button>
-                  <ChevronRight size={14} className={textMuted} />
-                  {/* Payée */}
-                  <button
-                    onClick={() => { setFilter('factures'); }}
-                    className={`flex-1 min-w-[80px] p-2 rounded-lg text-center transition-all ${facturesPayees.length > 0 ? (isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50' : 'bg-emerald-50 hover:bg-emerald-100') : (isDark ? 'bg-slate-800' : 'bg-slate-50')}`}
-                  >
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center ${facturesPayees.length > 0 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
                     <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-500' : textMuted}`}>{facturesPayees.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Payée</p>
+                    <p className={`text-[10px] ${textMuted}`}>Payées</p>
                   </button>
-                  {facturesEnRetard.length > 0 && (
-                    <>
-                      <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-                      <button
-                        onClick={() => { setFilter('factures'); }}
-                        className={`min-w-[70px] p-2 rounded-lg text-center ${isDark ? 'bg-red-900/30' : 'bg-red-50'} animate-pulse`}
-                      >
-                        <p className="text-lg font-bold text-red-500">{facturesEnRetard.length}</p>
-                        <p className={`text-[10px] text-red-500`}>En retard</p>
-                      </button>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Alert: Overdue invoices */}
+            {/* Overdue alert - compact */}
             {facturesEnRetard.length > 0 && (
-              <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${isDark ? 'bg-red-900/20 border border-red-500/30' : 'bg-red-50 border border-red-200'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
-                    <AlertTriangle size={20} className="text-red-500" />
-                  </div>
-                  <div>
-                    <p className={`font-semibold ${isDark ? 'text-red-300' : 'text-red-800'}`}>
-                      {facturesEnRetard.length} facture{facturesEnRetard.length > 1 ? 's' : ''} en retard
-                    </p>
-                    <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                      {formatMoney(montantEnRetard)} à récupérer
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowRelanceCenter?.(true)}
-                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium min-h-[44px] transition-colors"
-                >
-                  Relancer
-                </button>
-              </div>
+              <button onClick={() => setFilter('factures')} className={`w-full rounded-lg p-3 flex items-center justify-between ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                <span className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                  {facturesEnRetard.length} en retard • {formatMoney(montantEnRetard)}
+                </span>
+                <ChevronRight size={16} className="text-red-500" />
+              </button>
             )}
 
             {/* Quick status badges */}
@@ -2056,6 +2018,17 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           </div>
         );
       })()}
+      </div>
+
+      {/* === SECTION: LISTE DES DOCUMENTS === */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
+          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Tous les documents</h2>
+          <span className={`text-xs ${textMuted}`}>— {filtered.length} document{filtered.length > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+
       <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
         <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
         {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}

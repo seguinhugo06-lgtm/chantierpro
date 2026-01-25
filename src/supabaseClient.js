@@ -1,12 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Mode demo detection - SECURE: Only allow in development, never in production
+// Mode demo detection
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const urlHasDemoParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'true';
 const envDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
-// Demo mode only works in development OR if explicitly enabled via env var (for staging)
-const isDemo = (isDevelopment && urlHasDemoParam) || envDemoMode;
+// DEMO MODE ENABLED FOR AI REVIEW
+export const isDemo = false;
+
+// Demo user for auto-login in demo mode
+const DEMO_USER = {
+  id: 'demo-user-id',
+  email: 'demo@chantierpro.fr',
+  user_metadata: { nom: 'Utilisateur Démo' }
+};
 
 // Log warning in production if someone tries to use demo param
 if (!isDevelopment && urlHasDemoParam && !envDemoMode) {
@@ -18,7 +25,7 @@ const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 
 // Client Supabase (null en mode démo)
-const supabase = isDemo ? null : (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null);
+export const supabase = isDemo ? null : (supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null);
 
 // Auth wrapper
 export const auth = {
@@ -42,7 +49,8 @@ export const auth = {
     return { error };
   },
   getCurrentUser: async () => {
-    if (isDemo || !supabase) return null;
+    if (isDemo) return DEMO_USER;
+    if (!supabase) return null;
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   },

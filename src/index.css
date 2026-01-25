@@ -1,3 +1,5 @@
+@import './styles/design-tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -355,4 +357,394 @@ button {
 .badge-fixed {
   min-width: 20px;
   text-align: center;
+}
+
+/* Value change animations for real-time feedback */
+@keyframes value-increase {
+  0% {
+    color: inherit;
+    transform: scale(1);
+  }
+  25% {
+    color: #10b981;
+    transform: scale(1.05);
+  }
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+
+@keyframes value-decrease {
+  0% {
+    color: inherit;
+    transform: scale(1);
+  }
+  25% {
+    color: #ef4444;
+    transform: scale(0.95);
+  }
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+
+.animate-value-increase {
+  animation: value-increase 0.4s ease-out;
+}
+
+.animate-value-decrease {
+  animation: value-decrease 0.4s ease-out;
+}
+
+/* Total update glow */
+@keyframes total-glow {
+  0% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.4);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.animate-total-glow {
+  animation: total-glow 0.6s ease-out;
+}
+
+/* Success checkmark animation */
+@keyframes success-check {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-success-check {
+  animation: success-check 0.4s ease-out forwards;
+}
+
+/* Delta badge animation (shows +150€ briefly) */
+@keyframes delta-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.8);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.8);
+  }
+}
+
+.animate-delta-pop {
+  animation: delta-pop 1.5s ease-out forwards;
+}
+
+/* Input focus glow */
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+/* Card hover lift - subtle transform */
+.card-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Button press effect */
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Smooth number transitions */
+.number-smooth {
+  transition: color 0.2s ease;
+}
+
+/* Respect user's motion preferences for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep essential feedback visible but instant */
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin {
+    animation: none !important;
+  }
+}
+
+/* Screen reader only - visible on focus */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.focus\:not-sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ============================================
+   FullCalendar Custom Styles
+   ============================================ */
+
+/* Base calendar styles */
+.fc {
+  --fc-border-color: #e5e7eb;
+  --fc-button-text-color: #374151;
+  --fc-button-bg-color: #f9fafb;
+  --fc-button-border-color: #d1d5db;
+  --fc-button-hover-bg-color: #f3f4f6;
+  --fc-button-hover-border-color: #9ca3af;
+  --fc-button-active-bg-color: #e5e7eb;
+  --fc-today-bg-color: rgba(249, 115, 22, 0.08);
+  --fc-neutral-bg-color: #f9fafb;
+  --fc-list-event-hover-bg-color: #f3f4f6;
+  --fc-page-bg-color: #ffffff;
+  font-family: inherit;
+}
+
+/* Dark mode */
+.dark .fc {
+  --fc-border-color: #334155;
+  --fc-button-text-color: #e2e8f0;
+  --fc-button-bg-color: #1e293b;
+  --fc-button-border-color: #475569;
+  --fc-button-hover-bg-color: #334155;
+  --fc-button-hover-border-color: #64748b;
+  --fc-button-active-bg-color: #475569;
+  --fc-today-bg-color: rgba(249, 115, 22, 0.15);
+  --fc-neutral-bg-color: #0f172a;
+  --fc-list-event-hover-bg-color: #1e293b;
+  --fc-page-bg-color: #0f172a;
+}
+
+/* Day headers */
+.fc .fc-col-header-cell {
+  padding: 0.75rem 0;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.dark .fc .fc-col-header-cell {
+  color: #9ca3af;
+}
+
+/* Day cells */
+.fc .fc-daygrid-day {
+  min-height: 100px;
+}
+
+.fc .fc-daygrid-day-frame {
+  padding: 0.25rem;
+}
+
+.fc .fc-daygrid-day-number {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dark .fc .fc-daygrid-day-number {
+  color: #e2e8f0;
+}
+
+/* Today highlight */
+.fc .fc-day-today {
+  background-color: var(--fc-today-bg-color) !important;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  background-color: #f97316;
+  color: white;
+  border-radius: 9999px;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Events */
+.fc .fc-event {
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.25rem;
+  border-width: 0;
+  border-left-width: 3px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fc .fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.fc .fc-event-main {
+  padding: 0.125rem;
+}
+
+.fc .fc-event-title {
+  font-weight: 600;
+}
+
+.fc .fc-event-time {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Time grid */
+.fc .fc-timegrid-slot {
+  height: 3rem;
+}
+
+.fc .fc-timegrid-slot-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.dark .fc .fc-timegrid-slot-label {
+  color: #9ca3af;
+}
+
+/* Now indicator */
+.fc .fc-timegrid-now-indicator-line {
+  border-color: #ef4444;
+  border-width: 2px;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
+
+/* More link */
+.fc .fc-more-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #f97316;
+  padding: 0.25rem;
+}
+
+.fc .fc-more-link:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}
+
+/* Popover */
+.fc .fc-popover {
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--fc-border-color);
+}
+
+.fc .fc-popover-header {
+  background: var(--fc-neutral-bg-color);
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.fc .fc-popover-body {
+  padding: 0.5rem;
+}
+
+/* Drag and drop */
+.fc .fc-event.fc-event-dragging {
+  opacity: 0.8;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.fc .fc-event.fc-event-resizing {
+  opacity: 0.9;
+}
+
+/* Selection */
+.fc .fc-highlight {
+  background: rgba(249, 115, 22, 0.15);
+}
+
+/* Scrollbar in calendar */
+.fc .fc-scroller {
+  scrollbar-width: thin;
+}
+
+.fc .fc-scroller::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 3px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .fc .fc-daygrid-day {
+    min-height: 60px;
+  }
+
+  .fc .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    padding: 0.25rem;
+  }
+
+  .fc .fc-event {
+    font-size: 0.625rem;
+  }
+
+  .fc .fc-col-header-cell {
+    font-size: 0.625rem;
+    padding: 0.5rem 0;
+  }
 }

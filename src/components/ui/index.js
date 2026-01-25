@@ -1,61 +1,55 @@
-/**
- * UI Components Index
- * Import all shared components from here
- *
- * Usage:
- * import { Button, Input, Modal, Card } from '@/components/ui';
- * or
- * import { Button, IconButton } from '@/components/ui/Button';
- */
-
-// Button components
-export { default as Button, IconButton } from './Button';
-
-// Input components
-export { default as Input, Textarea, Select } from './Input';
-
-// Modal components
-export { default as Modal, ConfirmModal, AlertModal } from './Modal';
-
-// Card components
+// ============ CORE COMPONENTS ============
+export { Button, IconButton } from './Button';
 export {
-  default as Card,
+  Card,
   CardHeader,
   CardContent,
   CardFooter,
-  StatCard,
-  SelectableCard
 } from './Card';
+export { Badge } from './Badge';
 
-// Loading components
+// ============ FORM COMPONENTS ============
 export {
-  default as LoadingOverlay,
-  Spinner,
-  LoadingButton,
-  Skeleton,
-  SkeletonCard,
-  SkeletonList,
-  PageLoader,
-  InlineLoader
-} from './Loading';
+  default as Input,
+  Textarea,
+  Select,
+  SearchInput,
+  PasswordInput,
+  NumberInput,
+} from './Input';
+export { Checkbox, Radio } from './Checkbox';
+export { Switch } from './Switch';
 
-// Error components
-export {
-  default as ErrorBoundary,
-  withErrorBoundary,
-  useErrorHandler
-} from './ErrorBoundary';
+// ============ FEEDBACK COMPONENTS ============
+export { Alert } from './Alert';
+export { default as Toast } from './Toast';
+export { default as ToastContainer } from './ToastContainer';
+export { default as Loading } from './Loading';
+export { default as Skeleton } from './Skeleton';
+export { default as Progress } from './Progress';
 
-// Toast components
-export {
-  default as Toast,
-  ToastContainer,
-  Snackbar
-} from './Toast';
+// ============ NAVIGATION COMPONENTS ============
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs';
 
-// Empty state components
+// ============ OVERLAY COMPONENTS ============
 export {
-  default as EmptyState,
-  SearchEmptyState,
-  ErrorEmptyState
-} from './EmptyState';
+  default as Modal,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalFooter,
+  ConfirmModal,
+  AlertModal,
+} from './Modal';
+export { default as ModalContainer } from './ModalContainer';
+export { Tooltip } from './Tooltip';
+
+// ============ DATA DISPLAY ============
+export { default as Avatar } from './Avatar';
+export { default as EmptyState } from './EmptyState';
+export { default as ResponsiveTable } from './ResponsiveTable';
+
+// ============ UTILITY COMPONENTS ============
+export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as OfflineIndicator } from './OfflineIndicator';

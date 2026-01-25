@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Paiement recu - Merci !</title>
+  <style type="text/css">
+    body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f4f4f5; }
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; padding: 10px !important; }
+      .content { padding: 20px !important; }
+      .button { display: block !important; width: 100% !important; text-align: center !important; }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: Arial, Helvetica, sans-serif;">
+  <div style="display: none; max-height: 0; overflow: hidden;">
+    Paiement de {{amount}} confirme - Facture #{{facture_number}} - Merci !
+  </div>
+
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f4f4f5;">
+    <tr>
+      <td align="center" style="padding: 40px 10px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="container" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+
+          <!-- Header green (success) -->
+          <tr>
+            <td align="center" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 40px;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">ChantierPro</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td class="content" style="padding: 40px;">
+              <!-- Success icon -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom: 25px;">
+                    <div style="width: 80px; height: 80px; background-color: #ecfdf5; border-radius: 50%; display: inline-block; text-align: center; line-height: 80px; border: 3px solid #10b981;">
+                      <span style="font-size: 40px;">&#10003;</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 24px; font-weight: 600; text-align: center;">
+                Paiement recu !
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Bonjour {{client_name}},
+              </p>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                Nous avons bien recu votre paiement. Merci !
+              </p>
+
+              <!-- Payment confirmation box -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0; border: 2px solid #10b981; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="background-color: #ecfdf5; padding: 25px; text-align: center;">
+                    <p style="margin: 0 0 5px 0; color: #065f46; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Montant recu</p>
+                    <p style="margin: 0; font-size: 36px; font-weight: 700; color: #10b981;">{{amount}}</p>
+                    <p style="margin: 10px 0 0 0; color: #065f46; font-size: 14px;">&#10003; Paiement confirme</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Details -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 15px 20px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <strong style="color: #374151;">Facture</strong>
+                  </td>
+                  <td style="padding: 15px 20px; border-bottom: 1px solid #e5e7eb; color: #1f2937; font-weight: 600;">
+                    #{{facture_number}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 15px 20px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <strong style="color: #374151;">Date paiement</strong>
+                  </td>
+                  <td style="padding: 15px 20px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">
+                    {{payment_date}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 15px 20px; background-color: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                    <strong style="color: #374151;">Mode de paiement</strong>
+                  </td>
+                  <td style="padding: 15px 20px; border-bottom: 1px solid #e5e7eb; color: #4b5563;">
+                    {{payment_method}}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 15px 20px; background-color: #f9fafb;">
+                    <strong style="color: #374151;">Reference</strong>
+                  </td>
+                  <td style="padding: 15px 20px; color: #4b5563; font-family: monospace;">
+                    {{transaction_id}}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Receipt note -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 25px 0; background-color: #f0fdf4; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #166534; font-size: 14px;">
+                      &#128196; Votre recu est disponible dans votre <a href="{{portal_url}}" style="color: #166534; font-weight: 600;">espace client</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" style="border-radius: 8px; background-color: #10b981;">
+                          <a href="{{portal_url}}" target="_blank" class="button" style="display: inline-block; padding: 16px 32px; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+                            Voir mon espace client
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Signature -->
+              <table border="0" cellpadding="0" cellspacing="0" style="margin-top: 35px; padding-top: 25px; border-top: 1px solid #e5e7eb;" width="100%">
+                <tr>
+                  <td style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+                    <p style="margin: 0 0 10px 0;">Merci pour votre confiance !</p>
+                    <p style="margin: 0; font-weight: 600; color: #1f2937;">{{artisan_name}}</p>
+                    <p style="margin: 5px 0 0 0;">{{artisan_phone}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 25px 40px; border-top: 1px solid #e5e7eb;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center" style="color: #9ca3af; font-size: 12px; line-height: 1.6;">
+                    <p style="margin: 0 0 10px 0;">Cet email a ete envoye automatiquement par ChantierPro</p>
+                    <p style="margin: 0;">
+                      <a href="{{portal_url}}" style="color: #10b981; text-decoration: none;">Voir mon espace client</a>
+                      &nbsp;&bull;&nbsp;
+                      <a href="mailto:{{artisan_email}}" style="color: #10b981; text-decoration: none;">Contacter {{artisan_name}}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="600" class="container">
+          <tr>
+            <td align="center" style="padding: 20px; color: #9ca3af; font-size: 11px;">
+              &copy; {{year}} ChantierPro. Tous droits reserves.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -44,7 +44,7 @@ export default function TVAManager({
   const [selectedPeriod, setSelectedPeriod] = useState('T1-2026');
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
 

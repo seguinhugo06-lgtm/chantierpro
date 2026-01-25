@@ -52,7 +52,7 @@ function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
   });
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300';
 
@@ -199,7 +199,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
   const [snoozed, setSnoozed] = useState({});
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
 
   const today = new Date();

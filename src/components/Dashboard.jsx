@@ -1,13 +1,59 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown, PieChart as PieChartIcon, Activity, Building2, Mail, Phone, Bell } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertCircle, CheckCircle, FileText, Hammer, Calendar, Users, Eye, EyeOff, Plus, ArrowRight, Trophy, AlertTriangle, ChevronRight, Sparkles, Target, Wallet, CreditCard, PiggyBank, Receipt, Send, ArrowUpRight, Star, Medal, Award, HelpCircle, X, Lightbulb, BookOpen, Home, Package, Settings, BarChart3, ArrowLeft, Info, Zap, Shield, TrendingDown as TrendDown, PieChart as PieChartIcon, Activity, Building2, Mail, Phone, Bell, CloudRain, Sun, Cloud, Wind, Droplets, Camera, MapPin, Thermometer, Search, ChevronDown, MoreHorizontal, HardHat, Banknote, RefreshCw, ExternalLink, Navigation } from 'lucide-react';
 import RentabilityDashboard from './RentabilityDashboard';
 import AccountingIntegration from './AccountingIntegration';
 import MorningBrief from './MorningBrief';
 import { getPendingRelances, formatRelanceForDisplay, RELANCE_TEMPLATES } from '../services/RelanceService';
+import { WeatherAlertsWidget } from './dashboard';
+
+// ═══════════════════════════════════════════════════════════════════
+// MEMOIZED COMPONENTS & PURE UTILITIES (extracted for performance)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Pure utility function for margin color - no dependencies on component state
+ */
+const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
+
+/**
+ * KPICard - Memoized card component for key performance indicators
+ */
+const KPICard = memo(function KPICard({ icon: Icon, label, value, color, onClick, clickable, cardBg, textMuted, textPrimary }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`rounded-xl border p-4 ${cardBg} transition-all duration-200 ${clickable ? 'cursor-pointer hover:shadow-md' : ''}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg" style={{ background: `${color}15` }}>
+          <Icon size={18} style={{ color }} />
+        </div>
+        <div>
+          <p className={`text-xs ${textMuted}`}>{label}</p>
+          <p className="text-lg font-bold" style={{ color }}>{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/**
+ * ModalOverlay - Memoized modal wrapper component
+ */
+const ModalOverlay = memo(function ModalOverlay({ show, onClose, children, isDark }) {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  );
+});
 
 
-export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp }) {
+export default function Dashboard({ chantiers = [], clients = [], devis = [], events = [], depenses = [], pointages = [], equipe = [], ajustements = [], entreprise, getChantierBilan, couleur, modeDiscret, setModeDiscret, setActiveModule, setSelectedChantier, setPage, setSelectedDevis, setCreateMode, isDark, showHelp = false, setShowHelp, user }) {
   const [todoFilter, setTodoFilter] = useState('all');
   const [showCADetail, setShowCADetail] = useState(null); // 'ca' | 'month' | null
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -17,6 +63,40 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
   const [showMargeDetail, setShowMargeDetail] = useState(false);
   const [showRentabilityDashboard, setShowRentabilityDashboard] = useState(false);
   const [showAccountingIntegration, setShowAccountingIntegration] = useState(false);
+
+  // Weather state - intelligent contextual weather for artisans
+  const [weather, setWeather] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('month'); // day, week, month, quarter, year
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchFocus, setShowSearchFocus] = useState(false);
+
+  // Simulate weather data with 7-day forecast
+  useEffect(() => {
+    const conditions = ['sunny', 'cloudy', 'rainy', 'partly_cloudy'];
+    const icons = { sunny: Sun, cloudy: Cloud, rainy: CloudRain, partly_cloudy: Cloud };
+    const mockWeather = {
+      temp: 18,
+      feelsLike: 16,
+      condition: 'sunny',
+      humidity: 65,
+      wind: 12,
+      precipitation: 10,
+      icon: Sun,
+      city: entreprise?.ville || 'Bordeaux',
+      forecast: [
+        { day: 'Lun', temp: 18, icon: Sun, condition: 'sunny' },
+        { day: 'Mar', temp: 15, icon: Cloud, condition: 'cloudy' },
+        { day: 'Mer', temp: 12, icon: CloudRain, condition: 'rainy' },
+        { day: 'Jeu', temp: 17, icon: Sun, condition: 'sunny' },
+        { day: 'Ven', temp: 16, icon: Cloud, condition: 'partly_cloudy' },
+        { day: 'Sam', temp: 19, icon: Sun, condition: 'sunny' },
+        { day: 'Dim', temp: 20, icon: Sun, condition: 'sunny' },
+      ]
+    };
+    setWeather(mockWeather);
+  }, [entreprise?.ville]);
 
   const safeChantiers = chantiers || [], safeClients = clients || [], safeDevis = devis || [], safeDepenses = depenses || [], safePointages = pointages || [], safeEquipe = equipe || [];
 
@@ -158,37 +238,140 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
     return pending.map(r => formatRelanceForDisplay(r, entreprise)).slice(0, 5);
   }, [safeDevis, safeClients, entreprise]);
 
-  const filteredActions = todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter);
-  const top3 = stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3);
-  const aSurveiller = stats.margesChantiers.filter(c => c.marge < 15);
-  const formatMoney = (n) => modeDiscret ? '·····' : `${(n || 0).toLocaleString('fr-FR')} €`;
-  const getMargeColor = (m) => m >= 50 ? '#10b981' : m >= 30 ? '#f59e0b' : '#ef4444';
-
-  // KPI Card with click handler
-  const KPICard = ({ icon: Icon, label, value, sub, trend, color, onClick, clickable }) => (
-    <div
-      onClick={onClick}
-      className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg} hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${clickable ? 'cursor-pointer' : ''}`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl" style={{ background: `${color}20` }}><Icon size={18} className="sm:w-[22px] sm:h-[22px]" style={{ color }} /></div>
-        <div className="flex items-center gap-2">
-          {trend !== undefined && (
-            <div className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${trend >= 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-800') : (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-800')}`}>
-              {trend >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}{trend >= 0 ? '+' : ''}{trend.toFixed(0)}%
-            </div>
-          )}
-          {clickable && <ChevronRight size={14} className={textMuted} />}
-        </div>
-      </div>
-      <p className={`text-xs sm:text-sm ${textSecondary} mt-2 sm:mt-3`}>{label}</p>
-      <p className="text-lg sm:text-2xl font-bold mt-0.5 sm:mt-1" style={{ color }}>{value}</p>
-      {sub && <p className={`text-[10px] sm:text-xs ${textSecondary} mt-0.5 sm:mt-1`}>{sub}</p>}
-    </div>
+  // Memoized derived values to prevent unnecessary recalculations
+  const filteredActions = useMemo(() =>
+    todoFilter === 'all' ? actions : actions.filter(a => a.type === todoFilter),
+    [todoFilter, actions]
   );
 
-  // Help sections content - Complete guide for artisans
-  const helpSections = {
+  const top3 = useMemo(() =>
+    stats.margesChantiers.filter(c => c.marge > 0).slice(0, 3),
+    [stats.margesChantiers]
+  );
+
+  const aSurveiller = useMemo(() =>
+    stats.margesChantiers.filter(c => c.marge < 15),
+    [stats.margesChantiers]
+  );
+
+  // Memoized formatMoney function
+  const formatMoney = useCallback(
+    (n) => modeDiscret ? '·····' : `${(n || 0).toLocaleString('fr-FR')} €`,
+    [modeDiscret]
+  );
+
+  // AI-powered recommended actions
+  const aiRecommendations = useMemo(() => {
+    const recs = [];
+    const devisAttente = stats.devisPipeline?.envoye || [];
+    const overdueDevis = devisAttente.filter(d => {
+      const days = Math.floor((new Date() - new Date(d.date)) / 86400000);
+      return days > 5;
+    });
+    if (overdueDevis.length > 0) {
+      const total = overdueDevis.reduce((s, d) => s + (d.total_ttc || 0), 0);
+      recs.push({
+        id: 'relance-devis',
+        icon: FileText,
+        text: `Relancer ${overdueDevis.length} devis en attente`,
+        value: total,
+        action: () => setPage?.('devis'),
+        priority: 1
+      });
+    }
+    const chantiersNextWeek = safeChantiers.filter(c => {
+      if (c.statut !== 'prospect') return false;
+      const start = new Date(c.date_debut);
+      const now = new Date();
+      const diff = Math.floor((start - now) / 86400000);
+      return diff >= 0 && diff <= 7;
+    });
+    if (chantiersNextWeek.length > 0) {
+      recs.push({
+        id: 'planifier-chantiers',
+        icon: Calendar,
+        text: `Planifier ${chantiersNextWeek.length} chantier${chantiersNextWeek.length > 1 ? 's' : ''} de la semaine prochaine`,
+        action: () => setPage?.('planning'),
+        priority: 2
+      });
+    }
+    if (stats.tauxMarge < 20 && stats.hasRealData) {
+      recs.push({
+        id: 'analyser-marges',
+        icon: TrendingDown,
+        text: 'Analyser vos marges (en dessous de l\'objectif)',
+        action: () => setShowMargeDetail(true),
+        priority: 3
+      });
+    }
+    return recs.sort((a, b) => a.priority - b.priority).slice(0, 3);
+  }, [stats, safeChantiers, setPage]);
+
+  // Recent activity feed
+  const recentActivity = useMemo(() => {
+    const activities = [];
+    const now = new Date();
+    // Recent paid invoices
+    stats.facturesPayees?.slice(0, 2).forEach(f => {
+      const client = safeClients.find(c => c.id === f.client_id);
+      activities.push({
+        id: `paid-${f.id}`,
+        type: 'payment',
+        icon: CheckCircle,
+        title: `Facture ${f.numero} payée`,
+        subtitle: client?.nom || 'Client',
+        amount: f.total_ttc,
+        date: new Date(f.date_paiement || f.date),
+        color: 'emerald'
+      });
+    });
+    // Recent sent devis
+    safeDevis.filter(d => d.type === 'devis' && d.statut === 'envoye').slice(0, 2).forEach(d => {
+      const client = safeClients.find(c => c.id === d.client_id);
+      activities.push({
+        id: `sent-${d.id}`,
+        type: 'devis',
+        icon: Send,
+        title: `Devis ${d.numero} envoyé`,
+        subtitle: client?.nom || 'Client',
+        amount: d.total_ttc,
+        date: new Date(d.date),
+        color: 'blue'
+      });
+    });
+    // Recent started chantiers
+    safeChantiers.filter(c => c.statut === 'en_cours').slice(0, 1).forEach(ch => {
+      activities.push({
+        id: `started-${ch.id}`,
+        type: 'chantier',
+        icon: HardHat,
+        title: `Chantier ${ch.nom} démarré`,
+        subtitle: ch.adresse || 'Lieu non défini',
+        date: new Date(ch.date_debut || ch.created_at),
+        color: 'purple'
+      });
+    });
+    return activities.sort((a, b) => b.date - a.date).slice(0, 4);
+  }, [stats.facturesPayees, safeDevis, safeChantiers, safeClients]);
+
+  // Mock notifications
+  const notifications = useMemo(() => {
+    const notifs = [];
+    if (stats.facturesPayees?.length > 0) {
+      const f = stats.facturesPayees[0];
+      notifs.push({ id: 1, type: 'payment', icon: CheckCircle, text: `Facture ${f.numero} payée`, time: 'Il y a 2h', read: false });
+    }
+    if (stats.devisPipeline?.envoye?.length > 0) {
+      notifs.push({ id: 2, type: 'devis', icon: FileText, text: `${stats.devisPipeline.envoye.length} devis en attente de réponse`, time: 'Aujourd\'hui', read: true });
+    }
+    if (stats.facturesOverdue?.length > 0) {
+      notifs.push({ id: 3, type: 'alert', icon: AlertTriangle, text: `${stats.facturesOverdue.length} facture(s) en retard`, time: 'Urgent', read: false });
+    }
+    return notifs;
+  }, [stats]);
+
+  // Help sections content - Complete guide for artisans - memoized to prevent recreation
+  const helpSections = useMemo(() => ({
     overview: {
       title: "Bienvenue",
       titleFull: "Bienvenue dans ChantierPro",
@@ -402,26 +585,48 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
         </div>
       )
     }
-  };
+  }), [isDark, textSecondary, textPrimary, textMuted, couleur]);
 
-  // Helper to compute marge modal data
-  const getMargeModalData = () => {
+  // Memoized helper to compute marge modal data
+  const margeModalData = useMemo(() => {
     const isMonthView = showCADetail === 'month' && selectedMonth;
     const monthData = isMonthView ? stats.caParMois.find(m => m.moisFull === selectedMonth) : null;
     return { isMonthView, monthData };
-  };
+  }, [showCADetail, selectedMonth, stats.caParMois]);
 
-  // Render Modal Overlay component
-  const ModalOverlay = ({ show, onClose, children }) => {
-    if (!show) return null;
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
-        <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-lg shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-          {children}
-        </div>
-      </div>
-    );
-  };
+  // Memoized greeting based on time of day
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bonjour';
+    if (hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
+  }, []);
+
+  // Memoized date formatting
+  const formattedDate = useMemo(() =>
+    new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+    []
+  );
+
+  // Memoized insight box data to avoid recalculation on each render
+  const insightBoxData = useMemo(() => {
+    const todayCA = safeDevis.filter(d =>
+      d.type === 'facture' && new Date(d.date).toDateString() === new Date().toDateString()
+    ).reduce((s, f) => s + (f.total_ttc || 0), 0);
+    const pendingDevisCount = stats.devisPipeline?.envoye?.length || 0;
+    return { todayCA, pendingDevisCount };
+  }, [safeDevis, stats.devisPipeline]);
+
+  // Memoized active devis for widget to avoid recalculating on each render
+  const activeDevisData = useMemo(() => {
+    const activeDevis = (stats.devisPipeline?.envoye || []).filter(d => {
+      const days = Math.floor((new Date() - new Date(d.date)) / 86400000);
+      return days <= 60;
+    });
+    const archivedCount = (stats.devisPipeline?.envoye?.length || 0) - activeDevis.length;
+    const activeTotal = activeDevis.reduce((s, d) => s + (d.total_ttc || 0), 0);
+    return { activeDevis, archivedCount, activeTotal };
+  }, [stats.devisPipeline]);
 
   // Help Modal - Fixed layout
   if (showHelp) {
@@ -614,583 +819,1031 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Morning Brief - Daily summary for field workers */}
-      <MorningBrief
-        chantiers={safeChantiers}
-        devis={safeDevis}
-        clients={safeClients}
-        equipe={safeEquipe}
-        events={events}
-        pointages={safePointages}
-        isDark={isDark}
-        couleur={couleur}
-        modeDiscret={modeDiscret}
-        onNavigate={(page, id, type = 'chantier') => {
-          setPage?.(page);
-          if (id) {
-            if (type === 'devis' && setSelectedDevis) {
-              setSelectedDevis(id);
-            } else if (setSelectedChantier) {
-              setSelectedChantier(id);
-            }
-          }
-        }}
-      />
+    <div className="min-h-screen">
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* HEADER - Pixel Perfect: h-16, px-6, gap-6 */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <header className={`sticky top-0 z-50 h-16 border-b ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="h-full px-4 sm:px-6 flex items-center gap-4 sm:gap-6">
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: couleur }}>
+              <HardHat size={18} className="text-white" />
+            </div>
+            <span className={`text-lg font-semibold hidden sm:block ${textPrimary}`}>ChantierPro</span>
+          </div>
 
-      {/* HERO ACTION STRIP - 3 big buttons like Obat/Costructor */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <button
-          onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }}
-          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
-        >
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <FileText size={24} className="mx-auto mb-2 sm:mb-3" />
-          <span className="block text-sm sm:text-base">Nouveau devis</span>
-          <span className="block text-[10px] sm:text-xs opacity-80 mt-1">En 5 min</span>
-        </button>
-        <button
-          onClick={() => setPage?.('planning')}
-          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600"
-        >
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Clock size={24} className="mx-auto mb-2 sm:mb-3" />
-          <span className="block text-sm sm:text-base">Pointer heures</span>
-          {safePointages.filter(p => p.date === new Date().toISOString().split('T')[0]).length > 0 && (
-            <span className="block text-[10px] sm:text-xs opacity-80 mt-1">{safePointages.filter(p => p.date === new Date().toISOString().split('T')[0]).length} aujourd'hui</span>
-          )}
-        </button>
-        <button
-          onClick={() => setPage?.('chantiers')}
-          className="group relative p-4 sm:p-5 rounded-xl sm:rounded-2xl text-white font-semibold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600"
-        >
-          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Building2 size={24} className="mx-auto mb-2 sm:mb-3" />
-          <span className="block text-sm sm:text-base">Chantiers</span>
-          {stats.chantiersActifs > 0 && (
-            <span className="block text-[10px] sm:text-xs opacity-80 mt-1">{stats.chantiersActifs} en cours</span>
-          )}
-        </button>
-      </div>
+          {/* Search - Centered, max-w-2xl */}
+          <div className="flex-1 max-w-2xl mx-auto">
+            <div className={`h-10 flex items-center gap-3 px-4 rounded-lg border transition-all duration-200 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'} ${showSearchFocus ? 'ring-2 ring-blue-500 border-transparent' : ''}`}>
+              <Search size={16} className={textMuted} />
+              <input
+                type="text"
+                placeholder="Rechercher devis, clients, chantiers... ⌘K"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowSearchFocus(true)}
+                onBlur={() => setShowSearchFocus(false)}
+                className={`flex-1 bg-transparent outline-none text-sm ${textPrimary}`}
+              />
+            </div>
+          </div>
 
-      {/* KPI Cards - now clickable */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        <KPICard icon={DollarSign} label="Chiffre d'affaires" value={formatMoney(stats.totalCA)} trend={stats.tendance} color={couleur} onClick={() => setShowCADetail('ca')} clickable />
-        <KPICard icon={TrendingUp} label="Marge nette" value={formatMoney(stats.marge)} sub={modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(1)}%`} color={stats.tauxMarge >= 15 ? '#10b981' : stats.tauxMarge >= 0 ? '#f59e0b' : '#ef4444'} onClick={() => setShowMargeDetail(true)} clickable />
-        <KPICard icon={CheckCircle} label="Encaissé" value={formatMoney(stats.encaisse)} sub={`${stats.facturesPayees.length} facture${stats.facturesPayees.length > 1 ? 's' : ''}`} color="#10b981" onClick={() => setShowEncaisseDetail(true)} clickable />
-        <KPICard icon={Clock} label="En attente" value={formatMoney(stats.enAttente)} sub={`${stats.facturesEnAttente.length} facture${stats.facturesEnAttente.length > 1 ? 's' : ''}`} color="#f59e0b" onClick={() => setShowEnAttenteDetail(true)} clickable />
-      </div>
+          {/* Right: Notification + Avatar - gap-4 */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            {/* Notification Bell - 40x40 */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`}
+              >
+                <Bell size={20} className={textSecondary} />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                )}
+              </button>
 
-      {/* UNIFIED ACTIVITY BOARD - Pipeline + Actions in one place */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <div className="flex items-center justify-between">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-              <FileText size={18} style={{ color: couleur }} />
-              Activité commerciale
-            </h3>
-            <div className="flex items-center gap-2">
-              {stats.tauxConversion > 0 && (
-                <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                  {stats.tauxConversion.toFixed(0)}% conversion
-                </span>
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className={`absolute right-0 mt-2 w-80 rounded-xl shadow-lg border z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+                    <p className={`font-semibold text-base ${textPrimary}`}>Notifications</p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.length > 0 ? notifications.map(notif => (
+                      <div key={notif.id} className={`flex items-start gap-3 p-4 transition-colors ${!notif.read ? (isDark ? 'bg-slate-700/50' : 'bg-blue-50/50') : ''} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${notif.type === 'payment' ? 'bg-emerald-100 text-emerald-600' : notif.type === 'alert' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                          <notif.icon size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm ${textPrimary}`}>{notif.text}</p>
+                          <p className={`text-xs mt-1 ${textMuted}`}>{notif.time}</p>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="p-6 text-center">
+                        <p className={`text-sm ${textMuted}`}>Aucune notification</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Avatar - 40x40 */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm transition-transform hover:scale-105"
+                style={{ background: couleur }}
+              >
+                {entreprise?.nom?.[0] || 'U'}
+              </button>
+
+              {/* User Menu Dropdown */}
+              {showUserMenu && (
+                <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg border z-50 py-2 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <button onClick={() => setPage?.('settings')} className={`w-full px-4 py-2.5 text-left text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}`}>Mon profil</button>
+                  <button onClick={() => setPage?.('settings')} className={`w-full px-4 py-2.5 text-left text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}`}>Paramètres</button>
+                  <div className={`my-2 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`} />
+                  <button className={`w-full px-4 py-2.5 text-left text-sm text-red-500 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}`}>Se déconnecter</button>
+                </div>
               )}
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Pipeline Grid with integrated details */}
-        <div className="p-4 sm:p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {/* Brouillons */}
-            <div
-              onClick={() => setPage?.('devis')}
-              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                <span className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{stats.devisPipeline.brouillon.length}</span>
-              </div>
-              <p className={`text-xs sm:text-sm font-medium ${textSecondary}`}>Brouillons</p>
-            </div>
-            {/* Envoyés */}
-            <div
-              onClick={() => setPage?.('devis')}
-              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/40' : 'bg-blue-50 hover:bg-blue-100'}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{stats.devisPipeline.envoye.length}</span>
-              </div>
-              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>En attente</p>
-              {stats.montantDevisEnAttente > 0 && <p className={`text-[10px] sm:text-xs ${textMuted}`}>{formatMoney(stats.montantDevisEnAttente)}</p>}
-            </div>
-            {/* Acceptés */}
-            <div
-              onClick={() => setPage?.('devis')}
-              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/40' : 'bg-emerald-50 hover:bg-emerald-100'}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{stats.devisPipeline.accepte.length}</span>
-              </div>
-              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Acceptés</p>
-            </div>
-            {/* Refusés */}
-            <div
-              onClick={() => setPage?.('devis')}
-              className={`p-3 sm:p-4 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-red-900/30 hover:bg-red-900/40' : 'bg-red-50 hover:bg-red-100'}`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                <span className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{stats.devisPipeline.refuse.length}</span>
-              </div>
-              <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>Refusés</p>
-            </div>
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* HERO ZONE - pt-8 pb-6 px-6, no emoji, proper hierarchy */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <section className={`pt-6 sm:pt-8 pb-4 sm:pb-6 px-4 sm:px-6 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+        {/* Greeting */}
+        <div className="mb-2">
+          <h1 className={`text-2xl sm:text-3xl font-bold ${textPrimary}`} style={{ lineHeight: '1.2' }}>
+            {greeting} {entreprise?.nom?.split(' ')[0] || ''}
+          </h1>
+        </div>
+
+        {/* Metadata - flex with dot separators */}
+        <div className={`flex items-center gap-4 text-sm ${textSecondary}`}>
+          <span className="flex items-center gap-2">
+            <Calendar size={16} className={textMuted} />
+            <span className="capitalize">{formattedDate}</span>
+          </span>
+          <span className={`w-1 h-1 rounded-full ${isDark ? 'bg-slate-600' : 'bg-gray-300'}`} />
+          <span className="flex items-center gap-2">
+            <HardHat size={16} className={textMuted} />
+            <span>{stats.chantiersActifs} chantier{stats.chantiersActifs !== 1 ? 's' : ''} en cours</span>
+          </span>
+        </div>
+
+        {/* Contextual Insight Box - if there's actionable data */}
+        {(insightBoxData.todayCA > 0 || insightBoxData.pendingDevisCount > 0 || stats.montantOverdue > 0) && (
+          <div className={`mt-4 p-3 rounded-lg border-l-4 ${stats.montantOverdue > 0 ? 'bg-red-50 border-red-500 dark:bg-red-900/20' : 'bg-blue-50 border-blue-500 dark:bg-blue-900/20'}`}>
+            <p className={`text-sm ${stats.montantOverdue > 0 ? 'text-red-900 dark:text-red-200' : 'text-blue-900 dark:text-blue-200'}`}>
+              {stats.montantOverdue > 0 ? (
+                <>
+                  <strong>Action urgente:</strong> {formatMoney(stats.montantOverdue)} en retard de paiement ({stats.facturesOverdue?.length} facture{stats.facturesOverdue?.length > 1 ? 's' : ''})
+                </>
+              ) : insightBoxData.todayCA > 0 ? (
+                <>
+                  <strong>Journée productive:</strong> +{formatMoney(insightBoxData.todayCA)} facturé{insightBoxData.pendingDevisCount > 0 ? ` • ${insightBoxData.pendingDevisCount} devis en attente` : ''}
+                </>
+              ) : (
+                <>
+                  <strong>À faire:</strong> {insightBoxData.pendingDevisCount} devis en attente de réponse ({formatMoney(stats.montantDevisEnAttente)})
+                </>
+              )}
+            </p>
           </div>
+        )}
 
-          {/* Quick link to action center if items exist */}
-          {(stats.facturesOverdue?.length > 0 || actions.length > 0) && (
-            <a
-              href="#actions-section"
-              className={`mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-            >
-              <Zap size={14} style={{ color: couleur }} />
-              Voir les actions à traiter
-              <ChevronRight size={14} />
-            </a>
-          )}
+        {/* Period selector moved to be inline with KPIs */}
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* KPI SECTION - px-6, gap-6 */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <div className={`px-4 sm:px-6 pb-4 sm:pb-6 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+        {/* Period Selector inline */}
+        <div className="flex items-center justify-end mb-4">
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className={`appearance-none pl-3 pr-8 py-2 rounded-lg border text-sm font-medium cursor-pointer ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-700'}`}
+          >
+            <option value="quarter">Ce trimestre</option>
+            <option value="year">Cette année</option>
+          </select>
+          <ChevronDown size={16} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
+        </div>
+
+        {/* KPI Cards - Pixel Perfect: p-6, gap-6, border-radius-xl */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          {/* CA Card */}
+          <button
+            onClick={() => setShowCADetail('ca')}
+            className={`${cardBg} rounded-xl border p-6 text-left transition-all duration-200 hover:shadow-lg`}
+          >
+            {/* Header: Icon + Label + Badge */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <TrendingUp size={20} className="text-green-600 dark:text-green-400" />
+                </div>
+                <span className={`text-sm font-medium ${textSecondary}`}>CA</span>
+              </div>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-md ${stats.tendance >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'}`}>
+                {stats.tendance >= 0 ? '↗' : '↘'} {Math.abs(stats.tendance).toFixed(0)}%
+              </span>
+            </div>
+            {/* Value - 30px font */}
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${textPrimary} mb-3 sm:mb-4`}>{formatMoney(stats.totalCA)}</p>
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className={textSecondary}>Objectif mensuel</span>
+                <span className={`font-semibold ${textPrimary}`}>{Math.min(100, Math.round((stats.totalCA / 40000) * 100))}%</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${Math.min(100, (stats.totalCA / 40000) * 100)}%` }} />
+              </div>
+            </div>
+          </button>
+
+          {/* Marge Card */}
+          <button
+            onClick={() => setShowMargeDetail(true)}
+            className={`${cardBg} rounded-xl border p-6 text-left transition-all duration-200 hover:shadow-lg`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <Wallet size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className={`text-sm font-medium ${textSecondary}`}>Marge</span>
+              </div>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-md ${stats.tauxMarge >= 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : stats.tauxMarge >= 10 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'}`}>
+                {modeDiscret ? '··%' : `${stats.tauxMarge.toFixed(0)}%`}
+              </span>
+            </div>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${textPrimary} mb-3 sm:mb-4`}>
+              {modeDiscret ? '·····' : formatMoney(stats.marge)}
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className={textSecondary}>Objectif 20%</span>
+                <span className={`font-semibold ${stats.tauxMarge >= 20 ? 'text-green-600' : 'text-amber-600'}`}>
+                  {stats.tauxMarge >= 20 ? 'Atteint' : `${Math.max(0, 20 - stats.tauxMarge).toFixed(0)}% restant`}
+                </span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                <div className={`h-full rounded-full transition-all ${stats.tauxMarge >= 20 ? 'bg-green-500' : stats.tauxMarge >= 10 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, (stats.tauxMarge / 20) * 100)}%` }} />
+              </div>
+            </div>
+          </button>
+
+          {/* Chantiers Card */}
+          <button
+            onClick={() => setPage?.('chantiers')}
+            className={`${cardBg} rounded-xl border p-6 text-left transition-all duration-200 hover:shadow-lg`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <HardHat size={20} className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className={`text-sm font-medium ${textSecondary}`}>Chantiers</span>
+              </div>
+            </div>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${textPrimary}`}>{stats.chantiersActifs}</p>
+            <p className={`text-sm ${textSecondary} mb-4`}>en cours</p>
+            <div className={`pt-3 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+              <div className="flex justify-between text-xs">
+                <span className={textSecondary}>{stats.chantiersProspect} planifié{stats.chantiersProspect !== 1 ? 's' : ''}</span>
+                <span className={textSecondary}>{stats.chantiersTermines} terminé{stats.chantiersTermines !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          </button>
+
+          {/* Trésorerie Card - STRONG alert styling */}
+          <button
+            onClick={() => setShowEnAttenteDetail(true)}
+            className={`${cardBg} rounded-xl border p-6 text-left transition-all duration-200 hover:shadow-lg ${stats.montantOverdue > 0 ? 'border-red-300 dark:border-red-700 ring-1 ring-red-200 dark:ring-red-800' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stats.montantOverdue > 0 ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30'}`}>
+                  <Banknote size={20} className={stats.montantOverdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'} />
+                </div>
+                <span className={`text-sm font-medium ${textSecondary}`}>À encaisser</span>
+              </div>
+              {stats.montantOverdue > 0 && (
+                <span className="text-xs font-bold px-2 py-1 rounded-md bg-red-500 text-white animate-pulse">
+                  Alerte
+                </span>
+              )}
+            </div>
+            <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${textPrimary}`}>{formatMoney(stats.enAttente)}</p>
+            {/* Alert box if overdue */}
+            {stats.montantOverdue > 0 ? (
+              <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+                <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                  {formatMoney(stats.montantOverdue)} en retard
+                </p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  {stats.facturesOverdue?.length} facture{stats.facturesOverdue?.length !== 1 ? 's' : ''} impayée{stats.facturesOverdue?.length !== 1 ? 's' : ''} +60j
+                </p>
+              </div>
+            ) : (
+              <p className={`text-sm text-green-600 dark:text-green-400 mt-4`}>Aucun retard de paiement</p>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Today's Events - Quick view */}
-      {(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const todayEvents = events.filter(e => e.date === today);
-        const tomorrowDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-        const tomorrowEvents = events.filter(e => e.date === tomorrowDate);
-        const upcomingEvents = [...todayEvents.map(e => ({ ...e, isToday: true })), ...tomorrowEvents.map(e => ({ ...e, isToday: false }))].slice(0, 3);
-
-        if (upcomingEvents.length > 0) {
-          return (
-            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-                  <Calendar size={18} style={{ color: couleur }} />
-                  Agenda du jour
-                </h3>
-                <button onClick={() => setPage?.('planning')} className={`text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
-                  Voir tout
-                </button>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {upcomingEvents.map(ev => {
-                  const typeColors = {
-                    rdv: { bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', text: isDark ? 'text-blue-300' : 'text-blue-700', icon: '📅' },
-                    chantier: { bg: isDark ? 'bg-emerald-900/30' : 'bg-emerald-50', text: isDark ? 'text-emerald-300' : 'text-emerald-700', icon: '🏗️' },
-                    relance: { bg: isDark ? 'bg-amber-900/30' : 'bg-amber-50', text: isDark ? 'text-amber-300' : 'text-amber-700', icon: '📞' },
-                    urgence: { bg: isDark ? 'bg-red-900/30' : 'bg-red-50', text: isDark ? 'text-red-300' : 'text-red-700', icon: '🚨' },
-                    autre: { bg: isDark ? 'bg-slate-700' : 'bg-slate-100', text: textSecondary, icon: '📌' }
-                  };
-                  const style = typeColors[ev.type] || typeColors.autre;
-                  return (
-                    <div key={ev.id} onClick={() => setPage?.('planning')} className={`flex-shrink-0 w-48 sm:w-56 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${style.bg}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">{style.icon}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ev.isToday ? 'bg-emerald-500 text-white' : (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600')}`}>
-                          {ev.isToday ? "Aujourd'hui" : 'Demain'}
-                        </span>
-                        {ev.time && <span className={`text-xs ${textMuted}`}>{ev.time}</span>}
-                      </div>
-                      <p className={`font-medium text-sm truncate ${style.text}`}>{ev.title}</p>
-                      {ev.description && <p className={`text-xs truncate mt-1 ${textMuted}`}>{ev.description}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
-
-      {/* Relances Urgentes Banner - Prominent display of overdue invoices */}
-      {pendingRelances.length > 0 && (
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`} style={{ borderColor: pendingRelances.some(r => r.priority === 'critical') ? '#ef4444' : pendingRelances.some(r => r.priority === 'high') ? '#f59e0b' : `${couleur}40` }}>
-          {/* Header with urgency indicator */}
-          <div className={`px-4 py-3 flex items-center justify-between ${
-            pendingRelances.some(r => r.priority === 'critical')
-              ? (isDark ? 'bg-red-900/30' : 'bg-red-50')
-              : pendingRelances.some(r => r.priority === 'high')
-                ? (isDark ? 'bg-amber-900/30' : 'bg-amber-50')
-                : (isDark ? 'bg-slate-700/50' : 'bg-slate-50')
-          }`}>
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                pendingRelances.some(r => r.priority === 'critical')
-                  ? (isDark ? 'bg-red-900/50' : 'bg-red-100')
-                  : (isDark ? 'bg-amber-900/50' : 'bg-amber-100')
-              }`}>
-                <Bell size={18} className={pendingRelances.some(r => r.priority === 'critical') ? 'text-red-500' : 'text-amber-500'} />
-              </div>
-              <div>
-                <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-                  Relances à envoyer
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                    pendingRelances.some(r => r.priority === 'critical')
-                      ? (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700')
-                      : (isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700')
-                  }`}>
-                    {pendingRelances.length}
-                  </span>
-                </h3>
-                <p className={`text-xs ${textSecondary}`}>
-                  {formatMoney(pendingRelances.reduce((sum, r) => sum + (r.montant || 0), 0))} TTC en attente
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveModule?.('devis')}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-white hover:bg-slate-100 text-slate-700'}`}
-            >
-              Voir toutes
-            </button>
-          </div>
-
-          {/* Relances list */}
-          <div className="p-4 space-y-2">
-            {pendingRelances.map(relance => {
-              const priorityStyles = {
-                critical: { bg: isDark ? 'bg-red-900/20 border-red-500/50' : 'bg-red-50 border-red-200', badge: isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700', label: 'Critique' },
-                high: { bg: isDark ? 'bg-amber-900/20 border-amber-500/50' : 'bg-amber-50 border-amber-200', badge: isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700', label: 'Urgent' },
-                medium: { bg: isDark ? 'bg-orange-900/20 border-orange-500/50' : 'bg-orange-50 border-orange-200', badge: isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700', label: 'Important' },
-                low: { bg: isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200', badge: isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600', label: 'Rappel' }
-              };
-              const style = priorityStyles[relance.priority] || priorityStyles.low;
-
-              return (
-                <div key={relance.id} className={`flex items-center gap-3 p-3 rounded-xl border ${style.bg} hover:shadow-md transition-all`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-medium text-sm ${textPrimary}`}>{relance.factureNumero}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${style.badge}`}>{style.label}</span>
-                      <span className={`text-xs ${textMuted}`}>• {relance.joursRetard}j de retard</span>
-                    </div>
-                    <p className={`text-xs ${textSecondary} truncate`}>
-                      {relance.clientNom} • {formatMoney(relance.montant)} • {relance.templateName}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {relance.canSendEmail && relance.clientEmail && (
-                      <a
-                        href={`mailto:${relance.clientEmail}?subject=${encodeURIComponent(relance.subject)}&body=${encodeURIComponent(relance.body)}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`p-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-blue-900/30 hover:bg-blue-900/50 text-blue-400' : 'bg-blue-100 hover:bg-blue-200 text-blue-600'}`}
-                        title="Envoyer email"
-                      >
-                        <Mail size={16} />
-                      </a>
-                    )}
-                    {relance.clientTelephone && (
-                      <a
-                        href={`tel:${relance.clientTelephone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`p-2 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-600'}`}
-                        title="Appeler"
-                      >
-                        <Phone size={16} />
-                      </a>
-                    )}
-                  </div>
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ACTION BANNER - More Prominent (if recommendations exist) */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {aiRecommendations.length > 0 && (
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+          <div className={`p-3 sm:p-4 rounded-xl border ${stats.montantOverdue > 0 ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-200 dark:from-red-900/20 dark:to-red-900/10 dark:border-red-800' : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 dark:from-blue-900/20 dark:to-blue-900/10 dark:border-blue-800'}`}>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              {/* Left: Content */}
+              <div className="flex items-start gap-4">
+                <div className={`mt-0.5 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${stats.montantOverdue > 0 ? 'bg-red-500' : 'bg-blue-500'}`}>
+                  <Zap size={20} className="text-white" />
                 </div>
-              );
-            })}
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${stats.montantOverdue > 0 ? 'text-red-900 dark:text-red-300' : 'text-blue-900 dark:text-blue-300'}`}>
+                    Action prioritaire
+                  </p>
+                  <p className={`text-base font-medium ${textPrimary} mb-1`}>
+                    {aiRecommendations[0].text}
+                  </p>
+                  {aiRecommendations[0].value && (
+                    <p className={`text-sm ${stats.montantOverdue > 0 ? 'text-red-700 dark:text-red-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                      Valeur: <span className="font-bold">{formatMoney(aiRecommendations[0].value)}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              {/* Right: CTA */}
+              <button
+                onClick={aiRecommendations[0].action}
+                className={`px-6 py-3 rounded-lg text-sm font-semibold text-white transition-colors flex items-center gap-2 ${stats.montantOverdue > 0 ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}`}
+              >
+                {stats.montantOverdue > 0 ? 'Relancer maintenant' : 'Voir'}
+                <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
-        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}><DollarSign size={16} style={{ color: couleur }} />CA sur 6 mois</h3>
-            <button onClick={() => setShowCADetail('ca')} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
-              Voir détails
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* WIDGETS ZONE - Pixel Perfect: px-6, gap-6 */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <div className={`px-4 sm:px-6 pb-6 sm:pb-8 ${isDark ? 'bg-slate-900' : 'bg-gray-50'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+
+        {/* ══════════════ WIDGET 1: Devis en Attente - Pixel Perfect ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-md transition-shadow flex flex-col`}>
+          {/* Header - p-6 mb-6 */}
+          <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-2">
+              <FileText size={20} className="text-primary-600" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Devis en attente</h3>
+            </div>
+            {activeDevisData.activeDevis.length > 0 && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${isDark ? 'bg-primary-900/30 text-primary-400' : 'bg-primary-100 text-primary-700'}`}>
+                {activeDevisData.activeDevis.length}
+              </span>
+            )}
+          </div>
+
+          {/* Body - p-6 flex-1 */}
+          <div className="flex-1 p-6">
+            {activeDevisData.activeDevis.length > 0 ? (
+              <div className="space-y-4">
+                {activeDevisData.activeDevis.slice(0, 3).map(d => {
+                  const client = safeClients.find(c => c.id === d.client_id);
+                  const days = Math.floor((new Date() - new Date(d.date)) / 86400000);
+                  const urgency = days > 14 ? 'urgent' : days > 7 ? 'warning' : 'normal';
+
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => { setSelectedDevis?.(d); setPage?.('devis'); }}
+                      className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-sm ${
+                        urgency === 'urgent' ? (isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200') :
+                        urgency === 'warning' ? (isDark ? 'bg-amber-900/10 border-amber-800/50' : 'bg-amber-50 border-amber-200') :
+                        (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200')
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className={`text-sm font-medium truncate ${textPrimary}`}>{client?.nom || 'Client'}</p>
+                            {urgency !== 'normal' && (
+                              <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${urgency === 'urgent' ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'}`}>
+                                {urgency === 'urgent' ? 'Urgent' : 'À relancer'}
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs ${textMuted}`}>{d.numero}</p>
+                        </div>
+                        <p className={`text-base font-bold ${isDark ? 'text-primary-400' : 'text-primary-600'}`}>
+                          {formatMoney(d.total_ttc)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={textMuted}>
+                          Envoyé le {new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} ({days}j)
+                        </span>
+                        <span className="text-blue-500 font-medium">Voir →</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {activeDevisData.activeDevis.length > 3 && (
+                  <button onClick={() => setPage?.('devis')} className={`w-full text-sm text-center py-2 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`}>
+                    + {activeDevisData.activeDevis.length - 3} autres devis
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* Empty State - Pixel Perfect */
+              <div className="py-12 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <CheckCircle size={32} className="text-green-600 dark:text-green-400" />
+                </div>
+                <p className={`text-base font-medium ${textPrimary} mb-1`}>Aucun devis en attente</p>
+                <p className={`text-sm ${textSecondary}`}>Tous vos clients ont répondu</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - p-4 border-t */}
+          <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <button
+              onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }}
+              className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            >
+              Créer un devis
             </button>
           </div>
-          {!modeDiscret ? (
-            <ResponsiveContainer width="100%" height={180} className="sm:!h-[220px]">
-              <BarChart data={stats.caParMois}>
-                <XAxis dataKey="mois" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }} tickFormatter={v => `${(v/1000).toFixed(0)}k`} domain={[0, 'auto']} width={35} />
-                <Tooltip formatter={(v) => [`${v.toLocaleString('fr-FR')} €`, 'CA']} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', background: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }} />
-                <Bar dataKey="ca" radius={[6, 6, 0, 0]} onClick={(data) => { setSelectedMonth(data.moisFull); setShowCADetail('month'); }} cursor="pointer">
-                  {stats.caParMois.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className={`h-[180px] sm:h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={24} className="mr-2" />Masqué</div>}
         </div>
 
-        {/* Improved Rentability Section */}
-        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className={`font-medium sm:font-semibold flex items-center gap-2 text-sm sm:text-base ${textPrimary}`}>
-              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-                <TrendingUp size={14} className="text-white sm:w-4 sm:h-4" />
-              </div>
-              Rentabilité par chantier
-            </h3>
+      {/* ══════════════ WIDGET 2: Chantiers - Pixel Perfect ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-md transition-shadow flex flex-col`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowRentabilityDashboard(true)}
-                className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
-              >
-                <Activity size={12} />
-                Analyse
-              </button>
-              <button onClick={() => { setShowHelp(true); setHelpSection('rentabilite'); }} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Comprendre la rentabilité">
-                <HelpCircle size={14} className={textMuted} />
-              </button>
+              <HardHat size={20} className="text-purple-600" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Chantiers</h3>
             </div>
+            {stats.chantiersActifs > 0 && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                {stats.chantiersActifs} actif{stats.chantiersActifs !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
 
-          {modeDiscret ? (
-            <div className={`h-[180px] sm:h-[220px] flex items-center justify-center ${textSecondary}`}><EyeOff size={24} className="mr-2" />Masqué</div>
-          ) : stats.margesChantiers.length === 0 ? (
-            <div className={`h-[180px] sm:h-[220px] flex flex-col items-center justify-center ${textSecondary}`}>
-              <Hammer size={32} className="mb-2 opacity-30" />
-              <p className="text-sm">Aucun chantier</p>
-            </div>
-          ) : (
-            <div className="relative">
-              <div className="space-y-2 sm:space-y-3 max-h-[180px] sm:max-h-[220px] overflow-y-auto pr-1">
-                {stats.margesChantiers.slice(0, 6).map((ch, idx) => {
-                const isPositive = ch.marge >= 0;
-                const isGood = ch.marge >= 30;
-                const isWarning = ch.marge >= 0 && ch.marge < 15;
-                const isBad = ch.marge < 0;
+          {/* Body */}
+          <div className="flex-1 p-6">
+            {(() => {
+              const weekChantiers = safeChantiers.filter(c => c.statut === 'en_cours').slice(0, 3);
+
+              if (weekChantiers.length === 0) {
                 return (
-                  <div
-                    key={ch.id}
-                    onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }}
-                    className={`group p-2.5 sm:p-3 rounded-xl cursor-pointer transition-all duration-200 border hover:-translate-y-0.5 ${
-                      isDark
-                        ? `border-slate-700 hover:border-slate-600 ${isBad ? 'bg-red-900/20' : isGood ? 'bg-emerald-900/10' : 'bg-slate-800/50'}`
-                        : `border-slate-100 hover:border-slate-200 ${isBad ? 'bg-red-50' : isGood ? 'bg-emerald-50/50' : 'bg-slate-50/50'}`
-                    } hover:shadow-md`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {idx === 0 && isGood && <Medal size={14} className="text-yellow-500 flex-shrink-0" />}
-                        {isBad && <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />}
-                        <span className={`text-sm font-medium ${textPrimary} truncate`}>{ch.nom}</span>
-                      </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        isBad ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
-                        : isGood ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-                        : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')
-                      }`}>
-                        {ch.marge.toFixed(0)}%
-                      </span>
+                  <div className="py-12 flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
+                      <Calendar size={32} className={textMuted} />
                     </div>
-                    <div className="relative h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-600">
-                      <div
-                        className={`absolute left-0 top-0 h-full rounded-full transition-all ${
-                          isBad ? 'bg-gradient-to-r from-red-500 to-red-400'
-                          : isGood ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-400'
-                        }`}
-                        style={{ width: `${Math.min(Math.max(ch.marge, 0), 100)}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-2 text-xs">
-                      <span className={textMuted}>CA: {formatMoney(ch.caHT || 0)}</span>
-                      <span className={`font-medium ${isBad ? 'text-red-500' : isGood ? 'text-emerald-500' : 'text-amber-500'}`}>
-                        {isPositive ? '+' : ''}{formatMoney(ch.marge * (ch.caHT || 0) / 100)}
-                      </span>
-                    </div>
+                    <p className={`text-base font-medium ${textPrimary} mb-1`}>Aucun chantier en cours</p>
+                    <p className={`text-sm ${textSecondary}`}>Planifiez votre prochain chantier</p>
                   </div>
                 );
-              })}
-              </div>
-              {/* Scroll indicator gradient */}
-              {stats.margesChantiers.length > 3 && (
-                <div className={`absolute bottom-0 left-0 right-0 h-4 pointer-events-none bg-gradient-to-t ${isDark ? 'from-slate-800' : 'from-white'} to-transparent`} />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+              }
 
-      {/* À FAIRE - Unified action center */}
-      <div id="actions-section" className={`rounded-xl sm:rounded-2xl border ${cardBg} scroll-mt-4 overflow-hidden`}>
-        {/* Header avec compteurs */}
-        <div className="p-4 sm:p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
-              <Zap size={18} style={{ color: couleur }} />
-              À faire
-            </h3>
-            {/* Compteurs rapides */}
+              return (
+                <div className="space-y-4">
+                  {weekChantiers.map((ch, idx) => {
+                    const client = safeClients.find(c => c.id === ch.client_id);
+                    const progress = ch.avancement || 0;
+                    const statusConfig = progress >= 80
+                      ? { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-300', barBg: 'bg-blue-500', label: 'En cours' }
+                      : progress >= 50
+                      ? { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-800 dark:text-blue-300', barBg: 'bg-blue-500', label: 'En cours' }
+                      : progress > 0
+                      ? { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-300', barBg: 'bg-amber-500', label: 'Démarré' }
+                      : { bg: 'bg-gray-100 dark:bg-slate-700', text: 'text-gray-600 dark:text-slate-400', barBg: 'bg-gray-400', label: 'À démarrer' };
+
+                    const chantierWeather = weather?.forecast?.[idx % 7];
+                    const hasRainWarning = chantierWeather?.condition === 'rainy';
+
+                    return (
+                      <div
+                        key={ch.id}
+                        onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }}
+                        className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${isDark ? 'bg-slate-800/50 border-slate-700 hover:border-slate-600' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                      >
+                        {/* Header: Badge + Date + Weather */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${statusConfig.bg} ${statusConfig.text}`}>
+                              {statusConfig.label}
+                            </span>
+                            <span className={`text-xs ${textSecondary}`}>
+                              {ch.date_debut ? new Date(ch.date_debut).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}
+                              {ch.date_fin && ` - ${new Date(ch.date_fin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                            </span>
+                          </div>
+                          {chantierWeather && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <chantierWeather.icon size={16} className={hasRainWarning ? 'text-orange-500' : 'text-amber-400'} />
+                              <span className={`font-medium ${textPrimary}`}>{chantierWeather.temp}°</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title */}
+                        <h4 className={`text-base font-semibold ${textPrimary} mb-1`}>{ch.nom}</h4>
+
+                        {/* Location - shorter */}
+                        <p className={`text-sm ${textSecondary} mb-3 flex items-center gap-1`}>
+                          <MapPin size={14} className={textMuted} />
+                          {ch.adresse?.split(',')[0] || client?.ville || 'Adresse non définie'}
+                        </p>
+
+                        {/* Progress */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className={textSecondary}>Avancement</span>
+                            <span className={`font-semibold ${statusConfig.text}`}>{progress}%</span>
+                          </div>
+                          <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}>
+                            <div className={`h-full rounded-full ${statusConfig.barBg} transition-all`} style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+
+                        {/* Rain Alert */}
+                        {hasRainWarning && (
+                          <div className={`mt-3 p-2 rounded-lg ${isDark ? 'bg-orange-900/20 border border-orange-800/50' : 'bg-orange-50 border border-orange-200'} flex items-center gap-2`}>
+                            <AlertTriangle size={14} className="text-orange-600 dark:text-orange-400" />
+                            <span className="text-xs font-medium text-orange-700 dark:text-orange-300">Pluie prévue</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Footer */}
+          <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <button
+              onClick={() => setPage?.('chantiers')}
+              className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            >
+              Voir tous les chantiers
+            </button>
+          </div>
+        </div>
+
+        {/* ══════════════ WIDGET 3: Trésorerie - Pixel Perfect ══════════════ */}
+        {(() => {
+          const hasOverdue = stats.montantOverdue > 0;
+          const overdueCount = stats.facturesOverdue?.length || 0;
+          const under30 = stats.facturesEnAttente.filter(f => Math.floor((new Date() - new Date(f.date)) / 86400000) <= 30).reduce((s, f) => s + (f.total_ttc || 0), 0);
+          const between30and60 = stats.facturesEnAttente.filter(f => { const d = Math.floor((new Date() - new Date(f.date)) / 86400000); return d > 30 && d <= 60; }).reduce((s, f) => s + (f.total_ttc || 0), 0);
+
+          return (
+            <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-md transition-shadow flex flex-col`}>
+              {/* Header */}
+              <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+                <div className="flex items-center gap-2">
+                  <Wallet size={20} className="text-emerald-600" />
+                  <h3 className={`text-base font-semibold ${textPrimary}`}>Trésorerie</h3>
+                </div>
+                {hasOverdue && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-red-500 text-white">
+                    Alerte
+                  </span>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 p-6 space-y-6">
+                {/* Alert Box - if overdue */}
+                {hasOverdue && (
+                  <div className={`p-4 rounded-lg ${isDark ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+                    <div className="flex items-start gap-3">
+                      <AlertCircle size={20} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-red-900 dark:text-red-300 mb-1">
+                          {formatMoney(stats.montantOverdue)} en retard
+                        </p>
+                        <p className="text-xs text-red-700 dark:text-red-400">
+                          {overdueCount} facture{overdueCount !== 1 ? 's' : ''} impayée{overdueCount !== 1 ? 's' : ''} depuis +60 jours
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowEnAttenteDetail(true)}
+                      className="w-full mt-3 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center justify-center gap-2"
+                    >
+                      Relancer maintenant
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Breakdown */}
+                <div className="space-y-3">
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>
+                    À encaisser par échéance
+                  </p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className={textSecondary}>&lt; 30 jours</span>
+                      </div>
+                      <span className={`font-semibold ${textPrimary}`}>{formatMoney(under30)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        <span className={textSecondary}>30-60 jours</span>
+                      </div>
+                      <span className={`font-semibold ${textPrimary}`}>{formatMoney(between30and60)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${hasOverdue ? 'bg-red-500' : 'bg-gray-400'}`} />
+                        <span className={hasOverdue ? 'font-medium text-red-600 dark:text-red-400' : textSecondary}>&gt; 60 jours</span>
+                      </div>
+                      <span className={`font-semibold ${hasOverdue ? 'text-red-600 dark:text-red-400' : textPrimary}`}>{formatMoney(stats.montantOverdue)}</span>
+                    </div>
+                  </div>
+
+                  {/* Total Separator */}
+                  <div className={`pt-3 border-t ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-semibold ${textPrimary}`}>Total à encaisser</span>
+                      <span className={`text-lg font-bold ${textPrimary}`}>{formatMoney(stats.enAttente)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+                <button
+                  onClick={() => setPage?.('devis')}
+                  className={`w-full py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                >
+                  Voir factures
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════ WIDGET 4: Activité Récente ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-lg transition-all min-h-[300px] flex flex-col`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
             <div className="flex items-center gap-2">
-              {actions.filter(a => a.type === 'devis').length > 0 && (
-                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                  <FileText size={12} /> {actions.filter(a => a.type === 'devis').length} devis
-                </span>
-              )}
-              {actions.filter(a => a.type === 'facture').length > 0 && (
-                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
-                  <DollarSign size={12} /> {actions.filter(a => a.type === 'facture').length} fact.
-                </span>
-              )}
-              {aSurveiller.length > 0 && (
-                <span className={`px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-red-900/40 text-red-300' : 'bg-red-100 text-red-700'}`}>
-                  <AlertTriangle size={12} /> {aSurveiller.length} marge
-                </span>
-              )}
+              <Activity size={20} className="text-blue-500" />
+              <span className={`font-semibold ${textPrimary}`}>Activité récente</span>
             </div>
+            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
+              <MoreHorizontal size={16} className={textMuted} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-4 overflow-auto">
+            {recentActivity.length > 0 ? (
+              <div className="space-y-3">
+                {recentActivity.map(activity => (
+                  <div key={activity.id} className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activity.color === 'emerald' ? 'bg-emerald-100 text-emerald-600' : activity.color === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
+                        <activity.icon size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${textPrimary}`}>{activity.title}</p>
+                        <p className={`text-xs ${textMuted}`}>{activity.subtitle}</p>
+                        {activity.amount && (
+                          <p className={`text-sm font-bold mt-1 ${activity.color === 'emerald' ? 'text-emerald-500' : 'text-blue-500'}`}>
+                            {formatMoney(activity.amount)}
+                          </p>
+                        )}
+                      </div>
+                      <span className={`text-xs ${textMuted} whitespace-nowrap`}>
+                        {(() => {
+                          const diff = Date.now() - activity.date.getTime();
+                          const hours = Math.floor(diff / 3600000);
+                          if (hours < 1) return 'À l\'instant';
+                          if (hours < 24) return `Il y a ${hours}h`;
+                          return 'Hier';
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <Activity size={32} className="mx-auto text-gray-400 mb-2" />
+                <p className={`text-sm ${textMuted}`}>Aucune activité récente</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className={`flex items-center justify-end p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <button className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+              Voir historique →
+            </button>
           </div>
         </div>
 
-        {/* Contenu principal */}
-        <div className="p-4 sm:p-5">
-          {actions.length === 0 && aSurveiller.length === 0 ? (
-            /* État vide - tout va bien */
-            <div className={`rounded-xl p-6 text-center ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-              <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
-                <CheckCircle size={24} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-              </div>
-              <p className={`font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Tout est à jour !</p>
-              <p className={`text-sm mt-1 ${textSecondary}`}>Aucune action requise</p>
+        {/* ══════════════ WIDGET 5: Clients Récents ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-lg transition-all min-h-[300px] flex flex-col`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-2">
+              <Users size={20} className="text-indigo-500" />
+              <span className={`font-semibold ${textPrimary}`}>Clients récents</span>
             </div>
-          ) : (
-            /* Liste d'actions groupées */
-            <div className="relative">
-              <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
-              {/* Urgents d'abord */}
-              {actions.filter(a => a.priority === 'urgent').length > 0 && (
-                <div>
-                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                    Urgent
-                  </p>
-                  <div className="space-y-2">
-                    {actions.filter(a => a.priority === 'urgent').map(a => (
-                      <div key={a.id} onClick={a.action} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md border-l-4 border-red-500 ${isDark ? 'bg-red-900/20 hover:bg-red-900/30' : 'bg-red-50 hover:bg-red-100'}`}>
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
-                          <a.icon size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
+            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
+              <MoreHorizontal size={16} className={textMuted} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-4 overflow-auto">
+            {safeClients.length > 0 ? (
+              <div className="space-y-3">
+                {safeClients.slice(0, 3).map(client => {
+                  const clientDevis = safeDevis.filter(d => d.client_id === client.id);
+                  const clientCA = clientDevis.reduce((s, d) => s + (d.total_ttc || 0), 0);
+                  const initials = (client.nom || 'C').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+
+                  return (
+                    <div key={client.id} className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ background: `hsl(${(client.nom || '').charCodeAt(0) * 10}, 60%, 50%)` }}>
+                          {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${textPrimary}`}>{a.title}</p>
-                          <p className={`text-xs ${textSecondary} truncate`}>{a.desc}</p>
+                          <p className={`font-medium ${textPrimary}`}>{client.nom}</p>
+                          <p className={`text-xs ${textMuted}`}>📍 {client.ville || 'Non défini'}</p>
+                          <p className={`text-xs ${textMuted}`}>CA: {formatMoney(clientCA)} ({clientDevis.length} devis)</p>
                         </div>
-                        <ChevronRight size={16} className={textMuted} />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* À traiter */}
-              {actions.filter(a => a.priority !== 'urgent').length > 0 && (
-                <div>
-                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${textSecondary}`}>
-                    À traiter
-                  </p>
-                  <div className="space-y-2">
-                    {actions.filter(a => a.priority !== 'urgent').slice(0, 5).map(a => (
-                      <div key={a.id} onClick={a.action} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${a.type === 'devis' ? (isDark ? 'bg-blue-900/50' : 'bg-blue-100') : a.type === 'facture' ? (isDark ? 'bg-amber-900/50' : 'bg-amber-100') : (isDark ? 'bg-slate-600' : 'bg-slate-200')}`}>
-                          <a.icon size={16} className={a.type === 'devis' ? (isDark ? 'text-blue-400' : 'text-blue-600') : a.type === 'facture' ? (isDark ? 'text-amber-400' : 'text-amber-600') : textSecondary} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium truncate ${textPrimary}`}>{a.title}</p>
-                          <p className={`text-xs ${textSecondary} truncate`}>{a.desc}</p>
-                        </div>
-                        {a.days !== undefined && <span className={`text-xs ${textSecondary}`}>{a.days}j</span>}
-                        <ChevronRight size={16} className={textMuted} />
+                      <div className="flex gap-2 mt-2">
+                        {client.telephone && (
+                          <a href={`tel:${client.telephone}`} className={`p-1.5 rounded ${isDark ? 'bg-slate-600 hover:bg-slate-500' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                            <Phone size={12} />
+                          </a>
+                        )}
+                        {client.email && (
+                          <a href={`mailto:${client.email}`} className={`p-1.5 rounded ${isDark ? 'bg-slate-600 hover:bg-slate-500' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                            <Mail size={12} />
+                          </a>
+                        )}
+                        <button onClick={() => { setCreateMode?.({ devis: true, client_id: client.id }); setPage?.('devis'); }} className={`p-1.5 rounded ${isDark ? 'bg-slate-600 hover:bg-slate-500' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                          <Plus size={12} />
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Marges à surveiller */}
-              {aSurveiller.length > 0 && (
-                <div>
-                  <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                    Marges à surveiller
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {aSurveiller.slice(0, 6).map(ch => (
-                      <div key={ch.id} onClick={() => { setSelectedChantier?.(ch.id); setPage?.('chantiers'); }} className={`p-3 rounded-xl cursor-pointer transition-all hover:shadow-md ${ch.marge < 0 ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : (isDark ? 'bg-amber-900/20' : 'bg-amber-50')}`}>
-                        <p className={`text-xs font-medium truncate ${textPrimary}`}>{ch.nom}</p>
-                        <p className={`text-lg font-bold ${ch.marge < 0 ? 'text-red-500' : 'text-amber-500'}`}>{ch.marge.toFixed(0)}%</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  );
+                })}
               </div>
-              {/* Scroll indicator gradient */}
-              {actions.length > 4 && (
-                <div className={`absolute bottom-0 left-0 right-0 h-6 pointer-events-none bg-gradient-to-t ${isDark ? 'from-slate-800' : 'from-white'} to-transparent`} />
-              )}
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="text-center py-6">
+                <Users size={32} className="mx-auto text-gray-400 mb-2" />
+                <p className={`text-sm ${textMuted}`}>Aucun client</p>
+              </div>
+            )}
+          </div>
 
-        {/* Footer avec actions rapides */}
-        <div className={`px-4 sm:px-5 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}`}>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mb-1">
-            <button onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <FileText size={14} style={{ color: couleur }} /> Devis
+          {/* Footer */}
+          <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <button onClick={() => setPage?.('clients')} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 transition-colors">
+              Ajouter client
             </button>
-            <button onClick={() => { setCreateMode?.({ chantier: true }); setPage?.('chantiers'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <Hammer size={14} className="text-emerald-500" /> Chantier
-            </button>
-            <button onClick={() => { setCreateMode?.({ client: true }); setPage?.('clients'); }} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700'} border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <Users size={14} className="text-blue-500" /> Client
-            </button>
-            <div className={`w-px h-6 ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`} />
-            <button onClick={() => setShowRentabilityDashboard(true)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-              <Activity size={14} /> Rentabilité
-            </button>
-            <button onClick={() => setShowAccountingIntegration(true)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-              <PiggyBank size={14} /> Comptabilité
-            </button>
-            <button onClick={() => setPage?.('planning')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-              <Calendar size={14} /> Planning
+            <button onClick={() => setPage?.('clients')} className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+              Voir tous →
             </button>
           </div>
         </div>
-      </div>
 
-      {/* FREEMIUM BANNER - Pricing transparency */}
-      <div className={`rounded-xl p-3 text-center ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
-        <p className={`text-xs ${textSecondary}`}>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Plan Free</span>
-          </span>
-          <span className="mx-2">·</span>
-          <span>{stats.chantiersActifs}/3 chantiers actifs</span>
-          <span className="mx-2">·</span>
-          <span>{safeDevis.length} devis</span>
-          {stats.chantiersActifs >= 3 && (
-            <>
-              <span className="mx-2">·</span>
-              <button className="font-medium text-blue-500 hover:text-blue-600">
-                Passer à Pro →
+        {/* ══════════════ WIDGET 6: Performance du Mois ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-lg transition-all min-h-[300px] flex flex-col`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-2">
+              <Target size={20} className="text-rose-500" />
+              <span className={`font-semibold ${textPrimary}`}>Performance {new Date().toLocaleDateString('fr-FR', { month: 'long' })}</span>
+            </div>
+            <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
+              <MoreHorizontal size={16} className={textMuted} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 p-4">
+            {/* CA Progress */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className={textSecondary}>Chiffre d'affaires</span>
+                <span className={textPrimary}>{Math.min(100, Math.round((stats.totalCA / 40000) * 100))}%</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, (stats.totalCA / 40000) * 100)}%` }} />
+              </div>
+              <p className={`text-xs ${textMuted} mt-1`}>{formatMoney(stats.totalCA)} / 40 000 € objectif</p>
+            </div>
+
+            {/* Marge Progress */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className={textSecondary}>Marge moyenne</span>
+                <span className={stats.tauxMarge >= 20 ? 'text-emerald-500' : 'text-amber-500'}>{Math.min(150, Math.round((stats.tauxMarge / 20) * 100))}% {stats.tauxMarge >= 20 && '✅'}</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                <div className={`h-full rounded-full transition-all ${stats.tauxMarge >= 20 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, (stats.tauxMarge / 20) * 100)}%` }} />
+              </div>
+              <p className={`text-xs ${textMuted} mt-1`}>{stats.tauxMarge.toFixed(0)}% / 20% objectif</p>
+            </div>
+
+            {/* Devis Progress */}
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span className={textSecondary}>Devis envoyés</span>
+                <span className={textPrimary}>{Math.min(100, Math.round((stats.thisMonthDevis?.length || 0) / 20 * 100))}%</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(100, (stats.thisMonthDevis?.length || 0) / 20 * 100)}%` }} />
+              </div>
+              <p className={`text-xs ${textMuted} mt-1`}>{stats.thisMonthDevis?.length || 0} / 20 objectif</p>
+            </div>
+
+            {/* Conversion Rate */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className={textSecondary}>Taux de conversion</span>
+                <span className={stats.tauxConversion >= 50 ? 'text-emerald-500' : 'text-amber-500'}>{Math.round(stats.tauxConversion)}%</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                <div className={`h-full rounded-full transition-all ${stats.tauxConversion >= 50 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, stats.tauxConversion * 2)}%` }} />
+              </div>
+              <p className={`text-xs ${textMuted} mt-1`}>{stats.tauxConversion.toFixed(0)}% / 50% objectif</p>
+            </div>
+
+            <div className={`mt-4 p-3 rounded-lg text-center ${stats.tauxConversion >= 40 && stats.tauxMarge >= 15 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-amber-900/30' : 'bg-amber-50')}`}>
+              <p className={`text-sm font-medium ${stats.tauxConversion >= 40 && stats.tauxMarge >= 15 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                🎯 {stats.tauxConversion >= 40 && stats.tauxMarge >= 15 ? 'Vous êtes en bonne voie !' : 'Continuez vos efforts !'}
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <button className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+              Ajuster objectifs
+            </button>
+            <button onClick={() => setShowRentabilityDashboard(true)} className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+              Voir analyses →
+            </button>
+          </div>
+        </div>
+
+        {/* ══════════════ WIDGET 7: Météo Détaillée ══════════════ */}
+        {weather && (
+          <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-lg transition-all min-h-[300px] flex flex-col`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+              <div className="flex items-center gap-2">
+                <Sun size={20} className="text-amber-500" />
+                <span className={`font-semibold ${textPrimary}`}>Météo {weather.city}</span>
+              </div>
+              <button className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
+                <MoreHorizontal size={16} className={textMuted} />
               </button>
-            </>
-          )}
-        </p>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 p-4">
+              <div className="text-center mb-4">
+                <weather.icon size={48} className="mx-auto text-amber-500 mb-2" />
+                <p className={`text-3xl font-bold ${textPrimary}`}>{weather.temp}°C</p>
+                <p className={`text-sm ${textSecondary} capitalize`}>{weather.condition === 'sunny' ? 'Ensoleillé' : weather.condition === 'cloudy' ? 'Nuageux' : weather.condition === 'rainy' ? 'Pluvieux' : 'Partiellement nuageux'}</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className={`text-center p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                  <Thermometer size={14} className="mx-auto mb-1 text-gray-400" />
+                  <p className={`text-xs ${textMuted}`}>Ressenti</p>
+                  <p className={`text-sm font-medium ${textPrimary}`}>{weather.feelsLike}°C</p>
+                </div>
+                <div className={`text-center p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                  <Droplets size={14} className="mx-auto mb-1 text-blue-400" />
+                  <p className={`text-xs ${textMuted}`}>Humidité</p>
+                  <p className={`text-sm font-medium ${textPrimary}`}>{weather.humidity}%</p>
+                </div>
+                <div className={`text-center p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                  <Wind size={14} className="mx-auto mb-1 text-gray-400" />
+                  <p className={`text-xs ${textMuted}`}>Vent</p>
+                  <p className={`text-sm font-medium ${textPrimary}`}>{weather.wind} km/h</p>
+                </div>
+              </div>
+
+              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted} mb-2`}>Prévisions 7 jours</p>
+              <div className="flex justify-between">
+                {weather.forecast.map((day, i) => (
+                  <div key={i} className="text-center">
+                    <p className={`text-xs ${textMuted}`}>{day.day}</p>
+                    <day.icon size={16} className={`mx-auto my-1 ${day.condition === 'rainy' ? 'text-blue-500' : 'text-amber-500'}`} />
+                    <p className={`text-xs font-medium ${textPrimary}`}>{day.temp}°</p>
+                  </div>
+                ))}
+              </div>
+
+              {weather.forecast.some(d => d.condition === 'rainy') && (
+                <div className={`mt-3 p-2 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'} flex items-center gap-2`}>
+                  <AlertTriangle size={14} className="text-amber-500" />
+                  <span className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>Pluie prévue - {safeChantiers.filter(c => c.statut === 'en_cours').length} chantiers concernés</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className={`flex items-center justify-end p-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+              <button className="text-sm text-blue-500 hover:text-blue-600 font-medium">
+                Changer localisation →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════ WIDGET 8: Actions Rapides - Pixel Perfect ══════════════ */}
+        <div className={`${cardBg} rounded-xl border shadow-sm hover:shadow-md transition-shadow flex flex-col`}>
+          {/* Header - px-6 py-4 */}
+          <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-2">
+              <Zap size={20} className="text-yellow-500" />
+              <h3 className={`text-base font-semibold ${textPrimary}`}>Actions rapides</h3>
+            </div>
+          </div>
+
+          {/* Body - p-6 */}
+          <div className="flex-1 p-6">
+            <div className="grid grid-cols-3 gap-4">
+              {/* Créer Devis */}
+              <button
+                onClick={() => { setCreateMode?.({ devis: true }); setPage?.('devis'); }}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+                  <FileText size={20} style={{ color: couleur }} />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Devis</p>
+              </button>
+
+              {/* Créer Facture */}
+              <button
+                onClick={() => { setCreateMode?.({ facture: true }); setPage?.('devis'); }}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <Receipt size={20} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Facture</p>
+              </button>
+
+              {/* Ajouter Client */}
+              <button
+                onClick={() => setPage?.('clients')}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <Users size={20} className="text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Client</p>
+              </button>
+
+              {/* Planifier Chantier */}
+              <button
+                onClick={() => setPage?.('chantiers')}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <HardHat size={20} className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Chantier</p>
+              </button>
+
+              {/* Pointage */}
+              <button
+                onClick={() => setPage?.('planning')}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Pointage</p>
+              </button>
+
+              {/* Rapports */}
+              <button
+                onClick={() => setShowRentabilityDashboard(true)}
+                className={`p-4 rounded-xl text-center transition-all hover:shadow-md active:scale-[0.98] ${isDark ? 'bg-slate-800 border border-slate-700 hover:border-slate-600' : 'bg-white border border-gray-200 hover:border-gray-300'}`}
+              >
+                <div className="w-10 h-10 mx-auto mb-3 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                  <BarChart3 size={20} className="text-rose-600 dark:text-rose-400" />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Rapports</p>
+              </button>
+            </div>
+          </div>
+
+          {/* Footer - px-6 py-4 */}
+          <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <kbd className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-500'}`}>⌘K</kbd>
+                <span className={`text-xs ${textMuted}`}>Recherche rapide</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ══════════════ WIDGET 9: Alertes Météo ══════════════ */}
+        {user?.id && (
+          <WeatherAlertsWidget
+            userId={user.id}
+            daysAhead={7}
+          />
+        )}
+
+        </div>
       </div>
 
-      {/* === MODALS (rendered as overlays to keep dashboard visible) === */}
+      {/* === MODALS === */}
 
       {/* CA Detail Modal */}
       {showCADetail && (() => {

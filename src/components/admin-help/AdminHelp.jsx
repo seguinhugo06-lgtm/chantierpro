@@ -56,7 +56,7 @@ export default function AdminHelp({
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
 

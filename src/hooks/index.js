@@ -20,3 +20,6 @@ export {
 
 // Re-export validation hook
 export { useFormValidation } from '../lib/validation';
+
+// Modal hooks
+export { useModal, useMultiModal } from './useModal';
