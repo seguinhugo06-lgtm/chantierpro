@@ -7,6 +7,7 @@ import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis } from '../lib/templates/task-templates';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
+import { VoiceAssistantFAB } from './VoiceAssistant';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -2203,6 +2204,28 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         devis={devis}
         isDark={isDark}
         couleur={couleur}
+      />
+
+      {/* Voice Assistant FAB */}
+      <VoiceAssistantFAB
+        currentChantier={view ? chantiers.find(c => c.id === view) : null}
+        catalogue={catalogue}
+        chantiers={chantiers}
+        devis={devis}
+        onOpenCamera={() => {
+          // Would trigger photo capture
+          showToast('Ouverture caméra...', 'info');
+        }}
+        onCreateNote={async (text, chantierId) => {
+          // Would create a note linked to the chantier
+          showToast(`Note enregistrée: ${text}`, 'success');
+        }}
+        onCallClient={(chantier) => {
+          const client = clients.find(c => c.id === chantier?.client_id);
+          if (client?.telephone) {
+            window.location.href = `tel:${client.telephone}`;
+          }
+        }}
       />
     </div>
   );
