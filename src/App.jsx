@@ -805,8 +805,8 @@ export default function App() {
             setCreateMode(p => ({ ...p, devis: true }));
             setPage('devis');
           }}
-          onNewClient={() => setShowQuickClient(true)}
-          onNewChantier={() => setShowQuickChantier(true)}
+          onNewClient={() => setShowFABQuickClient(true)}
+          onNewChantier={() => setShowFABQuickChantier(true)}
           onStartVoiceNote={() => setShowVoiceJournal(true)}
           isDark={isDark}
           couleur={couleur}
@@ -1291,12 +1291,12 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('onboarding_completed', 'true');
+    localStorage.setItem('chantierpro_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('onboarding_completed', 'true');
+    localStorage.setItem('chantierpro_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 

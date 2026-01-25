@@ -1375,7 +1375,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                     <span className="text-lg font-bold" style={{ color: acomptePct === pct ? couleur : '#64748b' }}>{formatMoney(selected.total_ttc * pct / 100)}</span>
                   </button>
                 ))}
-                <div className="flex items-center gap-3 p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl">
+                <div className={`flex items-center gap-3 p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl`}>
                   <input type="number" min="1" max="99" value={acomptePct} onChange={e => setAcomptePct(parseInt(e.target.value) || 30)} className="w-20 px-3 py-2 border rounded-xl text-center" />
                   <span className="text-slate-500">%</span>
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>

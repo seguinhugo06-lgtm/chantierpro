@@ -1064,7 +1064,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <p className={`font-semibold mb-1 ${textPrimary}`}>Documentez votre chantier</p>
                 <p className={`text-sm mb-4 ${textMuted}`}>Les photos horodatées sont essentielles en cas de litige</p>
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={e => handlePhotoUpload(e, 'travaux')} />
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'travaux')} />
                   <span
                     className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                     style={{ background: couleur }}
