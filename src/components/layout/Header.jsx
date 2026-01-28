@@ -536,7 +536,7 @@ function UserMenuDropdown({
   const menuItems = [
     {
       icon: Settings,
-      label: 'Parametres',
+      label: 'Paramètres',
       onClick: onOpenSettings,
     },
     {
@@ -555,7 +555,7 @@ function UserMenuDropdown({
     },
     {
       icon: LogOut,
-      label: 'Deconnexion',
+      label: 'Déconnexion',
       onClick: onLogout,
       variant: 'danger',
     },

@@ -5,6 +5,7 @@ export {
   CardHeader,
   CardContent,
   CardFooter,
+  StatCard,
 } from './Card';
 export { Badge } from './Badge';
 
@@ -49,6 +50,20 @@ export { Tooltip } from './Tooltip';
 export { default as Avatar } from './Avatar';
 export { default as EmptyState } from './EmptyState';
 export { default as ResponsiveTable } from './ResponsiveTable';
+
+// ============ ACTION COMPONENTS ============
+export { ActionMenu, ActionMenuButton } from './ActionMenu';
+export {
+  QuickActions,
+  QuickActionsRow,
+  ActionDivider,
+  useActionState,
+} from './QuickActions';
+export {
+  ActionConfirmModal,
+  DeleteConfirmModal,
+  ConvertConfirmModal,
+} from './ActionConfirmModal';
 
 // ============ UTILITY COMPONENTS ============
 export { default as ErrorBoundary } from './ErrorBoundary';

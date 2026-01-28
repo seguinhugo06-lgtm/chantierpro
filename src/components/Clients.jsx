@@ -92,7 +92,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
             <ArrowLeft size={20} className={textPrimary} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{client.nom} {client.prenom}</h1>
+            <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h1>
             {client.entreprise && <p className={`${textMuted} flex items-center gap-1`}><Building2 size={14} />{client.entreprise}</p>}
           </div>
           <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
@@ -162,7 +162,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
           </div>
           <div className={`${cardBg} rounded-xl border p-4 text-center`}>
-            <p className="text-2xl font-bold text-emerald-500">{stats.ca.toLocaleString('fr-FR')}€</p>
+            <p className={`text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{stats.ca.toLocaleString('fr-FR')}€</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                         </div>
                         <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                       </div>
-                      <p className="font-bold" style={{color: couleur}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
+                      <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
                       <ChevronRight size={18} className={textMuted} />
                     </div>
                   );
@@ -487,7 +487,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                       {c.nom?.[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-bold text-base sm:text-lg truncate ${textPrimary}`}>{c.nom} {c.prenom}</h3>
+                      <h3 className={`font-bold text-base sm:text-lg ${textPrimary}`}>{c.nom} {c.prenom}</h3>
                       {c.entreprise && (
                         <p className={`text-sm ${textMuted} truncate flex items-center gap-1`}>
                           <Building2 size={12} /> {c.entreprise}
@@ -549,7 +549,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                       <FileText size={12} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  <span className="font-bold text-sm" style={{color: couleur}}>{s.ca.toLocaleString('fr-FR')}€</span>
+                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}}>{s.ca.toLocaleString('fr-FR')}€</span>
                 </div>
               </div>
             );

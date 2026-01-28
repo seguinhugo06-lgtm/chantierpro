@@ -299,16 +299,16 @@ export default function DesignSystemDemo() {
 
           <div className="space-y-4">
             <Alert variant="info" title="Information">
-              Votre devis a ete envoye avec succes.
+              Votre devis a été envoyé ✓
             </Alert>
-            <Alert variant="success" title="Succes">
-              Paiement recu de 1 500 EUR.
+            <Alert variant="success" title="Succès">
+              Paiement reçu de 1 500 EUR.
             </Alert>
             <Alert variant="warning" title="Attention" dismissible>
-              Cette facture arrive a echeance dans 3 jours.
+              Cette facture arrive à échéance dans 3 jours.
             </Alert>
             <Alert variant="danger" title="Erreur">
-              Impossible de generer le PDF. Veuillez reessayer.
+              Impossible de générer le PDF. Veuillez réessayer.
             </Alert>
           </div>
         </section>

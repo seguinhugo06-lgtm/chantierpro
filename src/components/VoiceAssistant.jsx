@@ -563,7 +563,7 @@ export default function VoiceAssistant({
         console.error('[VoiceAssistant] Error processing command:', err);
         setError(err.message);
         speak(
-          'Une erreur est survenue',
+          'Quelque chose n\'a pas marché. Réessayez.',
           SUPPORTED_LANGUAGES[language].code,
           () => setVoiceState('idle')
         );

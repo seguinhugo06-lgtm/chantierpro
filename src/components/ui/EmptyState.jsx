@@ -247,7 +247,7 @@ export function SearchEmptyState({
  * ErrorEmptyState - Empty state for errors
  */
 export function ErrorEmptyState({
-  title = 'Une erreur est survenue',
+  title = 'Quelque chose n\'a pas marché',
   description = 'Impossible de charger les données',
   onRetry,
   isDark = false

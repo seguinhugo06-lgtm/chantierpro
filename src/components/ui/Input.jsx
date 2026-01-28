@@ -520,7 +520,7 @@ export const Select = forwardRef(({
   helperText,
   error,
   options = [],
-  placeholder = 'Selectionner...',
+  placeholder = 'Sélectionner...',
   required = false,
   disabled = false,
   isDark = false,

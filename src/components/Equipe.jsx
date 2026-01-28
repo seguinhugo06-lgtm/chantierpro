@@ -74,10 +74,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     onPointageCreated: (pointage) => {
       // Add the pointage to the list
       setPointages(prev => [...prev, pointage]);
-      showToast(`${Math.round(pointage.heures * 10) / 10}h enregistrees`, 'success');
+      showToast(`${Math.round(pointage.heures * 10) / 10}h enregistrées`, 'success');
     },
     onGeofenceEnter: (chantier) => {
-      showToast(`Arrive a ${chantier.nom}`, 'info');
+      showToast(`Arrivé à ${chantier.nom}`, 'info');
     }
   });
 
@@ -213,7 +213,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   // Quick start timer for an employee
   const quickStartTimer = (empId, chantierId = '') => {
     if (chrono.running) {
-      showToast('Arretez le chronometre actuel d\'abord', 'error');
+      showToast('Arrêtez le chronomètre actuel d\'abord', 'error');
       return;
     }
     setChrono({
@@ -226,11 +226,11 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       totalPauseTime: 0
     });
     setTab('pointage');
-    showToast('Chronometre demarre', 'success');
+    showToast('Chronomètre démarré', 'success');
   };
 
   const startChrono = () => {
-    if (!chrono.employeId) return showToast('Selectionnez un employe', 'error');
+    if (!chrono.employeId) return showToast('Sélectionnez un employé', 'error');
     setChrono(p => ({ ...p, running: true, start: Date.now(), paused: false, pausedAt: null, totalPauseTime: 0 }));
   };
 
@@ -247,7 +247,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         pausedAt: null,
         totalPauseTime: (p.totalPauseTime || 0) + pauseDuration
       }));
-      showToast('Chronometre repris', 'success');
+      showToast('Chronomètre repris', 'success');
     } else {
       // Pause
       setChrono(p => ({
@@ -289,7 +289,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         verrouille: false,
         note: note || ''
       }]);
-      showToast(`${Math.round(heures * 10) / 10}h enregistrees`, 'success');
+      showToast(`${Math.round(heures * 10) / 10}h enregistrées`, 'success');
     }
 
     setChrono({ running: false, start: null, employeId: '', chantierId: '', paused: false, pausedAt: null, totalPauseTime: 0 });
@@ -299,12 +299,12 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
   const addPointageManuel = () => {
     if (!pForm.employeId || !pForm.heures) {
-      showToast('Employe et heures requis', 'error');
+      showToast('Employé et heures requis', 'error');
       return;
     }
     setPointages([...pointages, { id: generateId(), ...pForm, heures: parseFloat(pForm.heures), approuve: false, manuel: true, verrouille: false }]);
     setPForm({ employeId: '', chantierId: '', date: new Date().toISOString().split('T')[0], heures: '', note: '' });
-    showToast('Pointage ajoute', 'success');
+    showToast('Pointage ajouté', 'success');
   };
 
   // Bulk time entry
@@ -324,7 +324,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     setPointages([...pointages, ...newPointages]);
     setShowBulkEntry(false);
     setBulkForm({ chantierId: '', date: new Date().toISOString().split('T')[0], heures: '8', selectedEmployees: [] });
-    showToast(`${newPointages.length} pointages ajoutes`, 'success');
+    showToast(`${newPointages.length} pointages ajoutés`, 'success');
   };
 
   const toggleBulkEmployee = (empId) => {
@@ -347,7 +347,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   const approuverTout = () => {
     const ids = weekPointages.filter(p => !p.verrouille && !p.approuve).map(p => p.id);
     setPointages(pointages.map(p => ids.includes(p.id) ? { ...p, approuve: true } : p));
-    showToast(`${ids.length} pointages valides`, 'success');
+    showToast(`${ids.length} pointages validés`, 'success');
   };
 
   const rejeterPointage = async (id) => {
@@ -364,7 +364,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     if (!confirmed) return;
     const ids = weekPointages.map(p => p.id);
     setPointages(pointages.map(p => ids.includes(p.id) ? { ...p, approuve: true, verrouille: true } : p));
-    showToast('Semaine validee et verrouillee', 'success');
+    showToast('Semaine validée et verrouillée', 'success');
   };
 
   const updatePointage = (id, field, value) => {
@@ -387,10 +387,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     };
     if (editId) {
       setEquipe(equipe.map(e => e.id === editId ? data : e));
-      showToast('Employe modifie', 'success');
+      showToast('Employé modifié', 'success');
     } else {
       setEquipe([...equipe, data]);
-      showToast('Employe ajoute', 'success');
+      showToast('Employé ajouté', 'success');
     }
     setShowAdd(false);
     setEditId(null);
@@ -416,7 +416,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet employe ?' });
     if (confirmed) {
       setEquipe(equipe.filter(e => e.id !== id));
-      showToast('Employe supprime', 'success');
+      showToast('Employé supprimé', 'success');
     }
   };
 
@@ -440,7 +440,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     a.href = URL.createObjectURL(blob);
     a.download = `heures_${weekStart.toISOString().split('T')[0]}.csv`;
     a.click();
-    showToast('Export CSV telecharge', 'success');
+    showToast('Export CSV téléchargé', 'success');
   };
 
   const getHeuresMois = (empId) => {
@@ -524,7 +524,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Role / Poste</label>
             <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))}>
-              <option value="">Selectionner...</option>
+              <option value="">Sélectionner...</option>
               <option value="Chef de chantier">Chef de chantier</option>
               <option value="Ouvrier qualifie">Ouvrier qualifie</option>
               <option value="Electricien">Electricien</option>
@@ -540,7 +540,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de contrat</label>
             <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.contrat} onChange={e => setForm(p => ({...p, contrat: e.target.value}))}>
-              <option value="">Selectionner...</option>
+              <option value="">Sélectionner...</option>
               <option value="CDI">CDI</option>
               <option value="CDD">CDD</option>
               <option value="Interim">Interim</option>
@@ -586,16 +586,16 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupee</h1>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupée</h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-        <p className={`text-sm ${textMuted} mb-4`}>Ajoutez les heures pour plusieurs employes en une seule fois</p>
+        <p className={`text-sm ${textMuted} mb-4`}>Ajoutez les heures pour plusieurs employés en une seule fois</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier *</label>
             <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={bulkForm.chantierId} onChange={e => setBulkForm(p => ({...p, chantierId: e.target.value}))}>
-              <option value="">Selectionner...</option>
+              <option value="">Sélectionner...</option>
               {chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
           </div>
@@ -630,9 +630,9 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
-            <label className={`text-sm font-medium ${textPrimary}`}>Employes ({bulkForm.selectedEmployees.length} selectionne{bulkForm.selectedEmployees.length > 1 ? 's' : ''})</label>
+            <label className={`text-sm font-medium ${textPrimary}`}>Employés ({bulkForm.selectedEmployees.length} sélectionné{bulkForm.selectedEmployees.length > 1 ? 's' : ''})</label>
             <button onClick={selectAllEmployees} className={`text-sm px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              {bulkForm.selectedEmployees.length === equipe.length ? 'Deselectionner tout' : 'Tout selectionner'}
+              {bulkForm.selectedEmployees.length === equipe.length ? 'Désélectionner tout' : 'Tout sélectionner'}
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -689,22 +689,22 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
             <Users size={40} className="text-white" />
           </div>
-          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Gerez votre equipe</h2>
+          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Gérez votre équipe</h2>
           <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-            Ajoutez vos employes, suivez leurs heures et calculez la rentabilite de vos chantiers.
+            Ajoutez vos employés, suivez leurs heures et calculez la rentabilité de vos chantiers.
           </p>
         </div>
 
         <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-          <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalites</p>
+          <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
                 <Timer size={18} style={{ color: couleur }} />
               </div>
               <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Chronometre</p>
-                <p className={`text-xs ${textMuted}`}>Pointage en temps reel</p>
+                <p className={`font-medium text-sm ${textPrimary}`}>Chronomètre</p>
+                <p className={`text-xs ${textMuted}`}>Pointage en temps réel</p>
               </div>
             </div>
             <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
@@ -712,8 +712,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                 <TrendingUp size={18} style={{ color: couleur }} />
               </div>
               <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Cout de revient</p>
-                <p className={`text-xs ${textMuted}`}>Rentabilite par chantier</p>
+                <p className={`font-medium text-sm ${textPrimary}`}>Coût de revient</p>
+                <p className={`text-xs ${textMuted}`}>Rentabilité par chantier</p>
               </div>
             </div>
             <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
@@ -1052,7 +1052,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       <div className={`p-1.5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         <div className="flex gap-1 overflow-x-auto">
           {[
-            { key: 'overview', label: 'Equipe', icon: Users, count: equipe.length },
+            { key: 'overview', label: 'Équipe', icon: Users, count: equipe.length },
             { key: 'smart', label: 'GPS', icon: Navigation, badge: 'Nouveau' },
             { key: 'pointage', label: 'Pointage', icon: Timer },
             { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
@@ -1518,7 +1518,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                       chantiers={chantiers}
                       onPointageCreated={(pointage) => {
                         setPointages(prev => [...prev, pointage]);
-                        showToast(`${Math.round(pointage.heures * 10) / 10}h enregistrees`, 'success');
+                        showToast(`${Math.round(pointage.heures * 10) / 10}h enregistrées`, 'success');
                       }}
                       couleur={couleur}
                       isDark={isDark}

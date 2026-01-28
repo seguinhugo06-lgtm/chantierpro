@@ -372,7 +372,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       statut: 'accepte'
     });
     setSelected(s => ({ ...s, signature: signatureData.signature, signatureDate: signatureData.signatureDate, statut: 'accepte' }));
-    setSnackbar({ type: 'success', message: 'Devis signé et accepté avec succès !' });
+    setSnackbar({ type: 'success', message: 'Devis signé et accepté ✓' });
   };
 
   // Template selection handler
@@ -1980,41 +1980,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               )}
             </div>
 
-            {/* Accès rapide - grouped by client */}
-            {activeClients.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className={`font-semibold ${textPrimary}`}>Accès rapide</h3>
-                  <button onClick={() => setFilter('all')} className={`text-sm flex items-center gap-1 ${textMuted} hover:underline`}>
-                    Tout voir <ChevronRight size={14} />
-                  </button>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {activeClients.map(({ client, devis: clientDevis, factures: clientFactures }) => {
-                    const pendingDevis = clientDevis.filter(d => d.statut === 'envoye');
-                    const unpaidFactures = clientFactures.filter(f => f.statut !== 'payee');
-                    const totalPending = pendingDevis.reduce((s, d) => s + (d.total_ttc || 0), 0) + unpaidFactures.reduce((s, f) => s + (f.total_ttc || 0), 0);
-                    const mostRecent = [...clientDevis, ...clientFactures].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-
-                    return (
-                      <div
-                        key={client?.id || 'unknown'}
-                        onClick={() => { if (mostRecent) { setSelected(mostRecent); setMode('preview'); }}}
-                        className={`flex-shrink-0 w-44 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${cardBg}`}
-                      >
-                        <p className={`font-medium text-sm truncate ${textPrimary}`}>{client?.nom || 'Sans client'}</p>
-                        <p className={`text-xs ${textMuted} mb-2`}>
-                          {pendingDevis.length > 0 && `${pendingDevis.length} devis`}
-                          {pendingDevis.length > 0 && unpaidFactures.length > 0 && ' · '}
-                          {unpaidFactures.length > 0 && `${unpaidFactures.length} fact.`}
-                        </p>
-                        <p className="text-lg font-bold" style={{ color: couleur }}>{formatMoney(totalPending)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Section supprimée pour simplifier l'interface */}
           </div>
         );
       })()}
@@ -2153,7 +2119,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Dupliquer"><Copy size={18} className={textMuted} /></button>
                 <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF"><Eye size={18} className={textMuted} /></button>
-                <p className="text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0" style={{color: couleur}}>{formatMoney(d.total_ttc)}</p>
+                <p className={`text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0 ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );

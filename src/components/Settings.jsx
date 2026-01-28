@@ -158,11 +158,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
-          <span className="text-xl">⚠️</span>
+        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <span className="text-xl">📝</span>
           <div>
-            <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Profil incomplet</p>
-            <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Complétez vos informations pour générer des devis et factures conformes à la loi française.</p>
+            <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
           </div>
         </div>
       )}
@@ -226,11 +226,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <h3 className="font-semibold mb-4">Informations entreprise</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Nom / Raison sociale <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Nom de l'entreprise <span className="text-red-500">*</span></label>
                 <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => setEntreprise(p => ({...p, nom: e.target.value}))} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Forme juridique <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => setEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="EI">Entreprise Individuelle (EI)</option>
@@ -244,7 +244,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Capital social {['SARL', 'SAS', 'SASU', 'EURL'].includes(entreprise.formeJuridique) && <span className="text-red-500">*</span>}
+                  Capital (optionnel)
                 </label>
                 <div className="flex">
                   <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={e => setEntreprise(p => ({...p, capital: e.target.value}))} />

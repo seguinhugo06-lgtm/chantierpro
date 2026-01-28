@@ -72,6 +72,7 @@ export default function App() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
   const [authError, setAuthError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // UI state
   const [page, setPage] = useState('dashboard');
@@ -165,24 +166,30 @@ export default function App() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setIsSubmitting(true);
     try {
       const { error } = await auth.signIn(authForm.email, authForm.password);
       if (error) setAuthError(error.message);
     } catch (e) {
       setAuthError('Erreur de connexion.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
-  const handleSignUp = async (e) => { 
-    e.preventDefault(); 
-    setAuthError(''); 
-    try { 
-      const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom }); 
-      if (error) setAuthError(error.message); 
-      else { showToast('Compte créé avec succès !', 'success'); setShowSignUp(false); } 
-    } catch (e) { 
-      setAuthError('Erreur lors de la création du compte'); 
-    } 
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setIsSubmitting(true);
+    try {
+      const { error } = await auth.signUp(authForm.email, authForm.password, { nom: authForm.nom });
+      if (error) setAuthError(error.message);
+      else { showToast('Compte créé ✓', 'success'); setShowSignUp(false); }
+    } catch (e) {
+      setAuthError('Erreur lors de la création du compte');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const handleSignOut = async () => {
@@ -266,11 +273,11 @@ export default function App() {
       () => {
         setIsOnline(true);
         updatePendingCount();
-        showToast('Connexion retablie', 'success');
+        showToast('Connexion rétablie', 'success');
       },
       () => {
         setIsOnline(false);
-        showToast('Mode hors ligne active', 'info');
+        showToast('Mode hors ligne activé', 'info');
       }
     );
 
@@ -304,12 +311,12 @@ export default function App() {
               <Building2 size={32} className="text-white" />
             </div>
             <h1 className="text-5xl font-bold text-white mb-4">ChantierPro</h1>
-            <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilite</p>
-            <div className="space-y-4">
+            <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
+            <div className="space-y-6">
               {[
-                { icon: BarChart3, text: 'Marge temps reel' }, 
-                { icon: Users, text: 'Gestion equipe' }, 
-                { icon: FileText, text: 'Devis & Factures' }, 
+                { icon: BarChart3, text: 'Marge temps réel' },
+                { icon: Users, text: 'Gestion équipe' },
+                { icon: FileText, text: 'Devis & Factures' },
                 { icon: Calendar, text: 'Planning' }
               ].map((f, i) => (
                 <div key={i} className="flex items-center gap-4 text-white/90">
@@ -335,49 +342,77 @@ export default function App() {
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accedez a votre espace'}</p>
+          <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
           
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
             {showSignUp && (
-              <input 
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:outline-none" 
-                placeholder="Nom entreprise" 
-                value={authForm.nom} 
-                onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))} 
+              <input
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                placeholder="Nom entreprise"
+                value={authForm.nom}
+                onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
+                aria-label="Nom de l'entreprise"
+                autoComplete="organization"
               />
             )}
-            <input 
-              type="email" 
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:outline-none" 
-              placeholder="Email" 
-              value={authForm.email} 
-              onChange={e => setAuthForm(p => ({...p, email: e.target.value}))} 
-              required 
+            <input
+              type="email"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+              placeholder="Email"
+              value={authForm.email}
+              onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
+              required
+              aria-label="Adresse email"
+              autoComplete="email"
             />
-            <input 
-              type="password" 
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:border-orange-500 focus:outline-none" 
-              placeholder="Mot de passe" 
-              value={authForm.password} 
-              onChange={e => setAuthForm(p => ({...p, password: e.target.value}))} 
-              required 
-            />
+            <div>
+              <input
+                type="password"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                placeholder="Mot de passe"
+                value={authForm.password}
+                onChange={e => setAuthForm(p => ({...p, password: e.target.value}))}
+                required
+                aria-label="Mot de passe"
+                autoComplete={showSignUp ? "new-password" : "current-password"}
+              />
+              {!showSignUp && (
+                <button
+                  type="button"
+                  onClick={() => showToast('Contactez support@chantierpro.fr', 'info')}
+                  className="text-sm text-slate-400 hover:text-orange-400 mt-2 transition-colors self-end"
+                >
+                  Mot de passe oublié ?
+                </button>
+              )}
+            </div>
             {authError && (
               <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
                 {authError}
               </div>
             )}
-            <button 
-              type="submit" 
-              className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all"
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {showSignUp ? 'Créer mon compte' : 'Se connecter'}
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>{showSignUp ? 'Création...' : 'Connexion...'}</span>
+                </>
+              ) : (
+                showSignUp ? 'Créer mon compte' : 'Se connecter'
+              )}
             </button>
           </form>
           
           <p className="text-center text-slate-400 mt-6">
-            {showSignUp ? 'Deja inscrit?' : 'Pas de compte?'}{' '}
-            <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 hover:text-orange-400">
+            {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
+            <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 hover:text-orange-400 font-medium">
               {showSignUp ? 'Se connecter' : "S'inscrire"}
             </button>
           </p>
@@ -391,18 +426,15 @@ export default function App() {
   const devisEnAttente = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
   const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
 
-  // Navigation items
+  // Navigation items (simplified to 6 core items for reduced cognitive load)
+  // Navigation items - simplified to 6 core items with single badge
   const nav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente + facturesImpayees, badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316' },
-    { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours, badgeColor: '#22c55e' },
-    { id: 'planning', icon: Calendar, label: 'Planning', badge: todayEvents, badgeColor: '#3b82f6' },
+    { id: 'chantiers', icon: Building2, label: 'Chantiers' },
     { id: 'clients', icon: Users, label: 'Clients' },
-    { id: 'catalogue', icon: Package, label: 'Catalogue' },
-    { id: 'equipe', icon: HardHat, label: 'Equipe' },
-    { id: 'admin', icon: HelpCircle, label: 'Aide Admin' },
-    { id: 'settings', icon: SettingsIcon, label: 'Parametres' },
-    { id: 'design-system', icon: Palette, label: 'Design System' }
+    { id: 'planning', icon: Calendar, label: 'Planning' },
+    { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
   
   const couleur = entreprise.couleur || '#f97316';
@@ -471,7 +503,7 @@ export default function App() {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
           >
             <LogOut size={18} />
-            <span>Deconnexion</span>
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -487,6 +519,32 @@ export default function App() {
           >
             <Menu size={22} />
           </button>
+
+          {/* Logo - visible on mobile when sidebar is hidden */}
+          <div className="lg:hidden flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+              style={{background: couleur}}
+            >
+              <Building2 size={16} className="text-white" />
+            </div>
+            <span className={`font-semibold text-sm hidden sm:block ${tc.text}`}>
+              {entreprise.nom || 'ChantierPro'}
+            </span>
+          </div>
+
+          {/* ChantierPro title - visible on desktop */}
+          <div className="hidden lg:flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+              style={{background: couleur}}
+            >
+              <Building2 size={16} className="text-white" />
+            </div>
+            <h1 className={`text-xl font-bold ${tc.text}`}>
+              ChantierPro
+            </h1>
+          </div>
 
           {/* Network status indicator */}
           {!isOnline && (
@@ -673,6 +731,17 @@ export default function App() {
               </>
             )}
           </div>
+
+          {/* User avatar */}
+          <button
+            onClick={() => setPage('settings')}
+            className={`ml-1 w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg`}
+            style={{background: couleur}}
+            title={user?.email || 'Mon compte'}
+            aria-label="Mon compte"
+          >
+            {user?.email?.charAt(0).toUpperCase() || 'U'}
+          </button>
         </header>
 
         {/* Page content */}
@@ -728,7 +797,7 @@ export default function App() {
               };
               setDevis(prev => [...prev, newDevis]);
               setShowFABDevisWizard(false);
-              showToast('Devis cree avec succes !', 'success');
+              showToast('Devis créé ✓', 'success');
             }}
             clients={clients}
             catalogue={catalogue}
@@ -749,7 +818,7 @@ export default function App() {
               const newClient = { id: `c${Date.now()}`, ...data };
               setClients(prev => [...prev, newClient]);
               setShowFABQuickClient(false);
-              showToast('Client ajoute !', 'success');
+              showToast('Client ajouté !', 'success');
             }}
             isDark={isDark}
             couleur={couleur}
@@ -774,7 +843,7 @@ export default function App() {
               };
               setChantiers(prev => [...prev, newChantier]);
               setShowFABQuickChantier(false);
-              showToast('Chantier cree !', 'success');
+              showToast('Chantier créé !', 'success');
             }}
             clients={clients}
             devis={devis}
@@ -820,7 +889,7 @@ export default function App() {
           onClose={() => setShowVoiceJournal(false)}
           onSave={(data) => {
             console.log('Voice note saved:', data);
-            showToast('Note vocale enregistree', 'success');
+            showToast('Note vocale enregistrée', 'success');
           }}
           currentChantier={selectedChantier}
           chantiers={chantiers}
