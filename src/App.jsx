@@ -426,14 +426,16 @@ export default function App() {
   const devisEnAttente = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
   const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
 
-  // Navigation items (simplified to 6 core items for reduced cognitive load)
-  // Navigation items - simplified to 6 core items with single badge
+  // Navigation items - full sidebar with all sections
   const nav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente + facturesImpayees, badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316' },
-    { id: 'chantiers', icon: Building2, label: 'Chantiers' },
+    { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours, badgeColor: '#22c55e' },
+    { id: 'planning', icon: Calendar, label: 'Planning', badge: todayEvents, badgeColor: '#3b82f6' },
     { id: 'clients', icon: Users, label: 'Clients' },
-    { id: 'planning', icon: Calendar, label: 'Planning' },
+    { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'equipe', icon: HardHat, label: 'Équipe' },
+    { id: 'admin', icon: HelpCircle, label: 'Aide Admin' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
   
