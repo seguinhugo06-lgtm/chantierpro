@@ -109,7 +109,7 @@ export default function RentabilityDashboard({
               <BarChart3 size={24} style={{ color: couleur }} />
             </div>
             <div>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>Analyse de rentabilite</h2>
+              <h2 className={`text-xl font-bold ${textPrimary}`}>Analyse de rentabilité</h2>
               <p className={textMuted}>{kpis.chantiersEnCours} chantier{kpis.chantiersEnCours > 1 ? 's' : ''} en cours</p>
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function RentabilityDashboard({
                   <ArrowDownRight size={14} className="text-red-500" />
                 )}
                 <span className={`text-xs ${kpis.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {kpis.tendance >= 0 ? '+' : ''}{kpis.tendance.toFixed(1)}% vs termines
+                  {kpis.tendance >= 0 ? '+' : ''}{kpis.tendance.toFixed(1)}% vs terminés
                 </span>
               </div>
             </div>
@@ -452,7 +452,7 @@ export default function RentabilityDashboard({
                         : m.statut === 'termine' ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600')
                         : (isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700')
                       }`}>
-                        {m.statut === 'en_cours' ? 'En cours' : m.statut === 'termine' ? 'Termine' : 'Prospect'}
+                        {m.statut === 'en_cours' ? 'En cours' : m.statut === 'termine' ? 'Terminé' : 'Prospect'}
                       </span>
                     </td>
                     <td className="px-4 py-3">

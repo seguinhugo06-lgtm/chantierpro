@@ -955,7 +955,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   whileTap={{ scale: 0.98 }}
                 >
                   <Square size={18} fill="white" />
-                  Arreter
+                  Arrêter
                 </motion.button>
               </div>
             </div>
@@ -975,7 +975,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Equipe active maintenant
+                Équipe active maintenant
               </h3>
               <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
                 {activeEmployeesToday.length} sur le terrain
@@ -1823,7 +1823,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                           whileTap={{ scale: 0.98 }}
                         >
                           <Square size={24} fill="white" />
-                          Arreter
+                          Arrêter
                         </motion.button>
                       </>
                     )}

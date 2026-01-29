@@ -600,10 +600,10 @@ function DeleteConfirmModal({ isOpen, onClose, equipe, onConfirm, isDeleting }) 
       </ModalHeader>
       <ModalBody>
         <p className="text-gray-600 dark:text-gray-400">
-          Etes-vous sur de vouloir supprimer l'equipe <span className="font-medium text-gray-900 dark:text-white">"{equipe.nom}"</span> ?
+          Êtes-vous sûr de vouloir supprimer l'équipe <span className="font-medium text-gray-900 dark:text-white">"{equipe.nom}"</span> ?
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          Les chantiers assignes a cette equipe ne seront plus associes.
+          Les chantiers assignés à cette équipe ne seront plus associés.
         </p>
       </ModalBody>
       <ModalFooter>
