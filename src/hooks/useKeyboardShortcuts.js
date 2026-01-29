@@ -168,9 +168,9 @@ export const COMMON_SHORTCUTS = [
   { key: 'g then c', description: 'Clients', category: 'navigation', sequence: 'g c' },
   { key: 'g then v', description: 'Devis/Factures', category: 'navigation', sequence: 'g v' },
   { key: 'g then h', description: 'Chantiers', category: 'navigation', sequence: 'g h' },
-  { key: 'g then e', description: 'Equipe', category: 'navigation', sequence: 'g e' },
+  { key: 'g then e', description: 'Équipe', category: 'navigation', sequence: 'g e' },
   { key: 'g then p', description: 'Planning', category: 'navigation', sequence: 'g p' },
-  { key: 'g then s', description: 'Parametres', category: 'navigation', sequence: 'g s' },
+  { key: 'g then s', description: 'Paramètres', category: 'navigation', sequence: 'g s' },
 
   // Quick actions (displayed as sequences)
   { key: 'n then d', description: 'Nouveau devis', category: 'actions', sequence: 'n d' },

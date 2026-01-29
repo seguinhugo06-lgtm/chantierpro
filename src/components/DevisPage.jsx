@@ -2119,7 +2119,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Dupliquer"><Copy size={18} className={textMuted} /></button>
                 <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF"><Eye size={18} className={textMuted} /></button>
-                <p className={`text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0 ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
+                <p className={`text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );

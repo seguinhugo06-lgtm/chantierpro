@@ -553,8 +553,14 @@ export default function Dashboard({
 
     const lastMonthCA = getMonthCA(1);
     const thisMonthCA = getMonthCA(0);
-    // Round to avoid floating point issues, handle division by zero
-    const tendance = lastMonthCA > 0 ? Math.round(((thisMonthCA - lastMonthCA) / lastMonthCA) * 100) : 0;
+    // Calculate percentage change with proper handling
+    // - If no previous month data, return null (will show "—")
+    // - Cap at ±999% for display sanity
+    let tendance = null;
+    if (lastMonthCA > 0) {
+      const rawChange = ((thisMonthCA - lastMonthCA) / lastMonthCA) * 100;
+      tendance = Math.round(Math.max(-999, Math.min(999, rawChange)));
+    }
 
     // Check if new user
     const isNewUser =

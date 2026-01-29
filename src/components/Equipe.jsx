@@ -681,7 +681,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   if (equipe.length === 0) return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Equipe & Heures</h1>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
       </div>
 
       <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -755,7 +755,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Equipe & Heures</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
           {/* Online indicator */}
           <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
             isOnline
@@ -819,12 +819,12 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <div className="flex items-end justify-between mb-4">
               <div>
                 <p className="text-4xl sm:text-5xl font-bold">{totalWeekHours.toFixed(0)}<span className="text-2xl opacity-80">h</span></p>
-                <p className="text-sm opacity-80 mt-1">{equipe.length} membre{equipe.length > 1 ? 's' : ''} dans l'equipe</p>
+                <p className="text-sm opacity-80 mt-1">{equipe.length} membre{equipe.length > 1 ? 's' : ''} dans l'équipe</p>
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-2 justify-end">
                   <Check size={16} className="opacity-80" />
-                  <span className="text-sm opacity-80">Validees</span>
+                  <span className="text-sm opacity-80">Validées</span>
                 </div>
                 <p className="text-2xl font-bold">{approvedWeekHours.toFixed(1)}h</p>
               </div>

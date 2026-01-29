@@ -100,13 +100,25 @@ function Tooltip({ content, children }) {
 // ============ TREND BADGE ============
 
 function TrendBadge({ value, label, inverted = false }) {
+  // Handle null/undefined - show neutral "—"
+  if (value === null || value === undefined || !isFinite(value) || Math.abs(value) > 999) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <span className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+          <Minus className="w-4 h-4" />
+          —
+        </span>
+        {label && <span className="text-xs text-gray-600 dark:text-gray-400">{label}</span>}
+      </div>
+    );
+  }
+
   const isPositive = value > 0;
   const isNegative = value < 0;
   const isFlat = value === 0;
 
   // Determine visual treatment (WCAG AA compliant colors)
   const isGood = inverted ? isNegative : isPositive;
-  const isBad = inverted ? isPositive : isNegative;
 
   const config = isFlat
     ? { icon: Minus, bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' }
@@ -117,19 +129,6 @@ function TrendBadge({ value, label, inverted = false }) {
   const Icon = config.icon;
   const displayValue = Math.abs(Math.round(value));
   const sign = isPositive ? '+' : isNegative ? '-' : '';
-
-  // Handle infinite or very large values
-  if (!isFinite(value) || Math.abs(value) > 9999) {
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <span className={cn('inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-sm font-medium', config.bg, config.text)}>
-          <Icon className="w-4 h-4" />
-          —
-        </span>
-        {label && <span className="text-xs text-gray-600 dark:text-gray-400">{label}</span>}
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-end gap-1">
