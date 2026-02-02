@@ -18,7 +18,6 @@ const FIELD_MAPPINGS = {
       email: item.email || null,
       telephone: item.telephone || null,
       adresse: item.adresse || null,
-      type: item.type || 'particulier',
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -27,7 +26,7 @@ const FIELD_MAPPINGS = {
       email: row.email,
       telephone: row.telephone,
       adresse: row.adresse,
-      type: row.type || 'particulier',
+      type: 'particulier', // Default value for local use
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }),
