@@ -213,89 +213,116 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
         {showInstall && (
           <motion.div
             key="install"
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="relative p-4 rounded-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-500 text-white shadow-2xl border border-orange-400/30"
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="relative overflow-hidden rounded-2xl bg-slate-900 text-white shadow-2xl"
           >
-            <button
-              type="button"
-              onClick={handleDismissInstall}
-              className="absolute top-3 right-3 p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/20 transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {/* Gradient background effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-transparent to-amber-500/20" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500" />
 
-            <div className="flex items-start gap-4 pr-6">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <Smartphone className="w-6 h-6" />
+            <div className="relative p-4">
+              <button
+                type="button"
+                onClick={handleDismissInstall}
+                className="absolute top-3 right-3 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-start gap-3 pr-6">
+                {/* App Icon */}
+                <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg">
+                  <span className="text-2xl">🏗️</span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-bold mb-0.5">ChantierPro</p>
+                  <p className="text-xs text-slate-400 mb-3">Gestion de chantiers BTP</p>
+
+                  {/* Native install button for Chrome/Android */}
+                  {canInstall ? (
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={install}
+                        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-orange-500/25 transition-all active:scale-[0.98]"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Installer l'app
+                      </Button>
+                      <div className="flex items-center justify-center gap-3 mt-3 text-[11px] text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          Gratuit
+                        </span>
+                        <span>•</span>
+                        <span>Hors-ligne</span>
+                        <span>•</span>
+                        <span>Rapide</span>
+                      </div>
+                    </>
+                  ) : platform.isIOS ? (
+                    /* iOS Instructions */
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <Share className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Partager</p>
+                            <p className="text-xs text-slate-500">Bouton en bas de Safari</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
+                          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <PlusSquare className="w-4 h-4 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Sur l'écran d'accueil</p>
+                            <p className="text-xs text-slate-500">Puis "Ajouter"</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    /* Android/Other browsers */
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+                            <span className="text-slate-300 font-bold">⋮</span>
+                          </div>
+                          <div>
+                            <p className="font-medium">Menu du navigateur</p>
+                            <p className="text-xs text-slate-500">3 points en haut</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
+                          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <PlusSquare className="w-4 h-4 text-green-400" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Ajouter à l'écran d'accueil</p>
+                            <p className="text-xs text-slate-500">Installer comme app</p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold mb-1">
-                  📲 Installer ChantierPro
+
+              {/* Bottom hint for manual install */}
+              {!canInstall && (
+                <p className="text-[10px] text-slate-600 text-center mt-3 pt-3 border-t border-slate-800">
+                  ✨ Accès instantané • Fonctionne hors-ligne • Notifications
                 </p>
-
-                {/* iOS Instructions */}
-                {platform.isIOS ? (
-                  <>
-                    <p className="text-sm text-white/90 mb-3">
-                      Ajoutez l'app à votre écran d'accueil :
-                    </p>
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
-                        <Share className="w-5 h-5 flex-shrink-0" />
-                        <span>1. Appuyez sur <strong>Partager</strong> ↗</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
-                        <PlusSquare className="w-5 h-5 flex-shrink-0" />
-                        <span>2. <strong>Sur l'écran d'accueil</strong></span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-white/60 text-center">
-                      Gratuit • Accès rapide • Fonctionne hors ligne
-                    </p>
-                  </>
-                ) : canInstall ? (
-                  /* Android/Chrome with native install */
-                  <>
-                    <p className="text-sm text-white/90 mb-4">
-                      Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne !
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={install}
-                      className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold py-2.5 shadow-lg"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Installer maintenant
-                    </Button>
-                    <p className="text-[11px] text-white/60 text-center mt-2">
-                      Gratuit • Pas de téléchargement sur le Play Store
-                    </p>
-                  </>
-                ) : (
-                  /* Android/Other browsers without native prompt */
-                  <>
-                    <p className="text-sm text-white/90 mb-3">
-                      Ajoutez l'app à votre écran d'accueil :
-                    </p>
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
-                        <span className="text-lg">⋮</span>
-                        <span>1. Menu <strong>⋮</strong> en haut à droite</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
-                        <PlusSquare className="w-5 h-5 flex-shrink-0" />
-                        <span>2. <strong>Ajouter à l'écran d'accueil</strong></span>
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-white/60 text-center">
-                      Gratuit • Accès rapide • Fonctionne hors ligne
-                    </p>
-                  </>
-                )}
-              </div>
+              )}
             </div>
           </motion.div>
         )}

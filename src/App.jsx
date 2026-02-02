@@ -482,64 +482,99 @@ export default function App() {
       {/* Mobile overlay */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
-      {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: couleur}}>
-            <Building2 size={20} className="text-white" />
+      {/* Sidebar - Optimized mobile layout */}
+      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
+        {/* Header with close button on mobile */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: couleur}}>
+            <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-bold truncate">{entreprise.nom || 'ChantierPro'}</h1>
+            <h1 className="text-white font-semibold text-sm truncate">{entreprise.nom || 'ChantierPro'}</h1>
             <p className="text-slate-500 text-xs truncate">{user?.email}</p>
           </div>
+          {/* Close button - mobile only */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            aria-label="Fermer le menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        
-        <nav className="p-3 space-y-1" aria-label="Navigation principale">
-          {nav.map(n => (
+
+        {/* Scrollable navigation area */}
+        <div className="flex-1 overflow-y-auto py-2 px-2">
+          {/* Main navigation */}
+          <nav className="space-y-0.5" aria-label="Navigation principale">
+            {nav.slice(0, 4).map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: couleur} : {}}
+                aria-current={page === n.id ? 'page' : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="flex-1 text-left truncate">{n.label}</span>
+                {n.badge > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
+                    style={{ background: n.badgeColor || '#ef4444' }}
+                    title={n.badgeTitle}
+                  >
+                    {n.badge > 99 ? '99+' : n.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Separator */}
+          <div className="my-2 mx-3 border-t border-slate-800" />
+
+          {/* Secondary navigation */}
+          <nav className="space-y-0.5" aria-label="Gestion">
+            {nav.slice(4).map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: couleur} : {}}
+                aria-current={page === n.id ? 'page' : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="flex-1 text-left truncate">{n.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Bottom actions - fixed at bottom */}
+        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-0.5">
+          <div className="flex gap-1">
             <button
-              key={n.id}
-              onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-              style={page === n.id ? {background: couleur} : {}}
-              aria-current={page === n.id ? 'page' : undefined}
+              onClick={() => setModeDiscret(!modeDiscret)}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+              title={modeDiscret ? 'Désactiver mode discret' : 'Activer mode discret'}
             >
-              <n.icon size={18} aria-hidden="true" />
-              <span className="flex-1 text-left">{n.label}</span>
-              {n.badge > 0 && (
-                <span
-                  className="px-2 py-0.5 text-white text-xs rounded-full cursor-help"
-                  style={{ background: n.badgeColor || '#ef4444' }}
-                  title={n.badgeTitle || `${n.badge} élément${n.badge > 1 ? 's' : ''}`}
-                  aria-label={n.badgeTitle || `${n.badge} éléments`}
-                >
-                  {n.badge}
-                </span>
-              )}
+              {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
+              <span className="hidden sm:inline text-xs">Discret</span>
             </button>
-          ))}
-        </nav>
-        
-        {/* Bottom actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 space-y-1 border-t border-slate-800">
-          <button 
-            onClick={() => setModeDiscret(!modeDiscret)} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+            <button
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
+              title={isDark ? 'Mode clair' : 'Mode sombre'}
+            >
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              <span className="hidden sm:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
+            </button>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-900/50 hover:text-red-400 text-sm transition-colors"
           >
-            {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
-            <span>Mode discret</span>
-          </button>
-          <button 
-            onClick={() => setTheme(isDark ? 'light' : 'dark')} 
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>
-          </button>
-          <button 
-            onClick={handleSignOut} 
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
-          >
-            <LogOut size={18} />
+            <LogOut size={16} />
             <span>Déconnexion</span>
           </button>
         </div>
@@ -547,106 +582,94 @@ export default function App() {
 
       {/* Main content */}
       <div className={`lg:pl-64 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
-        {/* Header */}
-        <header className={`sticky top-0 z-30 backdrop-blur border-b px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3 ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
+        {/* Header - Optimized for mobile */}
+        <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center gap-1.5 sm:gap-3 ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
+          {/* Menu button - mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`lg:hidden p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            className={`lg:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
             aria-label="Ouvrir le menu"
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </button>
 
-          {/* Logo - visible on mobile when sidebar is hidden */}
-          <div className="lg:hidden flex items-center gap-2">
+          {/* Logo - compact on mobile */}
+          <div className="flex items-center gap-2 min-w-0">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
+              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0"
               style={{background: couleur}}
             >
               <Building2 size={16} className="text-white" />
             </div>
-            <span className={`font-semibold text-sm hidden sm:block ${tc.text}`}>
+            <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
               {entreprise.nom || 'ChantierPro'}
             </span>
           </div>
 
-          {/* ChantierPro title - visible on desktop */}
-          <div className="hidden lg:flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm"
-              style={{background: couleur}}
-            >
-              <Building2 size={16} className="text-white" />
-            </div>
-            <h1 className={`text-xl font-bold ${tc.text}`}>
-              ChantierPro
-            </h1>
+          {/* Status badges - compact on mobile */}
+          <div className="hidden xs:flex items-center gap-1.5">
+            {!isOnline && (
+              <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 bg-amber-500 text-white">
+                <WifiOff size={12} />
+                <span className="hidden md:inline">Hors ligne</span>
+              </span>
+            )}
+            {isOnline && pendingSync > 0 && (
+              <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                <Wifi size={12} className="animate-pulse" />
+                <span className="hidden md:inline">Sync</span>
+              </span>
+            )}
           </div>
 
-          {/* Network status indicator */}
-          {!isOnline && (
-            <span className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 bg-amber-500 text-white animate-pulse">
-              <WifiOff size={14} />
-              <span className="hidden sm:inline">Hors ligne</span>
-              {pendingSync > 0 && <span className="px-1.5 py-0.5 bg-white/20 rounded-full text-[10px]">{pendingSync}</span>}
-            </span>
-          )}
-          {isOnline && pendingSync > 0 && (
-            <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-              <Wifi size={14} />
-              <span className="hidden sm:inline">Sync...</span>
-              <span className="px-1.5 py-0.5 bg-blue-500 text-white rounded-full text-[10px]">{pendingSync}</span>
-            </span>
-          )}
-
-          {modeDiscret && (
-            <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
-              <EyeOff size={14} />
-              <span className="hidden sm:inline">Discret</span>
-            </span>
-          )}
-
-          {/* Search button */}
+          {/* Search button - tablet and desktop */}
           <button
             onClick={() => setShowSearch(true)}
-            className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-1 max-w-xs ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-500'}`}
+            className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-1 max-w-[200px] lg:max-w-xs ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-500'}`}
           >
             <Search size={16} />
-            <span className="text-sm">Rechercher...</span>
-            <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>⌘K</kbd>
+            <span className="text-sm truncate">Rechercher...</span>
+            <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>⌘K</kbd>
           </button>
 
-          <div className="flex-1 sm:hidden" />
+          {/* Spacer */}
+          <div className="flex-1" />
 
-          {/* Dark mode quick toggle */}
+          {/* Search button - mobile only (icon) */}
+          <button
+            onClick={() => setShowSearch(true)}
+            className={`md:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+            aria-label="Rechercher"
+          >
+            <Search size={18} />
+          </button>
+
+          {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400 hover:text-amber-300' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
-            title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
+            className={`hidden sm:flex p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400' : 'hover:bg-slate-200 text-slate-600'}`}
+            title={isDark ? 'Mode clair' : 'Mode sombre'}
           >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {/* Help button */}
+          {/* Help button - tablet and desktop only */}
           <button
             onClick={() => setShowHelp(true)}
-            className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
-            title="Aide et tutoriels"
-            aria-label="Ouvrir le guide d'utilisation"
+            className={`hidden md:flex p-2 rounded-xl min-w-[44px] min-h-[44px] items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+            title="Aide"
           >
-            <HelpCircle size={20} />
+            <HelpCircle size={18} />
           </button>
 
-          {/* Mode discret toggle */}
+          {/* Mode discret toggle - combined indicator and button */}
           <button
             onClick={() => setModeDiscret(!modeDiscret)}
-            className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
+            className={`p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
             style={modeDiscret ? {background: couleur} : {}}
-            title={modeDiscret ? 'Afficher les montants (mode discret désactivé)' : 'Masquer les montants (mode discret)'}
-            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants pour plus de discrétion'}
+            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
           >
-            {modeDiscret ? <EyeOff size={20} /> : <Eye size={20} />}
+            {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
 
           {/* Notifications */}
@@ -739,17 +762,18 @@ export default function App() {
           <div className="relative">
             <button
               onClick={() => setShowQuickAdd(!showQuickAdd)}
-              className="px-3 sm:px-4 py-2.5 text-white rounded-xl flex items-center gap-2 transition-all hover:shadow-lg min-h-[44px]"
+              className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all hover:shadow-lg min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px]"
               style={{background: couleur}}
+              aria-label="Créer nouveau"
             >
               <Plus size={18} />
               <span className="hidden sm:inline text-sm font-medium">Nouveau</span>
             </button>
-            
+
             {showQuickAdd && (
               <>
-                <div className="fixed inset-0 z-40 animate-fade-in" onClick={() => setShowQuickAdd(false)} />
-                <div className={`absolute right-0 top-full mt-2 w-56 rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
+                <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
                   {[
                     { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                     { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
