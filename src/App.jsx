@@ -18,9 +18,6 @@ const DevisWizard = lazy(() => import('./components/DevisWizard'));
 const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
 const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
-const VoiceJournal = lazy(() => import('./components/VoiceJournal'));
-const RentabilityDashboard = lazy(() => import('./components/RentabilityDashboard'));
-const AccountingIntegration = lazy(() => import('./components/AccountingIntegration'));
 const DesignSystemDemo = lazy(() => import('./components/DesignSystemDemo'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
@@ -88,9 +85,6 @@ export default function App() {
   const [showFABDevisWizard, setShowFABDevisWizard] = useState(false);
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
-  const [showVoiceJournal, setShowVoiceJournal] = useState(false);
-  const [showRentabilityDashboard, setShowRentabilityDashboard] = useState(false);
-  const [showAccountingIntegration, setShowAccountingIntegration] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
@@ -107,7 +101,7 @@ export default function App() {
   });
 
   // CRUD wrappers with toasts (delegate to DataContext)
-  const addClient = (data) => { const c = dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
+  const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
   const addDevis = (data) => dataAddDevis(data);
   const updateDevis = (id, data) => dataUpdateDevis(id, data);
   const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
@@ -423,19 +417,43 @@ export default function App() {
 
   // Calculate stats for badges
   const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
-  const devisEnAttente = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
+  const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
   const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
 
   // Navigation items - full sidebar with all sections
+  // Badges now include explicit context for clarity
   const nav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
-    { id: 'devis', icon: FileText, label: 'Devis & Factures', badge: stats.devisAttente + facturesImpayees, badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316' },
-    { id: 'chantiers', icon: Building2, label: 'Chantiers', badge: stats.chantiersEnCours, badgeColor: '#22c55e' },
-    { id: 'planning', icon: Calendar, label: 'Planning', badge: todayEvents, badgeColor: '#3b82f6' },
+    {
+      id: 'devis',
+      icon: FileText,
+      label: 'Devis & Factures',
+      badge: stats.devisAttente + facturesImpayees,
+      badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316',
+      badgeTitle: facturesImpayees > 0
+        ? `${facturesImpayees} facture${facturesImpayees > 1 ? 's' : ''} impayée${facturesImpayees > 1 ? 's' : ''}, ${devisEnAttenteCount} devis en attente`
+        : `${devisEnAttenteCount} devis en attente de réponse`
+    },
+    {
+      id: 'chantiers',
+      icon: Building2,
+      label: 'Chantiers',
+      badge: stats.chantiersEnCours,
+      badgeColor: '#22c55e',
+      badgeTitle: `${stats.chantiersEnCours} chantier${stats.chantiersEnCours > 1 ? 's' : ''} en cours`
+    },
+    {
+      id: 'planning',
+      icon: Calendar,
+      label: 'Planning',
+      badge: todayEvents,
+      badgeColor: '#3b82f6',
+      badgeTitle: `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui`
+    },
     { id: 'clients', icon: Users, label: 'Clients' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
-    { id: 'admin', icon: HelpCircle, label: 'Aide Admin' },
+    { id: 'admin', icon: HelpCircle, label: 'Administratif' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
   
@@ -457,7 +475,7 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl`}>
+      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-800">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: couleur}}>
             <Building2 size={20} className="text-white" />
@@ -479,7 +497,16 @@ export default function App() {
             >
               <n.icon size={18} aria-hidden="true" />
               <span className="flex-1 text-left">{n.label}</span>
-              {n.badge > 0 && <span className="px-2 py-0.5 text-white text-xs rounded-full" style={{ background: n.badgeColor || '#ef4444' }} aria-label={`${n.badge} elements`}>{n.badge}</span>}
+              {n.badge > 0 && (
+                <span
+                  className="px-2 py-0.5 text-white text-xs rounded-full cursor-help"
+                  style={{ background: n.badgeColor || '#ef4444' }}
+                  title={n.badgeTitle || `${n.badge} élément${n.badge > 1 ? 's' : ''}`}
+                  aria-label={n.badgeTitle || `${n.badge} éléments`}
+                >
+                  {n.badge}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -511,9 +538,9 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className={`lg:pl-64 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
         {/* Header */}
-        <header className={`sticky top-0 z-30 backdrop-blur border-b px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3 ${isDark ? 'bg-slate-800/95 border-slate-700' : 'bg-white/95 border-slate-200'}`}>
+        <header className={`sticky top-0 z-30 backdrop-blur border-b px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3 ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
           <button
             onClick={() => setSidebarOpen(true)}
             className={`lg:hidden p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-100'}`}
@@ -587,7 +614,7 @@ export default function App() {
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400 hover:text-amber-300' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
-            title={isDark ? 'Mode clair' : 'Mode sombre'}
+            title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
             aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
           >
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -597,8 +624,8 @@ export default function App() {
           <button
             onClick={() => setShowHelp(true)}
             className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
-            title="Aide"
-            aria-label="Ouvrir l'aide"
+            title="Aide et tutoriels"
+            aria-label="Ouvrir le guide d'utilisation"
           >
             <HelpCircle size={20} />
           </button>
@@ -608,8 +635,8 @@ export default function App() {
             onClick={() => setModeDiscret(!modeDiscret)}
             className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
             style={modeDiscret ? {background: couleur} : {}}
-            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+            title={modeDiscret ? 'Afficher les montants (mode discret désactivé)' : 'Masquer les montants (mode discret)'}
+            aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants pour plus de discrétion'}
           >
             {modeDiscret ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -620,6 +647,7 @@ export default function App() {
               onClick={() => setShowNotifs(!showNotifs)}
               className={`relative p-2.5 rounded-xl transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
               style={showNotifs ? {background: couleur} : {}}
+              title={unreadNotifs.length > 0 ? `${unreadNotifs.length} notification${unreadNotifs.length > 1 ? 's' : ''} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Notifications'}
               aria-label={`Notifications${unreadNotifs.length > 0 ? ` (${unreadNotifs.length} non lues)` : ''}`}
               aria-expanded={showNotifs}
             >
@@ -747,18 +775,18 @@ export default function App() {
         </header>
 
         {/* Page content */}
-        <main id="main-content" className={`p-3 sm:p-4 lg:p-6 ${tc.text} max-w-[1800px] mx-auto`}>
-          <ErrorBoundary isDark={isDark} showDetails={isDark}>
+        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
+          <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
-              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} isDark={isDark} couleur={couleur} />}
+              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
               {page === 'design-system' && <DesignSystemDemo />}
             </Suspense>
           </ErrorBoundary>
@@ -769,16 +797,14 @@ export default function App() {
           onNewDevis={() => setShowFABDevisWizard(true)}
           onNewClient={() => setShowFABQuickClient(true)}
           onNewChantier={() => setShowFABQuickChantier(true)}
-          onRentabilite={() => setShowRentabilityDashboard(true)}
-          onComptabilite={() => setShowAccountingIntegration(true)}
           isDark={isDark}
           couleur={couleur}
           hidden={
             createMode.devis || createMode.chantier || createMode.client ||
             selectedChantier !== null ||
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
-            showVoiceJournal || showSearch ||
-            showRentabilityDashboard || showAccountingIntegration
+            showSearch ||
+            page === 'devis' || page === 'settings'
           }
         />
       </div>
@@ -878,67 +904,10 @@ export default function App() {
           }}
           onNewClient={() => setShowFABQuickClient(true)}
           onNewChantier={() => setShowFABQuickChantier(true)}
-          onStartVoiceNote={() => setShowVoiceJournal(true)}
           isDark={isDark}
           couleur={couleur}
         />
       </Suspense>
-
-      {/* Voice Journal Modal */}
-      <Suspense fallback={null}>
-        <VoiceJournal
-          isOpen={showVoiceJournal}
-          onClose={() => setShowVoiceJournal(false)}
-          onSave={(data) => {
-            console.log('Voice note saved:', data);
-            showToast('Note vocale enregistrée', 'success');
-          }}
-          currentChantier={selectedChantier}
-          chantiers={chantiers}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      </Suspense>
-
-      {/* Rentability Dashboard Modal */}
-      {showRentabilityDashboard && (
-        <Suspense fallback={null}>
-          <RentabilityDashboard
-            chantiers={chantiers}
-            devis={devis}
-            depenses={depenses}
-            pointages={pointages}
-            equipe={equipe}
-            ajustements={ajustements}
-            modeDiscret={modeDiscret}
-            isDark={isDark}
-            couleur={couleur}
-            onClose={() => setShowRentabilityDashboard(false)}
-            onSelectChantier={(id) => {
-              setShowRentabilityDashboard(false);
-              setSelectedChantier(id);
-              setPage('chantiers');
-            }}
-          />
-        </Suspense>
-      )}
-
-      {/* Accounting Integration Modal */}
-      {showAccountingIntegration && (
-        <Suspense fallback={null}>
-          <AccountingIntegration
-            isOpen={showAccountingIntegration}
-            onClose={() => setShowAccountingIntegration(false)}
-            devis={devis}
-            depenses={depenses}
-            clients={clients}
-            chantiers={chantiers}
-            entreprise={entreprise}
-            isDark={isDark}
-            couleur={couleur}
-          />
-        </Suspense>
-      )}
 
       {/* Toast Notifications */}
       {toast && (

@@ -6,13 +6,14 @@ import SignaturePad from './SignaturePad';
 import SmartTemplateWizard from './SmartTemplateWizard';
 import DevisWizard from './DevisWizard';
 import CatalogBrowser from './CatalogBrowser';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
 
-export default function DevisPage({ clients, setClients, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -275,7 +276,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       notes: form.notes
     });
 
-    setMode('list');
+    // Reset form
     setForm({
       type: 'devis',
       clientId: '',
@@ -288,6 +289,20 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
       retenueGarantie: false,
       notes: ''
     });
+
+    // Redirect to detail view of the created devis
+    if (newDevis?.id) {
+      setSelected(newDevis);
+      setMode('preview');
+      setSnackbar({
+        type: 'success',
+        message: `${form.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
+      });
+      return;
+    }
+
+    // Fallback to list if no devis returned
+    setMode('list');
 
     // Show snackbar with action to view the created devis
     setSnackbar({
@@ -992,84 +1007,113 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
 
     const nextAction = getNextAction();
 
+    // Calculate days since for relance alert
+    const daysSinceCreation = Math.floor((new Date() - new Date(selected.date)) / 86400000);
+    const isOverdue = daysSinceCreation > 30;
+    const showRelanceAlert = selected.type === 'facture' && selected.statut !== 'payee' && daysSinceCreation >= 7;
+
+    // Get primary CTA based on status
+    const getPrimaryCTA = () => {
+      if (isDevis) {
+        if (selected.statut === 'brouillon') return { label: 'Envoyer', icon: Send, action: () => sendEmail(selected), color: 'bg-amber-500 hover:bg-amber-600' };
+        if (selected.statut === 'envoye') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
+        if (selected.statut === 'accepte') return { label: 'Facturer', icon: Receipt, action: () => canAcompte ? setShowAcompteModal(true) : createSolde(), color: 'bg-emerald-500 hover:bg-emerald-600' };
+        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: createSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
+      } else {
+        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: QrCode, action: () => setShowPaymentModal(true), color: 'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600' };
+      }
+      return null;
+    };
+    const primaryCTA = getPrimaryCTA();
+
     return (
       <div className="space-y-4">
-        {/* Header with integrated status flow */}
+        {/* ============ ZONE 1: UNIFIED HEADER ============ */}
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
-          {/* Breadcrumb navigation */}
-          <div className={`flex items-center gap-1.5 text-sm mb-3 ${textMuted}`}>
-            <button onClick={() => { setMode('list'); setSelected(null); }} className="hover:underline flex items-center gap-1">
-              <FileText size={14} />
-              <span>Devis / Factures</span>
-            </button>
-            <ChevronRight size={14} />
-            <span className={textPrimary}>{selected.numero}</span>
-          </div>
-
-          {/* Top row: back, title, preview */}
-          <div className="flex items-center gap-2 sm:gap-3 mb-3">
-            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-3 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+          {/* Top row: back, title, client, actions */}
+          <div className="flex items-start gap-3 mb-4">
+            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <ArrowLeft size={18} className={textMuted} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className={`text-base sm:text-lg font-bold truncate ${textPrimary}`}>{selected.numero}</h1>
-              <p className={`text-xs ${textMuted}`}>{selected.type === 'facture' ? 'Facture' : 'Devis'} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
+                  {selected.type === 'facture' ? 'Facture' : 'Devis'}
+                </span>
+                {needsFollowUp(selected) && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
+                )}
+              </div>
+              <h1 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h1>
+              <p className={`text-sm ${textMuted}`}>{client?.nom} {client?.prenom} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
-            <button onClick={() => previewPDF(selected)} className="p-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Aperçu">
-              <Eye size={16} />
-            </button>
-          </div>
 
-          {/* Workflow progress - explicit steps with labels */}
-          <div className="mb-4">
-            <div className="flex items-center">
-              {statusSteps.map((step, idx) => {
-                const { isActive, isPast } = getStepState(step);
-                const isRefused = selected.statut === 'refuse';
-                const isLast = idx === statusSteps.length - 1;
-                return (
-                  <React.Fragment key={step.id}>
-                    <div className="flex flex-col items-center flex-1">
-                      {/* Step circle with number */}
-                      <div
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                          isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
-                          isActive ? 'text-white ring-2 ring-offset-2' :
-                          isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
-                          (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500')
-                        }`}
-                        style={isActive ? { backgroundColor: couleur, ringColor: couleur } : {}}
-                      >
-                        {isPast ? '✓' : idx + 1}
-                      </div>
-                      {/* Step label */}
-                      <span className={`text-[10px] sm:text-xs mt-1.5 font-medium text-center leading-tight ${
-                        isActive ? (isDark ? 'text-white' : 'text-slate-900') :
-                        isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') :
-                        textMuted
-                      }`}>
-                        {step.label}
-                      </span>
+            {/* Header actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button onClick={() => previewPDF(selected)} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Aperçu PDF">
+                <Eye size={18} />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowActionsMenu(!showActionsMenu)}
+                  className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                >
+                  <MoreVertical size={18} />
+                </button>
+                {showActionsMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
+                    <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                      <button onClick={() => { duplicateDocument(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <Copy size={16} /> Dupliquer
+                      </button>
+                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                        <Trash2 size={16} /> Supprimer
+                      </button>
                     </div>
-                    {/* Connector line */}
-                    {!isLast && (
-                      <div className={`flex-1 h-0.5 -mt-5 mx-1 ${
-                        isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') :
-                        (isDark ? 'bg-slate-700' : 'bg-slate-200')
-                      }`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Status row: dropdown + next action hint */}
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Workflow progress - compact inline */}
+          <div className="flex items-center gap-1 mb-4">
+            {statusSteps.map((step, idx) => {
+              const { isActive, isPast } = getStepState(step);
+              const isRefused = selected.statut === 'refuse';
+              const isLast = idx === statusSteps.length - 1;
+              return (
+                <React.Fragment key={step.id}>
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                        isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
+                        isActive ? 'text-white' :
+                        isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
+                        (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
+                      }`}
+                      style={isActive ? { backgroundColor: couleur } : {}}
+                    >
+                      {isPast ? '✓' : idx + 1}
+                    </div>
+                    <span className={`text-xs font-medium hidden sm:inline ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                  {!isLast && <div className={`w-4 sm:w-8 h-0.5 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Action bar: Status + Primary CTA + Chantier + Communication */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Status dropdown */}
             <select
               value={selected.statut}
               onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
-              className={`px-4 min-h-[44px] rounded-xl text-sm font-semibold cursor-pointer border-2 outline-none ${
+              className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border-2 outline-none ${
                 selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
                 : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
                 : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
@@ -1087,280 +1131,385 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               {selected.type === 'facture' && <option value="payee">✅ Payée</option>}
             </select>
 
-            {nextAction && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                <span className={`text-sm font-medium ${nextAction.color}`}>{nextAction.text}</span>
-              </div>
+            {/* Quick Actions - Always available */}
+            {isDevis ? (
+              <>
+                {/* Envoyer - always available */}
+                <button
+                  onClick={() => sendEmail(selected)}
+                  className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                    selected.statut === 'brouillon'
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                      : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                  title="Envoyer au client"
+                >
+                  <Send size={16} /> <span className="hidden sm:inline">Envoyer</span>
+                </button>
+
+                {/* Signer - always available for devis */}
+                {selected.statut !== 'facture' && (
+                  <button
+                    onClick={() => setShowSignaturePad(true)}
+                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                      selected.statut === 'envoye'
+                        ? 'text-white hover:opacity-90'
+                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
+                    title="Faire signer le devis"
+                  >
+                    <PenTool size={16} /> <span className="hidden sm:inline">Signer</span>
+                  </button>
+                )}
+
+                {/* Facturer - always available for devis not yet fully invoiced */}
+                {selected.statut !== 'facture' && (
+                  <button
+                    onClick={() => canAcompte ? setShowAcompteModal(true) : createSolde()}
+                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                      selected.statut === 'accepte' || selected.statut === 'acompte_facture'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    title={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer'}
+                  >
+                    <Receipt size={16} /> <span className="hidden sm:inline">{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
+                  </button>
+                )}
+
+                {/* Terminal status badge */}
+                {selected.statut === 'facture' && (
+                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                    <CheckCircle size={14} className="inline mr-1" /> Facturé
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Facture: Encaisser always available */}
+                {selected.statut !== 'payee' && (
+                  <button
+                    onClick={() => setShowPaymentModal(true)}
+                    className="px-4 py-2 min-h-[40px] text-white rounded-lg text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                  >
+                    <QrCode size={16} /> Encaisser
+                  </button>
+                )}
+                {selected.statut === 'payee' && (
+                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <CheckCircle size={14} className="inline mr-1" /> Payée
+                  </span>
+                )}
+              </>
             )}
 
-            {needsFollowUp(selected) && (
-              <span className="text-xs px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer?</span>
-            )}
+            {/* Chantier link - always show for devis */}
+            {isDevis && (hasChantier && linkedChantier ? (
+              <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                <Building2 size={14} /> <span className="truncate max-w-[100px]">{linkedChantier.nom}</span>
+              </button>
+            ) : canCreateChantier && (
+              <button onClick={openChantierModal} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
+              </button>
+            ))}
+
+            <div className="flex-1" />
+
+            {/* Communication buttons */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => sendWhatsApp(selected)} className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center transition-colors" title="WhatsApp">
+                <MessageCircle size={16} />
+              </button>
+              <button onClick={() => sendSMS(selected)} className="w-10 h-10 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center transition-colors" title="SMS">
+                <Send size={16} />
+              </button>
+              <button onClick={() => sendEmail(selected)} className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center transition-colors" title="Email">
+                <Mail size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Action cards - What can I do now? */}
-        {isDevis && selected.statut === 'accepte' && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200'}`}>
-            <p className={`text-sm font-medium mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-              ✓ Devis signé - Prochaine étape: créer la facture
-            </p>
+        {/* ============ ZONE 2: SMART CONTEXT CARD ============ */}
+        {/* Billing options - always visible for devis not yet invoiced */}
+
+        {/* Show billing options for all devis statuses (except already invoiced) */}
+        {isDevis && selected.statut !== 'facture' && selected.statut !== 'acompte_facture' && (
+          <div className={`rounded-xl border p-4 ${
+            selected.statut === 'accepte'
+              ? (isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200')
+              : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              {selected.statut === 'accepte' ? (
+                <>
+                  <CheckCircle size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                    Devis signé - Choisir le mode de facturation
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Receipt size={18} className={textMuted} />
+                  <p className={`text-sm font-medium ${textMuted}`}>
+                    Options de facturation
+                  </p>
+                  {selected.statut === 'brouillon' && (
+                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                      Envoyer d'abord recommandé
+                    </span>
+                  )}
+                  {selected.statut === 'envoye' && (
+                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                      Signature recommandée
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {canAcompte && (
-                <button
-                  onClick={() => setShowAcompteModal(true)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}
-                >
+                <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <CreditCard size={16} className="text-purple-500" />
-                    <span className={`font-medium ${textPrimary}`}>Demander acompte</span>
+                    <span className={`font-medium text-sm ${textPrimary}`}>Acompte 30%</span>
                   </div>
-                  <p className={`text-xs ${textMuted}`}>30% recommandé avant travaux</p>
+                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc * 0.3)}</p>
                 </button>
               )}
               {canFacturer && (
-                <button
-                  onClick={createSolde}
-                  className={`p-3 rounded-xl border-2 text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}
-                >
+                <button onClick={createSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <Receipt size={16} className="text-emerald-500" />
-                    <span className={`font-medium ${textPrimary}`}>Facturer 100%</span>
+                    <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
                   </div>
-                  <p className={`text-xs ${textMuted}`}>Créer facture complète</p>
+                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* Acompte progress card */}
+        {/* Acompte facturé: Show progress */}
         {isDevis && selected.statut === 'acompte_facture' && (
           <div className={`rounded-xl border p-4 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
             <div className="flex items-center justify-between mb-2">
-              <p className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                💳 Acompte {selected.acompte_pct}% facturé
-              </p>
+              <div className="flex items-center gap-2">
+                <CreditCard size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                  Acompte {selected.acompte_pct}% facturé
+                </span>
+                {acompteFacture && (
+                  <button onClick={() => setSelected(acompteFacture)} className="text-xs text-blue-500 hover:underline">
+                    ({acompteFacture.numero})
+                  </button>
+                )}
+              </div>
               <span className={`font-bold ${textPrimary}`}>{formatMoney(resteAFacturer)} restant</span>
             </div>
             <div className={`h-2 rounded-full mb-3 ${isDark ? 'bg-slate-700' : 'bg-blue-200'}`}>
-              <div className="h-full rounded-full bg-blue-500" style={{ width: `${selected.acompte_pct}%` }} />
+              <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${selected.acompte_pct}%` }} />
             </div>
             {canFacturer && (
-              <button
-                onClick={createSolde}
-                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <Receipt size={16} />
-                Facturer le solde ({formatMoney(resteAFacturer)})
+              <button onClick={createSolde} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+                <Receipt size={16} /> Facturer le solde
               </button>
             )}
           </div>
         )}
 
-        {/* Actions row - Primary CTAs + Communication */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Primary action buttons based on status */}
-          {isDevis && selected.statut === 'envoye' && (
-            <button onClick={() => setShowSignaturePad(true)} className="px-4 py-2.5 text-white rounded-xl text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium" style={{background: couleur}}>
-              <PenTool size={16} /> Faire signer
-            </button>
-          )}
-          {selected.type === 'facture' && selected.statut !== 'payee' && (
-            <button onClick={() => setShowPaymentModal(true)} className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white rounded-xl text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium">
-              <QrCode size={16} /> Encaisser
-            </button>
-          )}
-          {isDevis && selected.statut === 'facture' && (
-            <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
-              <CheckCircle size={14} className="inline mr-1" /> Facturé
-            </span>
-          )}
-
-          {/* Chantier link */}
-          {hasChantier && linkedChantier ? (
-            <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-              <Building2 size={16} /> {linkedChantier.nom.length > 15 ? linkedChantier.nom.slice(0, 15) + '...' : linkedChantier.nom}
-            </button>
-          ) : canCreateChantier && selected.statut === 'accepte' ? (
-            <button onClick={openChantierModal} className={`px-3 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-              <Building2 size={16} /> + Chantier
-            </button>
-          ) : null}
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Communication icons - 44px touch targets for field workers */}
-          <button onClick={() => sendWhatsApp(selected)} className="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="WhatsApp">
-            <MessageCircle size={18} />
-          </button>
-          <button onClick={() => sendSMS(selected)} className="w-11 h-11 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="SMS">
-            <Send size={18} />
-          </button>
-          <button onClick={() => sendEmail(selected)} className="w-11 h-11 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95" title="Email">
-            <Mail size={18} />
-          </button>
-
-          {/* More menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors active:scale-95 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-            >
-              <MoreVertical size={18} />
-            </button>
-            {showActionsMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
-                <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <button
-                    onClick={() => { duplicateDocument(selected); setShowActionsMenu(false); }}
-                    className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}
-                  >
-                    <Copy size={16} /> Dupliquer
-                  </button>
-                  <button
-                    onClick={async () => {
-                      setShowActionsMenu(false);
-                      const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' });
-                      if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); }
-                    }}
-                    className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
-                  >
-                    <Trash2 size={16} /> Supprimer
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Info workflow */}
-        {isDevis && selected.statut === 'accepte' && !acompteFacture && (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'}`}>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl"></span>
-              <div>
-                <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Prochaine étape : Facturation</p>
-                <p className={`text-sm mt-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  {canCreateChantier && <><strong>Créer un chantier</strong> pour suivre les dépenses et le temps, puis </>}
-                  <strong>demander un acompte</strong> (recommandé pour les gros montants) ou <strong>facturer intégralement</strong>.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Acompte existant */}
-        {acompteFacture && isDevis && (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
-            <div className="flex items-center justify-between flex-wrap gap-2">
+        {/* Unpaid invoice alert */}
+        {showRelanceAlert && (
+          <div className={`rounded-xl p-4 border ${isOverdue ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200')}`}>
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <span className="text-2xl"></span>
-                <div><p className="font-medium">Acompte facture</p><button onClick={() => setSelected(acompteFacture)} className="text-sm text-blue-600 hover:underline">{acompteFacture.numero} - {formatMoney(acompteFacture.total_ttc)}</button></div>
+                <span className="text-xl">{isOverdue ? '🚨' : '⏰'}</span>
+                <div>
+                  <p className={`font-medium text-sm ${isOverdue ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
+                    {isOverdue ? 'Facture en retard' : 'Facture en attente'} · {daysSinceCreation} jours
+                  </p>
+                  <p className={`text-xs ${isOverdue ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
+                    {formatMoney(selected.total_ttc)} à encaisser
+                  </p>
+                </div>
               </div>
-              <div className="text-right"><p className="text-sm text-slate-500">Reste à facturer</p><p className="font-bold text-lg">{formatMoney(resteAFacturer)}</p></div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const message = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
+                    window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
+                    if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
+                  }}
+                  className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </button>
+                <button
+                  onClick={() => {
+                    const subject = `Relance facture ${selected.numero}`;
+                    const body = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
+                    window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                    if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
+                  }}
+                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <Mail size={14} /> Email
+                </button>
+              </div>
             </div>
-            <div className="mt-3 h-2 bg-blue-200 rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${selected.acompte_pct}%` }} /></div>
           </div>
         )}
 
-        {/* Relancer alert for unpaid invoices */}
-        {selected.type === 'facture' && selected.statut !== 'payee' && (() => {
-          const daysSince = Math.floor((new Date() - new Date(selected.date)) / 86400000);
-          if (daysSince < 7) return null;
-          const isOverdue = daysSince > 30;
-          return (
-            <div className={`rounded-xl p-4 border ${isOverdue
-              ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200')
-              : (isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200')}`}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
+        <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
+          <Tabs defaultValue="document">
+            <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <TabsList variant="underline" className="w-full justify-start gap-4">
+                <TabsTrigger value="document" className="pb-3">Document</TabsTrigger>
+                {(isDevis && facturesLiees.length > 0) && (
+                  <TabsTrigger value="historique" className="pb-3">
+                    Historique {facturesLiees.length > 0 && <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{facturesLiees.length}</span>}
+                  </TabsTrigger>
+                )}
+                {selected.type === 'facture' && selected.devis_source_id && (
+                  <TabsTrigger value="source" className="pb-3">Devis source</TabsTrigger>
+                )}
+              </TabsList>
+            </div>
+
+            <TabsContent value="document" className="mt-0 p-4 sm:p-6">
+              {/* Document header */}
+              <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{isOverdue ? '🚨' : '⏰'}</span>
+                  {entreprise?.logo ? (
+                    <img src={entreprise.logo} className="h-12 rounded-lg object-cover" alt={entreprise?.nom || ''} />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold" style={{background: `${couleur}20`, color: couleur}}>
+                      {(entreprise?.nom || 'E').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div>
-                    <p className={`font-medium ${isOverdue
-                      ? (isDark ? 'text-red-300' : 'text-red-800')
-                      : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
-                      {isOverdue ? 'Facture en retard' : 'Facture en attente'} · {daysSince} jours
-                    </p>
-                    <p className={`text-sm ${isOverdue
-                      ? (isDark ? 'text-red-400' : 'text-red-600')
-                      : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
-                      {formatMoney(selected.total_ttc)} à encaisser
-                    </p>
+                    <p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p>
+                    <p className={`text-xs ${textMuted}`}>{entreprise?.adresse}</p>
                   </div>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => {
-                      const message = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
-                      if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
-                    }}
-                    className="flex-1 sm:flex-none px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <MessageCircle size={16} />
-                    Relancer WhatsApp
-                  </button>
-                  <button
-                    onClick={() => {
-                      const subject = `Relance facture ${selected.numero}`;
-                      const body = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                      if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
-                    }}
-                    className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Mail size={16} />
-                    Relancer Email
-                  </button>
+                <div className="text-right">
+                  <p className="text-lg font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p>
+                  <p className={`text-sm ${textMuted}`}>{selected.numero}</p>
                 </div>
               </div>
-            </div>
-          );
-        })()}
 
-        {/* Document */}
-        <div className={`rounded-xl sm:rounded-2xl border p-4 sm:p-6 ${cardBg}`}>
-          <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <div className="flex items-center gap-2 sm:gap-4">
-              {entreprise?.logo ? <img src={entreprise.logo} className="h-14" alt="" /> : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl" style={{background: `${couleur}20`}}></div>}
-              <div><p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p><p className={`text-sm ${textMuted}`}>{entreprise?.adresse}</p></div>
-            </div>
-            <div className="text-right"><p className="text-xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className={textMuted}>{selected.numero}</p><p className={`text-sm ${textMuted}`}>{new Date(selected.date).toLocaleDateString('fr-FR')}</p></div>
-          </div>
-          <div className={`mb-6 p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><p className={`text-sm ${textMuted}`}>Client</p><p className={`font-semibold ${textPrimary}`}>{client?.nom} {client?.prenom}</p>{client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}</div>
-          <table className="w-full mb-6 text-sm"><thead><tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><th className={`text-left py-2 ${textPrimary}`}>Description</th><th className={`text-right py-2 w-16 ${textPrimary}`}>Qté</th><th className={`text-right py-2 w-20 ${textPrimary}`}>PU HT</th><th className={`text-right py-2 w-24 ${textPrimary}`}>Total</th></tr></thead><tbody>{(selected.lignes || []).map((l, i) => <tr key={i} className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><td className={`py-2 ${textPrimary}`}>{l.description}</td><td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td><td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td><td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td></tr>)}</tbody></table>
-          <div className="flex justify-end"><div className="w-56"><div className={`flex justify-between py-1 ${textPrimary}`}><span>HT</span><span>{formatMoney(selected.total_ht)}</span></div><div className={`flex justify-between py-1 ${textSecondary}`}><span>TVA {selected.tvaRate}%</span><span>{formatMoney(selected.tva)}</span></div><div className={`flex justify-between py-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}><span>TTC</span><span>{formatMoney(selected.total_ttc)}</span></div></div></div>
-          {selected.signature && <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}><p className={`text-sm ${textMuted}`}>Signé le {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</p><span className="text-emerald-600 font-medium">[OK] Accepté par le client</span></div>}
-        </div>
+              {/* Client info */}
+              <div className={`mb-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
+                <p className={`font-semibold ${textPrimary}`}>{client?.nom} {client?.prenom}</p>
+                {client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}
+              </div>
 
-        {/* Timeline */}
-        {isDevis && facturesLiees.length > 0 && (
-          <div className={`rounded-xl sm:rounded-2xl border p-4 sm:p-6 ${cardBg}`}>
-            <h3 className={`font-semibold mb-4 ${textPrimary}`}>Historique Facturation</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p></div></div>
-              {selected.signatureDate && <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-emerald-500" /><div><p className="text-sm">{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepte</p></div></div>}
-              {facturesLiees.map(f => (
-                <div key={f.id} className={`flex items-center gap-3 cursor-pointer ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} rounded-lg p-2 -m-2`} onClick={() => setSelected(f)}>
-                  <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  <div className="flex-1"><p className="text-sm">{new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}</p><p className="text-xs text-slate-500">{f.numero} · {formatMoney(f.total_ttc)}</p></div>
-                  <ChevronRight size={16} className="text-slate-400" />
+              {/* Line items */}
+              <table className="w-full mb-6 text-sm">
+                <thead>
+                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                    <th className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
+                    <th className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
+                    <th className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                    <th className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selected.lignes || []).map((l, i) => (
+                    <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
+                      <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                      <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
+                      <td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-56">
+                  <div className={`flex justify-between py-1 text-sm ${textPrimary}`}>
+                    <span>HT</span>
+                    <span>{formatMoney(selected.total_ht)}</span>
+                  </div>
+                  <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                    <span>TVA {selected.tvaRate || 10}%</span>
+                    <span>{formatMoney(selected.tva)}</span>
+                  </div>
+                  <div className={`flex justify-between py-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}>
+                    <span>TTC</span>
+                    <span>{formatMoney(selected.total_ttc)}</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* Lien vers devis source */}
-        {selected.type === 'facture' && selected.devis_source_id && (
-          <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4`}>
-            <p className={`text-sm ${textMuted} mb-1`}>Devis source</p>
-            <button onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }} className="text-sm font-medium hover:underline flex items-center gap-1" style={{ color: couleur }}><FileText size={14} /> Voir le devis</button>
-          </div>
-        )}
+              {/* Signature */}
+              {selected.signature && (
+                <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={16} className="text-emerald-500" />
+                    <span className="text-emerald-600 font-medium text-sm">Accepté par le client</span>
+                    <span className={`text-xs ${textMuted}`}>· {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {isDevis && facturesLiees.length > 0 && (
+              <TabsContent value="historique" className="mt-0 p-4 sm:p-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <div>
+                      <p className={`text-sm ${textPrimary}`}>{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p>
+                    </div>
+                  </div>
+                  {selected.signatureDate && (
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <div>
+                        <p className={`text-sm ${textPrimary}`}>{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepté</p>
+                      </div>
+                    </div>
+                  )}
+                  {facturesLiees.map(f => (
+                    <div key={f.id} className={`flex items-center gap-3 cursor-pointer rounded-lg p-2 -mx-2 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`} onClick={() => setSelected(f)}>
+                      <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      <div className="flex-1">
+                        <p className={`text-sm ${textPrimary}`}>
+                          {new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}
+                        </p>
+                        <p className={`text-xs ${textMuted}`}>{f.numero} · {formatMoney(f.total_ttc)}</p>
+                      </div>
+                      <ChevronRight size={16} className={textMuted} />
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            )}
+
+            {selected.type === 'facture' && selected.devis_source_id && (
+              <TabsContent value="source" className="mt-0 p-4 sm:p-6">
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className={`text-sm ${textMuted} mb-2`}>Cette facture a été créée à partir du devis :</p>
+                  <button
+                    onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }}
+                    className="text-sm font-medium hover:underline flex items-center gap-2"
+                    style={{ color: couleur }}
+                  >
+                    <FileText size={16} />
+                    Voir le devis source
+                  </button>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
 
         {/* Modal Acompte */}
         {showAcompteModal && (
@@ -1597,7 +1746,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </div>
           </div>
           
-          {favoris.length >= 3 && <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-100'}`}><p className={`text-sm font-medium mb-2 ${textPrimary}`}>⭐ Favoris</p><div className="flex gap-2 flex-wrap overflow-x-auto pb-1">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 border-slate-600' : 'bg-white hover:bg-amber-100 border-amber-200'}`}>{item.nom} <span className={textMuted}>{item.prix}€</span></button>)}</div></div>}
+          {favoris.length >= 3 && <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-100'}`}><p className={`text-sm font-medium mb-2 ${textPrimary}`}>⭐ Favoris</p><div className="flex gap-2 flex-wrap overflow-x-auto pb-1">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 border rounded-lg text-sm transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 border-slate-600 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 active:scale-95' : 'bg-white hover:bg-amber-50 border-slate-200 hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 active:scale-95'}`}><span className={textPrimary}>{item.nom}</span> <span className="text-amber-600 font-semibold">{item.prix}€</span></button>)}</div></div>}
           {/* Catalogue section with visual browser button */}
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -1766,7 +1915,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
           {/* Options */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validite (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
+            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validité (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
             <div className="col-span-2 sm:col-span-1">
               <label className={`block text-sm mb-1 ${textPrimary}`}>Retenue de garantie</label>
               <label className={`flex items-center gap-3 px-4 py-2.5 border rounded-xl cursor-pointer ${form.retenueGarantie ? (isDark ? 'border-amber-500 bg-amber-900/20' : 'border-amber-400 bg-amber-50') : inputBg}`}>
@@ -1835,9 +1984,52 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
             </div>
           </div>
           
-          <div className={`flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 sm:pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}><button onClick={() => setMode('list')} className={`px-4 py-2 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}><X size={16} />Annuler</button><button onClick={handleCreate} className="px-6 py-2 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}><Check size={16} />Créer</button></div>
+          {/* Sticky Footer with Save Actions */}
+        </div>
+        <div className={`sticky bottom-0 left-0 right-0 p-4 border-t shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 max-w-full">
+            <div className={`text-sm ${textMuted} hidden sm:block`}>
+              {form.sections[0]?.lignes?.length || 0} ligne{(form.sections[0]?.lignes?.length || 0) > 1 ? 's' : ''} • Total: <span className="font-bold" style={{color: couleur}}>{formatMoney(totals.ttc)}</span>
+            </div>
+            <div className="flex flex-wrap justify-center sm:justify-end gap-2 sm:gap-3">
+              <button onClick={() => setMode('list')} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+                <X size={16} />
+                <span>Annuler</span>
+              </button>
+              <button onClick={handleCreate} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
+                <FileText size={16} />
+                <span>Brouillon</span>
+              </button>
+              <button onClick={handleCreate} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+                <Check size={18} />
+                <span>Créer le {form.type}</span>
+              </button>
+            </div>
+          </div>
         </div>
         {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"><div className={`${cardBg} rounded-2xl p-6 w-full max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 text-white rounded-xl" style={{background: couleur}}>Créer</button></div></div></div>}
+
+        {/* Template Selector Modal - also needed in create mode */}
+        <TemplateSelector
+          isOpen={showTemplateSelector}
+          onClose={() => setShowTemplateSelector(false)}
+          onSelectTemplate={handleTemplateSelect}
+          isDark={isDark}
+          couleur={couleur}
+        />
+
+        {/* Smart Template Wizard - also needed in create mode */}
+        <SmartTemplateWizard
+          isOpen={showSmartWizard}
+          onClose={() => setShowSmartWizard(false)}
+          onCreateDevis={handleSmartDevisCreate}
+          clients={clients}
+          addClient={addClient}
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+
         <Snackbar />
       </div>
     );
@@ -1921,12 +2113,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               <div className={`${cardBg} rounded-xl border p-3`}>
                 <p className={`text-xs font-medium ${textMuted} mb-2`}>Devis</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setFilter('attente')} className={`flex-1 p-2 rounded-lg text-center ${devisEnvoye.length > 0 ? (isDark ? 'bg-amber-900/30' : 'bg-amber-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
-                    <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-500' : textMuted}`}>{devisEnvoye.length}</p>
+                  <button onClick={() => setFilter('attente')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisEnvoye.length > 0 ? 'border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-600 dark:text-amber-400' : textMuted}`}>{devisEnvoye.length}</p>
                     <p className={`text-[10px] ${textMuted}`}>Attente</p>
                   </button>
-                  <button onClick={() => setFilter('devis')} className={`flex-1 p-2 rounded-lg text-center ${devisAccepte.length > 0 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
-                    <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-500' : textMuted}`}>{devisAccepte.length}</p>
+                  <button onClick={() => setFilter('devis')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisAccepte.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{devisAccepte.length}</p>
                     <p className={`text-[10px] ${textMuted}`}>Signés</p>
                   </button>
                 </div>
@@ -1936,12 +2128,12 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
               <div className={`${cardBg} rounded-xl border p-3`}>
                 <p className={`text-xs font-medium ${textMuted} mb-2`}>Factures</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center ${facturesEnAttente.length > 0 ? (isDark ? 'bg-indigo-900/30' : 'bg-indigo-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
-                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-500' : textMuted}`}>{facturesEnAttente.length}</p>
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesEnAttente.length > 0 ? 'border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : textMuted}`}>{facturesEnAttente.length}</p>
                     <p className={`text-[10px] ${textMuted}`}>Attente</p>
                   </button>
-                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center ${facturesPayees.length > 0 ? (isDark ? 'bg-emerald-900/30' : 'bg-emerald-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')}`}>
-                    <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-500' : textMuted}`}>{facturesPayees.length}</p>
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesPayees.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{facturesPayees.length}</p>
                     <p className={`text-[10px] ${textMuted}`}>Payées</p>
                   </button>
                 </div>
@@ -2094,16 +2286,15 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <p className={`font-semibold ${textPrimary}`}>{d.numero}</p>
-                      {d.statut === 'brouillon' && <Clock size={14} className="text-slate-400 flex-shrink-0" />}
-                      {d.statut === 'envoye' && <Send size={14} className="text-blue-500 flex-shrink-0" />}
-                      {d.statut === 'accepte' && <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />}
-                      {d.statut === 'acompte_facture' && <CreditCard size={14} className="text-purple-500 flex-shrink-0" />}
-                      {d.statut === 'facture' && <Receipt size={14} className="text-indigo-500 flex-shrink-0" />}
-                      {d.statut === 'payee' && <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />}
-                      {d.statut === 'refuse' && <XCircle size={14} className="text-red-500 flex-shrink-0" />}
-                    </span>
+                    <p className={`font-semibold ${textPrimary}`}>{d.numero}</p>
+                    {/* Status badge - explicit text instead of small icons */}
+                    {d.statut === 'brouillon' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Brouillon</span>}
+                    {d.statut === 'envoye' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Envoyé</span>}
+                    {d.statut === 'accepte' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Signé</span>}
+                    {d.statut === 'acompte_facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte facturé</span>}
+                    {d.statut === 'facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Facturé</span>}
+                    {d.statut === 'payee' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Payé</span>}
+                    {d.statut === 'refuse' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Refusé</span>}
                     {hasAcompte && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
                     {d.facture_type === 'acompte' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
                     {d.facture_type === 'solde' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
@@ -2117,9 +2308,9 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
                   </div>
                   <p className={`text-sm ${textMuted}`}>{client?.nom} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Dupliquer"><Copy size={18} className={textMuted} /></button>
-                <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2.5 rounded-xl flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF"><Eye size={18} className={textMuted} /></button>
-                <p className={`text-base sm:text-lg font-bold min-w-[90px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
+                <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Dupliquer ce document"><Copy size={20} className="text-slate-400 hover:text-slate-600" /></button>
+                <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Voir l'aperçu PDF"><Eye size={20} className="text-slate-400 hover:text-slate-600" /></button>
+                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );
@@ -2206,6 +2397,7 @@ export default function DevisPage({ clients, setClients, devis, setDevis, chanti
         onClose={() => setShowSmartWizard(false)}
         onCreateDevis={handleSmartDevisCreate}
         clients={clients}
+        addClient={addClient}
         entreprise={entreprise}
         isDark={isDark}
         couleur={couleur}

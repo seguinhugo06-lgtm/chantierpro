@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   X, ChevronRight, ChevronLeft, Check, Search, Sparkles, Users,
-  Leaf, ChevronDown, Zap
+  Leaf, ChevronDown, Zap, Plus, UserPlus
 } from 'lucide-react';
 import {
   SMART_TEMPLATES,
@@ -20,6 +20,7 @@ export default function SmartTemplateWizard({
   onClose,
   onCreateDevis,
   clients = [],
+  addClient,
   entreprise,
   isDark = false,
   couleur = '#f97316'
@@ -34,6 +35,8 @@ export default function SmartTemplateWizard({
   const [clientSearch, setClientSearch] = useState('');
   const [metierSearch, setMetierSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [newClient, setNewClient] = useState({ nom: '', telephone: '', email: '', adresse: '' });
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +49,8 @@ export default function SmartTemplateWizard({
       setTva(10);
       setClientSearch('');
       setMetierSearch('');
+      setShowNewClientForm(false);
+      setNewClient({ nom: '', telephone: '', email: '', adresse: '' });
     }
   }, [isOpen]);
 
@@ -76,6 +81,29 @@ export default function SmartTemplateWizard({
 
   const handleSelectClient = (client) => {
     setSelectedClient(client);
+    setStep(2);
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClient.nom.trim()) return;
+
+    const clientData = {
+      nom: newClient.nom.trim(),
+      telephone: newClient.telephone.trim(),
+      email: newClient.email.trim(),
+      adresse: newClient.adresse.trim(),
+      type: 'particulier',
+    };
+
+    // addClient returns the created client with its final ID
+    let createdClient = clientData;
+    if (addClient) {
+      createdClient = await addClient(clientData);
+    }
+
+    setSelectedClient(createdClient);
+    setShowNewClientForm(false);
+    setNewClient({ nom: '', telephone: '', email: '', adresse: '' });
     setStep(2);
   };
 
@@ -178,45 +206,135 @@ export default function SmartTemplateWizard({
           {/* Step 1: Client */}
           {step === 1 && (
             <div className="p-4 space-y-3">
-              <div className="relative">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textMuted}`} />
-                <input
-                  type="text"
-                  placeholder="Rechercher un client..."
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
-                  autoFocus
-                />
-              </div>
-
-              {filteredClients.length === 0 ? (
-                <div className={`text-center py-12 ${textMuted}`}>
-                  <Users className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                  <p className="font-medium">Aucun client</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {filteredClients.map((client) => (
+              {!showNewClientForm ? (
+                <>
+                  {/* Search and New Client button */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${textMuted}`} />
+                      <input
+                        type="text"
+                        placeholder="Rechercher un client..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
+                        autoFocus
+                      />
+                    </div>
                     <button
-                      key={client.id}
-                      onClick={() => handleSelectClient(client)}
-                      className={`p-3 rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'} ${hoverBg} text-left transition-all active:scale-[0.98]`}
+                      onClick={() => setShowNewClientForm(true)}
+                      className="px-4 py-3 rounded-xl text-white font-medium flex items-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] shrink-0"
+                      style={{ backgroundColor: couleur }}
                     >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                          style={{ backgroundColor: couleur }}
-                        >
-                          {client.nom?.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`font-medium text-sm truncate ${textPrimary}`}>{client.nom}</p>
-                          <p className={`text-xs truncate ${textMuted}`}>{client.telephone || 'Pas de tel'}</p>
-                        </div>
-                      </div>
+                      <UserPlus className="w-5 h-5" />
+                      <span className="hidden sm:inline">Nouveau</span>
                     </button>
-                  ))}
+                  </div>
+
+                  {filteredClients.length === 0 ? (
+                    <div className={`text-center py-8 ${textMuted}`}>
+                      <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium mb-2">Aucun client</p>
+                      <button
+                        onClick={() => setShowNewClientForm(true)}
+                        className="text-sm font-medium hover:underline"
+                        style={{ color: couleur }}
+                      >
+                        Creer votre premier client
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {filteredClients.map((client) => (
+                        <button
+                          key={client.id}
+                          onClick={() => handleSelectClient(client)}
+                          className={`p-3 rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'} ${hoverBg} text-left transition-all active:scale-[0.98]`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                              style={{ backgroundColor: couleur }}
+                            >
+                              {client.nom?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className={`font-medium text-sm truncate ${textPrimary}`}>{client.nom}</p>
+                              <p className={`text-xs truncate ${textMuted}`}>{client.telephone || 'Pas de tel'}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* New Client Form */
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`font-semibold ${textPrimary}`}>Nouveau client</h3>
+                    <button
+                      onClick={() => setShowNewClientForm(false)}
+                      className={`p-2 rounded-lg ${hoverBg}`}
+                    >
+                      <X className={`w-4 h-4 ${textMuted}`} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Nom *</label>
+                    <input
+                      type="text"
+                      value={newClient.nom}
+                      onChange={(e) => setNewClient({ ...newClient, nom: e.target.value })}
+                      placeholder="Nom du client"
+                      className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Telephone</label>
+                    <input
+                      type="tel"
+                      value={newClient.telephone}
+                      onChange={(e) => setNewClient({ ...newClient, telephone: e.target.value })}
+                      placeholder="06 12 34 56 78"
+                      className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Email</label>
+                    <input
+                      type="email"
+                      value={newClient.email}
+                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                      placeholder="client@email.com"
+                      className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Adresse</label>
+                    <input
+                      type="text"
+                      value={newClient.adresse}
+                      onChange={(e) => setNewClient({ ...newClient, adresse: e.target.value })}
+                      placeholder="Adresse du client"
+                      className={`w-full px-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleCreateClient}
+                    disabled={!newClient.nom.trim()}
+                    className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                    style={{ backgroundColor: couleur }}
+                  >
+                    <Check className="w-5 h-5" />
+                    Creer et continuer
+                  </button>
                 </div>
               )}
             </div>

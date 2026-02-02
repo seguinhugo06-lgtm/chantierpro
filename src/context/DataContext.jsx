@@ -1,15 +1,20 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
+import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
+import { isDemo, auth } from '../supabaseClient';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
- * Reduces prop drilling for data and CRUD operations
+ * Now with Supabase sync for persistence
  */
 
 const DataContext = createContext(null);
 
 export function DataProvider({ children, initialData = {} }) {
+  // User ID from Supabase auth
+  const [userId, setUserId] = useState(null);
+
   // Core data
   const [clients, setClients] = useState(initialData.clients ?? []);
   const [devis, setDevis] = useState(initialData.devis ?? []);
@@ -22,60 +27,197 @@ export function DataProvider({ children, initialData = {} }) {
   const [paiements, setPaiements] = useState(initialData.paiements ?? []);
   const [echanges, setEchanges] = useState(initialData.echanges ?? []);
 
-  // Loading states
+  // Loading state
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Loading states (legacy)
   const [loading, setLoading] = useState({
     clients: false,
     devis: false,
     chantiers: false
   });
 
+  // Listen for auth state changes to get userId
+  useEffect(() => {
+    if (isDemo) return;
+
+    // Get current user on mount
+    const getCurrentUser = async () => {
+      const user = await auth.getCurrentUser();
+      if (user?.id) {
+        console.log('📱 User authenticated:', user.id);
+        setUserId(user.id);
+      }
+    };
+    getCurrentUser();
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('🔑 User signed in:', session.user.id);
+        setUserId(session.user.id);
+        setDataLoaded(false); // Reset to trigger data reload
+      } else if (event === 'SIGNED_OUT') {
+        console.log('🚪 User signed out');
+        setUserId(null);
+        // Clear data on sign out
+        setClients([]);
+        setChantiers([]);
+        setDevis([]);
+        setDepenses([]);
+        setEquipe([]);
+        setPointages([]);
+        setCatalogue([]);
+        setDataLoaded(false);
+      }
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  // Load data from Supabase when userId is available
+  useEffect(() => {
+    if (isDemo || !userId || dataLoaded) return;
+
+    const loadData = async () => {
+      setDataLoading(true);
+      try {
+        console.log('📥 Loading data from Supabase...');
+        const data = await loadAllData(userId);
+        if (data) {
+          setClients(data.clients);
+          setChantiers(data.chantiers);
+          setDevis(data.devis);
+          setDepenses(data.depenses);
+          setEquipe(data.equipe);
+          setPointages(data.pointages);
+          setCatalogue(data.catalogue);
+          setDataLoaded(true);
+          console.log('✅ Data loaded from Supabase:', {
+            clients: data.clients.length,
+            chantiers: data.chantiers.length,
+            devis: data.devis.length,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    loadData();
+  }, [userId, dataLoaded]);
+
   // ============ CLIENT OPERATIONS ============
-  const addClient = useCallback((data) => {
+  const addClient = useCallback(async (data) => {
+    // Generate proper UUID for Supabase compatibility
     const newClient = {
-      id: `c${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
-    setClients(prev => [...prev, newClient]);
-    return newClient;
-  }, []);
 
-  const updateClient = useCallback((id, data) => {
+    // Optimistic update
+    setClients(prev => [...prev, newClient]);
+
+    // Save to Supabase and wait for response
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('clients', newClient, userId);
+        if (saved) {
+          // Update with the saved version (has correct timestamps, etc.)
+          setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving client to Supabase:', error);
+        // Remove optimistic update on error
+        setClients(prev => prev.filter(c => c.id !== newClient.id));
+        throw error;
+      }
+    }
+
+    return newClient;
+  }, [userId]);
+
+  const updateClient = useCallback(async (id, data) => {
+    const updatedClient = { id, ...data, updatedAt: new Date().toISOString() };
+
     setClients(prev => prev.map(c =>
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
-  }, []);
 
-  const deleteClient = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = clients.find(c => c.id === id);
+      if (current) {
+        await saveItem('clients', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, clients]);
+
+  const deleteClient = useCallback(async (id) => {
     setClients(prev => prev.filter(c => c.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('clients', id, userId);
+    }
+  }, [userId]);
 
   const getClient = useCallback((id) => {
     return clients.find(c => c.id === id);
   }, [clients]);
 
   // ============ DEVIS OPERATIONS ============
-  const addDevis = useCallback((data) => {
+  const addDevis = useCallback(async (data) => {
     const newDevis = {
-      id: `d${Date.now()}`,
+      id: crypto.randomUUID(),
       statut: DEVIS_STATUS.BROUILLON,
       type: 'devis',
       ...data,
       createdAt: new Date().toISOString()
     };
-    setDevis(prev => [...prev, newDevis]);
-    return newDevis;
-  }, []);
 
-  const updateDevis = useCallback((id, data) => {
+    setDevis(prev => [...prev, newDevis]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('devis', newDevis, userId);
+        if (saved) {
+          setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving devis to Supabase:', error);
+        setDevis(prev => prev.filter(d => d.id !== newDevis.id));
+        throw error;
+      }
+    }
+
+    return newDevis;
+  }, [userId]);
+
+  const updateDevis = useCallback(async (id, data) => {
     setDevis(prev => prev.map(d =>
       d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
     ));
-  }, []);
 
-  const deleteDevis = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = devis.find(d => d.id === id);
+      if (current) {
+        await saveItem('devis', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, devis]);
+
+  const deleteDevis = useCallback(async (id) => {
     setDevis(prev => prev.filter(d => d.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('devis', id, userId);
+    }
+  }, [userId]);
 
   const getDevis = useCallback((id) => {
     return devis.find(d => d.id === id);
@@ -90,9 +232,9 @@ export function DataProvider({ children, initialData = {} }) {
   }, [devis]);
 
   // ============ CHANTIER OPERATIONS ============
-  const addChantier = useCallback((data) => {
+  const addChantier = useCallback(async (data) => {
     const newChantier = {
-      id: `ch${Date.now()}`,
+      id: crypto.randomUUID(),
       statut: CHANTIER_STATUS.PROSPECT,
       avancement: 0,
       photos: [],
@@ -100,70 +242,151 @@ export function DataProvider({ children, initialData = {} }) {
       ...data,
       createdAt: new Date().toISOString()
     };
-    setChantiers(prev => [...prev, newChantier]);
-    return newChantier;
-  }, []);
 
-  const updateChantier = useCallback((id, data) => {
+    setChantiers(prev => [...prev, newChantier]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('chantiers', newChantier, userId);
+        if (saved) {
+          setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving chantier to Supabase:', error);
+        setChantiers(prev => prev.filter(c => c.id !== newChantier.id));
+        throw error;
+      }
+    }
+
+    return newChantier;
+  }, [userId]);
+
+  const updateChantier = useCallback(async (id, data) => {
     setChantiers(prev => prev.map(c =>
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
-  }, []);
 
-  const deleteChantier = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = chantiers.find(c => c.id === id);
+      if (current) {
+        await saveItem('chantiers', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, chantiers]);
+
+  const deleteChantier = useCallback(async (id) => {
     setChantiers(prev => prev.filter(c => c.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('chantiers', id, userId);
+    }
+  }, [userId]);
 
   const getChantier = useCallback((id) => {
     return chantiers.find(c => c.id === id);
   }, [chantiers]);
 
   // ============ DEPENSE OPERATIONS ============
-  const addDepense = useCallback((data) => {
+  const addDepense = useCallback(async (data) => {
     const newDepense = {
-      id: `dep${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
-    setDepenses(prev => [...prev, newDepense]);
-    return newDepense;
-  }, []);
 
-  const updateDepense = useCallback((id, data) => {
+    setDepenses(prev => [...prev, newDepense]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('depenses', newDepense, userId);
+        if (saved) {
+          setDepenses(prev => prev.map(d => d.id === newDepense.id ? saved : d));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving depense to Supabase:', error);
+        setDepenses(prev => prev.filter(d => d.id !== newDepense.id));
+        throw error;
+      }
+    }
+
+    return newDepense;
+  }, [userId]);
+
+  const updateDepense = useCallback(async (id, data) => {
     setDepenses(prev => prev.map(d =>
       d.id === id ? { ...d, ...data } : d
     ));
-  }, []);
 
-  const deleteDepense = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = depenses.find(d => d.id === id);
+      if (current) {
+        await saveItem('depenses', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, depenses]);
+
+  const deleteDepense = useCallback(async (id) => {
     setDepenses(prev => prev.filter(d => d.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('depenses', id, userId);
+    }
+  }, [userId]);
 
   const getDepensesByChantier = useCallback((chantierId) => {
     return depenses.filter(d => d.chantierId === chantierId);
   }, [depenses]);
 
   // ============ POINTAGE OPERATIONS ============
-  const addPointage = useCallback((data) => {
+  const addPointage = useCallback(async (data) => {
     const newPointage = {
-      id: `pt${Date.now()}`,
+      id: crypto.randomUUID(),
       approuve: false,
       ...data,
       createdAt: new Date().toISOString()
     };
-    setPointages(prev => [...prev, newPointage]);
-    return newPointage;
-  }, []);
 
-  const updatePointage = useCallback((id, data) => {
+    setPointages(prev => [...prev, newPointage]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('pointages', newPointage, userId);
+        if (saved) {
+          setPointages(prev => prev.map(p => p.id === newPointage.id ? saved : p));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving pointage to Supabase:', error);
+        setPointages(prev => prev.filter(p => p.id !== newPointage.id));
+        throw error;
+      }
+    }
+
+    return newPointage;
+  }, [userId]);
+
+  const updatePointage = useCallback(async (id, data) => {
     setPointages(prev => prev.map(p =>
       p.id === id ? { ...p, ...data } : p
     ));
-  }, []);
 
-  const deletePointage = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = pointages.find(p => p.id === id);
+      if (current) {
+        await saveItem('pointages', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, pointages]);
+
+  const deletePointage = useCallback(async (id) => {
     setPointages(prev => prev.filter(p => p.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('pointages', id, userId);
+    }
+  }, [userId]);
 
   const getPointagesByChantier = useCallback((chantierId) => {
     return pointages.filter(p => p.chantierId === chantierId);
@@ -172,7 +395,7 @@ export function DataProvider({ children, initialData = {} }) {
   // ============ AJUSTEMENT OPERATIONS ============
   const addAjustement = useCallback((data) => {
     const newAjustement = {
-      id: `aj${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
@@ -189,48 +412,102 @@ export function DataProvider({ children, initialData = {} }) {
   }, [ajustements]);
 
   // ============ EQUIPE OPERATIONS ============
-  const addEmployee = useCallback((data) => {
+  const addEmployee = useCallback(async (data) => {
     const newEmployee = {
-      id: `emp${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
-    setEquipe(prev => [...prev, newEmployee]);
-    return newEmployee;
-  }, []);
 
-  const updateEmployee = useCallback((id, data) => {
+    setEquipe(prev => [...prev, newEmployee]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('equipe', newEmployee, userId);
+        if (saved) {
+          setEquipe(prev => prev.map(e => e.id === newEmployee.id ? saved : e));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving employee to Supabase:', error);
+        setEquipe(prev => prev.filter(e => e.id !== newEmployee.id));
+        throw error;
+      }
+    }
+
+    return newEmployee;
+  }, [userId]);
+
+  const updateEmployee = useCallback(async (id, data) => {
     setEquipe(prev => prev.map(e =>
       e.id === id ? { ...e, ...data } : e
     ));
-  }, []);
 
-  const deleteEmployee = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = equipe.find(e => e.id === id);
+      if (current) {
+        await saveItem('equipe', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, equipe]);
+
+  const deleteEmployee = useCallback(async (id) => {
     setEquipe(prev => prev.filter(e => e.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('equipe', id, userId);
+    }
+  }, [userId]);
 
   // ============ CATALOGUE OPERATIONS ============
-  const addCatalogueItem = useCallback((data) => {
+  const addCatalogueItem = useCallback(async (data) => {
     const newItem = {
-      id: `cat${Date.now()}`,
+      id: crypto.randomUUID(),
       stock: 0,
       favori: false,
       ...data,
       createdAt: new Date().toISOString()
     };
-    setCatalogue(prev => [...prev, newItem]);
-    return newItem;
-  }, []);
 
-  const updateCatalogueItem = useCallback((id, data) => {
+    setCatalogue(prev => [...prev, newItem]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('catalogue', newItem, userId);
+        if (saved) {
+          setCatalogue(prev => prev.map(c => c.id === newItem.id ? saved : c));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving catalogue item to Supabase:', error);
+        setCatalogue(prev => prev.filter(c => c.id !== newItem.id));
+        throw error;
+      }
+    }
+
+    return newItem;
+  }, [userId]);
+
+  const updateCatalogueItem = useCallback(async (id, data) => {
     setCatalogue(prev => prev.map(c =>
       c.id === id ? { ...c, ...data } : c
     ));
-  }, []);
 
-  const deleteCatalogueItem = useCallback((id) => {
+    if (!isDemo && userId) {
+      const current = catalogue.find(c => c.id === id);
+      if (current) {
+        await saveItem('catalogue', { ...current, ...data }, userId);
+      }
+    }
+  }, [userId, catalogue]);
+
+  const deleteCatalogueItem = useCallback(async (id) => {
     setCatalogue(prev => prev.filter(c => c.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      await deleteItem('catalogue', id, userId);
+    }
+  }, [userId]);
 
   const deductStock = useCallback((id, quantity) => {
     setCatalogue(prev => prev.map(c =>
@@ -241,7 +518,7 @@ export function DataProvider({ children, initialData = {} }) {
   // ============ PAIEMENT OPERATIONS ============
   const addPaiement = useCallback((data) => {
     const newPaiement = {
-      id: `pay${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
@@ -256,7 +533,7 @@ export function DataProvider({ children, initialData = {} }) {
   // ============ ECHANGE OPERATIONS ============
   const addEchange = useCallback((data) => {
     const newEchange = {
-      id: `ech${Date.now()}`,
+      id: crypto.randomUUID(),
       ...data,
       date: new Date().toISOString()
     };
@@ -265,12 +542,10 @@ export function DataProvider({ children, initialData = {} }) {
   }, []);
 
   // ============ CALCULATED VALUES ============
-  // Uses the unified margin calculator - SINGLE SOURCE OF TRUTH
   const getChantierBilan = useCallback((chantierId) => {
     const chantier = chantiers.find(c => c.id === chantierId);
     if (!chantier) return null;
 
-    // Use the unified margin calculator
     return calculateChantierMargin(chantier, {
       devis,
       depenses,
@@ -294,6 +569,7 @@ export function DataProvider({ children, initialData = {} }) {
     paiements,
     echanges,
     loading,
+    dataLoading,
 
     // Setters (for direct access when needed)
     setClients,
@@ -367,7 +643,7 @@ export function DataProvider({ children, initialData = {} }) {
     getChantierBilan
   }), [
     clients, devis, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, loading,
+    catalogue, paiements, echanges, loading, dataLoading,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier,
     addChantier, updateChantier, deleteChantier, getChantier,
@@ -427,6 +703,14 @@ export function useChantiers() {
     getChantier, getChantierBilan
   } = useData();
   return { chantiers, addChantier, updateChantier, deleteChantier, getChantier, getChantierBilan };
+}
+
+/**
+ * useEquipe - Hook for equipe (team) data
+ */
+export function useEquipe() {
+  const { equipe, addEmployee, updateEmployee, deleteEmployee } = useData();
+  return { equipe, addEmployee, updateEmployee, deleteEmployee };
 }
 
 export default DataContext;
