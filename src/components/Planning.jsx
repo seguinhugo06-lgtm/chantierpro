@@ -53,8 +53,23 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', autre: 'Autre' };
   const TYPE_ICONS = { chantier: Home, rdv: User, relance: Phone, urgence: Zap, autre: Calendar };
 
-  const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; if (ch.statut === 'en_cours') return '#22c55e'; return '#3b82f6'; };
+  // Couleurs cohérentes avec la légende - chantiers toujours bleus
+  const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; return '#3b82f6'; };
   const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', autre: '#8b5cf6' };
+
+  // Helper pour obtenir la couleur d'un événement - TOUJOURS utiliser typeColors en priorité
+  const getEventColor = (ev) => {
+    // Pour les chantiers, utiliser bleu (ou gris si terminé - la couleur vient de getChantierColor)
+    if (ev.isChantier) {
+      return ev.color || typeColors.chantier;
+    }
+    // PRIORITÉ ABSOLUE: si le type est défini et existe dans typeColors, l'utiliser
+    if (ev.type && typeColors[ev.type]) {
+      return typeColors[ev.type];
+    }
+    // Fallback uniquement si type invalide/inexistant
+    return couleur;
+  };
 
   const getChantierEvents = () => chantiers.filter(ch => ch.date_debut).map(ch => ({
     id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier',
@@ -213,26 +228,41 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
       </div>
 
       {/* Legend */}
-      <div className="flex gap-3 sm:gap-4 flex-wrap text-xs">
-        {Object.entries(TYPE_LABELS).map(([key, label]) => (
-          <button key={key} onClick={() => setFilterType(filterType === key ? '' : key)} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterType === key ? 'ring-2 ring-offset-1' : ''}`} style={filterType === key ? { ringColor: typeColors[key] } : {}}>
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: typeColors[key] }}></span>
-            <span className={textMuted}>{label}</span>
-          </button>
-        ))}
+      <div className={`flex gap-2 sm:gap-3 flex-wrap p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-white shadow-sm border border-slate-200'}`}>
+        {Object.entries(TYPE_LABELS).map(([key, label]) => {
+          const Icon = TYPE_ICONS[key];
+          const isActive = filterType === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilterType(filterType === key ? '' : key)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                isActive
+                  ? 'text-white shadow-md'
+                  : isDark
+                  ? 'bg-slate-700 hover:bg-slate-600'
+                  : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'
+              }`}
+              style={isActive ? { background: typeColors[key] } : {}}
+            >
+              <span className={`w-4 h-4 rounded-full shadow-sm ${isActive ? 'bg-white/40' : ''}`} style={!isActive ? { background: typeColors[key] } : {}} />
+              <span className={`text-sm font-semibold ${isActive ? '' : textPrimary}`}>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
         <div className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : new Date(date.getTime() - 7 * 86400000))} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <ChevronLeft size={20} className={textPrimary} />
+          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+            <ChevronLeft size={24} className={textPrimary} />
           </button>
-          <h2 className={`text-base sm:text-lg font-semibold ${textPrimary}`}>
+          <h2 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>
             {viewMode === 'month' ? `${MOIS[month]} ${year}` : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
           </h2>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : new Date(date.getTime() + 7 * 86400000))} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <ChevronRight size={20} className={textPrimary} />
+          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+            <ChevronRight size={24} className={textPrimary} />
           </button>
         </div>
 
@@ -254,13 +284,21 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                         {dayEvents.slice(0, 2).map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
                           return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: ev.color || typeColors[ev.type] || couleur}} title={ev.title}>
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}} title={ev.title}>
                               <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
                               <span className="truncate font-medium">{ev.title}</span>
                             </div>
                           );
                         })}
-                        {dayEvents.length > 2 && <p className={`text-[10px] sm:text-xs ${textMuted} cursor-pointer hover:underline`}>+{dayEvents.length - 2}</p>}
+                        {dayEvents.length > 2 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('week'); }}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                            style={{ color: couleur }}
+                          >
+                            +{dayEvents.length - 2} autres
+                          </button>
+                        )}
                       </div>
                     </>)}
                   </div>
@@ -288,14 +326,18 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                       <div className="space-y-1">
                         {dayEvents.map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                          const eventColor = getEventColor(ev);
                           return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ background: ev.color || typeColors[ev.type] || couleur }}>
-                                <TypeIcon size={16} />
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border-l-4 ${isDark ? 'hover:bg-slate-700 bg-slate-800/50' : 'hover:bg-slate-100 bg-slate-50'}`} style={{ borderLeftColor: eventColor }}>
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${eventColor}20` }}>
+                                <TypeIcon size={18} style={{ color: eventColor }} />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm truncate ${textPrimary}`}>{ev.title}</p>
-                                {ev.time && <p className={`text-xs ${textMuted}`}>{ev.time}</p>}
+                                <p className={`font-medium text-sm truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium" style={{ color: eventColor }}>{TYPE_LABELS[ev.type] || 'Événement'}</span>
+                                  {ev.time && <span className={`text-xs ${textMuted}`}>• {ev.time}</span>}
+                                </div>
                               </div>
                             </div>
                           );
@@ -328,11 +370,11 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
               const daysUntil = Math.ceil((new Date(ev.date) - new Date()) / 86400000);
               return (
                 <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: ev.color || typeColors[ev.type] || couleur }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
                     <TypeIcon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-medium truncate ${textPrimary}`}>{ev.title}</p>
+                    <p className={`font-medium truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
                     <p className={`text-sm ${textMuted}`}>{new Date(ev.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} {ev.time && `à ${ev.time}`}</p>
                   </div>
                   <span className={`text-xs px-2 py-1 rounded-full ${daysUntil === 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : daysUntil <= 2 ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700') : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-600')}`}>

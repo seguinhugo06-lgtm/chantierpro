@@ -5,8 +5,11 @@ const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'developme
 const urlHasDemoParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === 'true';
 const envDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 
-// DEMO MODE ENABLED FOR AI REVIEW
-export const isDemo = false;
+// Check if Supabase credentials are configured
+const hasSupabaseConfig = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+// Demo mode: enabled if no Supabase config OR explicitly requested via URL/env
+export const isDemo = !hasSupabaseConfig || envDemoMode || (isDevelopment && urlHasDemoParam);
 
 // Demo user for auto-login in demo mode
 const DEMO_USER = {

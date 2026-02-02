@@ -23,3 +23,12 @@ export { useFormValidation } from '../lib/validation';
 
 // Modal hooks
 export { useModal, useMultiModal } from './useModal';
+
+// Quick actions hook
+export {
+  useQuickActions,
+  useDevisActions,
+  useFactureActions,
+  useChantierActions,
+  useClientActions,
+} from './useQuickActions';

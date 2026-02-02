@@ -80,13 +80,13 @@ export default function AccountingIntegration({
     });
     setIntegrations(getIntegrations());
     setConnecting(null);
-    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} connecte`);
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} connecté`);
   };
 
   const handleDisconnect = (integrationId) => {
     removeIntegration(integrationId);
     setIntegrations(getIntegrations());
-    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} deconnecte`, 'info');
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} déconnecté`, 'info');
   };
 
   const handleSync = async (integrationId) => {
@@ -105,7 +105,7 @@ export default function AccountingIntegration({
         status: SYNC_STATUS.UP_TO_DATE
       });
       setIntegrations(getIntegrations());
-      showToast('Synchronisation terminee');
+      showToast('Synchronisation terminée');
     } catch (error) {
       showToast('Erreur de synchronisation', 'error');
     }
@@ -117,18 +117,18 @@ export default function AccountingIntegration({
     if (type === 'factures') {
       const csv = exportInvoicesToCSV(factures, clients, entreprise);
       downloadFile(csv, `factures_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
-      showToast(`${factures.length} factures exportees`);
+      showToast(`${factures.length} factures exportées`);
     } else if (type === 'depenses') {
       const csv = exportExpensesToCSV(depenses, chantiers);
       downloadFile(csv, `depenses_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
-      showToast(`${depenses.length} depenses exportees`);
+      showToast(`${depenses.length} dépenses exportées`);
     }
   };
 
   const handleExportFEC = () => {
     const fec = generateFEC(factures, depenses, clients, chantiers, entreprise, exportPeriod.debut, exportPeriod.fin);
     downloadFile(fec, `FEC_${entreprise?.siret || 'SIRET'}_${exportPeriod.debut.replace(/-/g, '')}_${exportPeriod.fin.replace(/-/g, '')}.txt`, 'text/plain');
-    showToast('Fichier FEC genere');
+    showToast('Fichier FEC généré');
   };
 
   const getIntegrationIcon = (iconName) => {

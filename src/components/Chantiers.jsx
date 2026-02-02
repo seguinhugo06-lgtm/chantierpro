@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, Mic, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle } from 'lucide-react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -7,7 +7,6 @@ import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis } from '../lib/templates/task-templates';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
-import { VoiceAssistantFAB } from './VoiceAssistant';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -75,6 +74,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [showEditBudget, setShowEditBudget] = useState(false);
   const [budgetForm, setBudgetForm] = useState({ budget_estime: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, status, margin
+  const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
   const [weather, setWeather] = useState(null); // Weather data for active chantier
@@ -104,7 +104,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   }, [view]);
 
   const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €';
-  const formatPct = (n) => modeDiscret ? '··%' : (n || 0).toFixed(1) + '%';
+  const formatPct = (n) => {
+    if (modeDiscret) return '··%';
+    const value = n || 0;
+    const rounded = Math.round(value);
+    // Afficher sans décimale si proche d'un entier
+    return Math.abs(value - rounded) < 0.1 ? `${rounded}%` : `${value.toFixed(1)}%`;
+  };
   const getMargeColor = (t) => t < 0 ? 'text-red-500' : t < 15 ? 'text-amber-500' : 'text-emerald-500';
   const getMargeBg = (t) => t < 0 ? 'bg-red-50' : t < 15 ? 'bg-amber-50' : 'bg-emerald-50';
 
@@ -160,7 +166,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const devisHT = devisLie?.total_ht || 0;
 
     // Projections - use smart progression from real data signals
-    const avancement = calculateSmartProgression(ch, bilan, tasksDone, tasksTotal);
+    // Force 100% for completed projects to maintain coherence
+    const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, tasksTotal);
     const depensesFinalesEstimees = avancement > 0 ? bilan.totalDepenses / (avancement / 100) : bilan.totalDepenses * 2;
     const beneficeProjecte = bilan.revenuPrevu - depensesFinalesEstimees;
     const tauxMargeProjecte = bilan.revenuPrevu > 0 ? (beneficeProjecte / bilan.revenuPrevu) * 100 : 0;
@@ -195,10 +202,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
             }}
             className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer border-0 outline-none appearance-none pr-7 bg-no-repeat bg-right min-h-[44px] ${
-              ch.statut === 'en_cours' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
+              ch.statut === 'en_cours' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
               : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
               : ch.statut === 'abandonne' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
-              : (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700')
+              : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
             }`}
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '16px', backgroundPosition: 'right 8px center' }}
           >
@@ -217,45 +224,45 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
             <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Actions rapides</span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2.5 overflow-x-auto pb-1">
             <button
               onClick={() => setShowAddMO(true)}
-              className={`flex-1 min-w-[70px] flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
+              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                <Clock size={20} style={{ color: couleur }} />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                <Clock size={22} style={{ color: couleur }} />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Pointer</span>
+              <span className={`text-sm font-medium ${textPrimary}`}>Pointer</span>
             </button>
             <button
               onClick={() => setShowQuickMateriau(true)}
-              className={`flex-1 min-w-[70px] flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
+              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-red-100">
-                <Coins size={20} className="text-red-500" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-red-100">
+                <Coins size={22} className="text-red-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Dépense</span>
+              <span className={`text-sm font-medium ${textPrimary}`}>Dépense</span>
             </button>
             <button
               onClick={() => document.getElementById(`photo-quick-${ch.id}`)?.click()}
-              className={`flex-1 min-w-[70px] flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
+              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-100">
-                <Camera size={20} className="text-blue-500" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-blue-100">
+                <Camera size={22} className="text-blue-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Photo</span>
+              <span className={`text-sm font-medium ${textPrimary}`}>Photo</span>
               <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
             </button>
             <button
               onClick={() => { setActiveTab('taches'); }}
-              className={`flex-1 min-w-[70px] flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
+              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-100">
-                <CheckSquare size={20} className="text-emerald-500" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-emerald-100">
+                <CheckSquare size={22} className="text-emerald-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Tâches</span>
+              <span className={`text-sm font-medium ${textPrimary}`}>Tâches</span>
               {tasksTotal > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
                   {tasksDone}/{tasksTotal}
                 </span>
               )}
@@ -265,12 +272,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 const tel = client?.telephone;
                 if (tel) window.open(`tel:${tel}`);
               }}
-              className={`flex-1 min-w-[70px] flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
+              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
             >
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-100">
-                <Phone size={20} className="text-purple-500" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-purple-100">
+                <Phone size={22} className="text-purple-500" />
               </div>
-              <span className={`text-xs font-medium ${textPrimary}`}>Client</span>
+              <span className={`text-sm font-medium ${textPrimary}`}>Client</span>
             </button>
           </div>
         </div>
@@ -349,7 +356,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
             <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
               <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Avancement</p>
-              <p className={`text-lg font-bold ${textPrimary}`}>{avancement.toFixed(0)}%</p>
+              <p className={`text-lg font-bold ${textPrimary}`}>{Math.round(avancement)}%</p>
             </div>
           </div>
 
@@ -490,7 +497,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`}>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <span className={`text-sm font-medium ${textPrimary}`}>Avancement du chantier</span>
-              <span className="font-bold text-lg" style={{ color: couleur }}>{avancement.toFixed(0)}%</span>
+              <span className="font-bold text-lg" style={{ color: couleur }}>{Math.round(avancement)}%</span>
             </div>
 
             {/* Barre de progression principale */}
@@ -623,7 +630,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className={`pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
               <div className="flex items-center justify-between mb-2">
                 <span className={`text-xs ${textMuted}`}>Ajustement manuel</span>
-                <span className={`text-xs ${textMuted}`}>{avancement.toFixed(0)}%</span>
+                <span className={`text-xs ${textMuted}`}>{Math.round(avancement)}%</span>
               </div>
               <input
                 type="range"
@@ -1679,21 +1686,35 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (newChantier?.id) setView(newChantier.id);
   };
 
-  // Sorting logic
-  const getSortedChantiers = () => {
-    const sorted = [...chantiers];
+  // Filtering and sorting logic
+  const getFilteredAndSortedChantiers = () => {
+    // First filter by status
+    let filtered = [...chantiers];
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(c => c.statut === filterStatus);
+    }
+
+    // Then sort
     switch (sortBy) {
       case 'name':
-        return sorted.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+        return filtered.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
       case 'status':
         const statusOrder = { en_cours: 0, prospect: 1, termine: 2 };
-        return sorted.sort((a, b) => (statusOrder[a.statut] || 2) - (statusOrder[b.statut] || 2));
+        return filtered.sort((a, b) => (statusOrder[a.statut] || 2) - (statusOrder[b.statut] || 2));
       case 'margin':
-        return sorted.sort((a, b) => (getChantierBilan(b.id)?.tauxMarge || 0) - (getChantierBilan(a.id)?.tauxMarge || 0));
+        return filtered.sort((a, b) => (getChantierBilan(b.id)?.tauxMarge || 0) - (getChantierBilan(a.id)?.tauxMarge || 0));
       case 'recent':
       default:
-        return sorted.sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
+        return filtered.sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
     }
+  };
+
+  // Stats for filter tabs
+  const statusCounts = {
+    all: chantiers.length,
+    en_cours: chantiers.filter(c => c.statut === 'en_cours').length,
+    prospect: chantiers.filter(c => c.statut === 'prospect').length,
+    termine: chantiers.filter(c => c.statut === 'termine').length,
   };
 
   // Liste
@@ -1720,6 +1741,36 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </button>
         </div>
       </div>
+
+      {/* Status Filter Tabs */}
+      {chantiers.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+          {[
+            { key: 'all', label: 'Tous', color: couleur },
+            { key: 'en_cours', label: 'En cours', color: '#f97316' },
+            { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
+            { key: 'termine', label: 'Terminés', color: '#22c55e' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilterStatus(tab.key)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all min-h-[40px] flex items-center gap-2 ${
+                filterStatus === tab.key
+                  ? 'text-white shadow-md'
+                  : isDark
+                    ? 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300'
+              }`}
+              style={filterStatus === tab.key ? { backgroundColor: tab.color } : {}}
+            >
+              {tab.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                {statusCounts[tab.key]}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {chantiers.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -1821,8 +1872,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             return (
               <div
                 onClick={() => setView(current.id)}
-                className={`mb-4 ${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md`}
-                style={{ borderColor: `${couleur}30` }}
+                className={`mb-4 ${cardBg} rounded-xl border-2 p-4 cursor-pointer transition-all shadow-md hover:shadow-lg`}
+                style={{ borderColor: `${couleur}50`, boxShadow: `0 4px 12px ${couleur}15` }}
               >
                 {/* Header with status badge */}
                 <div className="flex items-center justify-between mb-2">
@@ -1916,7 +1967,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <span className={`text-[10px] ${textMuted}`}>— {chantiers.length} projet{chantiers.length > 1 ? 's' : ''}</span>
           </div>
           <div className="grid gap-3 sm:gap-4">
-          {getSortedChantiers().map(ch => {
+          {getFilteredAndSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
             const bilanRaw3 = getChantierBilan(ch.id);
             const bilan = bilanRaw3 || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
@@ -1925,37 +1976,54 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const hasAlert = bilan.tauxMarge < 0;
             const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
-              ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+              ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
               : ch.statut === 'termine'
-              ? (isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600')
+              ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
               : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
 
             // Task counts
             const allTasks = ch.taches || [];
             const pendingTasks = allTasks.filter(t => !t.done);
             const tasksDone = allTasks.filter(t => t.done).length;
+            // Force 100% for completed projects
+            const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, allTasks.length);
 
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md ${hasAlert ? (isDark ? 'border-red-700' : 'border-red-300') : ''}`}>
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
                 {/* Header */}
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0 flex-1">
                     <h3 className={`font-semibold truncate ${textPrimary}`}>{ch.nom}</h3>
                     <p className={`text-xs ${textMuted} truncate`}>{client?.nom || 'Sans client'}</p>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
                     {statusLabel}
                   </span>
                 </div>
 
+                {/* Progress bar */}
+                {ch.statut === 'en_cours' && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs ${textMuted}`}>Avancement</span>
+                      <span className={`text-xs font-semibold`} style={{ color: couleur }}>{avancement}%</span>
+                    </div>
+                    <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
+                    </div>
+                  </div>
+                )}
+
                 {/* Stats row */}
-                <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                  <div className="flex items-center gap-3">
-                    <span className={`font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
-                    {hasAlert && <AlertTriangle size={14} className="text-red-500" />}
+                <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center gap-1.5 ${hasAlert ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={hasAlert ? 'Marge négative - Le chantier génère une perte' : `Marge: ${formatPct(bilan.tauxMarge)}`}>
+                      <span className={`text-sm font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
+                      {hasAlert && <AlertTriangle size={14} className="text-red-500 animate-pulse" />}
+                    </div>
                     {/* Task indicator */}
                     {allTasks.length > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <CheckSquare size={14} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
                         <span className={`text-xs font-medium ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {tasksDone}/{allTasks.length}
@@ -1963,7 +2031,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       </div>
                     )}
                   </div>
-                  <span className={`text-sm ${textMuted}`}>{budgetPrevu > 0 ? formatMoney(budgetPrevu) : ''}</span>
+                  <span className={`text-sm font-bold whitespace-nowrap tabular-nums ${textPrimary}`}>{budgetPrevu > 0 ? formatMoney(budgetPrevu) : ''}</span>
                 </div>
               </div>
             );
@@ -2207,28 +2275,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         devis={devis}
         isDark={isDark}
         couleur={couleur}
-      />
-
-      {/* Voice Assistant FAB */}
-      <VoiceAssistantFAB
-        currentChantier={view ? chantiers.find(c => c.id === view) : null}
-        catalogue={catalogue}
-        chantiers={chantiers}
-        devis={devis}
-        onOpenCamera={() => {
-          // Would trigger photo capture
-          showToast('Ouverture caméra...', 'info');
-        }}
-        onCreateNote={async (text, chantierId) => {
-          // Would create a note linked to the chantier
-          showToast(`Note enregistrée: ${text}`, 'success');
-        }}
-        onCallClient={(chantier) => {
-          const client = clients.find(c => c.id === chantier?.client_id);
-          if (client?.telephone) {
-            window.location.href = `tel:${client.telephone}`;
-          }
-        }}
       />
     </div>
   );

@@ -780,59 +780,59 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Week Hero Card with Navigation */}
         <motion.div
-          className="col-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
+          className="col-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden shadow-lg"
+          style={{ background: `linear-gradient(135deg, #ea580c, #c2410c)` }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/5 -ml-8 -mb-8" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
 
           <div className="relative">
             {/* Week Navigation */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setWeekOffset(o => o - 1)}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg"
                 aria-label="Semaine precedente"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={24} className="text-orange-600" />
               </button>
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="opacity-80" />
-                <p className="text-sm opacity-90 font-medium">
+              <div className="flex items-center gap-2 px-5 py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
+                <Calendar size={16} className="text-white" />
+                <p className="text-sm text-white font-bold">
                   {weekOffset === 0 ? 'Cette semaine' : `Semaine du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
                 </p>
               </div>
               <button
                 onClick={() => setWeekOffset(o => Math.min(o + 1, 0))}
                 disabled={weekOffset >= 0}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Semaine suivante"
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={24} className="text-orange-600" />
               </button>
             </div>
 
             <div className="flex items-end justify-between mb-4">
               <div>
-                <p className="text-4xl sm:text-5xl font-bold">{totalWeekHours.toFixed(0)}<span className="text-2xl opacity-80">h</span></p>
-                <p className="text-sm opacity-80 mt-1">{equipe.length} membre{equipe.length > 1 ? 's' : ''} dans l'équipe</p>
+                <p className="text-5xl sm:text-6xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
+                <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>{equipe.length} membre{equipe.length > 1 ? 's' : ''} dans l'équipe</p>
               </div>
-              <div className="text-right">
+              <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm">
                 <div className="flex items-center gap-2 justify-end">
-                  <Check size={16} className="opacity-80" />
-                  <span className="text-sm opacity-80">Validées</span>
+                  <Check size={16} className="text-white" />
+                  <span className="text-sm text-white font-semibold">Validées</span>
                 </div>
-                <p className="text-2xl font-bold">{approvedWeekHours.toFixed(1)}h</p>
+                <p className="text-2xl font-black text-white">{approvedWeekHours.toFixed(1)}h</p>
               </div>
             </div>
 
             {/* Progress bar */}
             <div className="relative">
-              <div className="h-3 bg-white/20 rounded-full overflow-hidden">
+              <div className="h-4 bg-black/20 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-white rounded-full"
                   initial={{ width: 0 }}
@@ -840,8 +840,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               </div>
-              <p className="text-xs mt-1 opacity-70 text-right">
-                {totalWeekHours > 0 ? Math.round((approvedWeekHours / totalWeekHours) * 100) : 0}% valide
+              <p className="text-sm mt-2 text-white text-right font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                {totalWeekHours > 0 ? Math.round((approvedWeekHours / totalWeekHours) * 100) : 0}% validé
               </p>
             </div>
           </div>
@@ -849,7 +849,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
         {/* Today's Activity Card */}
         <motion.div
-          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden`}
+          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden shadow-sm`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
@@ -885,7 +885,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
         {/* Week Cost Card */}
         <motion.div
-          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden`}
+          className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden shadow-sm`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
@@ -1084,7 +1084,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                 </span>
               )}
               {badge && tab !== key && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white">
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-blue-600 text-blue-100' : 'bg-blue-100 text-blue-700'}`}>
                   {badge}
                 </span>
               )}
@@ -1249,7 +1249,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   return (
                     <motion.div
                       key={e.id}
-                      className={`${cardBg} rounded-2xl border overflow-hidden group hover:shadow-xl transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
+                      className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-500 transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
                       style={isCurrentlyTiming ? { ringColor: couleur } : {}}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1342,7 +1342,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                             </span>
                           )}
                           {e.contrat && (
-                            <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-700'}`}>
                               {e.contrat}
                             </span>
                           )}
@@ -1373,21 +1373,21 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                         {/* Stats Grid */}
                         <div className="grid grid-cols-3 gap-2">
                           <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                            <p className={`text-[10px] uppercase tracking-wide font-medium ${textMuted} mb-1`}>Facture</p>
-                            <p className={`text-lg font-bold ${textPrimary}`}>
-                              {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-xs font-normal">€</span>
+                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Facturé</p>
+                            <p className={`text-xl font-bold ${textPrimary}`}>
+                              {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
                             </p>
                           </div>
                           <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                            <p className={`text-[10px] uppercase tracking-wide font-medium ${textMuted} mb-1`}>Cout</p>
-                            <p className="text-lg font-bold text-red-500">
-                              {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-xs font-normal">€</span>
+                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
+                            <p className="text-xl font-bold text-red-500">
+                              {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
                             </p>
                           </div>
                           <div className="p-3 rounded-xl text-center" style={{ background: `${couleur}15` }}>
-                            <p className={`text-[10px] uppercase tracking-wide font-medium ${textMuted} mb-1`}>Ce mois</p>
-                            <p className="text-lg font-bold" style={{ color: couleur }}>
-                              {monthHours.toFixed(0)}<span className="text-xs font-normal">h</span>
+                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
+                            <p className="text-xl font-bold" style={{ color: couleur }}>
+                              {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
                             </p>
                           </div>
                         </div>
@@ -1457,6 +1457,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                       {equipe.map(emp => {
                         const config = getRoleConfig(emp.role);
+                        const isActive = activeEmployeesToday.includes(emp.id);
                         return (
                           <button
                             key={emp.id}
@@ -1469,14 +1470,27 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                             }`}
                           >
                             <div className="flex flex-col items-center text-center">
-                              <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold mb-2"
-                                style={{ background: config.color }}
-                              >
-                                {emp.nom?.[0]}{emp.prenom?.[0] || ''}
+                              <div className="relative">
+                                <div
+                                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold mb-2"
+                                  style={{ background: config.color }}
+                                >
+                                  {emp.nom?.[0]}{emp.prenom?.[0] || ''}
+                                </div>
+                                {/* Status indicator */}
+                                <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 ${
+                                  isActive
+                                    ? 'bg-emerald-500'
+                                    : isDark ? 'bg-slate-600' : 'bg-slate-300'
+                                }`} style={{ borderColor: isDark ? '#1e293b' : '#fff' }} />
                               </div>
                               <p className={`text-sm font-medium ${textPrimary}`}>{emp.nom}</p>
                               <p className={`text-xs ${textMuted}`}>{emp.prenom}</p>
+                              {isActive && (
+                                <span className={`mt-1 text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                                  Sur chantier
+                                </span>
+                              )}
                             </div>
                           </button>
                         );

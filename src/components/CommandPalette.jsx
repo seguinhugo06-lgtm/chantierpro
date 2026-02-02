@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
-  Zap, Receipt, Clock, BarChart3, Mic, History, Star
+  Zap, Receipt, Clock, BarChart3, History, Star
 } from 'lucide-react';
 
 /**
@@ -80,7 +80,6 @@ export default function CommandPalette({
   onNewDevis,
   onNewClient,
   onNewChantier,
-  onStartVoiceNote,
   // Theme
   isDark = false,
   couleur = '#f97316'
@@ -112,8 +111,7 @@ export default function CommandPalette({
     { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
     { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
     { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
-    { id: 'voice-note', label: 'Note vocale', keywords: 'voix audio enregistrer', icon: Mic, shortcut: '⌘V', action: () => { onStartVoiceNote?.(); onClose(); }, color: '#ec4899' },
-  ], [onNewDevis, onNewClient, onNewChantier, onStartVoiceNote, onClose]);
+  ], [onNewDevis, onNewClient, onNewChantier, onClose]);
 
   // Navigation items
   const navigationItems = useMemo(() => [

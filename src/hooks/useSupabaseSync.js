@@ -73,7 +73,6 @@ const FIELD_MAPPINGS = {
     toSupabase: (item) => ({
       id: item.id,
       client_id: item.client_id,
-      chantier_id: item.chantier_id,
       numero: item.numero,
       type: item.type,
       statut: item.statut,
@@ -83,7 +82,6 @@ const FIELD_MAPPINGS = {
       lignes: JSON.stringify(item.lignes || []),
       sections: JSON.stringify(item.sections || []),
       conditions: item.conditions,
-      notes: item.notes,
       remise_globale: item.remise || 0,
       tva_rate: item.tvaRate || 10,
       total_ht: item.total_ht || 0,
@@ -93,7 +91,6 @@ const FIELD_MAPPINGS = {
     fromSupabase: (row) => ({
       id: row.id,
       client_id: row.client_id,
-      chantier_id: row.chantier_id,
       numero: row.numero,
       type: row.type || 'devis',
       statut: row.statut || 'brouillon',
@@ -104,14 +101,12 @@ const FIELD_MAPPINGS = {
       lignes: typeof row.lignes === 'string' ? JSON.parse(row.lignes || '[]') : (row.lignes || []),
       sections: typeof row.sections === 'string' ? JSON.parse(row.sections || '[]') : (row.sections || []),
       conditions: row.conditions,
-      notes: row.notes,
       remise: row.remise_globale || 0,
       tvaRate: row.tva_rate || 10,
       total_ht: row.total_ht || 0,
       tva: row.total_tva || 0,
       total_ttc: row.total_ttc || 0,
       createdAt: row.created_at,
-      updatedAt: row.updated_at,
     }),
   },
   depenses: {

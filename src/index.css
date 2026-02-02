@@ -193,6 +193,34 @@ button {
   background-size: 200% 100%;
 }
 
+/* Shimmer animation for alerts */
+@keyframes shimmer-horizontal {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer-horizontal 2s infinite;
+}
+
+/* Subtle pulse for alerts */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
 /* Stagger animation for lists */
 @keyframes stagger-in {
   from {

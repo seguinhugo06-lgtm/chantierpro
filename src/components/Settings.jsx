@@ -1,9 +1,27 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { useToast } from '../context/AppContext';
+import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2 } from 'lucide-react';
+import {
+  INTEGRATION_TYPES,
+  SYNC_STATUS,
+  getIntegrations,
+  saveIntegration,
+  removeIntegration,
+  exportInvoicesToCSV,
+  exportExpensesToCSV,
+  generateFEC,
+  downloadFile,
+  calculateTVASummary,
+  syncToPennylane,
+  syncToIndy
+} from '../lib/integrations/accounting';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-export default function Settings({ entreprise, setEntreprise, user, devis = [], onExportComptable, isDark, couleur }) {
+export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur }) {
+  const { showToast } = useToast();
+
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
@@ -14,6 +32,31 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
+
+  // Comptabilite state
+  const [comptaSubTab, setComptaSubTab] = useState('integrations');
+  const [integrations, setIntegrations] = useState(getIntegrations);
+  const [connecting, setConnecting] = useState(null);
+  const [syncing, setSyncing] = useState(null);
+  const [exportPeriod, setExportPeriod] = useState(() => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    return {
+      debut: firstDay.toISOString().split('T')[0],
+      fin: now.toISOString().split('T')[0]
+    };
+  });
+
+  // Debounced save notification
+  const saveTimeoutRef = useRef(null);
+  const updateEntreprise = useCallback((updater) => {
+    setEntreprise(updater);
+    // Debounce the toast to avoid spam
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      showToast('Modifications enregistrées', 'success');
+    }, 800);
+  }, [setEntreprise, showToast]);
   
   const handleLogoUpload = (e) => { 
     const file = e.target.files?.[0]; 
@@ -67,6 +110,84 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
 
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
+
+  // Factures only for comptabilite
+  const factures = useMemo(() => devis.filter(d => d.type === 'facture'), [devis]);
+
+  // TVA Summary for comptabilite
+  const tvaSummary = useMemo(() => {
+    return calculateTVASummary(devis, depenses, exportPeriod.debut, exportPeriod.fin);
+  }, [devis, depenses, exportPeriod]);
+
+  // Comptabilite handlers
+  const handleConnect = async (integrationId) => {
+    setConnecting(integrationId);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    saveIntegration(integrationId, {
+      status: SYNC_STATUS.CONNECTED,
+      connectedAt: new Date().toISOString(),
+      lastSync: null
+    });
+    setIntegrations(getIntegrations());
+    setConnecting(null);
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} connecté`, 'success');
+  };
+
+  const handleDisconnect = (integrationId) => {
+    removeIntegration(integrationId);
+    setIntegrations(getIntegrations());
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} déconnecté`, 'info');
+  };
+
+  const handleSync = async (integrationId) => {
+    setSyncing(integrationId);
+    try {
+      if (integrationId === 'pennylane') {
+        await syncToPennylane(factures, depenses, integrations[integrationId]?.apiKey);
+      } else if (integrationId === 'indy') {
+        await syncToIndy(factures, integrations[integrationId]?.apiKey);
+      }
+      saveIntegration(integrationId, {
+        ...integrations[integrationId],
+        lastSync: new Date().toISOString(),
+        status: SYNC_STATUS.UP_TO_DATE
+      });
+      setIntegrations(getIntegrations());
+      showToast('Synchronisation terminée', 'success');
+    } catch (error) {
+      showToast('Erreur de synchronisation', 'error');
+    }
+    setSyncing(null);
+  };
+
+  const handleExportCSV = (type) => {
+    if (type === 'factures') {
+      const csv = exportInvoicesToCSV(factures, clients, entreprise);
+      downloadFile(csv, `factures_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
+      showToast(`${factures.length} factures exportées`, 'success');
+    } else if (type === 'depenses') {
+      const csv = exportExpensesToCSV(depenses, chantiers);
+      downloadFile(csv, `depenses_${exportPeriod.debut}_${exportPeriod.fin}.csv`);
+      showToast(`${depenses.length} dépenses exportées`, 'success');
+    }
+  };
+
+  const handleExportFEC = () => {
+    const fec = generateFEC(factures, depenses, clients, chantiers, entreprise, exportPeriod.debut, exportPeriod.fin);
+    downloadFile(fec, `FEC_${entreprise?.siret || 'SIRET'}_${exportPeriod.debut.replace(/-/g, '')}_${exportPeriod.fin.replace(/-/g, '')}.txt`, 'text/plain');
+    showToast('Fichier FEC généré', 'success');
+  };
+
+  const getIntegrationIcon = (iconName) => {
+    switch (iconName) {
+      case 'receipt': return Receipt;
+      case 'calculator': return Calculator;
+      case 'credit-card': return CreditCard;
+      case 'file-spreadsheet': return FileSpreadsheet;
+      case 'file-text': return FileText;
+      default: return Building2;
+    }
+  };
 
   // Export comptable Excel
   const handleExportComptable = () => {
@@ -130,16 +251,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">Paramètres</h1>
         <div className="flex items-center gap-4">
-          <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm flex items-center gap-2">
-             Export comptable
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm flex items-center gap-2 transition-colors"
+            title="Exporter vos devis et factures au format CSV pour votre comptable"
+          >
+            📊 Export comptable
           </button>
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-4 px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm`}>
             <div className="text-right">
-              <p className="text-sm text-slate-500">Profil complété</p>
-              <p className="font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
+              <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
             </div>
-            <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
+            <div className={`w-32 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
             </div>
           </div>
         </div>
@@ -175,7 +300,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
           ['documents', '📄 Documents'],
-          ['rentabilite', '📊 Rentabilité']
+          ['rentabilite', '📊 Rentabilité'],
+          ['comptabilite', '🧮 Comptabilité']
         ].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
@@ -193,8 +319,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
+                    ) : entreprise.nom ? (
+                      <span className="text-2xl font-bold" style={{ color: entreprise.couleur || '#64748b' }}>
+                        {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                      </span>
                     ) : (
-                      <span className="text-3xl text-slate-300"></span>
+                      <span className="text-3xl text-slate-300">🏢</span>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -203,7 +333,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                     </label>
                     {entreprise.logo && (
-                      <button onClick={() => setEntreprise(p => ({...p, logo: ''}))} className="block text-sm text-red-500 hover:underline">
+                      <button onClick={() => updateEntreprise(p => ({...p, logo: ''}))} className="block text-sm text-red-500 hover:underline">
                         Supprimer
                       </button>
                     )}
@@ -215,7 +345,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <p className="text-sm font-medium mb-2">Couleur principale</p>
                 <div className="flex gap-2 flex-wrap">
                   {COULEURS.map(c => (
-                    <button key={c} onClick={() => setEntreprise(p => ({...p, couleur: c}))} className={`w-10 h-10 rounded-xl transition-transform hover:scale-110 ${entreprise.couleur === c ? 'ring-2 ring-offset-2' : ''}`} style={{background: c, ringColor: c}} />
+                    <button
+                      key={c}
+                      onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
+                      className={`w-10 h-10 rounded-xl transition-all duration-200 hover:scale-110 flex items-center justify-center ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110 shadow-lg' : 'hover:shadow-md'}`}
+                      style={{ background: c, ringColor: c }}
+                      title={entreprise.couleur === c ? 'Couleur sélectionnée' : 'Sélectionner cette couleur'}
+                    >
+                      {entreprise.couleur === c && (
+                        <svg className="w-5 h-5 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -227,11 +369,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Nom de l'entreprise <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => setEntreprise(p => ({...p, nom: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({...p, nom: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => setEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="EI">Entreprise Individuelle (EI)</option>
                   <option value="EIRL">EIRL</option>
@@ -247,30 +389,30 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   Capital (optionnel)
                 </label>
                 <div className="flex">
-                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={e => setEntreprise(p => ({...p, capital: e.target.value}))} />
+                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={e => updateEntreprise(p => ({...p, capital: e.target.value}))} />
                   <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
                 </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => setEntreprise(p => ({...p, adresse: e.target.value}))} />
+                <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
-                <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => setEntreprise(p => ({...p, tel: e.target.value}))} />
+                <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
-                <input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => setEntreprise(p => ({...p, email: e.target.value}))} />
+                <input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={e => setEntreprise(p => ({...p, siteWeb: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={e => updateEntreprise(p => ({...p, siteWeb: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Slogan (optionnel)</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={e => setEntreprise(p => ({...p, slogan: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={e => updateEntreprise(p => ({...p, slogan: e.target.value}))} />
               </div>
             </div>
           </div>
@@ -285,7 +427,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => setEntreprise(p => ({...p, siret: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
                 )}
@@ -295,7 +437,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Code APE/NAF</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={e => setEntreprise(p => ({...p, codeApe: e.target.value.toUpperCase()}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={e => updateEntreprise(p => ({...p, codeApe: e.target.value.toUpperCase()}))} />
               </div>
             </div>
           </div>
@@ -306,14 +448,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ville du greffe</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => setEntreprise(p => ({...p, rcsVille: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   {VILLES_RCS.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Type</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsType || 'B'} onChange={e => setEntreprise(p => ({...p, rcsType: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsType || 'B'} onChange={e => updateEntreprise(p => ({...p, rcsType: e.target.value}))}>
                   <option value="A">A - Commerçant</option>
                   <option value="B">B - Société commerciale</option>
                   <option value="C">C - GIE</option>
@@ -322,7 +464,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={e => setEntreprise(p => ({...p, rcsNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={e => updateEntreprise(p => ({...p, rcsNumero: e.target.value}))} />
               </div>
             </div>
             {getRCSComplet() && (
@@ -336,7 +478,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => setEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
                 <p className="text-xs text-green-600 mt-1">“ Format valide</p>
@@ -356,12 +498,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro RGE</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={e => setEntreprise(p => ({...p, rge: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={e => updateEntreprise(p => ({...p, rge: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Reconnu Garant de l'Environnement</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Organisme RGE</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rgeOrganisme || ''} onChange={e => setEntreprise(p => ({...p, rgeOrganisme: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rgeOrganisme || ''} onChange={e => updateEntreprise(p => ({...p, rgeOrganisme: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   <option value="Qualibat">Qualibat</option>
                   <option value="Qualifelec">Qualifelec</option>
@@ -415,19 +557,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => setEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={e => setEntreprise(p => ({...p, rcProNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={e => updateEntreprise(p => ({...p, rcProNumero: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => setEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Zone géographique</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => setEntreprise(p => ({...p, rcProZone: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => updateEntreprise(p => ({...p, rcProZone: e.target.value}))} />
               </div>
             </div>
           </div>
@@ -442,19 +584,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={e => setEntreprise(p => ({...p, decennaleAssureur: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={e => updateEntreprise(p => ({...p, decennaleAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={e => setEntreprise(p => ({...p, decennaleNumero: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={e => updateEntreprise(p => ({...p, decennaleNumero: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.decennaleValidite || ''} onChange={e => setEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.decennaleValidite || ''} onChange={e => updateEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Activités couvertes</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={e => setEntreprise(p => ({...p, decennaleActivites: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={e => updateEntreprise(p => ({...p, decennaleActivites: e.target.value}))} />
               </div>
             </div>
           </div>
@@ -469,19 +611,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Banque</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={e => setEntreprise(p => ({...p, banque: e.target.value}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={e => updateEntreprise(p => ({...p, banque: e.target.value}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Titulaire du compte</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={e => setEntreprise(p => ({...p, titulaireBanque: e.target.value}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={e => updateEntreprise(p => ({...p, titulaireBanque: e.target.value}))} />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => setEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => setEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
             </div>
           </div>
         </div>
@@ -495,7 +637,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Validité devis par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.validiteDevis || 30} onChange={e => setEntreprise(p => ({...p, validiteDevis: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.validiteDevis || 30} onChange={e => updateEntreprise(p => ({...p, validiteDevis: parseInt(e.target.value)}))}>
                   <option value={15}>15 jours</option>
                   <option value={30}>30 jours</option>
                   <option value={60}>2 mois</option>
@@ -504,7 +646,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">TVA par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tvaDefaut || 10} onChange={e => setEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tvaDefaut || 10} onChange={e => updateEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
                   <option value={20}>20% (taux normal)</option>
                   <option value={10}>10% (rénovation &gt;2 ans)</option>
                   <option value={5.5}>5,5% (réno. énergétique)</option>
@@ -513,7 +655,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Délai de paiement</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.delaiPaiement || 30} onChange={e => setEntreprise(p => ({...p, delaiPaiement: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.delaiPaiement || 30} onChange={e => updateEntreprise(p => ({...p, delaiPaiement: parseInt(e.target.value)}))}>
                   <option value={0}>Comptant</option>
                   <option value={14}>14 jours</option>
                   <option value={30}>30 jours</option>
@@ -523,7 +665,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Acompte par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => setEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
                   <option value={0}>Pas d'acompte</option>
                   <option value={20}>20%</option>
                   <option value={30}>30% (max légal si &gt;1500€)</option>
@@ -543,7 +685,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <p className="text-sm text-slate-500">Article L221-18 du Code de la consommation</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={entreprise.mentionRetractation !== false} onChange={e => setEntreprise(p => ({...p, mentionRetractation: e.target.checked}))} className="sr-only peer" />
+                  <input type="checkbox" checked={entreprise.mentionRetractation !== false} onChange={e => updateEntreprise(p => ({...p, mentionRetractation: e.target.checked}))} className="sr-only peer" />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
               </div>
@@ -553,7 +695,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <p className="text-sm text-slate-500">Parfait achèvement, biennale, décennale</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={entreprise.mentionGaranties !== false} onChange={e => setEntreprise(p => ({...p, mentionGaranties: e.target.checked}))} className="sr-only peer" />
+                  <input type="checkbox" checked={entreprise.mentionGaranties !== false} onChange={e => updateEntreprise(p => ({...p, mentionGaranties: e.target.checked}))} className="sr-only peer" />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                 </label>
               </div>
@@ -562,7 +704,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
-            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => setEntreprise(p => ({...p, cgv: e.target.value}))} />
+            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => updateEntreprise(p => ({...p, cgv: e.target.value}))} />
             <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
@@ -575,7 +717,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
-              <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => setEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+              <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
               <p className="text-sm text-slate-500 mt-2">Loyer, assurances, carburant, comptable, téléphone...</p>
             </div>
             <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm`}>
@@ -595,6 +737,347 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
+      {/* COMPTABILITÉ */}
+      {tab === 'comptabilite' && (
+        <div className="space-y-4 sm:space-y-6">
+          {/* Sub-tabs */}
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { id: 'integrations', label: 'Intégrations', icon: Link2 },
+              { id: 'export', label: 'Export', icon: Download },
+              { id: 'tva', label: 'Résumé TVA', icon: Calculator }
+            ].map(subtab => (
+              <button
+                key={subtab.id}
+                onClick={() => setComptaSubTab(subtab.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
+                  comptaSubTab === subtab.id
+                    ? 'text-white'
+                    : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                style={comptaSubTab === subtab.id ? { background: couleur } : {}}
+              >
+                <subtab.icon size={16} />
+                {subtab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Integrations Sub-tab */}
+          {comptaSubTab === 'integrations' && (
+            <div className="space-y-4">
+              <p className={`text-sm ${textSecondary} mb-4`}>
+                Connectez vos outils comptables pour synchroniser automatiquement vos factures et dépenses.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {Object.values(INTEGRATION_TYPES).filter(i => i.apiSupported).map(integration => {
+                  const isConnected = integrations[integration.id]?.status === SYNC_STATUS.CONNECTED ||
+                                     integrations[integration.id]?.status === SYNC_STATUS.UP_TO_DATE;
+                  const Icon = getIntegrationIcon(integration.icon);
+                  const isSyncing = syncing === integration.id;
+                  const isConnecting = connecting === integration.id;
+
+                  return (
+                    <div
+                      key={integration.id}
+                      className={`${cardBg} rounded-xl border p-4 transition-all hover:shadow-lg ${
+                        isConnected ? (isDark ? 'border-emerald-800' : 'border-emerald-200') : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{ background: `${integration.color}20` }}
+                          >
+                            <Icon size={20} style={{ color: integration.color }} />
+                          </div>
+                          <div>
+                            <h3 className={`font-semibold ${textPrimary}`}>{integration.name}</h3>
+                            <p className={`text-xs ${textMuted}`}>{integration.description}</p>
+                          </div>
+                        </div>
+                        {isConnected && (
+                          <CheckCircle size={20} className="text-emerald-500" />
+                        )}
+                      </div>
+
+                      {isConnected ? (
+                        <div className="space-y-3">
+                          <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
+                            <span>Dernière sync:</span>
+                            <span>{integrations[integration.id]?.lastSync
+                              ? new Date(integrations[integration.id].lastSync).toLocaleDateString('fr-FR')
+                              : 'Jamais'
+                            }</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSync(integration.id)}
+                              disabled={isSyncing}
+                              className="flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white disabled:opacity-50"
+                              style={{ background: couleur }}
+                            >
+                              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+                              {isSyncing ? 'Sync...' : 'Synchroniser'}
+                            </button>
+                            <button
+                              onClick={() => handleDisconnect(integration.id)}
+                              className={`py-2 px-3 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            >
+                              <Unlink size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleConnect(integration.id)}
+                          disabled={isConnecting}
+                          className={`w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
+                            isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          } disabled:opacity-50`}
+                        >
+                          {isConnecting ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" />
+                              Connexion...
+                            </>
+                          ) : (
+                            <>
+                              <Link2 size={14} />
+                              Connecter
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      <a
+                        href={integration.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-1 text-xs mt-3 ${textMuted} hover:underline`}
+                      >
+                        <ExternalLink size={12} />
+                        {integration.website.replace('https://', '')}
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Export Sub-tab */}
+          {comptaSubTab === 'export' && (
+            <div className="space-y-6">
+              {/* Period Selector */}
+              <div className={`${cardBg} rounded-xl border p-4`}>
+                <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
+                  <Calendar size={18} style={{ color: couleur }} />
+                  Période d'export
+                </h3>
+                <div className="flex flex-wrap gap-4">
+                  <div>
+                    <label className={`block text-sm mb-1 ${textMuted}`}>Du</label>
+                    <input
+                      type="date"
+                      value={exportPeriod.debut}
+                      onChange={(e) => setExportPeriod(p => ({ ...p, debut: e.target.value }))}
+                      className={`px-3 py-2 rounded-lg border ${inputBg}`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm mb-1 ${textMuted}`}>Au</label>
+                    <input
+                      type="date"
+                      value={exportPeriod.fin}
+                      onChange={(e) => setExportPeriod(p => ({ ...p, fin: e.target.value }))}
+                      className={`px-3 py-2 rounded-lg border ${inputBg}`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Export Options */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* CSV Factures */}
+                <div className={`${cardBg} rounded-xl border p-4`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <FileSpreadsheet size={20} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${textPrimary}`}>Factures (CSV)</h3>
+                      <p className={`text-xs ${textMuted}`}>{factures.length} facture{factures.length > 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <p className={`text-sm mb-4 ${textSecondary}`}>
+                    Export compatible Excel, Google Sheets et logiciels comptables
+                  </p>
+                  <button
+                    onClick={() => handleExportCSV('factures')}
+                    className="w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white"
+                    style={{ background: couleur }}
+                  >
+                    <Download size={16} />
+                    Télécharger CSV
+                  </button>
+                </div>
+
+                {/* CSV Depenses */}
+                <div className={`${cardBg} rounded-xl border p-4`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                      <FileSpreadsheet size={20} className="text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${textPrimary}`}>Dépenses (CSV)</h3>
+                      <p className={`text-xs ${textMuted}`}>{depenses.length} dépense{depenses.length > 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  <p className={`text-sm mb-4 ${textSecondary}`}>
+                    Export des achats et frais pour votre comptable
+                  </p>
+                  <button
+                    onClick={() => handleExportCSV('depenses')}
+                    className="w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white"
+                    style={{ background: couleur }}
+                  >
+                    <Download size={16} />
+                    Télécharger CSV
+                  </button>
+                </div>
+
+                {/* FEC */}
+                <div className={`${cardBg} rounded-xl border p-4 sm:col-span-2`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                      <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>
+                      <p className={`text-xs ${textMuted}`}>Fichier des Écritures Comptables</p>
+                    </div>
+                  </div>
+                  <p className={`text-sm mb-4 ${textSecondary}`}>
+                    Format obligatoire pour les contrôles fiscaux (article A.47 A-1 du LPF).
+                    Compatible avec tous les logiciels comptables agréés.
+                  </p>
+                  <button
+                    onClick={handleExportFEC}
+                    className={`w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
+                      isDark ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-emerald-500 hover:bg-emerald-600'
+                    } text-white`}
+                  >
+                    <Download size={16} />
+                    Générer FEC
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TVA Sub-tab */}
+          {comptaSubTab === 'tva' && (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className={`${cardBg} rounded-xl border p-4`}>
+                  <p className={`text-sm ${textMuted} mb-1`}>TVA collectée</p>
+                  <p className={`text-2xl font-bold text-emerald-500`}>
+                    {tvaSummary.tvaCollectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  </p>
+                  <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbFactures} facture{tvaSummary.nbFactures > 1 ? 's' : ''}</p>
+                </div>
+
+                <div className={`${cardBg} rounded-xl border p-4`}>
+                  <p className={`text-sm ${textMuted} mb-1`}>TVA déductible</p>
+                  <p className={`text-2xl font-bold text-blue-500`}>
+                    {tvaSummary.tvaDeductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  </p>
+                  <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbDepenses} dépense{tvaSummary.nbDepenses > 1 ? 's' : ''}</p>
+                </div>
+
+                <div className={`${cardBg} rounded-xl border p-4 ${
+                  tvaSummary.isCredit
+                    ? (isDark ? 'border-blue-800' : 'border-blue-200')
+                    : (isDark ? 'border-amber-800' : 'border-amber-200')
+                }`}>
+                  <p className={`text-sm ${textMuted} mb-1`}>
+                    {tvaSummary.isCredit ? 'Crédit de TVA' : 'TVA à payer'}
+                  </p>
+                  <p className={`text-2xl font-bold ${tvaSummary.isCredit ? 'text-blue-500' : 'text-amber-500'}`}>
+                    {Math.abs(tvaSummary.tvaNetteAPayer).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  </p>
+                  <p className={`text-xs ${textMuted} mt-1`}>
+                    {tvaSummary.periode.debut} au {tvaSummary.periode.fin}
+                  </p>
+                </div>
+              </div>
+
+              {/* Detail par taux */}
+              <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+                <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
+                  <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
+                      <tr>
+                        <th className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(tvaSummary.detailParTaux)
+                        .filter(([, data]) => data.base > 0 || data.deductible > 0)
+                        .map(([taux, data]) => {
+                          const solde = data.collectee - data.deductible;
+                          return (
+                            <tr key={taux} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                              <td className={`px-4 py-3 font-medium ${textPrimary}`}>{taux}%</td>
+                              <td className={`text-right px-4 py-3 ${textSecondary}`}>
+                                {data.base.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              </td>
+                              <td className={`text-right px-4 py-3 text-emerald-500`}>
+                                {data.collectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              </td>
+                              <td className={`text-right px-4 py-3 text-blue-500`}>
+                                {data.deductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              </td>
+                              <td className={`text-right px-4 py-3 font-medium ${solde >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
+                                {solde >= 0 ? '+' : ''}{solde.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
+                    <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans ChantierPro.
+                      Pour votre déclaration officielle, consultez votre expert-comptable.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* APERÇU DOCUMENT */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
@@ -603,8 +1086,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="flex items-center gap-4">
               {entreprise.logo ? (
                 <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" />
+              ) : entreprise.nom ? (
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold" style={{ background: `${entreprise.couleur}20`, color: entreprise.couleur }}>
+                  {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                </div>
               ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}></div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}>🏢</div>
               )}
               <div>
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
@@ -612,7 +1099,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {entreprise.formeJuridique && (
                   <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` · Capital: ${entreprise.capital} €`}</p>
                 )}
-                <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse'}</p>
+                <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse non renseignée'}</p>
               </div>
             </div>
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>

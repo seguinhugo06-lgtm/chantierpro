@@ -6,6 +6,7 @@ import SignaturePad from './SignaturePad';
 import SmartTemplateWizard from './SmartTemplateWizard';
 import DevisWizard from './DevisWizard';
 import CatalogBrowser from './CatalogBrowser';
+import DevisExpressModal from './DevisExpressModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -62,6 +63,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -2041,9 +2043,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
         <div className="flex items-center gap-2">
-          {/* Quick access to Smart Template Wizard */}
+          {/* Quick access to Devis Express Modal */}
           <button
-            onClick={() => setShowSmartWizard(true)}
+            onClick={() => setShowDevisExpressModal(true)}
             className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
           >
             <Sparkles size={16} />
@@ -2452,6 +2454,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }}
         isDark={isDark}
         couleur={couleur}
+      />
+
+      {/* Devis Express Modal - New improved version with BTP templates */}
+      <DevisExpressModal
+        isOpen={showDevisExpressModal}
+        onClose={() => setShowDevisExpressModal(false)}
+        onCreateDevis={(devisData) => {
+          const numero = generateNumero(devisData.type);
+          const newDevis = onSubmit({ ...devisData, numero });
+          if (newDevis?.id) {
+            setSelected(newDevis);
+            setMode('preview');
+            showToast(`Devis ${numero} créé avec succès`, 'success');
+          }
+        }}
+        clients={clients}
+        isDark={isDark}
+        couleur={couleur}
+        tvaDefaut={entreprise?.tvaDefaut || 10}
       />
     </div>
   );

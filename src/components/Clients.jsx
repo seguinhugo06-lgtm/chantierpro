@@ -648,7 +648,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200 cursor-pointer group`} onClick={() => setViewId(c.id)}>
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200 cursor-pointer group flex flex-col h-full`} onClick={() => setViewId(c.id)}>
                 {/* Header with gradient */}
                 <div className="p-4 sm:p-5 relative" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`}}>
                   <div className="flex gap-3 sm:gap-4">
@@ -670,7 +670,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                 </div>
 
                 {/* Contact info */}
-                <div className={`px-4 sm:px-5 py-3 space-y-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                <div className={`px-4 sm:px-5 py-3 space-y-2 border-t flex-grow ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                   {c.telephone && (
                     <div className="flex items-center gap-2">
                       <Smartphone size={14} className={textMuted} />
@@ -706,7 +706,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                 </div>
 
                 {/* Stats footer */}
-                <div className={`px-4 sm:px-5 py-3 border-t flex items-center justify-between ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
+                <div className={`px-4 sm:px-5 py-3 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
                   <div className="flex gap-4">
                     <span className={`flex items-center gap-1.5 text-sm ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
                       <Home size={14} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> <span className="font-medium">{s.chantiers}</span>

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
   X, HardHat, Clock, Plus, Minus, Camera, MapPin, Phone,
   FileText, Euro, Check, Pause, Play, Coffee, Sun, Moon,
-  ChevronUp, ChevronDown, AlertTriangle, Mic, Image
+  ChevronUp, ChevronDown, AlertTriangle, StickyNote, Image
 } from 'lucide-react';
 
 /**
@@ -260,9 +260,9 @@ export default function TerrainMode({
                     minHeight: '120px'
                   }}
                 >
-                  <Mic size={40} style={{ color: couleur }} />
+                  <StickyNote size={40} style={{ color: couleur }} />
                   <span className="font-bold text-lg" style={{ color: textColor }}>
-                    Note vocale
+                    Note
                   </span>
                 </button>
 

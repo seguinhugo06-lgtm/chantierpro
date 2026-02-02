@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, FileText, Users, Building2, Zap, Activity, Calculator } from 'lucide-react';
+import { Plus, X, FileText, Users, Building2, Zap } from 'lucide-react';
 
 /**
  * Floating Action Button Menu
@@ -9,8 +9,6 @@ export default function FABMenu({
   onNewDevis,
   onNewClient,
   onNewChantier,
-  onRentabilite,
-  onComptabilite,
   isDark = false,
   couleur = '#f97316',
   hidden = false
@@ -25,8 +23,6 @@ export default function FABMenu({
     { icon: Zap, label: 'Devis Express', onClick: onNewDevis, color: couleur, description: 'Créer rapidement un devis' },
     { icon: Users, label: 'Nouveau client', onClick: onNewClient, color: couleur, description: 'Ajouter un contact' },
     { icon: Building2, label: 'Nouveau chantier', onClick: onNewChantier, color: couleur, description: 'Démarrer un projet' },
-    { icon: Activity, label: 'Rentabilité', onClick: onRentabilite, color: '#10b981', description: 'Analyse rentabilité' },
-    { icon: Calculator, label: 'Comptabilité', onClick: onComptabilite, color: '#6366f1', description: 'Export comptable' },
   ];
 
   const handleAction = (action) => {

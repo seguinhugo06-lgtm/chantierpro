@@ -71,6 +71,21 @@ export default function AdminHelp({
     daysLeft: Math.ceil((new Date(d.date) - today) / (1000 * 60 * 60 * 24)),
   })).sort((a, b) => a.daysLeft - b.daysLeft);
 
+  // Helper pour le format des jours (évite "J--9")
+  const getDaysLabel = (days) => {
+    if (days < 0) return `J+${Math.abs(days)}`; // Dépassé
+    return `J-${days}`; // À venir
+  };
+
+  // Helper pour les couleurs d'urgence
+  const getUrgencyStyle = (days) => {
+    if (days < 0) return { text: 'text-red-600', bg: isDark ? 'bg-red-900/40' : 'bg-red-100', badge: 'bg-red-100 text-red-700' };
+    if (days <= 7) return { text: 'text-red-500', bg: isDark ? 'bg-red-900/30' : 'bg-red-50', badge: 'bg-red-100 text-red-600' };
+    if (days <= 14) return { text: 'text-orange-500', bg: isDark ? 'bg-orange-900/30' : 'bg-orange-50', badge: 'bg-orange-100 text-orange-600' };
+    if (days <= 30) return { text: 'text-yellow-600', bg: isDark ? 'bg-yellow-900/30' : 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700' };
+    return { text: 'text-green-500', bg: isDark ? 'bg-slate-700' : 'bg-slate-50', badge: 'bg-green-100 text-green-600' };
+  };
+
   // Quick actions
   const quickActions = [
     { id: 'calendar', icon: Calendar, label: 'Calendrier', desc: 'Échéances & rappels', color: '#3b82f6' },
@@ -107,25 +122,25 @@ export default function AdminHelp({
                   <HelpCircle size={20} style={{ color: couleur }} />
                 </div>
                 <div>
-                  <h1 className={`text-lg font-bold ${textPrimary}`}>Aide Administrative</h1>
-                  <p className={`text-sm ${textMuted}`}>Gérez vos obligations simplement</p>
+                  <h1 className={`text-lg font-bold ${textPrimary}`}>Gestion Administrative</h1>
+                  <p className={`text-sm ${textMuted}`}>TVA, échéances et conformité</p>
                 </div>
               </div>
             </div>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-3">
-              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} text-center`}>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{stats.chantiersActifs}</p>
-                <p className={`text-xs ${textMuted}`}>Chantiers actifs</p>
+              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} shadow-sm text-center`}>
+                <p className="text-3xl font-bold" style={{ color: couleur }}>{stats.chantiersActifs}</p>
+                <p className={`text-sm font-medium ${textMuted}`}>Chantiers actifs</p>
               </div>
-              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} text-center`}>
-                <p className="text-2xl font-bold text-amber-500">{stats.devisEnAttente}</p>
-                <p className={`text-xs ${textMuted}`}>Devis en attente</p>
+              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} shadow-sm text-center`}>
+                <p className="text-3xl font-bold text-amber-500">{stats.devisEnAttente}</p>
+                <p className={`text-sm font-medium ${textMuted}`}>Devis en attente</p>
               </div>
-              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} text-center`}>
-                <p className="text-2xl font-bold text-blue-500">{stats.facturesImpayees}</p>
-                <p className={`text-xs ${textMuted}`}>Factures impayées</p>
+              <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} shadow-sm text-center`}>
+                <p className="text-3xl font-bold text-red-500">{stats.facturesImpayees}</p>
+                <p className={`text-sm font-medium ${textMuted}`}>Factures impayées</p>
               </div>
             </div>
 
@@ -137,13 +152,13 @@ export default function AdminHelp({
                   <button
                     key={action.id}
                     onClick={() => setActiveSection(action.id)}
-                    className={`p-4 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-md active:scale-98`}
+                    className={`p-5 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-lg hover:scale-[1.02] hover:border-slate-300 dark:hover:border-slate-500 active:scale-98 cursor-pointer`}
                   >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: `${action.color}15` }}>
-                      <action.icon size={20} style={{ color: action.color }} />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-sm" style={{ backgroundColor: `${action.color}20` }}>
+                      <action.icon size={24} style={{ color: action.color }} />
                     </div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>{action.label}</p>
-                    <p className={`text-xs ${textMuted}`}>{action.desc}</p>
+                    <p className={`font-semibold text-sm ${textPrimary}`}>{action.label}</p>
+                    <p className={`text-xs ${textMuted} mt-0.5`}>{action.desc}</p>
                   </button>
                 ))}
               </div>
@@ -161,22 +176,23 @@ export default function AdminHelp({
                 </button>
               </div>
               <div className="space-y-2">
-                {deadlines.slice(0, 3).map(d => (
-                  <div
-                    key={d.id}
-                    className={`p-3 rounded-lg flex items-center justify-between ${
-                      d.daysLeft <= 7 ? (isDark ? 'bg-red-900/30' : 'bg-red-50') : (isDark ? 'bg-slate-700' : 'bg-slate-50')
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {d.daysLeft <= 7 && <AlertTriangle size={14} className="text-red-500" />}
-                      <span className={`text-sm font-medium ${textPrimary}`}>{d.title}</span>
+                {deadlines.slice(0, 3).map(d => {
+                  const urgency = getUrgencyStyle(d.daysLeft);
+                  return (
+                    <div
+                      key={d.id}
+                      className={`p-3 rounded-lg flex items-center justify-between ${urgency.bg}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {d.daysLeft <= 7 && <AlertTriangle size={14} className={urgency.text} />}
+                        <span className={`text-sm font-medium ${textPrimary}`}>{d.title}</span>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${urgency.badge}`}>
+                        {getDaysLabel(d.daysLeft)}
+                      </span>
                     </div>
-                    <span className={`text-sm font-bold ${d.daysLeft <= 7 ? 'text-red-500' : textMuted}`}>
-                      J-{d.daysLeft}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -188,16 +204,18 @@ export default function AdminHelp({
               </div>
               <div className="space-y-2">
                 {FAQ_ITEMS.map((faq, i) => (
-                  <div key={i} className={`rounded-lg overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <div key={i} className={`rounded-xl overflow-hidden border transition-colors ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'} ${expandedFaq === i ? (isDark ? 'border-slate-500' : 'border-slate-300') : ''}`}>
                     <button
                       onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                      className={`w-full p-3 text-left flex items-center justify-between ${textPrimary}`}
+                      className={`w-full p-4 text-left flex items-center justify-between gap-3 group ${textPrimary} hover:bg-opacity-80 transition-colors`}
                     >
-                      <span className="text-sm font-medium">{faq.q}</span>
-                      <ChevronRight size={16} className={`transition-transform ${expandedFaq === i ? 'rotate-90' : ''}`} />
+                      <span className="text-sm font-medium flex-1">{faq.q}</span>
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${expandedFaq === i ? 'rotate-90' : ''}`} style={{ backgroundColor: expandedFaq === i ? `${couleur}20` : (isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)') }}>
+                        <ChevronRight size={22} className={`transition-all ${expandedFaq === i ? '' : (isDark ? 'text-slate-300' : 'text-slate-500')} group-hover:text-slate-700 dark:group-hover:text-slate-200`} style={expandedFaq === i ? { color: couleur } : {}} />
+                      </div>
                     </button>
                     {expandedFaq === i && (
-                      <div className={`px-3 pb-3 text-sm ${textSecondary}`}>
+                      <div className={`px-4 pb-4 text-sm ${textSecondary}`}>
                         {faq.a}
                       </div>
                     )}
