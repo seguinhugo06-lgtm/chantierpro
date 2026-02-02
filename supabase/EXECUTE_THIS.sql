@@ -187,26 +187,31 @@ CREATE TABLE IF NOT EXISTS events (
 -- ============================================================================
 -- STEP 3: ADD MISSING COLUMNS (for existing tables)
 -- ============================================================================
-DO $$
-BEGIN
-  -- Add prenom to clients if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'clients' AND column_name = 'prenom') THEN
-    ALTER TABLE clients ADD COLUMN prenom TEXT;
-  END IF;
 
-  -- Add sections to devis if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'devis' AND column_name = 'sections') THEN
-    ALTER TABLE devis ADD COLUMN sections JSONB DEFAULT '[]';
-  END IF;
+-- CLIENTS - Add missing columns
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS prenom TEXT;
 
-  -- Add type and avancement to chantiers if missing
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'chantiers' AND column_name = 'type') THEN
-    ALTER TABLE chantiers ADD COLUMN type TEXT;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'chantiers' AND column_name = 'avancement') THEN
-    ALTER TABLE chantiers ADD COLUMN avancement INTEGER DEFAULT 0;
-  END IF;
-END $$;
+-- CHANTIERS - Add missing columns
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS type TEXT;
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS avancement INTEGER DEFAULT 0;
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS budget_prevu NUMERIC(12,2);
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS date_debut DATE;
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS date_fin DATE;
+ALTER TABLE chantiers ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- DEVIS - Add missing columns and fix constraints
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS sections JSONB DEFAULT '[]';
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS remise_globale NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS tva_rate NUMERIC(5,2) DEFAULT 20;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS total_ht NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS total_tva NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS total_ttc NUMERIC(12,2) DEFAULT 0;
+
+-- Fix potential NOT NULL issues on devis columns
+ALTER TABLE devis ALTER COLUMN lignes SET DEFAULT '[]';
+ALTER TABLE devis ALTER COLUMN total_ht SET DEFAULT 0;
+ALTER TABLE devis ALTER COLUMN total_tva SET DEFAULT 0;
+ALTER TABLE devis ALTER COLUMN total_ttc SET DEFAULT 0;
 
 -- ============================================================================
 -- STEP 4: ENABLE ROW LEVEL SECURITY

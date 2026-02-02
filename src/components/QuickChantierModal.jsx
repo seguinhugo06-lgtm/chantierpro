@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Check, ChevronDown, ChevronUp, Building2, MapPin, User, Calendar, Euro, FileText, Zap, Clock, Package, AlertCircle } from 'lucide-react';
 
 /**
- * QuickChantierModal - Quick add chantier with minimal fields
+ * QuickChantierModal - Quick add/edit chantier with minimal fields
  * Pattern: 2 required fields (nom + client) with expandable details
  */
 export default function QuickChantierModal({
@@ -12,18 +12,24 @@ export default function QuickChantierModal({
   clients = [],
   devis = [],
   isDark = false,
-  couleur = '#f97316'
+  couleur = '#f97316',
+  editChantier = null // Pass a chantier object to edit instead of create
 }) {
+  const isEditMode = !!editChantier;
+
   const [form, setForm] = useState({
     nom: '',
     client_id: '',
     adresse: '',
+    ville: '',
+    codePostal: '',
     date_debut: '',
     date_fin: '',
     budget_estime: '',      // Prix de vente prevu (revenue)
     budget_materiaux: '',   // Budget couts materiaux
     heures_estimees: '',    // Heures de travail prevues
-    notes: ''
+    notes: '',
+    description: ''
   });
   const [showDetails, setShowDetails] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -57,15 +63,32 @@ export default function QuickChantierModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Reset form on close
+  // Reset form on close OR populate with editChantier data
   useEffect(() => {
     if (!isOpen) {
-      setForm({ nom: '', client_id: '', adresse: '', date_debut: '', date_fin: '', budget_estime: '', budget_materiaux: '', heures_estimees: '', notes: '' });
+      setForm({ nom: '', client_id: '', adresse: '', ville: '', codePostal: '', date_debut: '', date_fin: '', budget_estime: '', budget_materiaux: '', heures_estimees: '', notes: '', description: '' });
       setShowDetails(false);
       setClientSearch('');
       setErrors({});
+    } else if (editChantier) {
+      // Populate form with existing chantier data for editing
+      setForm({
+        nom: editChantier.nom || '',
+        client_id: editChantier.client_id || editChantier.clientId || '',
+        adresse: editChantier.adresse || '',
+        ville: editChantier.ville || '',
+        codePostal: editChantier.codePostal || '',
+        date_debut: editChantier.dateDebut || editChantier.date_debut || '',
+        date_fin: editChantier.dateFin || editChantier.date_fin || '',
+        budget_estime: editChantier.budget_estime?.toString() || editChantier.budgetPrevu?.toString() || '',
+        budget_materiaux: editChantier.budget_materiaux?.toString() || '',
+        heures_estimees: editChantier.heures_estimees?.toString() || '',
+        notes: editChantier.notes || '',
+        description: editChantier.description || ''
+      });
+      setShowDetails(true); // Show all details in edit mode
     }
-  }, [isOpen]);
+  }, [isOpen, editChantier]);
 
   // MRU (Most Recently Used) clients from localStorage
   const MRU_KEY = 'chantierpro_recent_clients';
@@ -124,12 +147,19 @@ export default function QuickChantierModal({
     }
 
     setErrors({});
-    onSubmit({
+    const formData = {
       ...form,
       budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : 0,
       budget_materiaux: form.budget_materiaux ? parseFloat(form.budget_materiaux) : 0,
       heures_estimees: form.heures_estimees ? parseFloat(form.heures_estimees) : 0
-    });
+    };
+
+    // Include ID if editing
+    if (isEditMode && editChantier?.id) {
+      formData.id = editChantier.id;
+    }
+
+    onSubmit(formData);
   };
 
   const handleKeyDown = (e) => {
@@ -178,8 +208,8 @@ export default function QuickChantierModal({
               <Building2 size={20} style={{ color: couleur }} />
             </div>
             <div>
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Nouveau chantier</h2>
-              <p className={`text-sm ${textMuted}`}>Ajout rapide</p>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>{isEditMode ? 'Modifier le chantier' : 'Nouveau chantier'}</h2>
+              <p className={`text-sm ${textMuted}`}>{isEditMode ? 'Modifier les informations' : 'Ajout rapide'}</p>
             </div>
           </div>
           <button
@@ -380,6 +410,20 @@ export default function QuickChantierModal({
           {/* Additional Fields */}
           {showDetails && (
             <div className="space-y-4 pt-2 animate-fade-in">
+              {/* Description */}
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                  Description
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Description du chantier..."
+                  rows={2}
+                  className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg} resize-none`}
+                />
+              </div>
+
               {/* Address */}
               <div>
                 <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
@@ -390,9 +434,37 @@ export default function QuickChantierModal({
                   type="text"
                   value={form.adresse}
                   onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))}
-                  placeholder="12 rue des Lilas, 75011 Paris"
+                  placeholder="12 rue des Lilas"
                   className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
+              </div>
+
+              {/* Ville et Code Postal */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    value={form.codePostal}
+                    onChange={e => setForm(p => ({ ...p, codePostal: e.target.value }))}
+                    placeholder="75011"
+                    className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                    Ville
+                  </label>
+                  <input
+                    type="text"
+                    value={form.ville}
+                    onChange={e => setForm(p => ({ ...p, ville: e.target.value }))}
+                    placeholder="Paris"
+                    className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                  />
+                </div>
               </div>
 
               {/* Dates */}
@@ -486,13 +558,13 @@ export default function QuickChantierModal({
             className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: couleur }}
           >
-            <Zap size={18} />
-            Créer le chantier
+            {isEditMode ? <Check size={18} /> : <Zap size={18} />}
+            {isEditMode ? 'Enregistrer les modifications' : 'Créer le chantier'}
           </button>
 
           {/* Keyboard hint */}
           <p className={`text-center text-xs ${textMuted}`}>
-            Appuyez sur <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>Entrée</kbd> pour créer rapidement
+            Appuyez sur <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>Entrée</kbd> pour {isEditMode ? 'enregistrer' : 'créer rapidement'}
           </p>
         </form>
       </div>

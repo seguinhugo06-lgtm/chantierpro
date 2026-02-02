@@ -60,6 +60,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
+  const [editingChantier, setEditingChantier] = useState(null); // Chantier being edited
   const [activeTab, setActiveTab] = useState('finances');
     const [newTache, setNewTache] = useState('');
   const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
@@ -193,7 +194,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
-          <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h1><p className={`text-xs sm:text-sm ${textMuted} truncate`}>{client?.nom} · {ch.adresse}</p></div>
+          <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h1></div>
+          <button
+            onClick={() => setEditingChantier(ch)}
+            className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
+            title="Modifier le chantier"
+          >
+            <Edit3 size={18} className={textMuted} />
+          </button>
           <select
             value={ch.statut}
             onChange={e => {
@@ -218,68 +226,219 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </select>
         </div>
 
-        {/* === SECTION: ACTIONS RAPIDES === */}
-        <div className={`${cardBg} rounded-xl border p-3`}>
-          <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Actions rapides</span>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1">
-            <button
-              onClick={() => setShowAddMO(true)}
-              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                <Clock size={22} style={{ color: couleur }} />
+        {/* === SECTION: CLIENT & ADRESSE === */}
+        <div className={`${cardBg} rounded-xl border p-4`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Infos Client */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Client</span>
               </div>
-              <span className={`text-sm font-medium ${textPrimary}`}>Pointer</span>
-            </button>
-            <button
-              onClick={() => setShowQuickMateriau(true)}
-              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-red-100">
-                <Coins size={22} className="text-red-500" />
-              </div>
-              <span className={`text-sm font-medium ${textPrimary}`}>Dépense</span>
-            </button>
-            <button
-              onClick={() => document.getElementById(`photo-quick-${ch.id}`)?.click()}
-              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-blue-100">
-                <Camera size={22} className="text-blue-500" />
-              </div>
-              <span className={`text-sm font-medium ${textPrimary}`}>Photo</span>
-              <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
-            </button>
-            <button
-              onClick={() => { setActiveTab('taches'); }}
-              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-emerald-100">
-                <CheckSquare size={22} className="text-emerald-500" />
-              </div>
-              <span className={`text-sm font-medium ${textPrimary}`}>Tâches</span>
-              {tasksTotal > 0 && (
-                <span className={`text-[11px] px-2 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
-                  {tasksDone}/{tasksTotal}
-                </span>
+              {client ? (
+                <div className="space-y-2">
+                  <p className={`font-semibold ${textPrimary}`}>{client.nom} {client.prenom || ''}</p>
+                  {client.telephone && (
+                    <a href={`tel:${client.telephone}`} className={`flex items-center gap-2 text-sm ${textSecondary} hover:opacity-80`}>
+                      <Phone size={16} className="text-purple-500" />
+                      {client.telephone}
+                    </a>
+                  )}
+                  {client.email && (
+                    <a href={`mailto:${client.email}`} className={`flex items-center gap-2 text-sm ${textSecondary} hover:opacity-80 truncate`}>
+                      <span className="text-blue-500">@</span>
+                      {client.email}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className={`text-sm ${textMuted}`}>Aucun client associé</p>
               )}
-            </button>
-            <button
-              onClick={() => {
-                const tel = client?.telephone;
-                if (tel) window.open(`tel:${tel}`);
-              }}
-              className={`flex-1 min-w-[80px] flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}
-            >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-purple-100">
-                <Phone size={22} className="text-purple-500" />
+            </div>
+
+            {/* Adresse avec GPS */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Adresse du chantier</span>
               </div>
-              <span className={`text-sm font-medium ${textPrimary}`}>Client</span>
-            </button>
+              {(ch.adresse || ch.ville) ? (
+                <div className="space-y-2">
+                  <p className={`text-sm ${textPrimary}`}>
+                    {ch.adresse}
+                    {ch.codePostal && `, ${ch.codePostal}`}
+                    {ch.ville && ` ${ch.ville}`}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const address = encodeURIComponent(`${ch.adresse || ''} ${ch.codePostal || ''} ${ch.ville || ''}`);
+                      // Try native maps first (iOS/Android), fallback to Google Maps
+                      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                      const isAndroid = /Android/.test(navigator.userAgent);
+                      if (isIOS) {
+                        window.open(`maps://maps.apple.com/?q=${address}`, '_blank');
+                      } else if (isAndroid) {
+                        window.open(`geo:0,0?q=${address}`, '_blank');
+                      } else {
+                        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ background: couleur }}
+                  >
+                    <MapPin size={18} />
+                    Ouvrir dans GPS
+                  </button>
+                </div>
+              ) : (
+                <p className={`text-sm ${textMuted}`}>Adresse non renseignée</p>
+              )}
+            </div>
           </div>
+        </div>
+
+        {/* === SECTION: TÂCHES RAPIDES === */}
+        {(() => {
+          const pendingTasksQuick = (ch.taches || []).filter(t => !t.done);
+          const completedCount = (ch.taches || []).filter(t => t.done).length;
+
+          return (
+            <div className={`${cardBg} rounded-xl border p-4`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tâches</span>
+                  {tasksTotal > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                      {tasksDone}/{tasksTotal}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setActiveTab('taches')}
+                  className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Voir tout →
+                </button>
+              </div>
+
+              {/* Quick task list - max 5 pending tasks */}
+              {pendingTasksQuick.length > 0 ? (
+                <div className="space-y-2">
+                  {pendingTasksQuick.slice(0, 5).map((t, idx) => (
+                    <button
+                      key={t.id}
+                      onClick={() => toggleTache(t.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98] ${
+                        t.critical
+                          ? (isDark ? 'bg-red-900/20 border border-red-800 hover:bg-red-900/30' : 'bg-red-50 border border-red-200 hover:bg-red-100')
+                          : idx === 0
+                          ? (isDark ? 'bg-blue-900/20 border border-blue-800 hover:bg-blue-900/30' : 'bg-blue-50 border border-blue-200 hover:bg-blue-100')
+                          : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')
+                      }`}
+                    >
+                      <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
+                        t.critical ? 'border-red-500' : idx === 0 ? 'border-blue-500' : (isDark ? 'border-slate-500' : 'border-slate-300')
+                      }`}>
+                        {idx === 0 && !t.critical && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                        {t.critical && <AlertCircle size={14} className="text-red-500" />}
+                      </div>
+                      <span className={`flex-1 text-sm ${idx === 0 || t.critical ? 'font-medium' : ''} ${textPrimary}`}>
+                        {t.text.length > 45 ? t.text.substring(0, 45) + '...' : t.text}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-lg ${
+                        t.critical ? (isDark ? 'bg-red-800 text-red-300' : 'bg-red-100 text-red-600')
+                        : idx === 0 ? (isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-100 text-blue-600')
+                        : (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600')
+                      }`}>
+                        {t.critical ? 'Critique' : idx === 0 ? 'Suivante' : 'À faire'}
+                      </span>
+                    </button>
+                  ))}
+                  {pendingTasksQuick.length > 5 && (
+                    <button
+                      onClick={() => setActiveTab('taches')}
+                      className={`w-full py-2 text-center text-sm ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-600'}`}
+                    >
+                      + {pendingTasksQuick.length - 5} autres tâches
+                    </button>
+                  )}
+                </div>
+              ) : tasksTotal === 0 ? (
+                <div className="text-center py-4">
+                  <p className={`text-sm ${textMuted} mb-3`}>Aucune tâche définie</p>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <button
+                      onClick={() => setActiveTab('taches')}
+                      className="px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px]"
+                      style={{ background: couleur }}
+                    >
+                      <Plus size={16} className="inline mr-1" /> Ajouter des tâches
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+                  <CheckCircle size={32} className="mx-auto mb-2 text-emerald-500" />
+                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                    Toutes les tâches sont terminées !
+                  </p>
+                  <p className={`text-xs ${textMuted}`}>{completedCount} tâche{completedCount > 1 ? 's' : ''} complétée{completedCount > 1 ? 's' : ''}</p>
+                </div>
+              )}
+
+              {/* Quick add task */}
+              <div className="flex gap-2 mt-3">
+                <input
+                  placeholder="Ajouter une tâche rapide..."
+                  value={newTache}
+                  onChange={e => setNewTache(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addTache()}
+                  className={`flex-1 px-4 py-2.5 border rounded-xl text-sm min-h-[44px] ${inputBg}`}
+                />
+                <button
+                  onClick={addTache}
+                  disabled={!newTache.trim()}
+                  className="px-4 py-2.5 text-white rounded-xl min-h-[44px] font-medium disabled:opacity-50 transition-all active:scale-[0.98]"
+                  style={{ background: couleur }}
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* === SECTION: ACTIONS RAPIDES === */}
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setShowAddMO(true)}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
+          >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
+              <Clock size={18} style={{ color: couleur }} />
+            </div>
+            <span className={`text-sm font-medium ${textPrimary}`}>Pointer</span>
+          </button>
+          <button
+            onClick={() => setShowQuickMateriau(true)}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/30' : 'bg-red-100'}`}>
+              <Coins size={18} className="text-red-500" />
+            </div>
+            <span className={`text-sm font-medium ${textPrimary}`}>Dépense</span>
+          </button>
+          <button
+            onClick={() => document.getElementById(`photo-quick-${ch.id}`)?.click()}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
+          >
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+              <Camera size={18} className="text-blue-500" />
+            </div>
+            <span className={`text-sm font-medium ${textPrimary}`}>Photo</span>
+            <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
+          </button>
         </div>
 
         {/* Alertes */}
@@ -1686,6 +1845,31 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (newChantier?.id) setView(newChantier.id);
   };
 
+  // Handle chantier edit from modal
+  const handleEditChantier = (formData) => {
+    if (!formData.id) return;
+
+    updateChantier(formData.id, {
+      nom: formData.nom,
+      client_id: formData.client_id,
+      clientId: formData.client_id,
+      adresse: formData.adresse,
+      ville: formData.ville,
+      codePostal: formData.codePostal,
+      dateDebut: formData.date_debut,
+      dateFin: formData.date_fin,
+      budget_estime: formData.budget_estime,
+      budgetPrevu: formData.budget_estime,
+      budget_materiaux: formData.budget_materiaux,
+      heures_estimees: formData.heures_estimees,
+      notes: formData.notes,
+      description: formData.description
+    });
+
+    setEditingChantier(null);
+    showToast('Chantier modifié avec succès', 'success');
+  };
+
   // Filtering and sorting logic
   const getFilteredAndSortedChantiers = () => {
     // First filter by status
@@ -2266,7 +2450,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         );
       })()}
 
-      {/* Quick Chantier Modal */}
+      {/* Quick Chantier Modal - Create */}
       <QuickChantierModal
         isOpen={show}
         onClose={() => setShow(false)}
@@ -2275,6 +2459,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         devis={devis}
         isDark={isDark}
         couleur={couleur}
+      />
+
+      {/* Quick Chantier Modal - Edit */}
+      <QuickChantierModal
+        isOpen={!!editingChantier}
+        onClose={() => setEditingChantier(null)}
+        onSubmit={handleEditChantier}
+        clients={clients}
+        devis={devis}
+        isDark={isDark}
+        couleur={couleur}
+        editChantier={editingChantier}
       />
     </div>
   );
