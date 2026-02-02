@@ -371,16 +371,51 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {activeTab === 'photos' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
-              const allPhotos = clientChantiers.flatMap(ch => (ch.photos || []).map(p => ({ ...p, chantierNom: ch.nom })));
-              if (allPhotos.length === 0) return <p className={`text-center ${textMuted} py-8`}>Aucune photo</p>;
+              const allPhotos = clientChantiers.flatMap(ch => (ch.photos || []).map(p => ({ ...p, chantierNom: ch.nom, chantierId: ch.id })));
+              if (allPhotos.length === 0) return (
+                <div className="text-center py-8">
+                  <p className={`${textMuted} mb-4`}>Aucune photo</p>
+                  {clientChantiers.length > 0 ? (
+                    <button
+                      onClick={() => {
+                        // Go to first chantier to add photos
+                        if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
+                        if (setPage) setPage('chantiers');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                      style={{ background: `${couleur}15`, color: couleur }}
+                    >
+                      <Camera size={16} /> Ajouter une photo
+                    </button>
+                  ) : (
+                    <p className={`text-xs ${textMuted}`}>Créez d'abord un chantier pour ajouter des photos</p>
+                  )}
+                </div>
+              );
               return (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                  {allPhotos.map(p => (
-                    <div key={p.id} className="relative group">
-                      <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt="" />
-                      <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
+                <div className="space-y-3">
+                  {clientChantiers.length > 0 && (
+                    <div className="flex justify-end mb-2">
+                      <button
+                        onClick={() => {
+                          if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
+                          if (setPage) setPage('chantiers');
+                        }}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                        style={{ background: `${couleur}15`, color: couleur }}
+                      >
+                        <Camera size={14} /> Ajouter une photo
+                      </button>
                     </div>
-                  ))}
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                    {allPhotos.map(p => (
+                      <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
+                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt="" />
+                        <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })()}
