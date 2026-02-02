@@ -100,13 +100,28 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
     setDismissedInStorage();
   };
 
+  // Debug logging
+  React.useEffect(() => {
+    if (showDelayed) {
+      console.log('📱 PWA Install Debug:', {
+        platform,
+        canInstall,
+        isInstalled,
+        dismissed: dismissed.install,
+        showDelayed
+      });
+    }
+  }, [platform, canInstall, isInstalled, dismissed.install, showDelayed]);
+
   // Show install prompt for:
   // 1. Chrome/Android with native prompt (canInstall)
   // 2. iOS Safari (need manual instructions)
-  // 3. Any mobile browser that doesn't have native prompt
+  // 3. Any mobile browser (show instructions even without native prompt)
   const showNativeInstall = canInstall && !dismissed.install && showDelayed && !isInstalled;
-  const showIOSInstall = platform.isIOS && !platform.isStandalone && !dismissed.install && showDelayed && platform.isMobile;
-  const showInstall = showNativeInstall || showIOSInstall;
+  const showIOSInstall = platform.isIOS && !platform.isStandalone && !dismissed.install && showDelayed;
+  // Also show for Android mobile browsers that don't support beforeinstallprompt
+  const showMobileInstructions = platform.isMobile && !platform.isStandalone && !dismissed.install && showDelayed && !canInstall && !platform.isIOS;
+  const showInstall = showNativeInstall || showIOSInstall || showMobileInstructions;
   const showUpdate = needsRefresh && !dismissed.update;
 
   return (
@@ -230,7 +245,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
                     <div className="space-y-2 mb-3">
                       <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
                         <Share className="w-5 h-5 flex-shrink-0" />
-                        <span>1. Appuyez sur <strong>Partager</strong></span>
+                        <span>1. Appuyez sur <strong>Partager</strong> ↗</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
                         <PlusSquare className="w-5 h-5 flex-shrink-0" />
@@ -241,8 +256,8 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
                       Gratuit • Accès rapide • Fonctionne hors ligne
                     </p>
                   </>
-                ) : (
-                  /* Android/Chrome Instructions */
+                ) : canInstall ? (
+                  /* Android/Chrome with native install */
                   <>
                     <p className="text-sm text-white/90 mb-4">
                       Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne !
@@ -256,7 +271,27 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
                       Installer maintenant
                     </Button>
                     <p className="text-[11px] text-white/60 text-center mt-2">
-                      Gratuit • Pas de téléchargement sur l'App Store
+                      Gratuit • Pas de téléchargement sur le Play Store
+                    </p>
+                  </>
+                ) : (
+                  /* Android/Other browsers without native prompt */
+                  <>
+                    <p className="text-sm text-white/90 mb-3">
+                      Ajoutez l'app à votre écran d'accueil :
+                    </p>
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
+                        <span className="text-lg">⋮</span>
+                        <span>1. Menu <strong>⋮</strong> en haut à droite</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
+                        <PlusSquare className="w-5 h-5 flex-shrink-0" />
+                        <span>2. <strong>Ajouter à l'écran d'accueil</strong></span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-white/60 text-center">
+                      Gratuit • Accès rapide • Fonctionne hors ligne
                     </p>
                   </>
                 )}
