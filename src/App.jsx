@@ -71,8 +71,13 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // UI state
-  const [page, setPage] = useState('dashboard');
+  // UI state - persist page in localStorage to survive refresh
+  const [page, setPage] = useState(() => {
+    try {
+      const savedPage = localStorage.getItem('cp_current_page');
+      return savedPage || 'dashboard';
+    } catch { return 'dashboard'; }
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
@@ -124,6 +129,7 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
+  useEffect(() => { try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); } }, [page]);
 
   // Auth state listener - persists session across page refreshes
   useEffect(() => {
