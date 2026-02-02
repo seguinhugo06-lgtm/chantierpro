@@ -444,11 +444,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <p className={`text-sm font-medium ${textPrimary} mb-1`}>Planifiez vos tâches</p>
                   <p className={`text-xs ${textMuted} mb-3`}>Ajoutez des tâches pour suivre l'avancement</p>
                   <button
-                    onClick={() => {
-                      console.log('🔧 Bouton Générer cliqué, showTaskGenerator avant:', showTaskGenerator);
-                      setShowTaskGenerator(true);
-                      console.log('🔧 setShowTaskGenerator(true) appelé');
-                    }}
+                    onClick={() => setShowTaskGenerator(true)}
                     className="px-4 py-2 rounded-xl text-sm font-medium text-white"
                     style={{ background: couleur }}
                   >
@@ -1444,6 +1440,26 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
           );
         })()}
+
+      {/* Task Generator Modal - dans la vue détaillée */}
+      <TaskGeneratorModal
+        isOpen={showTaskGenerator}
+        onClose={() => setShowTaskGenerator(false)}
+        onGenerateTasks={(newTasks) => {
+          if (ch) {
+            const existingTasks = ch.taches || [];
+            updateChantier(view, {
+              taches: [...existingTasks, ...newTasks]
+            });
+            showToast?.(`${newTasks.length} tâche${newTasks.length > 1 ? 's' : ''} ajoutée${newTasks.length > 1 ? 's' : ''}`, 'success');
+          }
+        }}
+        existingTasks={ch.taches || []}
+        entrepriseMetier={entreprise?.metier}
+        devisLignes={devis.find(d => d.chantier_id === view)?.lignes}
+        isDark={isDark}
+        couleur={couleur}
+      />
       </div>
     );
   }
@@ -2086,30 +2102,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         couleur={couleur}
         editChantier={editingChantier}
       />
-
-      {/* Task Generator Modal */}
-      {console.log('🎯 Chantiers render - view:', view, 'showTaskGenerator:', showTaskGenerator)}
-      {view && (
-        <TaskGeneratorModal
-          isOpen={showTaskGenerator}
-          onClose={() => setShowTaskGenerator(false)}
-          onGenerateTasks={(newTasks) => {
-            const ch = chantiers.find(c => c.id === view);
-            if (ch) {
-              const existingTasks = ch.taches || [];
-              updateChantier(view, {
-                taches: [...existingTasks, ...newTasks]
-              });
-              showToast?.(`${newTasks.length} tâche${newTasks.length > 1 ? 's' : ''} ajoutée${newTasks.length > 1 ? 's' : ''}`, 'success');
-            }
-          }}
-          existingTasks={chantiers.find(c => c.id === view)?.taches || []}
-          entrepriseMetier={entreprise?.metier}
-          devisLignes={devis.find(d => d.chantier_id === view)?.lignes}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      )}
     </div>
   );
 }
