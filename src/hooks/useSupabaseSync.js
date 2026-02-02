@@ -14,10 +14,10 @@ const FIELD_MAPPINGS = {
     toSupabase: (item) => ({
       id: item.id,
       nom: item.nom,
-      prenom: item.prenom || null,
-      email: item.email || null,
-      telephone: item.telephone || null,
-      adresse: item.adresse || null,
+      prenom: item.prenom || '',
+      email: item.email || '',
+      telephone: item.telephone || '',
+      adresse: item.adresse || '',
     }),
     fromSupabase: (row) => ({
       id: row.id,
