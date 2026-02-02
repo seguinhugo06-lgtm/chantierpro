@@ -11,6 +11,17 @@ const hasSupabaseConfig = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.en
 // Demo mode: enabled if no Supabase config OR explicitly requested via URL/env
 export const isDemo = !hasSupabaseConfig || envDemoMode || (isDevelopment && urlHasDemoParam);
 
+// Debug logging
+console.log('🔧 Supabase Config:', {
+  isDevelopment,
+  hasSupabaseConfig,
+  envDemoMode,
+  urlHasDemoParam,
+  isDemo,
+  supabaseUrl: import.meta.env.VITE_SUPABASE_URL ? '✓ configured' : '✗ missing',
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ configured' : '✗ missing',
+});
+
 // Demo user for auto-login in demo mode
 const DEMO_USER = {
   id: 'demo-user-id',
