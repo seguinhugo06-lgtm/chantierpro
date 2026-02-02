@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, RefreshCw, X, Wifi, WifiOff, Smartphone } from 'lucide-react';
+import { Download, RefreshCw, X, Wifi, WifiOff, Smartphone, Share, PlusSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/Button';
@@ -19,6 +19,22 @@ import { Button } from './ui/Button';
 // Check if user dismissed install prompt recently (within 7 days)
 const DISMISS_KEY = 'pwa-install-dismissed';
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Detect iOS Safari
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// Detect if running as standalone PWA
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+// Detect mobile device
+function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
 
 function wasRecentlyDismissed() {
   try {
@@ -62,9 +78,20 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
   // Delay showing install prompt by 3 seconds to not interrupt user
   const [showDelayed, setShowDelayed] = React.useState(false);
 
+  // Detect platform
+  const [platform, setPlatform] = React.useState({ isIOS: false, isMobile: false, isStandalone: false });
+
   React.useEffect(() => {
     const timer = setTimeout(() => setShowDelayed(true), 3000);
     return () => clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    setPlatform({
+      isIOS: isIOS(),
+      isMobile: isMobile(),
+      isStandalone: isStandalone()
+    });
   }, []);
 
   // Handle dismissal with localStorage persistence
@@ -73,8 +100,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
     setDismissedInStorage();
   };
 
-  // Don't show install prompt if dismissed, not ready, or already installed
-  const showInstall = canInstall && !dismissed.install && showDelayed && !isInstalled;
+  // Show install prompt for:
+  // 1. Chrome/Android with native prompt (canInstall)
+  // 2. iOS Safari (need manual instructions)
+  // 3. Any mobile browser that doesn't have native prompt
+  const showNativeInstall = canInstall && !dismissed.install && showDelayed && !isInstalled;
+  const showIOSInstall = platform.isIOS && !platform.isStandalone && !dismissed.install && showDelayed && platform.isMobile;
+  const showInstall = showNativeInstall || showIOSInstall;
   const showUpdate = needsRefresh && !dismissed.update;
 
   return (
@@ -188,20 +220,46 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
                 <p className="text-base font-bold mb-1">
                   📲 Installer ChantierPro
                 </p>
-                <p className="text-sm text-white/90 mb-4">
-                  Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne !
-                </p>
-                <Button
-                  size="sm"
-                  onClick={install}
-                  className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold py-2.5 shadow-lg"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Installer maintenant
-                </Button>
-                <p className="text-[11px] text-white/60 text-center mt-2">
-                  Gratuit • Pas de téléchargement sur l'App Store
-                </p>
+
+                {/* iOS Instructions */}
+                {platform.isIOS ? (
+                  <>
+                    <p className="text-sm text-white/90 mb-3">
+                      Ajoutez l'app à votre écran d'accueil :
+                    </p>
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
+                        <Share className="w-5 h-5 flex-shrink-0" />
+                        <span>1. Appuyez sur <strong>Partager</strong></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm bg-white/10 rounded-lg p-2">
+                        <PlusSquare className="w-5 h-5 flex-shrink-0" />
+                        <span>2. <strong>Sur l'écran d'accueil</strong></span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-white/60 text-center">
+                      Gratuit • Accès rapide • Fonctionne hors ligne
+                    </p>
+                  </>
+                ) : (
+                  /* Android/Chrome Instructions */
+                  <>
+                    <p className="text-sm text-white/90 mb-4">
+                      Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne !
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={install}
+                      className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold py-2.5 shadow-lg"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Installer maintenant
+                    </Button>
+                    <p className="text-[11px] text-white/60 text-center mt-2">
+                      Gratuit • Pas de téléchargement sur l'App Store
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
