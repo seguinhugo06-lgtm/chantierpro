@@ -70,24 +70,37 @@ const FIELD_MAPPINGS = {
     }),
   },
   devis: {
-    toSupabase: (item) => ({
-      id: item.id,
-      client_id: item.client_id,
-      numero: item.numero,
-      type: item.type,
-      statut: item.statut,
-      date: item.date,
-      date_validite: item.date_validite,
-      objet: item.objet || item.titre,
-      lignes: JSON.stringify(item.lignes || []),
-      sections: JSON.stringify(item.sections || []),
-      conditions: item.conditions,
-      remise_globale: item.remise || 0,
-      tva_rate: item.tvaRate || 10,
-      total_ht: item.total_ht || 0,
-      total_tva: item.tva || 0,
-      total_ttc: item.total_ttc || 0,
-    }),
+    toSupabase: (item) => {
+      // Combine lignes and sections into a single lignes array for storage
+      // This ensures compatibility even if sections column doesn't exist
+      let allLignes = item.lignes || [];
+      if (item.sections && item.sections.length > 0) {
+        // Flatten sections into lignes array with section markers
+        allLignes = item.sections.flatMap(section => {
+          const sectionMarker = { _sectionId: section.id, _sectionName: section.nom, _isSection: true };
+          return [sectionMarker, ...(section.lignes || [])];
+        });
+      }
+
+      return {
+        id: item.id,
+        client_id: item.client_id,
+        numero: item.numero,
+        type: item.type,
+        statut: item.statut,
+        date: item.date,
+        date_validite: item.date_validite,
+        objet: item.objet || item.titre,
+        lignes: JSON.stringify(allLignes),
+        sections: JSON.stringify(item.sections || []),
+        conditions: item.conditions,
+        remise_globale: item.remise || 0,
+        tva_rate: item.tvaRate || 10,
+        total_ht: item.total_ht || 0,
+        total_tva: item.tva || 0,
+        total_ttc: item.total_ttc || 0,
+      };
+    },
     fromSupabase: (row) => ({
       id: row.id,
       client_id: row.client_id,
