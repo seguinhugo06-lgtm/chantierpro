@@ -50,16 +50,21 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   const submit = async () => {
     if (!form.nom) return;
     const wasEditing = editId;
-    if (editId) {
-      // Use updateClient which syncs to Supabase
-      if (updateClient) {
-        await updateClient(editId, form);
+    try {
+      if (editId) {
+        // Use updateClient which syncs to Supabase
+        if (updateClient) {
+          await updateClient(editId, form);
+        } else {
+          // Fallback to direct state update if updateClient not provided
+          setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
+        }
       } else {
-        // Fallback to direct state update if updateClient not provided
-        setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
+        onSubmit(form);
       }
-    } else {
-      onSubmit(form);
+    } catch (error) {
+      console.error('Error saving client:', error);
+      // Still close the form but show error was handled
     }
     setShow(false);
     setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });

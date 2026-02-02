@@ -28,7 +28,6 @@ const FIELD_MAPPINGS = {
       adresse: row.adresse,
       type: 'particulier', // Default value for local use
       createdAt: row.created_at,
-      updatedAt: row.updated_at,
     }),
   },
   chantiers: {
