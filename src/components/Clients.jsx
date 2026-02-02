@@ -49,6 +49,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
 
   const submit = async () => {
     if (!form.nom) return;
+    const wasEditing = editId;
     if (editId) {
       // Use updateClient which syncs to Supabase
       if (updateClient) {
@@ -57,15 +58,24 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         // Fallback to direct state update if updateClient not provided
         setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
       }
-      setEditId(null);
     } else {
       onSubmit(form);
     }
     setShow(false);
     setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+    // Return to detail view if we were editing
+    if (wasEditing) {
+      setViewId(wasEditing);
+    }
+    setEditId(null);
   };
 
-  const startEdit = (client) => { setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '' }); setEditId(client.id); setShow(true); };
+  const startEdit = (client) => {
+    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '' });
+    setEditId(client.id);
+    setViewId(null); // Close detail view to show edit form
+    setShow(true);
+  };
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
@@ -129,6 +139,33 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                 <MapPin size={16} /><span>Itinéraire</span>
               </button>
             )}
+          </div>
+          {/* Quick create actions */}
+          <div className="flex gap-2 sm:gap-3 flex-wrap mb-4 pt-3 border-t border-dashed" style={{ borderColor: isDark ? '#475569' : '#e2e8f0' }}>
+            <button
+              onClick={() => {
+                // Store client ID in localStorage for the chantier form to pick up
+                localStorage.setItem('cp_new_chantier_client', client.id);
+                setPage?.('chantiers');
+                setCreateMode?.(true);
+              }}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-sm hover:shadow-md"
+              style={{ background: `${couleur}15`, color: couleur }}
+            >
+              <Home size={16} /><span>Nouveau chantier</span>
+            </button>
+            <button
+              onClick={() => {
+                // Store client ID for the devis form
+                localStorage.setItem('cp_new_devis_client', client.id);
+                setPage?.('devis');
+                setCreateMode?.(true);
+              }}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-sm hover:shadow-md"
+              style={{ background: `${couleur}15`, color: couleur }}
+            >
+              <FileText size={16} /><span>Nouveau devis</span>
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             {client.telephone && (
