@@ -300,6 +300,8 @@ export async function saveItem(table, item, userId) {
       user_id: userId,
     };
 
+    console.log(`💾 Saving to ${table}:`, supabaseData);
+
     const { data, error } = await supabase
       .from(table)
       .upsert(supabaseData, { onConflict: 'id' })
@@ -307,15 +309,16 @@ export async function saveItem(table, item, userId) {
       .single();
 
     if (error) {
-      console.error(`Error saving to ${table}:`, error);
-      return item;
+      console.error(`❌ Error saving to ${table}:`, error);
+      // Throw error so the caller can handle it (rollback optimistic update)
+      throw new Error(`Failed to save to ${table}: ${error.message}`);
     }
 
-    console.log(`Saved to ${table}:`, data?.id);
+    console.log(`✅ Saved to ${table}:`, data?.id);
     return mapping.fromSupabase(data);
   } catch (error) {
-    console.error(`Error saving to ${table}:`, error);
-    return item;
+    console.error(`❌ Error saving to ${table}:`, error);
+    throw error;
   }
 }
 
