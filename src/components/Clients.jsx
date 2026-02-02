@@ -210,18 +210,22 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {activeTab === 'chantiers' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {clientChantiers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className={`${textMuted} mb-4`}>Aucun chantier</p>
+              <div className="text-center py-10">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <Home size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <p className={`font-medium ${textPrimary} mb-1`}>Aucun chantier</p>
+                <p className={`text-sm ${textMuted} mb-5`}>Créez votre premier chantier pour ce client</p>
                 <button
                   onClick={() => {
                     localStorage.setItem('cp_new_chantier_client', client.id);
                     setPage?.('chantiers');
                     setCreateMode?.(true);
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
-                  style={{ background: `${couleur}15`, color: couleur }}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                  style={{ background: couleur, color: 'white' }}
                 >
-                  <Home size={16} /> Nouveau chantier
+                  <Plus size={18} /> Nouveau chantier
                 </button>
               </div>
             ) : (
@@ -259,18 +263,22 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {activeTab === 'documents' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {clientDevis.length === 0 ? (
-              <div className="text-center py-8">
-                <p className={`${textMuted} mb-4`}>Aucun document</p>
+              <div className="text-center py-10">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <FileText size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <p className={`font-medium ${textPrimary} mb-1`}>Aucun document</p>
+                <p className={`text-sm ${textMuted} mb-5`}>Créez un devis ou une facture pour ce client</p>
                 <button
                   onClick={() => {
                     localStorage.setItem('cp_new_devis_client', client.id);
                     setPage?.('devis');
                     setCreateMode?.(true);
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
-                  style={{ background: `${couleur}15`, color: couleur }}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                  style={{ background: couleur, color: 'white' }}
                 >
-                  <FileText size={16} /> Nouveau devis
+                  <Plus size={18} /> Nouveau devis
                 </button>
               </div>
             ) : (
@@ -317,15 +325,31 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             {(() => {
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
               if (clientEchanges.length === 0) return (
-                <div className="text-center py-8">
-                  <p className={`${textMuted} mb-4`}>Aucun échange enregistré</p>
-                  <div className="flex justify-center gap-3">
-                    <a href={`mailto:${client.email || ''}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
-                      <Mail size={16} /> Envoyer un email
-                    </a>
-                    <a href={`sms:${client.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'}`}>
-                      <MessageCircle size={16} /> Envoyer un SMS
-                    </a>
+                <div className="text-center py-10">
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <MessageSquare size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                  </div>
+                  <p className={`font-medium ${textPrimary} mb-1`}>Aucun échange</p>
+                  <p className={`text-sm ${textMuted} mb-5`}>Commencez une conversation avec ce client</p>
+                  <div className="flex justify-center gap-3 flex-wrap">
+                    {client.email && (
+                      <a href={`mailto:${client.email}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                        <Mail size={16} /> Email
+                      </a>
+                    )}
+                    {client.telephone && (
+                      <>
+                        <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                          <MessageCircle size={16} /> SMS
+                        </a>
+                        <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>
+                          <MessageCircle size={16} /> WhatsApp
+                        </a>
+                      </>
+                    )}
+                    {!client.email && !client.telephone && (
+                      <p className={`text-sm ${textMuted}`}>Ajoutez un email ou téléphone pour contacter ce client</p>
+                    )}
                   </div>
                 </div>
               );
@@ -373,22 +397,27 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             {(() => {
               const allPhotos = clientChantiers.flatMap(ch => (ch.photos || []).map(p => ({ ...p, chantierNom: ch.nom, chantierId: ch.id })));
               if (allPhotos.length === 0) return (
-                <div className="text-center py-8">
-                  <p className={`${textMuted} mb-4`}>Aucune photo</p>
+                <div className="text-center py-10">
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <Camera size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                  </div>
+                  <p className={`font-medium ${textPrimary} mb-1`}>Aucune photo</p>
                   {clientChantiers.length > 0 ? (
-                    <button
-                      onClick={() => {
-                        // Go to first chantier to add photos
-                        if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
-                        if (setPage) setPage('chantiers');
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
-                      style={{ background: `${couleur}15`, color: couleur }}
-                    >
-                      <Camera size={16} /> Ajouter une photo
-                    </button>
+                    <>
+                      <p className={`text-sm ${textMuted} mb-5`}>Documentez vos chantiers avec des photos</p>
+                      <button
+                        onClick={() => {
+                          if (setSelectedChantier) setSelectedChantier(clientChantiers[0].id);
+                          if (setPage) setPage('chantiers');
+                        }}
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                        style={{ background: couleur, color: 'white' }}
+                      >
+                        <Plus size={18} /> Ajouter une photo
+                      </button>
+                    </>
                   ) : (
-                    <p className={`text-xs ${textMuted}`}>Créez d'abord un chantier pour ajouter des photos</p>
+                    <p className={`text-sm ${textMuted}`}>Créez d'abord un chantier pour ajouter des photos</p>
                   )}
                 </div>
               );
