@@ -2088,6 +2088,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       />
 
       {/* Task Generator Modal */}
+      {console.log('🎯 Chantiers render - view:', view, 'showTaskGenerator:', showTaskGenerator)}
       {view && (
         <TaskGeneratorModal
           isOpen={showTaskGenerator}
