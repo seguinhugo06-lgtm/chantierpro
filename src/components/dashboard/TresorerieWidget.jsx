@@ -1,5 +1,16 @@
-import * as React from 'react';
+/**
+ * TresorerieWidget - Widget showing unpaid invoices with attractive design
+ *
+ * Features:
+ * - Visual donut chart for age breakdown
+ * - Gradient cards with progress indicators
+ * - Alert system for overdue invoices
+ * - Animated interactions
+ *
+ * @module TresorerieWidget
+ */
 
+import * as React from 'react';
 import {
   Wallet,
   AlertCircle,
@@ -7,7 +18,12 @@ import {
   ArrowRight,
   CheckCircle,
   Send,
+  Clock,
+  TrendingUp,
+  Euro,
+  ChevronRight,
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { cn } from '../../lib/utils';
 import { useDevis, useClients } from '../../context/DataContext';
 import { Button } from '../ui/Button';
@@ -22,45 +38,47 @@ import Widget, {
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import supabase, { isDemo } from '../../supabaseClient';
 
-/**
- * @typedef {Object} TresorerieWidgetProps
- * @property {string} [userId] - User ID for filtering
- * @property {string} [className] - Additional CSS classes
- */
-
-/**
- * @typedef {Object} AgeGroup
- * @property {string} label - Display label
- * @property {string} dotColor - Tailwind color class for dot
- * @property {string} textColor - Tailwind color class for text
- * @property {number} amount - Total amount
- * @property {number} count - Number of invoices
- * @property {Array} factures - List of factures in this group
- */
-
-// Age group configurations
+// Age group configurations with colors - Based on invoice age (time since issued)
 const AGE_GROUPS = {
   under30: {
     key: 'under30',
-    label: '< 30j',
-    dotColor: 'bg-green-500',
-    textColor: 'text-green-600 dark:text-green-400',
+    label: 'Récentes (< 30j)',
+    shortLabel: 'Récentes',
+    description: 'Échéance proche',
+    color: '#10b981',
+    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    bgLight: 'bg-emerald-50',
+    bgDark: 'bg-emerald-500/10',
+    textLight: 'text-emerald-700',
+    textDark: 'text-emerald-400',
     min: 0,
     max: 30,
   },
   between30and60: {
     key: 'between30and60',
-    label: '30-60j',
-    dotColor: 'bg-primary-500',
-    textColor: 'text-primary-600 dark:text-primary-400',
+    label: 'En attente (30-60j)',
+    shortLabel: 'En attente',
+    description: 'À surveiller',
+    color: '#f59e0b',
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    bgLight: 'bg-amber-50',
+    bgDark: 'bg-amber-500/10',
+    textLight: 'text-amber-700',
+    textDark: 'text-amber-400',
     min: 30,
     max: 60,
   },
   over60: {
     key: 'over60',
-    label: '> 60j',
-    dotColor: 'bg-red-500',
-    textColor: 'text-red-600 dark:text-red-400',
+    label: 'En retard (> 60j)',
+    shortLabel: 'En retard',
+    description: 'Action requise',
+    color: '#ef4444',
+    gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    bgLight: 'bg-red-50',
+    bgDark: 'bg-red-500/10',
+    textLight: 'text-red-700',
+    textDark: 'text-red-400',
     min: 60,
     max: Infinity,
   },
@@ -76,7 +94,6 @@ function getDaysOverdue(facture) {
   if (facture.date_echeance) {
     echeance = new Date(facture.date_echeance);
   } else if (facture.date) {
-    // Default: 30 days payment term from invoice date
     echeance = new Date(facture.date);
     echeance.setDate(echeance.getDate() + 30);
   } else {
@@ -84,7 +101,7 @@ function getDaysOverdue(facture) {
   }
 
   const days = Math.floor((now - echeance) / (1000 * 60 * 60 * 24));
-  return Math.max(0, days); // Only positive values (overdue)
+  return Math.max(0, days);
 }
 
 /**
@@ -100,54 +117,218 @@ function formatCurrency(amount) {
 }
 
 /**
- * AlertBox - Critical alert for overdue invoices
+ * Format document number with correct prefix (FAC- for factures)
  */
-function AlertBox({ amount, count, onRelance }) {
-  return (
-    <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-4">
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-lg font-bold text-red-900 dark:text-red-100">
-            {formatCurrency(amount)} en retard
-          </p>
-          <p className="text-sm text-red-700 dark:text-red-300 mt-0.5">
-            {count} facture{count > 1 ? 's' : ''} impayée{count > 1 ? 's' : ''} +60 jours
-          </p>
+function formatFactureNumber(facture) {
+  const numero = facture.numero || facture.id?.slice(-6) || '---';
+
+  // If it already has FAC- prefix, use it as-is
+  if (numero.startsWith('FAC-')) {
+    return numero;
+  }
+
+  // If number starts with a digit, add FAC- prefix
+  if (/^\d/.test(numero)) {
+    return `FAC-${numero}`;
+  }
+
+  return numero;
+}
+
+/**
+ * Format compact currency
+ */
+function formatCompact(amount) {
+  if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M €`;
+  if (amount >= 1000) return `${Math.round(amount / 1000)}k €`;
+  return `${Math.round(amount)} €`;
+}
+
+/**
+ * Custom tooltip for donut chart
+ */
+function DonutTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700">
+        <p className="text-sm font-medium text-gray-900 dark:text-white">
+          {data.label}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {formatCurrency(data.value)} ({data.count} facture{data.count > 1 ? 's' : ''})
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
+/**
+ * Stat card for each age group - Simplified and clearer
+ */
+function AgeGroupCard({ group, amount, count, percent, onClick, isDark }) {
+  const config = AGE_GROUPS[group];
+
+  if (amount === 0) {
+    return (
+      <div
+        className={cn(
+          'relative rounded-lg p-2.5 opacity-50',
+          isDark ? 'bg-slate-800/30' : 'bg-gray-50'
+        )}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: config.color }}
+            />
+            <span className={cn(
+              'text-xs font-medium',
+              isDark ? 'text-gray-500' : 'text-gray-400'
+            )}>
+              {config.shortLabel}
+            </span>
+          </div>
+          <span className={cn(
+            'text-xs',
+            isDark ? 'text-gray-600' : 'text-gray-400'
+          )}>
+            —
+          </span>
         </div>
       </div>
-      <Button
-        variant="danger"
-        className="w-full mt-3"
-        onClick={onRelance}
-      >
-        Relancer maintenant
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'relative overflow-hidden rounded-lg p-2.5 text-left transition-all duration-200 w-full',
+        'hover:scale-[1.01] active:scale-[0.99]',
+        'border-l-4',
+        isDark
+          ? 'bg-slate-800/50 hover:bg-slate-800/80'
+          : 'bg-white hover:bg-gray-50 shadow-sm'
+      )}
+      style={{ borderLeftColor: config.color }}
+    >
+      {/* Content */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className={cn(
+              'text-xs font-semibold',
+              isDark ? config.textDark : config.textLight
+            )}>
+              {config.shortLabel}
+            </span>
+            <span className={cn(
+              'text-[10px] px-1.5 py-0.5 rounded',
+              isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+            )}>
+              {count} fact.
+            </span>
+          </div>
+          <p className={cn(
+            'text-base font-bold',
+            isDark ? 'text-white' : 'text-gray-900'
+          )}>
+            {formatCompact(amount)}
+          </p>
+        </div>
+
+        {/* Percentage badge */}
+        <div className={cn(
+          'flex flex-col items-end'
+        )}>
+          <span className={cn(
+            'text-sm font-bold tabular-nums',
+            isDark ? config.textDark : config.textLight
+          )}>
+            {percent}%
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/**
+ * Alert banner for critical overdue
+ */
+function CriticalAlert({ amount, count, onAction, isDark }) {
+  return (
+    <div className={cn(
+      'relative overflow-hidden rounded-xl p-4 mb-4',
+      'border-2 animate-pulse-subtle',
+      isDark
+        ? 'bg-gradient-to-r from-red-900/30 to-red-800/20 border-red-500/50'
+        : 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'
+    )}>
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/5 to-transparent animate-shimmer" />
+
+      <div className="relative flex items-start gap-3">
+        <div className={cn(
+          'p-2 rounded-lg flex-shrink-0',
+          isDark ? 'bg-red-500/20' : 'bg-red-100'
+        )}>
+          <AlertCircle className={cn(
+            'w-5 h-5',
+            isDark ? 'text-red-400' : 'text-red-600'
+          )} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className={cn(
+            'text-lg font-bold',
+            isDark ? 'text-red-300' : 'text-red-700'
+          )}>
+            {formatCurrency(amount)}
+          </p>
+          <p className={cn(
+            'text-sm',
+            isDark ? 'text-red-400' : 'text-red-600'
+          )}>
+            {count} facture{count > 1 ? 's' : ''} en retard critique (+60j)
+          </p>
+        </div>
+
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={onAction}
+          className="flex-shrink-0"
+        >
+          Relancer
+          <ArrowRight className="w-4 h-4 ml-1" />
+        </Button>
+      </div>
     </div>
   );
 }
 
 /**
- * BreakdownRow - Single row in breakdown
+ * Donut chart center content
  */
-function BreakdownRow({ label, amount, dotColor, textColor, showWarning }) {
+function DonutCenter({ total, isDark }) {
   return (
-    <div className="flex items-center justify-between py-1.5">
-      <div className="flex items-center gap-2">
-        <span className={cn('w-2 h-2 rounded-full', dotColor)} />
-        <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
-      </div>
-      <div className="flex items-center gap-1">
-        <span className={cn('text-sm font-semibold', amount > 0 ? textColor : 'text-gray-400 dark:text-gray-500')}>
-          {formatCurrency(amount)}
-        </span>
-        {showWarning && amount > 0 && (
-          <AlertCircle className="w-4 h-4 text-red-500" />
-        )}
-      </div>
+    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+      <p className={cn(
+        'text-xs font-medium',
+        isDark ? 'text-gray-400' : 'text-gray-500'
+      )}>
+        Total
+      </p>
+      <p className={cn(
+        'text-xl font-bold',
+        isDark ? 'text-white' : 'text-gray-900'
+      )}>
+        {formatCompact(total)}
+      </p>
     </div>
   );
 }
@@ -160,10 +341,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
 
   const handleRelance = async (facture) => {
     setRelancingIds(prev => new Set([...prev, facture.id]));
-
-    // Simulate relance action
     await new Promise(resolve => setTimeout(resolve, 1500));
-
     onRelance?.(facture);
     setRelancingIds(prev => {
       const next = new Set(prev);
@@ -202,7 +380,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
               >
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {facture.numero || `#${facture.id?.slice(-6)}`}
+                    {formatFactureNumber(facture)}
                     <span className="text-gray-400 mx-1">•</span>
                     <span className="text-gray-600 dark:text-gray-400">
                       {client?.nom || 'Client inconnu'}
@@ -247,11 +425,9 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
 }
 
 /**
- * TresorerieWidget - Widget showing unpaid invoices breakdown
- *
- * @param {TresorerieWidgetProps} props
+ * TresorerieWidget Component
  */
-export default function TresorerieWidget({ userId, className, setPage }) {
+export default function TresorerieWidget({ userId, className, setPage, isDark = false }) {
   const { devis: allDevis } = useDevis();
   const { getClient } = useClients();
 
@@ -272,7 +448,6 @@ export default function TresorerieWidget({ userId, className, setPage }) {
     let totalCount = 0;
 
     factures.forEach((facture) => {
-      // Only unpaid invoices (factures, not devis)
       if (facture.type !== 'facture' || facture.statut === 'payee') return;
 
       const montantRestant = (facture.total_ttc || 0) - (facture.montant_paye || 0);
@@ -296,6 +471,13 @@ export default function TresorerieWidget({ userId, className, setPage }) {
       totalCount += 1;
     });
 
+    // Calculate percentages
+    Object.keys(groups).forEach(key => {
+      groups[key].percent = totalAmount > 0
+        ? Math.round((groups[key].amount / totalAmount) * 100)
+        : 0;
+    });
+
     return {
       groups,
       totalAmount,
@@ -311,11 +493,9 @@ export default function TresorerieWidget({ userId, className, setPage }) {
 
     try {
       if (isDemo || !supabase) {
-        // Demo mode: calculate from context
         const data = calculateUnpaidData(allDevis);
         setUnpaidData(data);
       } else {
-        // Real Supabase query
         const { data: factures, error: queryError } = await supabase
           .from('devis')
           .select('*')
@@ -335,7 +515,6 @@ export default function TresorerieWidget({ userId, className, setPage }) {
     }
   }, [allDevis, calculateUnpaidData]);
 
-  // Initial fetch
   React.useEffect(() => {
     fetchUnpaidData();
   }, [fetchUnpaidData]);
@@ -365,25 +544,36 @@ export default function TresorerieWidget({ userId, className, setPage }) {
     };
   }, [fetchUnpaidData]);
 
-  // Handle relance
   const handleRelance = (facture) => {
-    // In a real app, this would send email/SMS
     console.log('Relancing facture:', facture.id);
   };
 
-  // Handle manage factures
   const handleManageFactures = () => {
     setPage?.('devis');
   };
 
-  // Empty state
   const isEmpty = !loading && unpaidData?.totalCount === 0;
+
+  // Prepare donut chart data
+  const donutData = React.useMemo(() => {
+    if (!unpaidData) return [];
+    return Object.keys(AGE_GROUPS)
+      .map(key => ({
+        name: key,
+        label: AGE_GROUPS[key].label,
+        value: unpaidData.groups[key].amount,
+        count: unpaidData.groups[key].count,
+        color: AGE_GROUPS[key].color,
+      }))
+      .filter(d => d.value > 0);
+  }, [unpaidData]);
 
   return (
     <>
       <Widget
         loading={loading}
         empty={isEmpty}
+        isDark={isDark}
         emptyState={
           <WidgetEmptyState
             icon={<CheckCircle />}
@@ -391,14 +581,27 @@ export default function TresorerieWidget({ userId, className, setPage }) {
             description="Aucune facture impayée"
             ctaLabel="Voir les factures"
             onCtaClick={handleManageFactures}
+            isDark={isDark}
           />
         }
         className={className}
       >
         <WidgetHeader
-          title="Trésorerie"
+          title="Factures impayées"
           icon={<Wallet />}
-          actions={<WidgetMenuButton onClick={() => {}} />}
+          isDark={isDark}
+          actions={
+            unpaidData?.totalCount > 0 && (
+              <div className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold',
+                unpaidData.hasOver60
+                  ? isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
+                  : isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+              )}>
+                {formatCompact(unpaidData.totalAmount)}
+              </div>
+            )
+          }
         />
 
         <WidgetContent>
@@ -412,59 +615,100 @@ export default function TresorerieWidget({ userId, className, setPage }) {
             </div>
           ) : unpaidData ? (
             <>
-              {/* Alert box if > 60 days */}
+              {/* Critical alert */}
               {unpaidData.hasOver60 && (
-                <AlertBox
+                <CriticalAlert
                   amount={unpaidData.groups.over60.amount}
                   count={unpaidData.groups.over60.count}
-                  onRelance={() => setShowRelanceModal(true)}
+                  onAction={() => setShowRelanceModal(true)}
+                  isDark={isDark}
                 />
               )}
 
-              {/* Breakdown */}
-              <div className="space-y-0">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  À encaisser par échéance
+              {/* Main content: Stats in cleaner layout */}
+              <div className="space-y-3">
+                {/* Total amount header */}
+                <div className={cn(
+                  'flex items-center justify-between p-3 rounded-xl',
+                  isDark ? 'bg-slate-800/50' : 'bg-gray-50'
+                )}>
+                  <div>
+                    <p className={cn(
+                      'text-xs font-medium mb-0.5',
+                      isDark ? 'text-gray-400' : 'text-gray-500'
+                    )}>
+                      Total à encaisser
+                    </p>
+                    <p className={cn(
+                      'text-2xl font-bold',
+                      isDark ? 'text-white' : 'text-gray-900'
+                    )}>
+                      {formatCurrency(unpaidData.totalAmount)}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    'text-right'
+                  )}>
+                    <p className={cn(
+                      'text-xs',
+                      isDark ? 'text-gray-500' : 'text-gray-400'
+                    )}>
+                      {unpaidData.totalCount} facture{unpaidData.totalCount > 1 ? 's' : ''}
+                    </p>
+                    <p className={cn(
+                      'text-xs mt-0.5',
+                      isDark ? 'text-gray-500' : 'text-gray-400'
+                    )}>
+                      Âge moyen: ~{Math.round(
+                        (unpaidData.groups.under30.count * 15 +
+                          unpaidData.groups.between30and60.count * 45 +
+                          unpaidData.groups.over60.count * 75) /
+                        Math.max(unpaidData.totalCount, 1)
+                      )}j
+                    </p>
+                  </div>
+                </div>
+
+                {/* Age breakdown label */}
+                <p className={cn(
+                  'text-[10px] font-medium uppercase tracking-wide',
+                  isDark ? 'text-gray-500' : 'text-gray-400'
+                )}>
+                  Répartition par ancienneté
                 </p>
 
-                <BreakdownRow
-                  label={AGE_GROUPS.under30.label}
-                  amount={unpaidData.groups.under30.amount}
-                  dotColor={AGE_GROUPS.under30.dotColor}
-                  textColor={AGE_GROUPS.under30.textColor}
-                />
-                <BreakdownRow
-                  label={AGE_GROUPS.between30and60.label}
-                  amount={unpaidData.groups.between30and60.amount}
-                  dotColor={AGE_GROUPS.between30and60.dotColor}
-                  textColor={AGE_GROUPS.between30and60.textColor}
-                />
-                <BreakdownRow
-                  label={AGE_GROUPS.over60.label}
-                  amount={unpaidData.groups.over60.amount}
-                  dotColor={AGE_GROUPS.over60.dotColor}
-                  textColor={AGE_GROUPS.over60.textColor}
-                  showWarning
-                />
-
-                {/* Total */}
-                <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-200 dark:border-slate-700">
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Total
-                  </span>
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(unpaidData.totalAmount)}
-                  </span>
+                {/* Age group cards - cleaner vertical stack */}
+                <div className="space-y-1.5">
+                  {Object.keys(AGE_GROUPS).map(key => (
+                    <AgeGroupCard
+                      key={key}
+                      group={key}
+                      amount={unpaidData.groups[key].amount}
+                      count={unpaidData.groups[key].count}
+                      percent={unpaidData.groups[key].percent || 0}
+                      onClick={handleManageFactures}
+                      isDark={isDark}
+                    />
+                  ))}
                 </div>
               </div>
             </>
           ) : null}
         </WidgetContent>
 
-        <WidgetFooter>
-          <WidgetLink onClick={handleManageFactures}>
-            Gérer factures
+        <WidgetFooter isDark={isDark}>
+          <WidgetLink onClick={handleManageFactures} isDark={isDark}>
+            Voir toutes les factures
           </WidgetLink>
+          {unpaidData?.hasOver60 && (
+            <WidgetLink
+              onClick={() => setShowRelanceModal(true)}
+              isDark={isDark}
+              className={isDark ? 'text-red-400' : 'text-red-600'}
+            >
+              Relancer ({unpaidData.groups.over60.count})
+            </WidgetLink>
+          )}
         </WidgetFooter>
       </Widget>
 
@@ -483,22 +727,21 @@ export default function TresorerieWidget({ userId, className, setPage }) {
 }
 
 /**
- * TresorerieWidgetSkeleton - Full skeleton for the widget
+ * TresorerieWidgetSkeleton
  */
-export function TresorerieWidgetSkeleton() {
+export function TresorerieWidgetSkeleton({ isDark = false }) {
   return (
-    <Widget loading>
-      <WidgetHeader title="Trésorerie" icon={<Wallet />} />
+    <Widget loading isDark={isDark}>
+      <WidgetHeader title="À encaisser" icon={<Wallet />} isDark={isDark} />
       <WidgetContent>
-        <div className="animate-pulse space-y-3">
-          <div className="h-24 rounded-lg bg-gray-100 dark:bg-slate-800" />
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex justify-between">
-                <div className="h-4 w-16 rounded bg-gray-100 dark:bg-slate-800" />
-                <div className="h-4 w-20 rounded bg-gray-100 dark:bg-slate-800" />
-              </div>
-            ))}
+        <div className="animate-pulse">
+          <div className="flex gap-4">
+            <div className={cn('w-28 h-28 rounded-full', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+            <div className="flex-1 space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className={cn('h-16 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+              ))}
+            </div>
           </div>
         </div>
       </WidgetContent>

@@ -4,15 +4,17 @@ import { Loader2 } from 'lucide-react';
 
 const variantStyles = {
   primary:
-    'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 focus-visible:ring-primary-500/50',
+    'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 focus-visible:ring-primary-500/50',
   secondary:
-    'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300 focus-visible:ring-gray-500/50 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600',
+    'bg-slate-700 text-white font-medium hover:bg-slate-600 border border-slate-600 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600',
   outline:
     'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-gray-500/50 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-800',
   ghost:
-    'bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200 focus-visible:ring-gray-500/50 dark:text-gray-300 dark:hover:bg-slate-800',
+    'bg-transparent text-slate-400 font-medium hover:text-white hover:bg-slate-800 focus-visible:ring-gray-500/50 dark:text-gray-300 dark:hover:bg-slate-800',
   danger:
-    'bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 focus-visible:ring-danger-500/50',
+    'bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 border border-red-500/30 focus-visible:ring-danger-500/50',
+  success:
+    'bg-green-500/20 text-green-400 font-medium hover:bg-green-500/30 border border-green-500/30 focus-visible:ring-green-500/50',
 };
 
 const sizeStyles = {

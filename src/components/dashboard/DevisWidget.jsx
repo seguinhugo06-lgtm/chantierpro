@@ -19,10 +19,13 @@ import {
   FileStack,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { formatMoney, formatDate, formatRelativeDate } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
+import { useToast } from '../../context/AppContext';
 import { DEVIS_STATUS } from '../../lib/constants';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Tooltip } from '../ui/Tooltip';
 import Widget, {
   WidgetHeader,
   WidgetContent,
@@ -63,27 +66,44 @@ function daysSince(dateString) {
 }
 
 /**
- * Format currency
+ * Format document number with correct prefix (DEV- for devis, FAC- for factures)
  */
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount || 0);
+function formatDocumentNumber(devis) {
+  const numero = devis.numero || devis.id?.slice(-6) || '---';
+
+  // If it already has a proper prefix, use it as-is
+  if (numero.startsWith('DEV-') || numero.startsWith('FAC-')) {
+    return numero;
+  }
+
+  // Determine the type and add appropriate prefix
+  const isFacture = devis.type === 'facture';
+  const prefix = isFacture ? 'FAC' : 'DEV';
+
+  // If number starts with a digit, add the prefix
+  if (/^\d/.test(numero)) {
+    return `${prefix}-${numero}`;
+  }
+
+  return numero;
 }
 
+
 /**
- * Format date in French
+ * Format relative time since a date
  */
-function formatDate(dateString) {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+function formatRelativeTimeSince(dateString) {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "aujourd'hui";
+  if (diffDays === 1) return 'hier';
+  if (diffDays < 7) return `il y a ${diffDays} jours`;
+  if (diffDays < 14) return 'il y a 1 semaine';
+  if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)} semaines`;
+  return `il y a ${Math.floor(diffDays / 30)} mois`;
 }
 
 /**
@@ -107,6 +127,11 @@ function PreviewTooltip({ children, devis, client }) {
 
   const lignesCount = devis.lignes?.length || devis.items?.length || 0;
 
+  // Get the date when devis was sent/created
+  const dateEnvoi = devis.date_envoi || devis.createdAt || devis.date;
+  const hasDate = !!dateEnvoi;
+  const relativeSince = formatRelativeTimeSince(dateEnvoi);
+
   return (
     <div className="relative">
       <div
@@ -118,7 +143,7 @@ function PreviewTooltip({ children, devis, client }) {
       </div>
       {isVisible && (
         <div
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl min-w-[200px] animate-fade-in"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl min-w-[220px] animate-fade-in"
           role="tooltip"
         >
           <div className="space-y-2 text-sm">
@@ -129,12 +154,19 @@ function PreviewTooltip({ children, devis, client }) {
             <div className="flex items-center gap-2">
               <Euro className="w-3.5 h-3.5 text-gray-400" />
               <span>
-                HT: {formatCurrency(devis.total_ht || 0)} / TTC: {formatCurrency(devis.total_ttc || 0)}
+                HT: {formatMoney(devis.total_ht || 0)} / TTC: {formatMoney(devis.total_ttc || 0)}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span>Envoyé le {formatDate(devis.date_envoi || devis.createdAt)}</span>
+              {hasDate ? (
+                <span>
+                  Envoyé le {formatDate(dateEnvoi, 'short')}
+                  <span className="text-gray-400 ml-1">({relativeSince})</span>
+                </span>
+              ) : (
+                <span className="text-gray-400 italic">Date non renseignée</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <FileStack className="w-3.5 h-3.5 text-gray-400" />
@@ -169,7 +201,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl animate-slide-up"
+        className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-md shadow-xl border border-gray-200 dark:border-slate-700 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -220,8 +252,8 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
   useEffect(() => {
     if (isOpen && client && devis) {
       const template = method === 'email'
-        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} pour un montant de ${formatCurrency(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
-        : `Bonjour ${client.nom}, je vous relance concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} (${formatCurrency(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
+        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} pour un montant de ${formatMoney(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
+        : `Bonjour ${client.nom}, je vous relance concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} (${formatMoney(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
       setMessage(template);
     }
   }, [isOpen, client, devis, method]);
@@ -238,7 +270,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
     >
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Devis <span className="font-medium">{devis?.numero || '#' + devis?.id?.slice(-6)}</span> • {formatCurrency(devis?.total_ttc)}
+          Devis <span className="font-medium">{devis?.numero || '#' + devis?.id?.slice(-6)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
         {/* Method selector */}
@@ -314,7 +346,7 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
                 {client?.nom || 'Client inconnu'}
               </p>
               <p className="text-lg font-bold text-primary-600 dark:text-primary-400 mt-1">
-                {formatCurrency(devis?.total_ttc)}
+                {formatMoney(devis?.total_ttc)}
               </p>
             </div>
           </div>
@@ -346,6 +378,7 @@ function DevisCard({
   onConvert,
   isRelancing,
   isConverting,
+  isDark = false,
 }) {
   const daysPending = daysSince(devis.createdAt || devis.date_envoi);
   const needsRelance = daysPending >= RELANCE_THRESHOLD_DAYS;
@@ -354,92 +387,121 @@ function DevisCard({
     <PreviewTooltip devis={devis} client={client}>
       <div
         className={cn(
-          'p-4 rounded-lg border',
+          // Base styles - Level 2 Elevation
+          'group p-4 rounded-lg border transition-all duration-200',
+          'shadow-sm',
+          // Conditional styling based on urgency
           needsRelance
-            ? 'border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/10'
-            : 'border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800',
-          'hover:shadow-md hover:border-gray-200 dark:hover:border-slate-600',
-          'transition-all duration-200'
+            ? isDark
+              ? 'border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-transparent'
+              : 'border-orange-300 bg-gradient-to-br from-orange-50 to-orange-50/30'
+            : isDark
+              ? 'border-slate-700 bg-slate-800/50'
+              : 'border-gray-200 bg-white',
+          // Hover states
+          isDark
+            ? 'hover:shadow-md hover:border-primary-600'
+            : 'hover:shadow-md hover:border-primary-300',
+          'hover:scale-[1.01]'
         )}
       >
-        {/* Header: Number + Client */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              #{devis.numero || devis.id?.slice(-6) || '---'}
-              <span className="text-gray-400 dark:text-gray-500 mx-1">•</span>
-              <span className="text-gray-600 dark:text-gray-400">
-                {client?.nom || 'Client inconnu'}
+        {/* Header: Number + Amount */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={cn('text-xs font-semibold', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                {formatDocumentNumber(devis)}
               </span>
+              {needsRelance && (
+                <span className={cn(
+                  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
+                  isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-800'
+                )}>
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  {daysPending}j
+                </span>
+              )}
+            </div>
+            <p className={cn('text-sm font-semibold truncate leading-snug', isDark ? 'text-white' : 'text-gray-900')}>
+              {client?.nom || 'Client inconnu'}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">
-              {devis.titre || devis.objet || 'Sans titre'}
+            <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
+              {devis.titre || devis.objet || `Devis ${devis.numero || '#' + (devis.id?.slice(-6) || '---')}`}
             </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className={cn('text-base font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+              {formatMoney(devis.total_ttc || devis.montant)}
+            </p>
+            {!needsRelance && daysPending > 0 && (
+              <p className={cn('text-[10px] mt-0.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                il y a {daysPending}j
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Amount */}
-        <p className="text-lg font-bold text-primary-600 dark:text-primary-400 mb-2">
-          {formatCurrency(devis.total_ttc || devis.montant)}
-        </p>
-
-        {/* Warning badge if needs relance */}
-        {needsRelance ? (
-          <div className="flex items-center gap-1.5 mb-3">
-            <Badge variant="warning" size="sm" className="gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              À relancer
-            </Badge>
-            <span className="text-xs text-orange-600 dark:text-orange-400">
-              Envoyé il y a {daysPending} jours
-            </span>
-          </div>
-        ) : daysPending > 0 ? (
-          <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-500 dark:text-gray-400">
-            <Clock className="w-3 h-3" />
-            Envoyé il y a {daysPending} jour{daysPending > 1 ? 's' : ''}
-          </div>
-        ) : null}
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
+        {/* Actions - show on hover on desktop, always on mobile */}
+        <div className={cn('flex items-center gap-1.5 pt-3 border-t', isDark ? 'border-slate-700/50' : 'border-gray-100')}>
+          <button
+            type="button"
             onClick={() => onRelance(devis)}
             disabled={isRelancing}
-            className="flex-1"
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5',
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              'transition-all duration-150',
+              needsRelance
+                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
+                : isDark
+                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+              isRelancing && 'opacity-50 cursor-not-allowed'
+            )}
           >
             {isRelancing ? (
-              <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Send className="w-4 h-4 mr-1" />
+              <Send className="w-3.5 h-3.5" />
             )}
             Relancer
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+          </button>
+          <button
+            type="button"
             onClick={() => onView(devis)}
-            className="flex-1"
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5',
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              'transition-all duration-150',
+              isDark
+                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            )}
           >
-            <Eye className="w-4 h-4 mr-1" />
+            <Eye className="w-3.5 h-3.5" />
             Voir
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+          </button>
+          <button
+            type="button"
             onClick={() => onConvert(devis)}
             disabled={isConverting}
-            className="flex-1"
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5',
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              'transition-all duration-150',
+              isDark
+                ? 'bg-primary-500/20 hover:bg-primary-500/30 text-primary-300'
+                : 'bg-primary-100 hover:bg-primary-200 text-primary-700',
+              isConverting && 'opacity-50 cursor-not-allowed'
+            )}
           >
             {isConverting ? (
-              <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <ArrowRight className="w-4 h-4 mr-1" />
+              <ArrowRight className="w-3.5 h-3.5" />
             )}
             Convertir
-          </Button>
+          </button>
         </div>
       </div>
     </PreviewTooltip>
@@ -451,7 +513,7 @@ function DevisCard({
  */
 function DevisCardSkeleton() {
   return (
-    <div className="p-4 rounded-lg border border-gray-100 dark:border-slate-700 animate-pulse">
+    <div className="p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm animate-pulse">
       <div className="flex items-start justify-between mb-2">
         <div className="space-y-2">
           <div className="h-4 w-40 rounded bg-gray-200 dark:bg-slate-700" />
@@ -484,9 +546,11 @@ export default function DevisWidget({
   setSelectedDevis,
   setCreateMode,
   setDevis,
+  isDark = false,
 }) {
   const { devis: allDevis } = useDevis();
   const { clients, getClient } = useClients();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -582,6 +646,8 @@ export default function DevisWidget({
 
   const handleRelanceConfirm = async (method, message) => {
     setIsRelancing(true);
+    const clientName = relanceModal.client?.nom || 'le client';
+    const methodLabel = method === 'email' ? 'Email' : 'SMS';
 
     try {
       if (customOnRelance) {
@@ -593,8 +659,10 @@ export default function DevisWidget({
       }
 
       setRelanceModal({ isOpen: false, devis: null, client: null });
+      showToast(`✅ Relance envoyée par ${methodLabel} à ${clientName}`, 'success');
     } catch (err) {
       console.error('Error sending relance:', err);
+      showToast(`❌ Erreur lors de l'envoi de la relance`, 'error');
     } finally {
       setIsRelancing(false);
     }
@@ -679,6 +747,7 @@ export default function DevisWidget({
       <Widget
         loading={loading}
         empty={isEmpty}
+        isDark={isDark}
         emptyState={
           <WidgetEmptyState
             icon={<CheckCircle className="text-green-500" />}
@@ -687,6 +756,7 @@ export default function DevisWidget({
             description="Tous vos clients ont répondu"
             ctaLabel="Créer un devis"
             onCtaClick={handleCreateDevis}
+            isDark={isDark}
           />
         }
         className={className}
@@ -694,14 +764,17 @@ export default function DevisWidget({
         <WidgetHeader
           title="Devis en attente"
           icon={<FileText />}
+          isDark={isDark}
           actions={
             <div className="flex items-center gap-2">
               {totalPendingCount > 0 && (
-                <Badge variant="secondary" size="sm">
-                  {totalPendingCount}
-                </Badge>
+                <Tooltip content={`${totalPendingCount} devis en attente de réponse`} side="bottom">
+                  <Badge variant="secondary" size="sm">
+                    {totalPendingCount}
+                  </Badge>
+                </Tooltip>
               )}
-              <WidgetMenuButton onClick={handleViewAll} />
+              <WidgetMenuButton onClick={handleViewAll} isDark={isDark} />
             </div>
           }
         />
@@ -733,23 +806,19 @@ export default function DevisWidget({
                   onConvert={handleConvertClick}
                   isRelancing={relanceModal.devis?.id === devis.id && isRelancing}
                   isConverting={convertModal.devis?.id === devis.id && isConverting}
+                  isDark={isDark}
                 />
               ))}
             </div>
           )}
         </WidgetContent>
 
-        <WidgetFooter>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCreateDevis}
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
+        <WidgetFooter isDark={isDark}>
+          <WidgetLink onClick={handleCreateDevis} isDark={isDark}>
             Créer un devis
-          </Button>
-          <WidgetLink onClick={handleViewAll}>
-            Voir tous
+          </WidgetLink>
+          <WidgetLink onClick={handleViewAll} isDark={isDark}>
+            Voir tout
           </WidgetLink>
         </WidgetFooter>
       </Widget>

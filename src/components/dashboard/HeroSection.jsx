@@ -2,63 +2,28 @@
  * HeroSection Component
  * Welcoming hero section for Dashboard with dynamic greeting and urgent actions
  *
+ * Design System:
+ * - Spacing: 4-point grid (4, 8, 12, 16, 20, 24, 32, 40, 48)
+ * - Border radius: sm=8, md=12, lg=16, xl=20
+ * - Shadows: subtle elevation system
+ * - Transitions: 200ms ease
+ *
  * @module HeroSection
  */
 
 import { useMemo } from 'react';
-import { HardHat, AlertCircle, ArrowRight, CloudRain, FileText, Banknote } from 'lucide-react';
+import { HardHat, AlertCircle, ArrowRight, CloudRain, FileText, Banknote, Sparkles } from 'lucide-react';
+import { getGreeting, formatDate, capitalize } from '../../lib/formatters';
 
 /**
- * @typedef {'payment_late' | 'quote_pending' | 'weather_alert'} UrgentActionType
- */
-
-/**
- * @typedef {Object} UrgentAction
- * @property {UrgentActionType} type - Type of urgent action
- * @property {string} title - Action title
- * @property {string} description - Action description
- * @property {string} ctaLabel - Call-to-action button label
- * @property {() => void} ctaAction - Call-to-action callback
- */
-
-/**
- * @typedef {Object} HeroSectionProps
- * @property {string} userName - User's display name
- * @property {number} activeChantiers - Number of active chantiers
- * @property {UrgentAction} [urgentAction] - Optional urgent action to display
- * @property {boolean} [isDark] - Dark mode flag
- */
-
-/**
- * Get dynamic greeting based on current hour
- * @returns {string} Greeting message
- */
-function getGreeting() {
-  const hour = new Date().getHours();
-
-  if (hour >= 5 && hour < 12) return 'Bonjour';
-  if (hour >= 12 && hour < 18) return 'Bon après-midi';
-  if (hour >= 18 && hour < 23) return 'Bonsoir';
-  return 'Bonne nuit';
-}
-
-/**
- * Get formatted date in French
- * @returns {string} Formatted date (e.g., "Dimanche 25 Janvier")
+ * Get formatted date in French (weekday + day + month)
  */
 function getFormattedDate() {
-  const now = new Date();
-  return now.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  }).replace(/^\w/, c => c.toUpperCase());
+  return capitalize(formatDate(new Date(), 'weekday'));
 }
 
 /**
  * Get icon for urgent action type
- * @param {UrgentActionType} type - Action type
- * @returns {React.ComponentType} Icon component
  */
 function getUrgentActionIcon(type) {
   switch (type) {
@@ -75,117 +40,191 @@ function getUrgentActionIcon(type) {
 
 /**
  * HeroSection - Welcoming dashboard header with greeting and urgent actions
- * @param {HeroSectionProps} props - Component props
- * @returns {JSX.Element}
  */
 export default function HeroSection({
   userName,
   activeChantiers,
   urgentAction,
-  isDark = false
+  isDark = false,
+  onChantiersClick,
 }) {
   const greeting = useMemo(() => getGreeting(), []);
   const formattedDate = useMemo(() => getFormattedDate(), []);
 
-  // Theme classes
-  const textPrimary = isDark ? 'text-slate-100' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-600';
-
-  // Get the appropriate icon for urgent action
   const UrgentIcon = urgentAction ? getUrgentActionIcon(urgentAction.type) : AlertCircle;
 
   return (
-    <section className="pt-8 pb-6 px-4 sm:px-6 animate-fade-in">
-      {/* Greeting & Metadata */}
-      <div className="mb-6">
-        {/* Dynamic Greeting */}
-        <h1 className={`text-2xl sm:text-3xl font-bold ${textPrimary} mb-2`}>
-          {greeting} {userName}
-        </h1>
+    <section
+      className={`
+        relative overflow-hidden
+        px-4 sm:px-6 py-6
+        ${isDark ? 'bg-slate-900' : 'bg-slate-100'}
+      `}
+    >
+      {/* Subtle gradient background */}
+      <div
+        className={`
+          absolute inset-0 opacity-[0.03]
+          bg-gradient-to-br from-primary-500 via-transparent to-purple-500
+        `}
+        aria-hidden="true"
+      />
 
-        {/* Metadata Row */}
-        <div className={`flex flex-wrap items-center gap-2 text-sm ${textSecondary}`}>
-          <span>{formattedDate}</span>
-          <span className="hidden sm:inline">•</span>
-          <div className="flex items-center gap-1.5">
-            <HardHat size={16} className="text-purple-500" />
-            <span>
-              {activeChantiers} chantier{activeChantiers !== 1 ? 's' : ''} actif{activeChantiers !== 1 ? 's' : ''}
+      <div className="relative max-w-7xl mx-auto">
+        {/* Greeting & Metadata */}
+        <div className="mb-5">
+          {/* Dynamic Greeting */}
+          <h1
+            className={`
+              text-xl sm:text-2xl font-bold leading-tight
+              ${isDark ? 'text-white' : 'text-gray-900'}
+            `}
+          >
+            {greeting},{' '}
+            <span className="text-primary-600 dark:text-primary-400">
+              {userName}
             </span>
-          </div>
-        </div>
-      </div>
+          </h1>
 
-      {/* Urgent Action Banner */}
-      {urgentAction && (
-        <div
-          className={`
-            rounded-lg border-l-4 p-4
-            ${isDark
-              ? 'bg-red-900/20 border-red-500'
-              : 'bg-red-50 border-red-500'
-            }
-            animate-slide-up
-          `}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Content */}
-            <div className="flex items-start gap-3">
-              <div className={`
-                p-2 rounded-lg flex-shrink-0
-                ${isDark ? 'bg-red-900/50' : 'bg-red-100'}
-              `}>
-                <UrgentIcon size={20} className="text-red-600" />
-              </div>
-              <div>
-                <p className={`font-semibold ${isDark ? 'text-red-300' : 'text-red-900'}`}>
-                  {urgentAction.title}
-                </p>
-                <p className={`text-sm mt-0.5 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                  {urgentAction.description}
-                </p>
-              </div>
-            </div>
-
-            {/* CTA Button */}
+          {/* Metadata Row */}
+          <div
+            className={`
+              flex items-center gap-2 text-sm mt-1
+              ${isDark ? 'text-slate-400' : 'text-gray-600'}
+            `}
+          >
+            <span>{formattedDate}</span>
+            <span className={isDark ? 'text-slate-600' : 'text-gray-300'}>•</span>
             <button
-              onClick={urgentAction.ctaAction}
-              className="
-                flex items-center justify-center gap-2
-                px-4 py-2.5 rounded-lg
-                bg-red-600 hover:bg-red-700
-                text-white font-medium text-sm
-                transition-colors
-                flex-shrink-0
-                min-w-[180px] sm:min-w-0
-              "
+              onClick={onChantiersClick}
+              className={`
+                inline-flex items-center gap-1.5 px-2 py-0.5 -mx-2 -my-0.5 rounded-md
+                transition-colors duration-150
+                hover:bg-primary-500/10 hover:text-primary-600
+                focus:outline-none focus:ring-2 focus:ring-primary-500/30
+                ${isDark ? 'hover:text-primary-400' : 'hover:text-primary-600'}
+              `}
+              title="Voir tous les chantiers en cours"
             >
-              {urgentAction.ctaLabel}
-              <ArrowRight size={16} />
+              <HardHat size={14} className="flex-shrink-0" />
+              <span className="font-medium">{activeChantiers}</span> chantier{activeChantiers !== 1 ? 's' : ''} actif{activeChantiers !== 1 ? 's' : ''}
             </button>
           </div>
         </div>
-      )}
+
+        {/* Urgent Action Banner - Level 3 Elevation */}
+        {urgentAction && (
+          <div
+            className={`
+              rounded-lg overflow-hidden border-l-4 border-red-500
+              shadow-md
+              transition-all duration-200 ease-out
+              hover:shadow-lg
+              ${isDark
+                ? 'bg-red-500/10'
+                : 'bg-red-50'
+              }
+            `}
+          >
+
+            <div className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Icon & Content */}
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div
+                    className={`
+                      flex-shrink-0 w-10 h-10 rounded-xl
+                      flex items-center justify-center
+                      ${isDark ? 'bg-red-500/20' : 'bg-red-100'}
+                    `}
+                  >
+                    <UrgentIcon size={20} className="text-red-500" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p
+                      className={`
+                        text-sm font-semibold leading-snug
+                        ${isDark ? 'text-red-300' : 'text-red-800'}
+                      `}
+                    >
+                      {urgentAction.title}
+                    </p>
+                    <p
+                      className={`
+                        text-sm mt-1 leading-relaxed
+                        ${isDark ? 'text-red-400/80' : 'text-red-700'}
+                      `}
+                    >
+                      {urgentAction.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  onClick={urgentAction.ctaAction}
+                  className="
+                    inline-flex items-center justify-center gap-2
+                    px-5 py-2.5 rounded-lg
+                    bg-red-500 hover:bg-red-600
+                    text-white text-sm font-medium
+                    shadow-sm hover:shadow-md
+                    focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
+                    active:scale-95
+                    transition-all duration-150
+                    flex-shrink-0
+                    group
+                  "
+                >
+                  {urgentAction.ctaLabel}
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
 /**
  * HeroSectionSkeleton - Loading placeholder for HeroSection
- * @param {Object} props - Component props
- * @param {boolean} [props.isDark] - Dark mode flag
- * @returns {JSX.Element}
  */
 export function HeroSectionSkeleton({ isDark = false }) {
-  const skeletonBg = isDark ? 'bg-slate-700' : 'bg-gray-200';
-
   return (
-    <section className="pt-8 pb-6 px-4 sm:px-6 animate-pulse">
-      <div className="mb-6">
-        {/* Greeting skeleton */}
-        <div className={`h-9 w-64 ${skeletonBg} rounded-lg mb-3`} />
-        {/* Metadata skeleton */}
-        <div className={`h-5 w-48 ${skeletonBg} rounded-lg`} />
+    <section
+      className={`
+        px-4 sm:px-6 py-6
+        ${isDark ? 'bg-slate-900' : 'bg-slate-100'}
+      `}
+    >
+      <div className="max-w-7xl mx-auto animate-pulse">
+        <div className="mb-6">
+          {/* Greeting skeleton */}
+          <div
+            className={`
+              h-8 sm:h-9 w-56 rounded-lg
+              ${isDark ? 'bg-slate-800' : 'bg-gray-100'}
+            `}
+          />
+          {/* Metadata skeleton */}
+          <div className="flex items-center gap-3 mt-3">
+            <div
+              className={`
+                h-5 w-32 rounded-md
+                ${isDark ? 'bg-slate-800' : 'bg-gray-100'}
+              `}
+            />
+            <div
+              className={`
+                h-6 w-28 rounded-full
+                ${isDark ? 'bg-slate-800' : 'bg-gray-100'}
+              `}
+            />
+          </div>
+        </div>
       </div>
     </section>
   );

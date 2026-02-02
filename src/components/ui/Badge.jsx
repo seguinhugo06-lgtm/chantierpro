@@ -1,20 +1,26 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
+// WCAG AA compliant variant styles
 const variantStyles = {
-  default: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600',
-  success: 'bg-success-50 text-success-700 border-success-100 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800',
-  warning: 'bg-warning-50 text-warning-700 border-warning-100 dark:bg-warning-900/30 dark:text-warning-400 dark:border-warning-800',
-  danger: 'bg-danger-50 text-danger-700 border-danger-100 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800',
-  info: 'bg-primary-50 text-primary-700 border-primary-100 dark:bg-primary-900/30 dark:text-primary-400 dark:border-primary-800',
+  default: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-slate-700 dark:text-gray-100 dark:border-slate-600',
+  secondary: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600',
+  success: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
+  warning: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
+  danger: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
+  info: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
+  primary: 'bg-primary-100 text-primary-800 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800',
 };
 
+// WCAG AA compliant dot colors
 const dotColors = {
-  default: 'bg-gray-500',
-  success: 'bg-success-500',
-  warning: 'bg-warning-500',
-  danger: 'bg-danger-500',
-  info: 'bg-primary-500',
+  default: 'bg-gray-600',
+  secondary: 'bg-gray-500',
+  success: 'bg-green-600',
+  warning: 'bg-orange-600',
+  danger: 'bg-red-600',
+  info: 'bg-blue-600',
+  primary: 'bg-primary-600',
 };
 
 const sizeStyles = {

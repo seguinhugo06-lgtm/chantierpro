@@ -81,11 +81,11 @@ export const Tooltip = React.forwardRef(
           <div
             role="tooltip"
             className={cn(
-              'absolute z-tooltip px-3 py-1.5',
+              'absolute z-[9999] px-3 py-1.5',
               'bg-gray-900 dark:bg-slate-700 text-white text-xs font-medium',
               'rounded-lg shadow-lg',
               'whitespace-nowrap',
-              'transition-all duration-150',
+              'transition-all duration-150 pointer-events-none',
               positionStyles[side],
               isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
             )}

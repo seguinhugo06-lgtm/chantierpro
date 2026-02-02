@@ -23,3 +23,10 @@ export { default as StockWidget, StockWidgetSkeleton } from './StockWidget';
 export { default as WeatherAlertsWidget, WeatherAlertsBadge } from './WeatherAlertsWidget';
 export { default as SuggestionsSection, SuggestionsSectionSkeleton } from './SuggestionsSection';
 export { default as ActionsList } from './ActionsList';
+
+// Overview Widget (unified)
+export { default as OverviewWidget, OverviewWidgetSkeleton } from './OverviewWidget';
+export { default as RevenueChartWidget, RevenueChartWidgetSkeleton } from './RevenueChartWidget';
+
+// KPI Modals
+export { EncaisserModal, CeMoisModal } from './KPIModals';

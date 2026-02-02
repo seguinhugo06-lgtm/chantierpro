@@ -23,35 +23,36 @@ import {
 /**
  * Get impact level style classes
  * @param {'critical' | 'high' | 'medium' | 'low'} level - Impact level
+ * @param {boolean} isDark - Dark mode flag
  * @returns {Object} Style classes
  */
-function getImpactStyles(level) {
+function getImpactStyles(level, isDark = false) {
   const styles = {
     critical: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      badge: 'bg-red-100 text-red-800',
+      bg: isDark ? 'bg-red-900/20' : 'bg-red-50',
+      border: isDark ? 'border-red-800' : 'border-red-200',
+      badge: isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-800',
       icon: '🔴',
       label: 'CRITIQUE',
     },
     high: {
-      bg: 'bg-orange-50',
-      border: 'border-orange-200',
-      badge: 'bg-orange-100 text-orange-800',
+      bg: isDark ? 'bg-orange-900/20' : 'bg-orange-50',
+      border: isDark ? 'border-orange-800' : 'border-orange-200',
+      badge: isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-800',
       icon: '🟠',
       label: 'ÉLEVÉ',
     },
     medium: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      badge: 'bg-yellow-100 text-yellow-800',
+      bg: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50',
+      border: isDark ? 'border-yellow-800' : 'border-yellow-200',
+      badge: isDark ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-800',
       icon: '🟡',
       label: 'MOYEN',
     },
     low: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      badge: 'bg-blue-100 text-blue-800',
+      bg: isDark ? 'bg-blue-900/20' : 'bg-blue-50',
+      border: isDark ? 'border-blue-800' : 'border-blue-200',
+      badge: isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-800',
       icon: '🔵',
       label: 'FAIBLE',
     },
@@ -103,10 +104,11 @@ function formatDate(date) {
  * @param {Function} props.onIgnore - Ignore handler
  * @param {Function} props.onContinue - Continue with precautions handler
  * @param {boolean} props.loading - Loading state
+ * @param {boolean} props.isDark - Dark mode flag
  */
-function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading }) {
+function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading, isDark = false }) {
   const { chantier, weather, impact, suggestion } = alert;
-  const styles = getImpactStyles(impact?.level || 'medium');
+  const styles = getImpactStyles(impact?.level || 'medium', isDark);
   const weatherIcon = getWeatherIcon(weather);
 
   const weatherDetails = [];
@@ -129,7 +131,7 @@ function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading }) {
           <span className={`text-xs font-semibold px-2 py-0.5 rounded ${styles.badge}`}>
             {styles.label}
           </span>
-          <span className="text-sm text-gray-600">
+          <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {formatDate(chantier.date_debut)}
           </span>
         </div>
@@ -137,30 +139,30 @@ function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading }) {
 
       {/* Chantier info */}
       <div className="mb-2">
-        <p className="font-medium text-gray-900">{chantier.nom}</p>
+        <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{chantier.nom}</p>
         {chantier.client_nom && (
-          <p className="text-sm text-gray-500">
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Client: {chantier.client_prenom} {chantier.client_nom}
           </p>
         )}
       </div>
 
       {/* Weather info */}
-      <div className="flex items-center gap-2 mb-3 text-sm text-gray-700">
+      <div className={`flex items-center gap-2 mb-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
         <span className="text-lg">{weatherIcon}</span>
         <span>{weather?.description || 'Conditions défavorables'}</span>
         {weatherDetails.length > 0 && (
-          <span className="text-gray-500">({weatherDetails.join(' • ')})</span>
+          <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>({weatherDetails.join(' • ')})</span>
         )}
       </div>
 
       {/* Suggestion */}
       {suggestion && suggestion.alternativeDates?.length > 0 && (
-        <div className="mb-3 p-2 bg-white bg-opacity-50 rounded">
-          <p className="text-sm font-medium text-gray-700 mb-1">
+        <div className={`mb-3 p-2 rounded ${isDark ? 'bg-slate-700/50' : 'bg-white bg-opacity-50'}`}>
+          <p className={`text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
             💡 Actions suggérées :
           </p>
-          <ul className="text-sm text-gray-600 space-y-1">
+          <ul className={`text-sm space-y-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             {suggestion.alternativeDates.slice(0, 2).map((alt, idx) => (
               <li key={idx} className="flex items-center gap-2">
                 <span>•</span>
@@ -188,14 +190,20 @@ function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading }) {
         <button
           onClick={() => onContinue(alert)}
           disabled={loading}
-          className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 disabled:opacity-50"
+          className={`px-3 py-1.5 text-sm rounded disabled:opacity-50 ${
+            isDark
+              ? 'bg-slate-700 text-gray-200 hover:bg-slate-600'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
         >
           Continuer avec précautions
         </button>
         <button
           onClick={() => onIgnore(alert)}
           disabled={loading}
-          className="px-3 py-1.5 text-gray-500 text-sm hover:text-gray-700 disabled:opacity-50"
+          className={`px-3 py-1.5 text-sm disabled:opacity-50 ${
+            isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+          }`}
         >
           Ignorer
         </button>
@@ -211,7 +219,7 @@ function AlertCard({ alert, onReschedule, onIgnore, onContinue, loading }) {
  * @param {number} [props.daysAhead=7] - Days to look ahead
  * @param {Function} [props.onRefreshCalendar] - Callback to refresh calendar
  */
-export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCalendar }) {
+export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCalendar, isDark = false }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -320,12 +328,14 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
   // Loading state
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className={`rounded-xl shadow-sm border p-6 ${
+        isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+      }`}>
         <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+          <div className={`h-6 rounded w-48 mb-4 ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}></div>
           <div className="space-y-3">
-            <div className="h-32 bg-gray-100 rounded"></div>
-            <div className="h-32 bg-gray-100 rounded"></div>
+            <div className={`h-32 rounded ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}></div>
+            <div className={`h-32 rounded ${isDark ? 'bg-slate-700' : 'bg-gray-100'}`}></div>
           </div>
         </div>
       </div>
@@ -333,14 +343,18 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className={`rounded-xl shadow-sm border p-6 ${
+      isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xl">⛈️</span>
-          <h3 className="text-lg font-semibold text-gray-900">Alertes Météo</h3>
+          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Alertes Météo</h3>
           {alerts.length > 0 && (
-            <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-800'
+            }`}>
               {alerts.length}
             </span>
           )}
@@ -348,7 +362,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
         <button
           onClick={fetchAlerts}
           disabled={loading}
-          className="text-gray-400 hover:text-gray-600 p-1"
+          className={`p-1 ${isDark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
           title="Actualiser"
         >
           <svg
@@ -401,14 +415,15 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
               onIgnore={handleIgnore}
               onContinue={handleContinue}
               loading={actionLoading}
+              isDark={isDark}
             />
           ))}
         </div>
       ) : (
         <div className="text-center py-8">
           <span className="text-4xl mb-2 block">☀️</span>
-          <p className="text-gray-500">Aucune alerte météo</p>
-          <p className="text-sm text-gray-400">
+          <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Aucune alerte météo</p>
+          <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
             Tous vos chantiers ont des conditions météo favorables pour les {daysAhead}{' '}
             prochains jours.
           </p>
@@ -416,7 +431,9 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       )}
 
       {/* Footer info */}
-      <div className="mt-4 pt-3 border-t border-gray-100 text-xs text-gray-400 text-center">
+      <div className={`mt-4 pt-3 border-t text-xs text-center ${
+        isDark ? 'border-slate-700 text-gray-500' : 'border-gray-100 text-gray-400'
+      }`}>
         Données Météo-France • Mise à jour toutes les 30 min • Prévisions sur {daysAhead} jours
       </div>
     </div>

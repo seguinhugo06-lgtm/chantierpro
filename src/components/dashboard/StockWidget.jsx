@@ -49,7 +49,7 @@ const MAX_VISIBLE_ALERTS = 3;
 /**
  * Progress bar component for stock levels
  */
-function StockProgressBar({ current, threshold, className }) {
+function StockProgressBar({ current, threshold, className, isDark = false }) {
   const percentage = threshold > 0 ? Math.min(100, (current / threshold) * 100) : 0;
 
   let colorClass = 'bg-green-500';
@@ -60,7 +60,7 @@ function StockProgressBar({ current, threshold, className }) {
   }
 
   return (
-    <div className={cn('h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden', className)}>
+    <div className={cn('h-2 rounded-full overflow-hidden', isDark ? 'bg-slate-700' : 'bg-gray-200', className)}>
       <div
         className={cn('h-full rounded-full transition-all duration-300', colorClass)}
         style={{ width: `${percentage}%` }}
@@ -72,11 +72,11 @@ function StockProgressBar({ current, threshold, className }) {
 /**
  * Single alert card component
  */
-function AlertCard({ alert, onOrder, onDismiss, isDismissing }) {
+function AlertCard({ alert, onOrder, onDismiss, isDismissing, isDark = false }) {
   const priorityColors = {
-    urgent: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20',
-    critical: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20',
-    warning: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20',
+    urgent: isDark ? 'border-red-800 bg-red-900/20' : 'border-red-200 bg-red-50',
+    critical: isDark ? 'border-orange-800 bg-orange-900/20' : 'border-orange-200 bg-orange-50',
+    warning: isDark ? 'border-yellow-800 bg-yellow-900/20' : 'border-yellow-200 bg-yellow-50',
   };
 
   const iconColors = {
@@ -97,10 +97,10 @@ function AlertCard({ alert, onOrder, onDismiss, isDismissing }) {
       <div className="flex items-start gap-3">
         <AlertTriangle className={cn('w-4 h-4 mt-0.5 flex-shrink-0', iconColors[alert.priority])} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
             {alert.productName}
           </p>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+          <p className={cn('text-xs mt-0.5', isDark ? 'text-gray-400' : 'text-gray-600')}>
             Stock : {alert.currentQuantity} / Seuil : {alert.threshold} {alert.unit}
           </p>
 
@@ -110,8 +110,9 @@ function AlertCard({ alert, onOrder, onDismiss, isDismissing }) {
               current={alert.currentQuantity}
               threshold={alert.threshold}
               className="flex-1"
+              isDark={isDark}
             />
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-10 text-right">
+            <span className={cn('text-xs font-medium w-10 text-right', isDark ? 'text-gray-400' : 'text-gray-500')}>
               {percentage}%
             </span>
           </div>
@@ -150,22 +151,24 @@ function AlertCard({ alert, onOrder, onDismiss, isDismissing }) {
 /**
  * Prediction item component
  */
-function PredictionItem({ prediction }) {
+function PredictionItem({ prediction, isDark = false }) {
   const hasSufficient = prediction.shortfall <= 0;
 
   return (
     <div className="flex items-start gap-2 py-1.5">
       <span className="text-gray-400 mt-0.5">•</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-700 dark:text-gray-300">
+        <p className={cn('text-sm', isDark ? 'text-gray-300' : 'text-gray-700')}>
           <span className="font-medium">{prediction.predictedNeed}</span> {prediction.productName}
-          <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">
+          <span className={cn('text-xs ml-1', isDark ? 'text-gray-400' : 'text-gray-500')}>
             ({prediction.chantiers.length} chantier{prediction.chantiers.length > 1 ? 's' : ''})
           </span>
         </p>
         <p className={cn(
           'text-xs mt-0.5 flex items-center gap-1',
-          hasSufficient ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'
+          hasSufficient
+            ? isDark ? 'text-green-400' : 'text-green-600'
+            : isDark ? 'text-orange-400' : 'text-orange-600'
         )}>
           {hasSufficient ? (
             <>
@@ -187,23 +190,28 @@ function PredictionItem({ prediction }) {
 /**
  * Optimization card component
  */
-function OptimizationCard({ opportunity, onViewDetails }) {
+function OptimizationCard({ opportunity, onViewDetails, isDark = false }) {
   return (
-    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+    <div className={cn(
+      'p-3 rounded-lg border',
+      isDark
+        ? 'bg-blue-900/20 border-blue-800'
+        : 'bg-blue-50 border-blue-200'
+    )}>
       <div className="flex items-start gap-2">
         <Lightbulb className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+          <p className={cn('text-sm font-medium', isDark ? 'text-blue-100' : 'text-blue-900')}>
             Commander {opportunity.products.length} produits chez {opportunity.supplier}
           </p>
-          <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+          <p className={cn('text-xs mt-1', isDark ? 'text-blue-300' : 'text-blue-700')}>
             = -{opportunity.discountPercent}% ({formatCurrency(opportunity.totalWithoutDiscount)} → {formatCurrency(opportunity.totalWithDiscount)})
           </p>
           <Button
             variant="ghost"
             size="xs"
             onClick={() => onViewDetails(opportunity)}
-            className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 p-0"
+            className={cn('mt-2 p-0', isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700')}
           >
             Voir details
             <ExternalLink className="w-3 h-3 ml-1" />
@@ -376,7 +384,7 @@ function GroupPurchaseModal({ isOpen, onClose, opportunity }) {
  *
  * @param {StockWidgetProps} props
  */
-export default function StockWidget({ userId, className, setPage }) {
+export default function StockWidget({ userId, className, setPage, isDark = false }) {
 
   // State
   const [loading, setLoading] = React.useState(true);
@@ -480,6 +488,7 @@ export default function StockWidget({ userId, className, setPage }) {
       <Widget
         loading={loading}
         empty={isEmpty}
+        isDark={isDark}
         emptyState={
           <WidgetEmptyState
             icon={<Check className="text-green-500" />}
@@ -487,6 +496,7 @@ export default function StockWidget({ userId, className, setPage }) {
             description="Aucune alerte ni besoin prevu"
             ctaLabel="Voir le stock"
             onCtaClick={handleManageStock}
+            isDark={isDark}
           />
         }
         className={className}
@@ -494,6 +504,7 @@ export default function StockWidget({ userId, className, setPage }) {
         <WidgetHeader
           title="Stock & Approvisionnement"
           icon={<Package />}
+          isDark={isDark}
           actions={
             <Button variant="ghost" size="sm" onClick={fetchData} className="p-1.5">
               <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
@@ -517,7 +528,7 @@ export default function StockWidget({ userId, className, setPage }) {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <AlertCircle className="w-4 h-4 text-red-500" />
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                    <span className={cn('text-xs font-semibold uppercase tracking-wide', isDark ? 'text-gray-300' : 'text-gray-700')}>
                       Alertes critiques ({criticalCount})
                     </span>
                   </div>
@@ -530,6 +541,7 @@ export default function StockWidget({ userId, className, setPage }) {
                         onOrder={setOrderModalAlert}
                         onDismiss={handleDismiss}
                         isDismissing={dismissingId === alert.productId}
+                        isDark={isDark}
                       />
                     ))}
                   </div>
@@ -562,14 +574,14 @@ export default function StockWidget({ userId, className, setPage }) {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingDown className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                    <span className={cn('text-xs font-semibold uppercase tracking-wide', isDark ? 'text-gray-300' : 'text-gray-700')}>
                       Besoins prevus (14 jours)
                     </span>
                   </div>
 
                   <div className="pl-1">
                     {predictions.map((prediction) => (
-                      <PredictionItem key={prediction.productId} prediction={prediction} />
+                      <PredictionItem key={prediction.productId} prediction={prediction} isDark={isDark} />
                     ))}
                   </div>
                 </div>
@@ -580,7 +592,7 @@ export default function StockWidget({ userId, className, setPage }) {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Lightbulb className="w-4 h-4 text-yellow-500" />
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                    <span className={cn('text-xs font-semibold uppercase tracking-wide', isDark ? 'text-gray-300' : 'text-gray-700')}>
                       Optimisation
                     </span>
                   </div>
@@ -590,6 +602,7 @@ export default function StockWidget({ userId, className, setPage }) {
                       key={index}
                       opportunity={opportunity}
                       onViewDetails={setGroupPurchaseModal}
+                      isDark={isDark}
                     />
                   ))}
                 </div>
@@ -598,11 +611,11 @@ export default function StockWidget({ userId, className, setPage }) {
           )}
         </WidgetContent>
 
-        <WidgetFooter>
-          <WidgetLink onClick={handleManageStock}>
+        <WidgetFooter isDark={isDark}>
+          <WidgetLink onClick={handleManageStock} isDark={isDark}>
             Gerer stock
           </WidgetLink>
-          <WidgetLink onClick={handleViewMovements}>
+          <WidgetLink onClick={handleViewMovements} isDark={isDark}>
             Voir mouvements
           </WidgetLink>
         </WidgetFooter>

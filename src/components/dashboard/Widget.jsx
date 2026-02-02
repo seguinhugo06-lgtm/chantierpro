@@ -1,73 +1,46 @@
+/**
+ * Widget Component System
+ * Composable widget containers for dashboard
+ *
+ * Design System:
+ * - 20px/24px padding
+ * - 16px border-radius
+ * - Subtle shadows with hover elevation
+ * - Clean header/content/footer separation
+ *
+ * @module Widget
+ */
+
 import * as React from 'react';
-import { MoreVertical, FileQuestion } from 'lucide-react';
+import { MoreVertical, FileQuestion, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-
-/**
- * @typedef {Object} WidgetProps
- * @property {boolean} [loading] - Show loading skeleton
- * @property {boolean} [empty] - Show empty state
- * @property {React.ReactNode} [emptyState] - Custom empty state content
- * @property {string} [className] - Additional CSS classes
- * @property {React.ReactNode} children - Widget content
- */
-
-/**
- * @typedef {Object} WidgetHeaderProps
- * @property {string} title - Widget title
- * @property {React.ReactNode} [icon] - Icon component
- * @property {React.ReactNode} [actions] - Action buttons/menu
- * @property {string} [className] - Additional CSS classes
- */
-
-/**
- * @typedef {Object} WidgetContentProps
- * @property {string} [className] - Additional CSS classes
- * @property {React.ReactNode} children - Content
- */
-
-/**
- * @typedef {Object} WidgetFooterProps
- * @property {string} [className] - Additional CSS classes
- * @property {React.ReactNode} children - Footer content
- */
-
-/**
- * @typedef {Object} WidgetEmptyStateProps
- * @property {React.ReactNode} [icon] - Custom icon
- * @property {string} [title] - Empty state title
- * @property {string} [description] - Empty state description
- * @property {string} [ctaLabel] - CTA button label
- * @property {() => void} [onCtaClick] - CTA click handler
- * @property {string} [className] - Additional CSS classes
- */
 
 // ============ WIDGET SKELETON ============
-function WidgetSkeleton({ rows = 3 }) {
+
+function WidgetSkeleton({ rows = 3, isDark = false }) {
   return (
-    <div className="animate-pulse space-y-4">
+    <div className="animate-pulse space-y-5">
       {/* Header skeleton */}
-      <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-slate-700">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 rounded bg-gray-200 dark:bg-slate-700" />
-          <div className="h-5 w-32 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className={cn('w-9 h-9 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
+          <div className={cn('h-5 w-32 rounded-md', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
         </div>
-        <div className="w-8 h-8 rounded bg-gray-200 dark:bg-slate-700" />
+        <div className={cn('w-8 h-8 rounded-lg', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
       </div>
 
       {/* Content skeleton */}
       <div className="space-y-3">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-slate-700" />
+            <div className={cn('w-10 h-10 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
             <div className="flex-1 space-y-2">
               <div
-                className="h-4 rounded bg-gray-200 dark:bg-slate-700"
+                className={cn('h-4 rounded-md', isDark ? 'bg-slate-700' : 'bg-gray-100')}
                 style={{ width: `${70 + Math.random() * 30}%` }}
               />
               <div
-                className="h-3 rounded bg-gray-100 dark:bg-slate-800"
+                className={cn('h-3 rounded', isDark ? 'bg-slate-800' : 'bg-gray-50')}
                 style={{ width: `${40 + Math.random() * 30}%` }}
               />
             </div>
@@ -76,106 +49,129 @@ function WidgetSkeleton({ rows = 3 }) {
       </div>
 
       {/* Footer skeleton */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-700">
-        <div className="h-9 w-24 rounded-lg bg-gray-200 dark:bg-slate-700" />
-        <div className="h-4 w-20 rounded bg-gray-200 dark:bg-slate-700" />
+      <div className={cn('pt-4 border-t', isDark ? 'border-slate-700' : 'border-gray-200')}>
+        <div className={cn('h-8 w-24 rounded-lg', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
       </div>
     </div>
   );
 }
 
 // ============ WIDGET EMPTY STATE ============
-/**
- * WidgetEmptyState - Default empty state for widgets
- *
- * @param {WidgetEmptyStateProps} props
- */
+
 export function WidgetEmptyState({
   icon,
   title = 'Aucune donnée',
   description = "Il n'y a rien à afficher pour le moment.",
   ctaLabel,
   onCtaClick,
+  isDark = false,
   className,
 }) {
   return (
     <div
       className={cn(
+        // Empty state container with dashed border
         'flex flex-col items-center justify-center py-8 px-4 text-center',
+        'rounded-lg',
+        isDark ? 'bg-slate-800/50 border-slate-600' : 'bg-gray-50 border-gray-300',
+        'border-2 border-dashed',
         className
       )}
     >
-      {/* Icon */}
-      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-800 mb-4">
+      {/* Icon - WCAG AA visible */}
+      <div className={cn(
+        'flex items-center justify-center w-14 h-14 rounded-xl mb-4',
+        isDark ? 'bg-slate-700' : 'bg-gray-100'
+      )}>
         {icon ? (
           React.isValidElement(icon) &&
           React.cloneElement(icon, {
-            className: 'w-8 h-8 text-gray-400 dark:text-gray-500',
+            className: cn('w-7 h-7', isDark ? 'text-gray-400' : 'text-gray-500'),
           })
         ) : (
-          <FileQuestion className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+          <FileQuestion className={cn('w-7 h-7', isDark ? 'text-gray-400' : 'text-gray-500')} />
         )}
       </div>
 
       {/* Title */}
-      <p className="text-base font-medium text-gray-900 dark:text-white mb-1">
+      <p className={cn(
+        'text-base font-semibold mb-1',
+        isDark ? 'text-white' : 'text-gray-900'
+      )}>
         {title}
       </p>
 
       {/* Description */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
+      <p className={cn(
+        'text-sm max-w-[240px] leading-relaxed',
+        isDark ? 'text-gray-400' : 'text-gray-600'
+      )}>
         {description}
       </p>
 
       {/* CTA */}
       {ctaLabel && onCtaClick && (
-        <Button
-          variant="primary"
-          size="sm"
+        <button
+          type="button"
           onClick={onCtaClick}
-          className="mt-4"
+          className="
+            mt-4 px-4 py-2 rounded-lg
+            bg-primary-500 hover:bg-primary-600
+            text-white text-sm font-medium
+            shadow-sm hover:shadow-md
+            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
+            active:scale-95
+            transition-all duration-150
+          "
         >
           {ctaLabel}
-        </Button>
+        </button>
       )}
     </div>
   );
 }
 
 // ============ WIDGET HEADER ============
-/**
- * WidgetHeader - Widget header with title, icon, and actions
- *
- * @param {WidgetHeaderProps} props
- */
+
 export const WidgetHeader = React.forwardRef(
-  ({ title, icon, actions, className, ...props }, ref) => {
+  ({ title, icon, badge, actions, isDark = false, className, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn(
-          'flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-slate-700',
-          className
-        )}
+        className={cn('flex items-center justify-between mb-5', className)}
         {...props}
       >
         {/* Title with optional icon */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {icon && (
-            <span className="text-gray-500 dark:text-gray-400">
+            <div className={cn(
+              'flex items-center justify-center w-9 h-9 rounded-xl',
+              isDark ? 'bg-slate-700/50' : 'bg-gray-50'
+            )}>
               {React.isValidElement(icon) &&
                 React.cloneElement(icon, {
-                  className: 'w-5 h-5',
+                  className: cn('w-[18px] h-[18px]', isDark ? 'text-gray-500' : 'text-gray-400'),
                 })}
-            </span>
+            </div>
           )}
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+          <h3 className={cn(
+            'text-base font-semibold',
+            isDark ? 'text-white' : 'text-gray-900'
+          )}>
             {title}
           </h3>
+          {badge && (
+            <span className={cn(
+              'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold',
+              isDark ? 'bg-primary-500/20 text-primary-400' : 'bg-primary-100 text-primary-600'
+            )}>
+              {badge}
+            </span>
+          )}
         </div>
 
         {/* Actions */}
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {actions && <div className="flex items-center gap-1">{actions}</div>}
       </div>
     );
   }
@@ -184,15 +180,11 @@ export const WidgetHeader = React.forwardRef(
 WidgetHeader.displayName = 'WidgetHeader';
 
 // ============ WIDGET CONTENT ============
-/**
- * WidgetContent - Widget content container
- *
- * @param {WidgetContentProps} props
- */
+
 export const WidgetContent = React.forwardRef(
   ({ className, children, ...props }, ref) => {
     return (
-      <div ref={ref} className={cn('', className)} {...props}>
+      <div ref={ref} className={cn('flex-1 min-h-0', className)} {...props}>
         {children}
       </div>
     );
@@ -202,18 +194,15 @@ export const WidgetContent = React.forwardRef(
 WidgetContent.displayName = 'WidgetContent';
 
 // ============ WIDGET FOOTER ============
-/**
- * WidgetFooter - Widget footer with CTAs or links
- *
- * @param {WidgetFooterProps} props
- */
+
 export const WidgetFooter = React.forwardRef(
-  ({ className, children, ...props }, ref) => {
+  ({ isDark = false, className, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
-          'flex items-center justify-between pt-4 mt-4 border-t border-gray-100 dark:border-slate-700',
+          'flex items-center justify-between pt-4 mt-auto border-t',
+          isDark ? 'border-slate-700' : 'border-gray-200',
           className
         )}
         {...props}
@@ -227,86 +216,32 @@ export const WidgetFooter = React.forwardRef(
 WidgetFooter.displayName = 'WidgetFooter';
 
 // ============ WIDGET MENU BUTTON ============
-/**
- * WidgetMenuButton - Standard 3-dot menu button for widget actions
- */
-export function WidgetMenuButton({ onClick, className }) {
+
+export function WidgetMenuButton({ onClick, isDark = false, className, title = "Voir tout" }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
-        'hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800',
+        'p-2 rounded-md transition-all duration-150',
+        isDark
+          ? 'text-gray-500 hover:text-gray-300 hover:bg-slate-700'
+          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+        'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+        'active:scale-95',
         className
       )}
-      aria-label="Options du widget"
+      aria-label={title}
+      title={title}
     >
-      <MoreVertical className="w-5 h-5" />
+      <MoreVertical className="w-[18px] h-[18px]" />
     </button>
   );
 }
 
-// ============ WIDGET (MAIN CONTAINER) ============
-/**
- * Widget - Composable widget container for dashboards
- *
- * @param {WidgetProps} props
- *
- * @example
- * <Widget loading={isLoading} empty={data.length === 0}>
- *   <WidgetHeader title="Devis récents" icon={<FileText />} actions={<WidgetMenuButton />} />
- *   <WidgetContent>
- *     {data.map(item => <Item key={item.id} {...item} />)}
- *   </WidgetContent>
- *   <WidgetFooter>
- *     <Button variant="ghost">Voir tout</Button>
- *   </WidgetFooter>
- * </Widget>
- */
-const Widget = React.forwardRef(
-  (
-    {
-      loading = false,
-      empty = false,
-      emptyState,
-      className,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <Card
-        ref={ref}
-        className={cn(
-          'p-6 transition-shadow duration-200 hover:shadow-md',
-          className
-        )}
-        {...props}
-      >
-        {loading ? (
-          <WidgetSkeleton />
-        ) : empty ? (
-          emptyState || <WidgetEmptyState />
-        ) : (
-          children
-        )}
-      </Card>
-    );
-  }
-);
+// ============ WIDGET LINK ============
 
-Widget.displayName = 'Widget';
-
-export default Widget;
-
-// ============ LINK COMPONENTS FOR FOOTER ============
-/**
- * WidgetLink - Styled link for widget footer
- */
-export function WidgetLink({ href, onClick, children, className }) {
+export function WidgetLink({ href, onClick, isDark = false, children, className }) {
   const Component = href ? 'a' : 'button';
 
   return (
@@ -315,26 +250,29 @@ export function WidgetLink({ href, onClick, children, className }) {
       onClick={onClick}
       type={href ? undefined : 'button'}
       className={cn(
-        'text-sm font-medium text-gray-500 dark:text-gray-400',
-        'hover:text-primary-600 dark:hover:text-primary-400 transition-colors',
-        'focus:outline-none focus:text-primary-600 dark:focus:text-primary-400',
+        'inline-flex items-center gap-1 text-sm font-medium',
+        isDark
+          ? 'text-primary-400 hover:text-primary-300'
+          : 'text-primary-600 hover:text-primary-700',
+        'transition-colors duration-200',
+        'group',
         className
       )}
     >
       {children}
+      <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
     </Component>
   );
 }
 
-// ============ WIDGET WITH TABS ============
-/**
- * WidgetTabs - Tab navigation for widget
- */
-export function WidgetTabs({ tabs, activeTab, onTabChange, className }) {
+// ============ WIDGET TABS ============
+
+export function WidgetTabs({ tabs, activeTab, onTabChange, isDark = false, className }) {
   return (
     <div
       className={cn(
-        'flex items-center gap-1 p-1 bg-gray-100 dark:bg-slate-800 rounded-lg',
+        'inline-flex items-center gap-0.5 p-1 rounded-xl',
+        isDark ? 'bg-slate-700/50' : 'bg-gray-100',
         className
       )}
     >
@@ -344,10 +282,14 @@ export function WidgetTabs({ tabs, activeTab, onTabChange, className }) {
           type="button"
           onClick={() => onTabChange(tab.value)}
           className={cn(
-            'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
+            'px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200',
             activeTab === tab.value
-              ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ? isDark
+                ? 'bg-slate-600 text-white shadow-sm'
+                : 'bg-white text-gray-900 shadow-sm'
+              : isDark
+                ? 'text-gray-400 hover:text-gray-300'
+                : 'text-gray-500 hover:text-gray-700'
           )}
         >
           {tab.label}
@@ -356,3 +298,53 @@ export function WidgetTabs({ tabs, activeTab, onTabChange, className }) {
     </div>
   );
 }
+
+// ============ WIDGET (MAIN CONTAINER) ============
+
+const Widget = React.forwardRef(
+  (
+    {
+      loading = false,
+      empty = false,
+      emptyState,
+      isDark = false,
+      className,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          // Base styles - Level 2 Elevation
+          'rounded-xl overflow-visible',
+          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200',
+          'border',
+          // Padding
+          'p-5 sm:p-6',
+          // Shadow & hover
+          'shadow-sm hover:shadow-md',
+          'transition-all duration-200',
+          // Flex layout for consistent height
+          'flex flex-col h-full',
+          className
+        )}
+        {...props}
+      >
+        {loading ? (
+          <WidgetSkeleton isDark={isDark} />
+        ) : empty ? (
+          emptyState || <WidgetEmptyState isDark={isDark} />
+        ) : (
+          children
+        )}
+      </div>
+    );
+  }
+);
+
+Widget.displayName = 'Widget';
+
+export default Widget;
