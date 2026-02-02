@@ -6,8 +6,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
 
-// Debug: Log Supabase client status at module load
-console.log(`🔧 useSupabaseSync loaded: isDemo=${isDemo}, hasSupabase=${!!supabase}`);
 
 /**
  * Map of local field names to Supabase column names
@@ -232,9 +230,8 @@ const FIELD_MAPPINGS = {
  * Load all data from Supabase for the current user
  */
 export async function loadAllData(userId) {
-  console.log(`🔧 loadAllData called: userId=${userId}, isDemo=${isDemo}, hasSupabase=${!!supabase}`);
   if (isDemo || !supabase || !userId) {
-    console.log(`⚠️ Skipping Supabase load - isDemo=${isDemo}, hasSupabase=${!!supabase}, hasUserId=${!!userId}`);
+    console.log('Skipping Supabase load - demo mode or no user');
     return null;
   }
 
@@ -290,11 +287,7 @@ export async function loadAllData(userId) {
  * Save a single item to Supabase
  */
 export async function saveItem(table, item, userId) {
-  console.log(`🔧 saveItem called: table=${table}, itemId=${item?.id}, userId=${userId}, isDemo=${isDemo}, hasSupabase=${!!supabase}`);
-  if (isDemo || !supabase || !userId) {
-    console.log(`⚠️ Skipping save - isDemo=${isDemo}, hasSupabase=${!!supabase}, hasUserId=${!!userId}`);
-    return item;
-  }
+  if (isDemo || !supabase || !userId) return item;
 
   try {
     const mapping = FIELD_MAPPINGS[table];
