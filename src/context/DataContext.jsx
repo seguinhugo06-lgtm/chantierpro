@@ -133,9 +133,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving client to Supabase:', error);
-        // Remove optimistic update on error
-        setClients(prev => prev.filter(c => c.id !== newClient.id));
-        throw error;
+        // Don't remove the client from local state - keep it for offline use
+        console.warn('Client kept locally despite Supabase error');
       }
     }
 
@@ -190,8 +189,9 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving devis to Supabase:', error);
-        setDevis(prev => prev.filter(d => d.id !== newDevis.id));
-        throw error;
+        // Don't remove the devis from local state - keep it for offline use
+        // The user can still work with it locally
+        console.warn('Devis kept locally despite Supabase error');
       }
     }
 
@@ -254,8 +254,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving chantier to Supabase:', error);
-        setChantiers(prev => prev.filter(c => c.id !== newChantier.id));
-        throw error;
+        // Don't remove the chantier from local state - keep it for offline use
+        console.warn('Chantier kept locally despite Supabase error');
       }
     }
 
@@ -306,8 +306,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving depense to Supabase:', error);
-        setDepenses(prev => prev.filter(d => d.id !== newDepense.id));
-        throw error;
+        // Don't remove the depense from local state - keep it for offline use
+        console.warn('Depense kept locally despite Supabase error');
       }
     }
 
@@ -359,8 +359,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving pointage to Supabase:', error);
-        setPointages(prev => prev.filter(p => p.id !== newPointage.id));
-        throw error;
+        // Don't remove the pointage from local state - keep it for offline use
+        console.warn('Pointage kept locally despite Supabase error');
       }
     }
 
@@ -430,8 +430,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving employee to Supabase:', error);
-        setEquipe(prev => prev.filter(e => e.id !== newEmployee.id));
-        throw error;
+        // Don't remove the employee from local state - keep it for offline use
+        console.warn('Employee kept locally despite Supabase error');
       }
     }
 
@@ -480,8 +480,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving catalogue item to Supabase:', error);
-        setCatalogue(prev => prev.filter(c => c.id !== newItem.id));
-        throw error;
+        // Don't remove the catalogue item from local state - keep it for offline use
+        console.warn('Catalogue item kept locally despite Supabase error');
       }
     }
 
