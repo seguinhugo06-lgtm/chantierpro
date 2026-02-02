@@ -145,33 +145,6 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               </button>
             )}
           </div>
-          {/* Quick create actions */}
-          <div className="flex gap-2 sm:gap-3 flex-wrap mb-4 pt-3 border-t border-dashed" style={{ borderColor: isDark ? '#475569' : '#e2e8f0' }}>
-            <button
-              onClick={() => {
-                // Store client ID in localStorage for the chantier form to pick up
-                localStorage.setItem('cp_new_chantier_client', client.id);
-                setPage?.('chantiers');
-                setCreateMode?.(true);
-              }}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-sm hover:shadow-md"
-              style={{ background: `${couleur}15`, color: couleur }}
-            >
-              <Home size={16} /><span>Nouveau chantier</span>
-            </button>
-            <button
-              onClick={() => {
-                // Store client ID for the devis form
-                localStorage.setItem('cp_new_devis_client', client.id);
-                setPage?.('devis');
-                setCreateMode?.(true);
-              }}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-sm hover:shadow-md"
-              style={{ background: `${couleur}15`, color: couleur }}
-            >
-              <FileText size={16} /><span>Nouveau devis</span>
-            </button>
-          </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             {client.telephone && (
               <div>
@@ -237,19 +210,47 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {activeTab === 'chantiers' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {clientChantiers.length === 0 ? (
-              <p className={`text-center ${textMuted} py-8`}>Aucun chantier</p>
+              <div className="text-center py-8">
+                <p className={`${textMuted} mb-4`}>Aucun chantier</p>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('cp_new_chantier_client', client.id);
+                    setPage?.('chantiers');
+                    setCreateMode?.(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                  style={{ background: `${couleur}15`, color: couleur }}
+                >
+                  <Home size={16} /> Nouveau chantier
+                </button>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {clientChantiers.map(ch => (
-                  <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                    <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`}></span>
-                    <div className="flex-1">
-                      <p className={`font-medium ${textPrimary}`}>{ch.nom}</p>
-                      <p className={`text-xs ${textMuted}`}>{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</p>
+              <div className="space-y-3">
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('cp_new_chantier_client', client.id);
+                      setPage?.('chantiers');
+                      setCreateMode?.(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                    style={{ background: `${couleur}15`, color: couleur }}
+                  >
+                    <Home size={14} /> Nouveau chantier
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {clientChantiers.map(ch => (
+                    <div key={ch.id} onClick={() => { if (setSelectedChantier) setSelectedChantier(ch.id); if (setPage) setPage('chantiers'); }} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                      <span className={`w-3 h-3 rounded-full ${ch.statut === 'en_cours' ? 'bg-emerald-500' : ch.statut === 'termine' ? 'bg-slate-400' : 'bg-blue-500'}`}></span>
+                      <div className="flex-1">
+                        <p className={`font-medium ${textPrimary}`}>{ch.nom}</p>
+                        <p className={`text-xs ${textMuted}`}>{ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect'}</p>
+                      </div>
+                      <ChevronRight size={18} className={textMuted} />
                     </div>
-                    <ChevronRight size={18} className={textMuted} />
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -258,26 +259,54 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {activeTab === 'documents' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {clientDevis.length === 0 ? (
-              <p className={`text-center ${textMuted} py-8`}>Aucun document</p>
+              <div className="text-center py-8">
+                <p className={`${textMuted} mb-4`}>Aucun document</p>
+                <button
+                  onClick={() => {
+                    localStorage.setItem('cp_new_devis_client', client.id);
+                    setPage?.('devis');
+                    setCreateMode?.(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                  style={{ background: `${couleur}15`, color: couleur }}
+                >
+                  <FileText size={16} /> Nouveau devis
+                </button>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {clientDevis.map(d => {
-                  const StatusIcon = { brouillon: 'text-slate-400', envoye: 'text-blue-500', accepte: 'text-emerald-500', payee: 'text-emerald-600', refuse: 'text-red-500' }[d.statut] || 'text-slate-400';
-                  return (
-                    <div key={d.id} onClick={() => openDocument(d)} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
-                      <FileText size={20} className={d.type === 'facture' ? 'text-purple-500' : 'text-blue-500'} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
-                          <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`}></span>
+              <div className="space-y-3">
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('cp_new_devis_client', client.id);
+                      setPage?.('devis');
+                      setCreateMode?.(true);
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm hover:shadow-md"
+                    style={{ background: `${couleur}15`, color: couleur }}
+                  >
+                    <FileText size={14} /> Nouveau devis
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {clientDevis.map(d => {
+                    const StatusIcon = { brouillon: 'text-slate-400', envoye: 'text-blue-500', accepte: 'text-emerald-500', payee: 'text-emerald-600', refuse: 'text-red-500' }[d.statut] || 'text-slate-400';
+                    return (
+                      <div key={d.id} onClick={() => openDocument(d)} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <FileText size={20} className={d.type === 'facture' ? 'text-purple-500' : 'text-blue-500'} />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className={`font-medium ${textPrimary}`}>{d.numero}</p>
+                            <span className={`w-2 h-2 rounded-full ${StatusIcon.replace('text-', 'bg-')}`}></span>
+                          </div>
+                          <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                         </div>
-                        <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                        <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
+                        <ChevronRight size={18} className={textMuted} />
                       </div>
-                      <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
-                      <ChevronRight size={18} className={textMuted} />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
