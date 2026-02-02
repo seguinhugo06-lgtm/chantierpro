@@ -4,7 +4,7 @@ import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
-import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis } from '../lib/templates/task-templates';
+import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks } from '../lib/templates/task-templates';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
@@ -118,7 +118,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Handlers
   const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
-  const addTache = () => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical }] }); setNewTache(''); setNewTaskCritical(false); } };
+  const addTache = (phase = 'second-oeuvre') => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
   const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
   const addDepenseToChantier = () => {
     if (!newDepense.description || !newDepense.montant) return;
@@ -297,112 +297,192 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         </div>
 
-        {/* === SECTION: TÂCHES RAPIDES === */}
+        {/* === SECTION: AVANCEMENT & TÂCHES === */}
         {(() => {
-          const pendingTasksQuick = (ch.taches || []).filter(t => !t.done);
-          const completedCount = (ch.taches || []).filter(t => t.done).length;
+          const allTasks = ch.taches || [];
+          const pendingTasksQuick = allTasks.filter(t => !t.done);
+          const completedCount = allTasks.filter(t => t.done).length;
+          const criticalTasks = pendingTasksQuick.filter(t => t.critical);
+          const progress = calculateProgressByPhase(allTasks);
+
+          // Group tasks by phase for display
+          const tasksByPhase = {};
+          PHASES.forEach(phase => {
+            tasksByPhase[phase.id] = allTasks.filter(t => t.phase === phase.id);
+          });
+          // Tasks without phase
+          const tasksNoPhase = allTasks.filter(t => !t.phase);
 
           return (
             <div className={`${cardBg} rounded-xl border p-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              {/* Header avec progression globale */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
                   <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tâches</span>
-                  {tasksTotal > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${tasksDone === tasksTotal ? 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                      {tasksDone}/{tasksTotal}
-                    </span>
-                  )}
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Avancement & Tâches</span>
                 </div>
-                <button
-                  onClick={() => setActiveTab('taches')}
-                  className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Voir tout →
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xl font-bold ${progress.total === 100 ? 'text-emerald-500' : textPrimary}`}>
+                    {progress.total}%
+                  </span>
+                  <span className={`text-xs ${textMuted}`}>{tasksDone}/{tasksTotal}</span>
+                </div>
               </div>
 
-              {/* Quick task list - max 5 pending tasks */}
-              {pendingTasksQuick.length > 0 ? (
-                <div className="space-y-2">
-                  {pendingTasksQuick.slice(0, 5).map((t, idx) => (
-                    <button
-                      key={t.id}
-                      onClick={() => toggleTache(t.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98] ${
-                        t.critical
-                          ? (isDark ? 'bg-red-900/20 border border-red-800 hover:bg-red-900/30' : 'bg-red-50 border border-red-200 hover:bg-red-100')
-                          : idx === 0
-                          ? (isDark ? 'bg-blue-900/20 border border-blue-800 hover:bg-blue-900/30' : 'bg-blue-50 border border-blue-200 hover:bg-blue-100')
-                          : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')
-                      }`}
-                    >
-                      <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
-                        t.critical ? 'border-red-500' : idx === 0 ? 'border-blue-500' : (isDark ? 'border-slate-500' : 'border-slate-300')
-                      }`}>
-                        {idx === 0 && !t.critical && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
-                        {t.critical && <AlertCircle size={14} className="text-red-500" />}
+              {/* Barre de progression globale */}
+              <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'} mb-4`}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progress.total}%`,
+                    background: progress.total === 100 ? '#10b981' : couleur
+                  }}
+                />
+              </div>
+
+              {/* Progression par phase - Mini barres */}
+              {tasksTotal > 0 && (
+                <div className="grid grid-cols-6 gap-1 mb-4">
+                  {PHASES.map(phase => {
+                    const phaseProgress = progress.byPhase[phase.id] || { done: 0, total: 0, percentage: 0 };
+                    const hasTasks = phaseProgress.total > 0;
+                    const isComplete = phaseProgress.percentage === 100;
+
+                    return (
+                      <div key={phase.id} className="text-center">
+                        <div
+                          className={`h-1.5 rounded-full mb-1 ${
+                            !hasTasks
+                              ? (isDark ? 'bg-slate-700' : 'bg-slate-200')
+                              : isComplete
+                              ? 'bg-emerald-500'
+                              : (isDark ? 'bg-slate-600' : 'bg-slate-300')
+                          }`}
+                        >
+                          {hasTasks && !isComplete && (
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${phaseProgress.percentage}%`, background: phase.color }}
+                            />
+                          )}
+                        </div>
+                        <span className={`text-[9px] ${hasTasks ? textMuted : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>
+                          {phase.label.split(' ')[0]}
+                        </span>
                       </div>
-                      <span className={`flex-1 text-sm ${idx === 0 || t.critical ? 'font-medium' : ''} ${textPrimary}`}>
-                        {t.text.length > 45 ? t.text.substring(0, 45) + '...' : t.text}
-                      </span>
-                      <span className={`text-xs px-2 py-1 rounded-lg ${
-                        t.critical ? (isDark ? 'bg-red-800 text-red-300' : 'bg-red-100 text-red-600')
-                        : idx === 0 ? (isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-100 text-blue-600')
-                        : (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600')
-                      }`}>
-                        {t.critical ? 'Critique' : idx === 0 ? 'Suivante' : 'À faire'}
-                      </span>
-                    </button>
-                  ))}
-                  {pendingTasksQuick.length > 5 && (
-                    <button
-                      onClick={() => setActiveTab('taches')}
-                      className={`w-full py-2 text-center text-sm ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-600'}`}
-                    >
-                      + {pendingTasksQuick.length - 5} autres tâches
-                    </button>
-                  )}
-                </div>
-              ) : tasksTotal === 0 ? (
-                <div className="text-center py-4">
-                  <p className={`text-sm ${textMuted} mb-3`}>Aucune tâche définie</p>
-                  <div className="flex gap-2 justify-center flex-wrap">
-                    <button
-                      onClick={() => setActiveTab('taches')}
-                      className="px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px]"
-                      style={{ background: couleur }}
-                    >
-                      <Plus size={16} className="inline mr-1" /> Ajouter des tâches
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-                  <CheckCircle size={32} className="mx-auto mb-2 text-emerald-500" />
-                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                    Toutes les tâches sont terminées !
-                  </p>
-                  <p className={`text-xs ${textMuted}`}>{completedCount} tâche{completedCount > 1 ? 's' : ''} complétée{completedCount > 1 ? 's' : ''}</p>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Quick add task */}
-              <div className="flex gap-2 mt-3">
-                <input
-                  placeholder="Ajouter une tâche rapide..."
-                  value={newTache}
-                  onChange={e => setNewTache(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && addTache()}
-                  className={`flex-1 px-4 py-2.5 border rounded-xl text-sm min-h-[44px] ${inputBg}`}
-                />
+              {/* Tâches critiques en premier */}
+              {criticalTasks.length > 0 && (
+                <div className={`mb-3 p-3 rounded-xl border-2 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                    <AlertCircle size={12} className="inline mr-1" />
+                    {criticalTasks.length} point{criticalTasks.length > 1 ? 's' : ''} critique{criticalTasks.length > 1 ? 's' : ''}
+                  </p>
+                  <div className="space-y-1.5">
+                    {criticalTasks.slice(0, 3).map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => toggleTache(t.id)}
+                        className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all active:scale-[0.98] ${
+                          isDark ? 'bg-red-900/30 hover:bg-red-900/50' : 'bg-white hover:bg-red-100'
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded border-2 border-red-500 flex items-center justify-center flex-shrink-0" />
+                        <span className={`flex-1 text-sm font-medium ${textPrimary}`}>
+                          {t.text.length > 40 ? t.text.substring(0, 40) + '...' : t.text}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Liste des prochaines tâches */}
+              {pendingTasksQuick.filter(t => !t.critical).length > 0 ? (
+                <div className="space-y-1.5 mb-3">
+                  {pendingTasksQuick.filter(t => !t.critical).slice(0, 4).map((t, idx) => {
+                    const phase = PHASES.find(p => p.id === t.phase);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => toggleTache(t.id)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all active:scale-[0.98] ${
+                          idx === 0
+                            ? (isDark ? 'bg-blue-900/20 border border-blue-800 hover:bg-blue-900/30' : 'bg-blue-50 border border-blue-200 hover:bg-blue-100')
+                            : (isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100')
+                        }`}
+                      >
+                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
+                          idx === 0 ? 'border-blue-500' : (isDark ? 'border-slate-500' : 'border-slate-300')
+                        }`}>
+                          {idx === 0 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                        </div>
+                        <span className={`flex-1 text-sm ${idx === 0 ? 'font-medium' : ''} ${textPrimary}`}>
+                          {t.text.length > 35 ? t.text.substring(0, 35) + '...' : t.text}
+                        </span>
+                        {phase && (
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full text-white"
+                            style={{ background: phase.color }}
+                          >
+                            {phase.label.split(' ')[0]}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : tasksTotal === 0 ? (
+                <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'} mb-3`}>
+                  <CheckSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                  <p className={`text-sm font-medium ${textPrimary} mb-1`}>Planifiez vos tâches</p>
+                  <p className={`text-xs ${textMuted} mb-3`}>Ajoutez des tâches pour suivre l'avancement</p>
+                  <button
+                    onClick={() => setActiveTab('taches')}
+                    className="px-4 py-2 rounded-xl text-sm font-medium text-white"
+                    style={{ background: couleur }}
+                  >
+                    <Sparkles size={14} className="inline mr-1" /> Générer les tâches
+                  </button>
+                </div>
+              ) : completedCount === tasksTotal ? (
+                <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'} mb-3`}>
+                  <CheckCircle size={32} className="mx-auto mb-2 text-emerald-500" />
+                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                    Chantier terminé !
+                  </p>
+                  <p className={`text-xs ${textMuted}`}>{completedCount} tâche{completedCount > 1 ? 's' : ''} complétée{completedCount > 1 ? 's' : ''}</p>
+                </div>
+              ) : null}
+
+              {/* Boutons d'action */}
+              <div className="flex gap-2">
+                <div className="flex-1 flex gap-2">
+                  <input
+                    placeholder="Ajouter une tâche..."
+                    value={newTache}
+                    onChange={e => setNewTache(e.target.value)}
+                    onKeyPress={e => e.key === 'Enter' && addTache()}
+                    className={`flex-1 px-3 py-2 border rounded-xl text-sm min-h-[44px] ${inputBg}`}
+                  />
+                  <button
+                    onClick={addTache}
+                    disabled={!newTache.trim()}
+                    className="px-3 py-2 text-white rounded-xl min-h-[44px] disabled:opacity-50 transition-all active:scale-[0.98]"
+                    style={{ background: couleur }}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
                 <button
-                  onClick={addTache}
-                  disabled={!newTache.trim()}
-                  className="px-4 py-2.5 text-white rounded-xl min-h-[44px] font-medium disabled:opacity-50 transition-all active:scale-[0.98]"
-                  style={{ background: couleur }}
+                  onClick={() => setActiveTab('taches')}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium min-h-[44px] ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
                 >
-                  <Plus size={20} />
+                  Gérer
                 </button>
               </div>
             </div>
