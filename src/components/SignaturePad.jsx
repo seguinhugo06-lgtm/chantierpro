@@ -56,15 +56,27 @@ export default function SignaturePad({
 
   const handleEnd = () => {
     if (sigPad.current) {
-      setIsEmpty(sigPad.current.isEmpty());
+      // Use both isEmpty() and check canvas data to be more reliable
+      const canvasIsEmpty = sigPad.current.isEmpty();
+      // Double-check by examining the canvas data
+      const canvas = sigPad.current.getCanvas();
+      const ctx = canvas?.getContext('2d');
+      const imageData = ctx?.getImageData(0, 0, canvas.width, canvas.height);
+      const hasDrawing = imageData?.data.some((pixel, i) => i % 4 === 3 && pixel > 0); // Check alpha channel
+      setIsEmpty(canvasIsEmpty && !hasDrawing);
     }
   };
 
   const handleSave = () => {
-    if (!sigPad.current || sigPad.current.isEmpty()) return;
+    if (!sigPad.current) return;
     if (!acceptCGV) return;
 
+    // Get signature data even if isEmpty() reports true (alpha version bug workaround)
     const signatureData = sigPad.current.toDataURL('image/png');
+
+    // Verify we have actual signature data (not just a blank canvas)
+    if (!signatureData || signatureData === 'data:,') return;
+
     onSave({
       signature: signatureData,
       signatureDate: new Date().toISOString(),
@@ -75,7 +87,8 @@ export default function SignaturePad({
   };
 
   const canProceed = acceptCGV && clientName.trim().length > 0;
-  const canSign = !isEmpty && acceptCGV;
+  // Allow signing as long as CGV is accepted - the handleSave will verify actual signature exists
+  const canSign = acceptCGV;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">

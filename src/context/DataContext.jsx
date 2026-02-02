@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
@@ -7,29 +7,135 @@ import { isDemo, auth } from '../supabaseClient';
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
  * Now with Supabase sync for persistence
+ * In demo mode, uses localStorage for persistence
  */
 
 const DataContext = createContext(null);
+
+// localStorage keys for demo mode persistence
+const DEMO_STORAGE_KEY = 'chantierpro_demo_data';
+
+// Cache for demo data to avoid multiple reads
+let cachedDemoData = null;
+let demoDataLoaded = false;
+
+/**
+ * Load demo data from localStorage (cached)
+ */
+function loadDemoData() {
+  if (demoDataLoaded) return cachedDemoData;
+
+  try {
+    const stored = localStorage.getItem(DEMO_STORAGE_KEY);
+    if (stored) {
+      cachedDemoData = JSON.parse(stored);
+      console.log('📥 Loaded demo data from localStorage:', {
+        clients: cachedDemoData?.clients?.length || 0,
+        devis: cachedDemoData?.devis?.length || 0,
+        chantiers: cachedDemoData?.chantiers?.length || 0,
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to load demo data from localStorage:', error);
+    cachedDemoData = null;
+  }
+
+  demoDataLoaded = true;
+  return cachedDemoData;
+}
+
+/**
+ * Save demo data to localStorage
+ */
+function saveDemoData(data) {
+  try {
+    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(data));
+    // Update cache
+    cachedDemoData = data;
+  } catch (error) {
+    console.warn('Failed to save demo data to localStorage:', error);
+  }
+}
 
 export function DataProvider({ children, initialData = {} }) {
   // User ID from Supabase auth
   const [userId, setUserId] = useState(null);
 
-  // Core data
-  const [clients, setClients] = useState(initialData.clients ?? []);
-  const [devis, setDevis] = useState(initialData.devis ?? []);
-  const [chantiers, setChantiers] = useState(initialData.chantiers ?? []);
-  const [depenses, setDepenses] = useState(initialData.depenses ?? []);
-  const [pointages, setPointages] = useState(initialData.pointages ?? []);
-  const [equipe, setEquipe] = useState(initialData.equipe ?? []);
-  const [ajustements, setAjustements] = useState(initialData.ajustements ?? []);
-  const [catalogue, setCatalogue] = useState(initialData.catalogue ?? []);
-  const [paiements, setPaiements] = useState(initialData.paiements ?? []);
-  const [echanges, setEchanges] = useState(initialData.echanges ?? []);
+  // Core data - use lazy initialization to load from localStorage in demo mode
+  const [clients, setClients] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.clients ?? initialData.clients ?? [];
+    }
+    return initialData.clients ?? [];
+  });
+  const [devis, setDevis] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.devis ?? initialData.devis ?? [];
+    }
+    return initialData.devis ?? [];
+  });
+  const [chantiers, setChantiers] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.chantiers ?? initialData.chantiers ?? [];
+    }
+    return initialData.chantiers ?? [];
+  });
+  const [depenses, setDepenses] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.depenses ?? initialData.depenses ?? [];
+    }
+    return initialData.depenses ?? [];
+  });
+  const [pointages, setPointages] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.pointages ?? initialData.pointages ?? [];
+    }
+    return initialData.pointages ?? [];
+  });
+  const [equipe, setEquipe] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.equipe ?? initialData.equipe ?? [];
+    }
+    return initialData.equipe ?? [];
+  });
+  const [ajustements, setAjustements] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.ajustements ?? initialData.ajustements ?? [];
+    }
+    return initialData.ajustements ?? [];
+  });
+  const [catalogue, setCatalogue] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.catalogue ?? initialData.catalogue ?? [];
+    }
+    return initialData.catalogue ?? [];
+  });
+  const [paiements, setPaiements] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.paiements ?? initialData.paiements ?? [];
+    }
+    return initialData.paiements ?? [];
+  });
+  const [echanges, setEchanges] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.echanges ?? initialData.echanges ?? [];
+    }
+    return initialData.echanges ?? [];
+  });
 
   // Loading state
   const [dataLoading, setDataLoading] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(() => isDemo && !!loadDemoData()); // Already loaded if demo data exists
 
   // Loading states (legacy)
   const [loading, setLoading] = useState({
@@ -37,6 +143,39 @@ export function DataProvider({ children, initialData = {} }) {
     devis: false,
     chantiers: false
   });
+
+  // Ref to track if initial load is done (to avoid saving empty data on first render)
+  const initialLoadDone = useRef(isDemo && !!loadDemoData());
+
+  // Save to localStorage when data changes (demo mode only)
+  useEffect(() => {
+    if (!isDemo) return;
+
+    // Don't save on initial render if we loaded from localStorage
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      return;
+    }
+
+    // Debounce saves to avoid excessive writes
+    const timeoutId = setTimeout(() => {
+      saveDemoData({
+        clients,
+        devis,
+        chantiers,
+        depenses,
+        pointages,
+        equipe,
+        ajustements,
+        catalogue,
+        paiements,
+        echanges,
+      });
+      console.log('💾 Demo data saved to localStorage');
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
