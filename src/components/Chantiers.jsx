@@ -444,7 +444,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <p className={`text-sm font-medium ${textPrimary} mb-1`}>Planifiez vos tâches</p>
                   <p className={`text-xs ${textMuted} mb-3`}>Ajoutez des tâches pour suivre l'avancement</p>
                   <button
-                    onClick={() => setShowTaskGenerator(true)}
+                    onClick={() => {
+                      console.log('🔧 Bouton Générer cliqué, showTaskGenerator avant:', showTaskGenerator);
+                      setShowTaskGenerator(true);
+                      console.log('🔧 setShowTaskGenerator(true) appelé');
+                    }}
                     className="px-4 py-2 rounded-xl text-sm font-medium text-white"
                     style={{ background: couleur }}
                   >

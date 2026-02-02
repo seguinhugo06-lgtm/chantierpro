@@ -147,7 +147,9 @@ export default function TaskGeneratorModal({
     onClose();
   };
 
+  console.log('🎯 TaskGeneratorModal render, isOpen:', isOpen);
   if (!isOpen) return null;
+  console.log('🎯 TaskGeneratorModal va s\'afficher!');
 
   const selectedCount = selectedTasks.filter(t => t.selected).length;
 
