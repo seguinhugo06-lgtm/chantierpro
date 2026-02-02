@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, RefreshCw, X, Wifi, WifiOff } from 'lucide-react';
+import { Download, RefreshCw, X, Wifi, WifiOff, Smartphone } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/Button';
@@ -15,6 +15,29 @@ import { Button } from './ui/Button';
  * @property {Object} [syncHandlers] - Handlers for sync operations
  * @property {string} [className] - Additional CSS classes
  */
+
+// Check if user dismissed install prompt recently (within 7 days)
+const DISMISS_KEY = 'pwa-install-dismissed';
+const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function wasRecentlyDismissed() {
+  try {
+    const dismissed = localStorage.getItem(DISMISS_KEY);
+    if (!dismissed) return false;
+    const dismissedAt = parseInt(dismissed, 10);
+    return Date.now() - dismissedAt < DISMISS_DURATION;
+  } catch {
+    return false;
+  }
+}
+
+function setDismissedInStorage() {
+  try {
+    localStorage.setItem(DISMISS_KEY, Date.now().toString());
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 /**
  * PWAUpdatePrompt - Shows prompts for PWA updates and install
@@ -28,15 +51,30 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
     refresh,
     isOffline,
     pendingSyncCount,
+    isInstalled,
   } = usePWA(syncHandlers);
 
   const [dismissed, setDismissed] = React.useState({
-    install: false,
+    install: wasRecentlyDismissed(),
     update: false,
   });
 
-  // Don't show install prompt if dismissed in this session
-  const showInstall = canInstall && !dismissed.install;
+  // Delay showing install prompt by 3 seconds to not interrupt user
+  const [showDelayed, setShowDelayed] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowDelayed(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle dismissal with localStorage persistence
+  const handleDismissInstall = () => {
+    setDismissed(d => ({ ...d, install: true }));
+    setDismissedInStorage();
+  };
+
+  // Don't show install prompt if dismissed, not ready, or already installed
+  const showInstall = canInstall && !dismissed.install && showDelayed && !isInstalled;
   const showUpdate = needsRefresh && !dismissed.update;
 
   return (
@@ -124,43 +162,46 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
           </motion.div>
         )}
 
-        {/* Install prompt */}
+        {/* Install prompt - Enhanced for mobile */}
         {showInstall && (
           <motion.div
             key="install"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="relative p-4 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg"
+            className="relative p-4 rounded-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-500 text-white shadow-2xl border border-orange-400/30"
           >
             <button
               type="button"
-              onClick={() => setDismissed(d => ({ ...d, install: true }))}
-              className="absolute top-2 right-2 p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              onClick={handleDismissInstall}
+              className="absolute top-3 right-3 p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/20 transition-colors"
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-start gap-3 pr-6">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-                <Download className="w-5 h-5" />
+            <div className="flex items-start gap-4 pr-6">
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <Smartphone className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold mb-1">
-                  Installer l'application
+                <p className="text-base font-bold mb-1">
+                  📲 Installer ChantierPro
                 </p>
-                <p className="text-xs text-white/80 mb-3">
-                  Acces rapide depuis votre ecran d'accueil, meme hors ligne.
+                <p className="text-sm text-white/90 mb-4">
+                  Ajoutez l'app à votre écran d'accueil pour un accès rapide, même hors ligne !
                 </p>
                 <Button
                   size="sm"
                   onClick={install}
-                  className="w-full bg-white text-orange-600 hover:bg-orange-50"
+                  className="w-full bg-white text-orange-600 hover:bg-orange-50 font-semibold py-2.5 shadow-lg"
                 >
-                  <Download className="w-4 h-4 mr-1.5" />
-                  Installer
+                  <Download className="w-4 h-4 mr-2" />
+                  Installer maintenant
                 </Button>
+                <p className="text-[11px] text-white/60 text-center mt-2">
+                  Gratuit • Pas de téléchargement sur l'App Store
+                </p>
               </div>
             </div>
           </motion.div>

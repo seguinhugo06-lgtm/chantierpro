@@ -4,6 +4,7 @@ import { auth, isDemo } from './supabaseClient';
 // Eager load critical components
 import Dashboard from './components/Dashboard';
 import FABMenu from './components/FABMenu';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
 // Lazy load heavy page components for code splitting
 const Chantiers = lazy(() => import('./components/Chantiers'));
@@ -958,6 +959,9 @@ export default function App() {
 
       {/* New Zustand-based Toast System */}
       <ToastContainer position="bottom-right" />
+
+      {/* PWA Install/Update Prompt - visible sur mobile */}
+      <PWAUpdatePrompt />
     </div>
   );
 }

@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChantierPro - Plan de Lancement 12 Mois</title>
+    <style>
+        :root {
+            --primary: #1a365d;
+            --secondary: #2c5282;
+            --accent: #38a169;
+            --bg: #f7fafc;
+            --card: #ffffff;
+            --text: #2d3748;
+            --muted: #718096;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; font-size: 1.2rem; }
+
+        nav {
+            background: var(--card);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        nav a:hover { color: var(--accent); }
+
+        section {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        h3 {
+            color: var(--secondary);
+            font-size: 1.3rem;
+            margin: 1.5rem 0 1rem;
+        }
+
+        h4 {
+            color: var(--text);
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem;
+        }
+
+        p { margin-bottom: 1rem; }
+
+        ul, ol {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        li { margin-bottom: 0.5rem; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) { background: #f8fafc; }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--accent);
+        }
+
+        .card h4 { margin-top: 0; color: var(--primary); }
+
+        .pricing-card {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent);
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(56, 161, 105, 0.15);
+        }
+
+        .pricing-card h4 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+        .pricing-card .price { font-size: 2.5rem; font-weight: bold; color: var(--primary); }
+        .pricing-card .period { color: var(--muted); font-size: 0.9rem; }
+        .pricing-card ul { text-align: left; list-style: none; padding: 0; margin: 1.5rem 0; }
+        .pricing-card li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+        .pricing-card li:before { content: "✓ "; color: var(--accent); font-weight: bold; }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-green { background: #c6f6d5; color: #22543d; }
+        .badge-blue { background: #bee3f8; color: #2a4365; }
+        .badge-yellow { background: #fefcbf; color: #744210; }
+        .badge-red { background: #fed7d7; color: #822727; }
+
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            margin-bottom: 0.5rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .checklist li:before {
+            content: "☐";
+            font-size: 1.2rem;
+            color: var(--muted);
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline:before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .timeline-item:before {
+            content: "";
+            position: absolute;
+            left: -2.25rem;
+            top: 1.5rem;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            border: 3px solid white;
+        }
+
+        .phase-header {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0 1rem;
+        }
+
+        .kpi-box {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            margin: 0.25rem;
+            font-weight: 600;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #ebf8ff 0%, #e6fffa 100%);
+            border-left: 4px solid var(--secondary);
+            padding: 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1.5rem 0;
+        }
+
+        code {
+            background: #edf2f7;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            header h1 { font-size: 1.8rem; }
+            nav ul { justify-content: flex-start; }
+            .card-grid { grid-template-columns: 1fr; }
+            .pricing-card.featured { transform: none; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🏗️ CHANTIERPRO</h1>
+    <p>Plan de Lancement Stratégique — Roadmap 12 Mois</p>
+    <p style="margin-top: 1rem; opacity: 0.8;">Hugo Seguin | Solo Founder | Février 2026</p>
+</header>
+
+<nav>
+    <ul>
+        <li><a href="#summary">Summary</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#workflow">Workflow Dev</a></li>
+        <li><a href="#feedback">Feedback</a></li>
+        <li><a href="#landing">Landing</a></li>
+        <li><a href="#marketing">Marketing</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li><a href="#kpis">KPIs</a></li>
+        <li><a href="#checklists">Checklists</a></li>
+        <li><a href="#resources">Ressources</a></li>
+    </ul>
+</nav>
+
+<div class="container">
+
+<!-- EXECUTIVE SUMMARY -->
+<section id="summary">
+    <h2>📋 Executive Summary</h2>
+
+    <h3>Contexte</h3>
+    <p>ChantierPro est une application SaaS de gestion complète pour les professionnels du BTP : artisans, entreprises de construction, plombiers, électriciens, maçons. L'application est presque prête au lancement avec un MVP fonctionnel.</p>
+
+    <div class="card-grid">
+        <div class="card">
+            <h4>🔧 Stack Technique</h4>
+            <p>React + Vite + Supabase + Stripe + Tailwind CSS + PWA</p>
+        </div>
+        <div class="card">
+            <h4>💰 Budget Marketing</h4>
+            <p>~100€/mois → Stratégie organique prioritaire</p>
+        </div>
+        <div class="card">
+            <h4>👤 Équipe</h4>
+            <p>Solo founder → Automatisation maximale requise</p>
+        </div>
+        <div class="card">
+            <h4>📱 Fonctionnalités</h4>
+            <p>Devis, Factures, Chantiers, Planning, Équipe, Stocks, CRM</p>
+        </div>
+    </div>
+
+    <h3>Objectifs à 12 Mois</h3>
+    <table>
+        <tr><th>Métrique</th><th>Objectif</th></tr>
+        <tr><td>MRR (Mois 12)</td><td><strong>3 000€ - 5 000€</strong></td></tr>
+        <tr><td>Utilisateurs actifs</td><td>500+ comptes créés, 150+ payants</td></tr>
+        <tr><td>Churn mensuel</td><td>< 5%</td></tr>
+        <tr><td>NPS</td><td>> 40 (excellent)</td></tr>
+    </table>
+</section>
+
+<!-- PRICING STRATEGY -->
+<section id="pricing">
+    <h2>💳 Stratégie de Pricing Intelligente</h2>
+
+    <p>Le modèle freemium par features est idéal pour le BTP : les artisans veulent tester avant de payer, mais ont besoin de fonctionnalités avancées une fois convaincus.</p>
+
+    <div class="card-grid" style="margin-top: 2rem;">
+        <div class="pricing-card">
+            <span class="badge badge-green">GRATUIT</span>
+            <h4>Artisan Débutant</h4>
+            <div class="price">0€</div>
+            <div class="period">pour toujours</div>
+            <ul>
+                <li>3 devis/mois (avec watermark)</li>
+                <li>1 chantier actif</li>
+                <li>5 clients</li>
+                <li>Catalogue basique (50 articles)</li>
+                <li>Export PDF standard</li>
+                <li>Support communautaire</li>
+            </ul>
+        </div>
+
+        <div class="pricing-card featured">
+            <span class="badge badge-blue">PLUS POPULAIRE</span>
+            <h4>⭐ Pro</h4>
+            <div class="price">19€</div>
+            <div class="period">/mois ou 190€/an</div>
+            <ul>
+                <li>Devis & factures illimités</li>
+                <li>10 chantiers actifs</li>
+                <li>Clients illimités</li>
+                <li>Import Excel</li>
+                <li>Planning & calendrier</li>
+                <li>Relances automatiques</li>
+                <li>Signature électronique</li>
+                <li>Support email prioritaire</li>
+            </ul>
+        </div>
+
+        <div class="pricing-card">
+            <span class="badge badge-yellow">ENTREPRISE</span>
+            <h4>🚀 Entreprise</h4>
+            <div class="price">49€</div>
+            <div class="period">/mois ou 490€/an</div>
+            <ul>
+                <li>Tout Pro +</li>
+                <li>Chantiers illimités</li>
+                <li>5 utilisateurs (+5€/user)</li>
+                <li>Dashboard avancé</li>
+                <li>Gestion des stocks</li>
+                <li>Export comptable</li>
+                <li>Portail client</li>
+                <li>Onboarding personnalisé</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Stratégie de Conversion</h3>
+    <table>
+        <tr><th>Trigger</th><th>Action</th><th>Message</th></tr>
+        <tr><td>3ème devis du mois</td><td>Modal upgrade</td><td>"Vous avez utilisé vos 3 devis gratuits. Passez Pro !"</td></tr>
+        <tr><td>Clic sur feature Pro</td><td>Tooltip + CTA</td><td>"Disponible avec Pro. Essayez 14 jours gratuit !"</td></tr>
+        <tr><td>7 jours d'utilisation</td><td>Email personnalisé</td><td>"Vous avez créé X devis pour Y€. Passez Pro !"</td></tr>
+        <tr><td>14 jours inactif</td><td>Email réengagement</td><td>"20% de réduction ce mois-ci"</td></tr>
+    </table>
+
+    <h3>Pricing Psychology</h3>
+    <ul>
+        <li><strong>Ancrage</strong> : Afficher Entreprise en premier pour que Pro semble abordable</li>
+        <li><strong>Badge "Plus populaire"</strong> sur le plan Pro</li>
+        <li><strong>Économie visible</strong> : "Économisez 38€/an"</li>
+        <li><strong>Garantie</strong> : Satisfait ou remboursé 30 jours</li>
+        <li><strong>Prix psychologique</strong> : 19€ (pas 20€)</li>
+    </ul>
+</section>
+
+<!-- WORKFLOW DEV -->
+<section id="workflow">
+    <h2>⚙️ Workflow Développement</h2>
+
+    <p>En tant que solo founder, un workflow rigoureux est crucial pour éviter les bugs en production.</p>
+
+    <h3>Architecture Git (Environnements)</h3>
+    <table>
+        <tr><th>Branche</th><th>Environnement</th><th>URL</th><th>Usage</th></tr>
+        <tr><td><code>main</code></td><td>Production</td><td>chantierpro.fr</td><td>Clients réels</td></tr>
+        <tr><td><code>staging</code></td><td>Staging/Test</td><td>staging.chantierpro.fr</td><td>Tests avant déploiement</td></tr>
+        <tr><td><code>develop</code></td><td>Développement</td><td>localhost:5173</td><td>Dev quotidien</td></tr>
+        <tr><td><code>feature/*</code></td><td>-</td><td>-</td><td>Nouvelles features</td></tr>
+        <tr><td><code>hotfix/*</code></td><td>-</td><td>-</td><td>Bugs urgents prod</td></tr>
+    </table>
+
+    <h3>Flux de Déploiement</h3>
+    <div class="highlight-box">
+        <ol>
+            <li>Développement sur <code>feature/xxx</code> → Push → Review locale</li>
+            <li>Merge dans <code>develop</code> → Tests automatiques</li>
+            <li>Merge dans <code>staging</code> → Déploiement auto sur staging</li>
+            <li>Tests manuels sur staging (<strong>24-48h minimum</strong>)</li>
+            <li>Merge dans <code>main</code> → Déploiement production</li>
+        </ol>
+    </div>
+
+    <h3>Configuration Vercel Multi-Environnements</h3>
+    <p>Créer <strong>2 projets Vercel distincts</strong> :</p>
+    <ul>
+        <li><strong>chantierpro-prod</strong> (branche main) → chantierpro.fr</li>
+        <li><strong>chantierpro-staging</strong> (branche staging) → staging.chantierpro.fr</li>
+    </ul>
+
+    <h3>Variables d'Environnement</h3>
+    <table>
+        <tr><th>Env</th><th>Variables</th></tr>
+        <tr><td>Staging</td><td><code>SUPABASE_URL_STAGING</code>, <code>STRIPE_KEY_TEST</code></td></tr>
+        <tr><td>Prod</td><td><code>SUPABASE_URL_PROD</code>, <code>STRIPE_KEY_LIVE</code></td></tr>
+    </table>
+
+    <h3>Base de Données Séparées</h3>
+    <p>Supabase : Créer <strong>2 projets</strong></p>
+    <ul>
+        <li><strong>chantierpro-staging</strong> : données de test, reset possible</li>
+        <li><strong>chantierpro-prod</strong> : données réelles, backups quotidiens</li>
+    </ul>
+</section>
+
+<!-- FEEDBACK -->
+<section id="feedback">
+    <h2>💬 Gestion des Retours Clients</h2>
+
+    <h3>Canaux de Feedback (Tous Gratuits)</h3>
+    <table>
+        <tr><th>Canal</th><th>Outil</th><th>Coût</th></tr>
+        <tr><td>Widget in-app</td><td>Canny.io</td><td>0€ (<100 votes)</td></tr>
+        <tr><td>Email support</td><td>support@chantierpro.fr</td><td>0€</td></tr>
+        <tr><td>Chat live</td><td>Crisp</td><td>0€ (2 agents)</td></tr>
+        <tr><td>Bug reports</td><td>GitHub Issues (privé)</td><td>0€</td></tr>
+        <tr><td>NPS/Satisfaction</td><td>Tally.so</td><td>0€</td></tr>
+    </table>
+
+    <h3>Processus de Traitement des Bugs</h3>
+    <div class="highlight-box">
+        <ol>
+            <li>Réception du bug (email/chat/widget)</li>
+            <li>Reproduction sur staging</li>
+            <li>Création issue GitHub avec labels :
+                <ul>
+                    <li><span class="badge badge-red">🔴 critical</span> bloque l'utilisation</li>
+                    <li><span class="badge badge-yellow">🟠 high</span> impact majeur mais contournable</li>
+                    <li><span class="badge badge-blue">🟡 medium</span> gênant mais pas bloquant</li>
+                    <li><span class="badge badge-green">🟢 low</span> cosmétique</li>
+                </ul>
+            </li>
+            <li>Fix sur branche <code>hotfix/*</code> ou <code>feature/*</code></li>
+            <li>Test sur staging</li>
+            <li>Déploiement + notification au client</li>
+        </ol>
+    </div>
+
+    <h3>SLA (Service Level Agreement)</h3>
+    <table>
+        <tr><th>Priorité</th><th>Réponse</th><th>Résolution</th></tr>
+        <tr><td><span class="badge badge-red">Critical</span></td><td>< 2h</td><td>< 24h</td></tr>
+        <tr><td><span class="badge badge-yellow">High</span></td><td>< 24h</td><td>< 72h</td></tr>
+        <tr><td><span class="badge badge-blue">Medium</span></td><td>< 48h</td><td>< 1 semaine</td></tr>
+        <tr><td><span class="badge badge-green">Low</span></td><td>< 72h</td><td>Prochain sprint</td></tr>
+    </table>
+</section>
+
+<!-- LANDING PAGE -->
+<section id="landing">
+    <h2>🌐 Landing Page Strategy</h2>
+
+    <h3>Structure de la Landing Page</h3>
+
+    <div class="card-grid">
+        <div class="card">
+            <h4>Hero (Above the fold)</h4>
+            <ul>
+                <li><strong>Headline:</strong> "Gérez vos chantiers, devis et factures en 10 minutes"</li>
+                <li><strong>Subheadline:</strong> "L'outil tout-en-un pour les artisans du BTP"</li>
+                <li><strong>CTA:</strong> "Créer mon premier devis gratuit"</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>Problème/Solution</h4>
+            <ul>
+                <li>Pain points des artisans</li>
+                <li>Comment ChantierPro les résout</li>
+                <li>Transformation avant/après</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>Features</h4>
+            <ul>
+                <li>📄 Devis professionnels en 2 clics</li>
+                <li>📱 Accessible partout (PWA)</li>
+                <li>💶 Suivi paiements temps réel</li>
+                <li>📅 Planning équipe partagé</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>Social Proof</h4>
+            <ul>
+                <li>Témoignages clients</li>
+                <li>Logos partenaires</li>
+                <li>Compteur "X devis créés"</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>SEO On-Page</h3>
+    <ul>
+        <li><strong>Title:</strong> ChantierPro - Logiciel Devis & Gestion Chantier BTP Gratuit</li>
+        <li><strong>Meta:</strong> Créez vos devis professionnels en 2 clics. Essai gratuit.</li>
+        <li><strong>Score Lighthouse:</strong> > 90</li>
+    </ul>
+
+    <h3>Outils Recommandés</h3>
+    <table>
+        <tr><th>Option</th><th>Avantage</th><th>Coût</th></tr>
+        <tr><td>Page dans l'app React</td><td>Cohérence, pas de maintenance double</td><td>0€</td></tr>
+        <tr><td>Framer</td><td>Rapide, templates pro</td><td>0€ (subdomain)</td></tr>
+        <tr><td>Carrd.co</td><td>Simple et efficace</td><td>5€/an</td></tr>
+    </table>
+</section>
+
+<!-- MARKETING -->
+<section id="marketing">
+    <h2>📣 Plan Marketing Low-Budget (100€/mois)</h2>
+
+    <h3>Répartition Budget Mensuel</h3>
+    <table>
+        <tr><th>Poste</th><th>Budget</th><th>ROI attendu</th></tr>
+        <tr><td>Google Ads (test)</td><td>50€/mois</td><td>10-20 leads</td></tr>
+        <tr><td>Outils (domaine, email)</td><td>30€/mois</td><td>-</td></tr>
+        <tr><td>Reserve tests/boost</td><td>20€/mois</td><td>Variable</td></tr>
+    </table>
+
+    <h3>Stratégies Gratuites à Haute Valeur</h3>
+
+    <div class="card-grid">
+        <div class="card">
+            <h4>📈 SEO (Long terme)</h4>
+            <p>2 articles/mois minimum</p>
+            <p><strong>Mots-clés cibles:</strong></p>
+            <ul>
+                <li>"logiciel devis BTP gratuit"</li>
+                <li>"gestion chantier artisan"</li>
+                <li>"facture auto-entrepreneur BTP"</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>💼 LinkedIn (B2B)</h4>
+            <p>3 posts/semaine sur profil perso</p>
+            <p><strong>Thèmes:</strong></p>
+            <ul>
+                <li>Tips gestion BTP</li>
+                <li>Témoignages clients</li>
+                <li>Behind-the-scenes</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>🤝 Partenariats</h4>
+            <ul>
+                <li>Comptables spécialisés BTP</li>
+                <li>Fournisseurs matériaux</li>
+                <li>Chambres des métiers</li>
+                <li>Écoles/formations BTP</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>🎁 Referral Program</h4>
+            <p>"Parrainez un artisan, gagnez 1 mois Pro gratuit"</p>
+            <ul>
+                <li><strong>Parrain:</strong> 1 mois gratuit</li>
+                <li><strong>Filleul:</strong> 1 mois + onboarding</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Calendrier de Contenu Mensuel</h3>
+    <table>
+        <tr><th>Semaine</th><th>Blog</th><th>LinkedIn</th><th>Email</th></tr>
+        <tr><td>S1</td><td>Article SEO</td><td>3 posts (Lu/Me/Ve)</td><td>-</td></tr>
+        <tr><td>S2</td><td>-</td><td>3 posts</td><td>Newsletter tips</td></tr>
+        <tr><td>S3</td><td>Tutorial/How-to</td><td>3 posts</td><td>-</td></tr>
+        <tr><td>S4</td><td>-</td><td>3 posts + bilan</td><td>Récap mensuel</td></tr>
+    </table>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+    <h2>🗓️ Roadmap 12 Mois Détaillée</h2>
+
+    <div class="phase-header">
+        <h3 style="margin:0; color:white;">PHASE 1 : Préparation (Mois 1-2)</h3>
+    </div>
+
+    <div class="timeline">
+        <div class="timeline-item">
+            <h4>📅 MOIS 1 - Fondations</h4>
+            <p><strong>Objectif:</strong> Finaliser l'app et préparer le lancement</p>
+            <h5>Semaine 1-2 : Setup technique</h5>
+            <ul>
+                <li>Créer environnement staging (Vercel + Supabase)</li>
+                <li>Configurer Stripe en mode live</li>
+                <li>Setup analytics (Plausible/PostHog)</li>
+                <li>Implémenter limitations freemium</li>
+            </ul>
+            <h5>Semaine 3-4 : Landing & branding</h5>
+            <ul>
+                <li>Créer la landing page</li>
+                <li>Rédiger CGU, mentions légales, RGPD</li>
+                <li>Créer assets marketing</li>
+            </ul>
+            <p><span class="kpi-box">Budget: ~50€</span></p>
+        </div>
+
+        <div class="timeline-item">
+            <h4>📅 MOIS 2 - Soft Launch</h4>
+            <p><strong>Objectif:</strong> Premiers utilisateurs beta, feedback initial</p>
+            <ul>
+                <li>Recruter 10-20 beta testeurs</li>
+                <li>Offrir 3 mois Pro gratuit en échange de feedback</li>
+                <li>Setup widget feedback (Canny.io)</li>
+                <li>Corriger bugs critiques</li>
+                <li>Collecter 5 témoignages</li>
+            </ul>
+            <p><span class="kpi-box">KPI: NPS > 30</span> <span class="kpi-box">0 bug critique</span></p>
+        </div>
+    </div>
+
+    <div class="phase-header">
+        <h3 style="margin:0; color:white;">PHASE 2 : Lancement (Mois 3-4)</h3>
+    </div>
+
+    <div class="timeline">
+        <div class="timeline-item">
+            <h4>📅 MOIS 3 - Launch Public 🚀</h4>
+            <p><strong>Objectif:</strong> Lancement officiel, premiers clients payants</p>
+            <h5>Semaine 2 : LAUNCH DAY</h5>
+            <ul>
+                <li>Post Product Hunt</li>
+                <li>Partage LinkedIn, Twitter, groupes Facebook BTP</li>
+                <li>Email à tous les contacts du secteur</li>
+                <li>Activer Google Ads (50€ de test)</li>
+            </ul>
+            <p><span class="kpi-box">50+ inscriptions</span> <span class="kpi-box">5+ payants</span></p>
+        </div>
+
+        <div class="timeline-item">
+            <h4>📅 MOIS 4 - Consolidation</h4>
+            <p><strong>Objectif:</strong> Optimiser conversion, réduire churn</p>
+            <ul>
+                <li>Analyser données du mois 3</li>
+                <li>Heatmaps Hotjar (gratuit)</li>
+                <li>A/B test emails de conversion</li>
+                <li>Lancer programme parrainage</li>
+            </ul>
+            <p><span class="kpi-box">MRR > 200€</span> <span class="kpi-box">Churn < 10%</span></p>
+        </div>
+    </div>
+
+    <div class="phase-header">
+        <h3 style="margin:0; color:white;">PHASE 3 : Croissance (Mois 5-8)</h3>
+    </div>
+
+    <div class="timeline">
+        <div class="timeline-item">
+            <h4>📅 MOIS 5-6 - Content Machine</h4>
+            <ul>
+                <li>2 articles SEO/mois</li>
+                <li>LinkedIn: 3 posts/semaine</li>
+                <li>3 templates devis gratuits (lead magnets)</li>
+                <li>Contacter 10 partenaires/mois</li>
+            </ul>
+            <p><span class="kpi-box">MRR > 500€</span> <span class="kpi-box">100+ utilisateurs</span></p>
+        </div>
+
+        <div class="timeline-item">
+            <h4>📅 MOIS 7-8 - Optimisation</h4>
+            <ul>
+                <li>A/B test landing page</li>
+                <li>Optimiser Google Ads</li>
+                <li>Ajouter 1-2 features demandées</li>
+                <li>Premiers partenariats actifs</li>
+            </ul>
+            <p><span class="kpi-box">MRR > 1000€</span> <span class="kpi-box">CAC < 50€</span></p>
+        </div>
+    </div>
+
+    <div class="phase-header">
+        <h3 style="margin:0; color:white;">PHASE 4 : Scale (Mois 9-12)</h3>
+    </div>
+
+    <div class="timeline">
+        <div class="timeline-item">
+            <h4>📅 MOIS 9-10 - Expansion</h4>
+            <ul>
+                <li>Augmenter budget Ads si ROI positif</li>
+                <li>Nouveaux canaux (podcasts, salons)</li>
+                <li>Offre annuelle avec réduction</li>
+            </ul>
+            <p><span class="kpi-box">MRR > 2000€</span> <span class="kpi-box">50+ payants</span></p>
+        </div>
+
+        <div class="timeline-item">
+            <h4>📅 MOIS 11-12 - Consolidation</h4>
+            <ul>
+                <li>Bilan annuel</li>
+                <li>10+ témoignages sur le site</li>
+                <li>Préparer V2</li>
+                <li>Explorer: App native? Équipe? Levée?</li>
+            </ul>
+            <p><span class="kpi-box">MRR 3000-5000€</span> <span class="kpi-box">100+ payants</span> <span class="kpi-box">NPS > 40</span></p>
+        </div>
+    </div>
+</section>
+
+<!-- KPIs -->
+<section id="kpis">
+    <h2>📊 KPIs et Métriques de Succès</h2>
+
+    <h3>Métriques Business</h3>
+    <table>
+        <tr><th>Métrique</th><th>Formule</th><th>Objectif Mois 12</th></tr>
+        <tr><td><strong>MRR</strong></td><td>Revenus récurrents mensuels</td><td>3000-5000€</td></tr>
+        <tr><td><strong>CAC</strong></td><td>Coût acquisition / Nouveaux clients</td><td>< 50€</td></tr>
+        <tr><td><strong>LTV</strong></td><td>ARPU / Churn rate</td><td>> 200€</td></tr>
+        <tr><td><strong>LTV/CAC</strong></td><td>-</td><td>> 3</td></tr>
+        <tr><td><strong>Churn</strong></td><td>Clients perdus / Total</td><td>< 5%</td></tr>
+        <tr><td><strong>Conversion</strong></td><td>Free → Paid</td><td>> 5%</td></tr>
+    </table>
+
+    <h3>Métriques Produit</h3>
+    <table>
+        <tr><th>Métrique</th><th>Cible</th></tr>
+        <tr><td>DAU/MAU</td><td>> 30%</td></tr>
+        <tr><td>Time to first value</td><td>< 5 min (1er devis)</td></tr>
+        <tr><td>NPS</td><td>> 40</td></tr>
+    </table>
+
+    <h3>Récapitulatif par Phase</h3>
+    <table>
+        <tr><th>Phase</th><th>Mois</th><th>MRR</th><th>Utilisateurs</th></tr>
+        <tr><td>Préparation</td><td>1-2</td><td>0€</td><td>10-20 beta</td></tr>
+        <tr><td>Lancement</td><td>3-4</td><td>200€</td><td>50+ inscrits, 5+ payants</td></tr>
+        <tr><td>Croissance</td><td>5-8</td><td>1000€</td><td>100+ inscrits, 30+ payants</td></tr>
+        <tr><td>Scale</td><td>9-12</td><td>3000-5000€</td><td>500+ inscrits, 100+ payants</td></tr>
+    </table>
+</section>
+
+<!-- CHECKLISTS -->
+<section id="checklists">
+    <h2>✅ Checklists et Templates</h2>
+
+    <h3>Checklist Pre-Launch</h3>
+    <ul class="checklist">
+        <li>Environnement staging configuré</li>
+        <li>Stripe en mode live avec tous les plans</li>
+        <li>Analytics configurés (Plausible/PostHog)</li>
+        <li>Landing page live avec pricing</li>
+        <li>CGU, mentions légales, RGPD</li>
+        <li>Email transactionnel (Resend)</li>
+        <li>Widget support (Crisp) installé</li>
+        <li>5+ témoignages collectés</li>
+        <li>Flux critiques testés (signup, devis, paiement)</li>
+        <li>Screenshots HD pour marketing</li>
+    </ul>
+
+    <h3>Checklist Déploiement Hebdomadaire</h3>
+    <ul class="checklist">
+        <li>Review issues GitHub</li>
+        <li>Build local sans erreurs</li>
+        <li>Tests sur staging</li>
+        <li>Vérification responsive</li>
+        <li>Backup base de données</li>
+        <li>Merge vers main si OK</li>
+        <li>Vérification post-déploiement</li>
+    </ul>
+
+    <h3>Routine Quotidienne Solo Founder</h3>
+    <div class="card-grid">
+        <div class="card">
+            <h4>🌅 Matin (1-2h)</h4>
+            <ul>
+                <li>Vérifier métriques clés</li>
+                <li>Emails/tickets urgents</li>
+                <li>Planifier 3 priorités</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>☀️ Journée (4-6h)</h4>
+            <ul>
+                <li>Deep work (blocs de 2h)</li>
+                <li>Pas de réseaux sociaux</li>
+                <li>Pause déjeuner (45 min)</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h4>🌙 Soir (30 min)</h4>
+            <ul>
+                <li>Répondre commentaires</li>
+                <li>Planifier lendemain</li>
+                <li>Déconnexion 19h max</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- RESOURCES -->
+<section id="resources">
+    <h2>🛠️ Ressources et Outils</h2>
+
+    <h3>Stack Technique (Gratuit/Low-Cost)</h3>
+    <table>
+        <tr><th>Besoin</th><th>Outil</th><th>Coût</th></tr>
+        <tr><td>Hébergement</td><td>Vercel</td><td>Gratuit (hobby)</td></tr>
+        <tr><td>Base de données</td><td>Supabase</td><td>Gratuit (500MB)</td></tr>
+        <tr><td>Paiements</td><td>Stripe</td><td>1.4% + 0.25€/tx</td></tr>
+        <tr><td>Email transac.</td><td>Resend</td><td>Gratuit (3000/mois)</td></tr>
+        <tr><td>Analytics</td><td>Plausible / PostHog</td><td>Gratuit</td></tr>
+        <tr><td>Support/Chat</td><td>Crisp</td><td>Gratuit (2 agents)</td></tr>
+        <tr><td>Feedback</td><td>Canny.io</td><td>Gratuit (<100 votes)</td></tr>
+        <tr><td>Formulaires</td><td>Tally.so</td><td>Gratuit</td></tr>
+    </table>
+
+    <h3>Ressources Apprentissage</h3>
+    <ul>
+        <li><strong>Indie Hackers</strong> - Communauté de solo founders</li>
+        <li><strong>MicroConf</strong> - Talks sur le bootstrapping</li>
+        <li><strong>Lenny's Newsletter</strong> - Product management</li>
+        <li><strong>"The Mom Test"</strong> - Validation produit</li>
+        <li><strong>"Traction"</strong> - Acquisition clients</li>
+    </ul>
+
+    <h3>Contacts Utiles BTP</h3>
+    <ul>
+        <li>Fédération Française du Bâtiment (FFB)</li>
+        <li>Chambres des Métiers et de l'Artisanat</li>
+        <li>CAPEB (artisans du bâtiment)</li>
+        <li>Qualibat</li>
+    </ul>
+</section>
+
+<section style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; text-align: center;">
+    <h2 style="color: white; border: none; margin-bottom: 1rem;">🚀 Prochaines Étapes Immédiates</h2>
+    <p style="font-size: 1.1rem; opacity: 0.9;">Cette semaine :</p>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem;">
+        <span class="kpi-box" style="background: rgba(255,255,255,0.2);">Créer Supabase staging</span>
+        <span class="kpi-box" style="background: rgba(255,255,255,0.2);">Configurer Vercel multi-env</span>
+        <span class="kpi-box" style="background: rgba(255,255,255,0.2);">Implémenter freemium</span>
+        <span class="kpi-box" style="background: rgba(255,255,255,0.2);">Acheter domaine</span>
+    </div>
+</section>
+
+</div>
+
+<footer>
+    <p>📋 Ce plan est un guide vivant. Adapte-le selon tes apprentissages et retours utilisateurs.</p>
+    <p style="margin-top: 0.5rem;">Document généré le 2 février 2026</p>
+    <p style="margin-top: 1rem; font-size: 1.2rem;">Bonne chance pour le lancement de ChantierPro ! 🏗️</p>
+</footer>
+
+</body>
+</html>
