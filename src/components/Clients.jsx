@@ -128,49 +128,72 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
 
         {/* Actions rapides */}
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-          <div className="flex gap-2 sm:gap-3 flex-wrap mb-4">
-            {client.telephone && (
-              <>
-                <button onClick={() => callPhone(client.telephone)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                  <Phone size={16} /><span>Appeler</span>
+          {/* Boutons d'action - affichés uniquement si téléphone ou adresse */}
+          {(client.telephone || client.adresse) && (
+            <div className="flex gap-2 sm:gap-3 flex-wrap mb-4">
+              {client.telephone && (
+                <>
+                  <button onClick={() => callPhone(client.telephone)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                    <Phone size={16} /><span>Appeler</span>
+                  </button>
+                  <button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                    <MessageCircle size={16} /><span>WhatsApp</span>
+                  </button>
+                </>
+              )}
+              {client.adresse && (
+                <button onClick={() => openGPS(client.adresse)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                  <MapPin size={16} /><span>Itinéraire</span>
                 </button>
-                <button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                  <MessageCircle size={16} /><span>WhatsApp</span>
+              )}
+            </div>
+          )}
+
+          {/* Informations client avec placeholders */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Phone size={14} /> Téléphone</p>
+              {client.telephone ? (
+                <p className={`font-medium ${textPrimary}`}>{client.telephone}</p>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter un téléphone
                 </button>
-              </>
-            )}
-            {client.adresse && (
-              <button onClick={() => openGPS(client.adresse)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                <MapPin size={16} /><span>Itinéraire</span>
+              )}
+            </div>
+            <div>
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Mail size={14} /> Email</p>
+              {client.email ? (
+                <p className={`font-medium ${textPrimary}`}>{client.email}</p>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter un email
+                </button>
+              )}
+            </div>
+            <div className="col-span-2">
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><MapPin size={14} /> Adresse</p>
+              {client.adresse ? (
+                <p className={`font-medium ${textPrimary}`}>{client.adresse}</p>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter une adresse
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <p className={`text-sm ${textMuted} mb-2`}>Notes internes</p>
+            {client.notes ? (
+              <p className={`text-sm p-3 rounded-xl ${isDark ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>{client.notes}</p>
+            ) : (
+              <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                + Ajouter des notes
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {client.telephone && (
-              <div>
-                <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Phone size={14} /> Téléphone</p>
-                <p className={`font-medium ${textPrimary}`}>{client.telephone}</p>
-              </div>
-            )}
-            {client.email && (
-              <div>
-                <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Mail size={14} /> Email</p>
-                <p className={`font-medium ${textPrimary}`}>{client.email}</p>
-              </div>
-            )}
-            {client.adresse && (
-              <div className="col-span-2">
-                <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><MapPin size={14} /> Adresse</p>
-                <p className={`font-medium ${textPrimary}`}>{client.adresse}</p>
-              </div>
-            )}
-          </div>
-          {client.notes && (
-            <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : ''}`}>
-              <p className={`text-sm ${textMuted} mb-2`}>Notes internes</p>
-              <p className={`text-sm p-3 rounded-xl ${isDark ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>{client.notes}</p>
-            </div>
-          )}
         </div>
 
         {/* Stats */}
