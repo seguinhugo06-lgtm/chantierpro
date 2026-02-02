@@ -47,7 +47,7 @@ export default function App() {
 
   // Data from DataContext (replaces local state)
   const {
-    clients, setClients, addClient: dataAddClient,
+    clients, setClients, addClient: dataAddClient, updateClient: dataUpdateClient,
     devis, setDevis, addDevis: dataAddDevis, updateDevis: dataUpdateDevis, deleteDevis: dataDeleteDevis,
     chantiers, setChantiers, addChantier: dataAddChantier, updateChantier: dataUpdateChantier,
     depenses, setDepenses, addDepense,
@@ -107,6 +107,7 @@ export default function App() {
 
   // CRUD wrappers with toasts (delegate to DataContext)
   const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
+  const updateClient = async (id, data) => { await dataUpdateClient(id, data); showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); };
   const addDevis = (data) => dataAddDevis(data);
   const updateDevis = (id, data) => dataUpdateDevis(id, data);
   const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
@@ -788,7 +789,7 @@ export default function App() {
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-              {page === 'clients' && <Clients clients={clients} setClients={setClients} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}

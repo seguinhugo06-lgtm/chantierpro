@@ -4,7 +4,7 @@ import QuickClientModal from './QuickClientModal';
 import { useConfirm } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
 
-export default function Clients({ clients, setClients, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
+export default function Clients({ clients, setClients, updateClient, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
   const { confirm } = useConfirm();
 
   // Theme classes
@@ -47,11 +47,22 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
     return { devis: cd.filter(d => d.type === 'devis').length, factures: cd.filter(d => d.type === 'facture').length, ca: cd.filter(d => d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0), chantiers: cc.length, chantiersEnCours: cc.filter(c => c.statut === 'en_cours').length };
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.nom) return;
-    if (editId) { setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c)); setEditId(null); }
-    else onSubmit(form);
-    setShow(false); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+    if (editId) {
+      // Use updateClient which syncs to Supabase
+      if (updateClient) {
+        await updateClient(editId, form);
+      } else {
+        // Fallback to direct state update if updateClient not provided
+        setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
+      }
+      setEditId(null);
+    } else {
+      onSubmit(form);
+    }
+    setShow(false);
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
   };
 
   const startEdit = (client) => { setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '' }); setEditId(client.id); setShow(true); };
@@ -149,20 +160,20 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center`}>
-            <p className="text-lg sm:text-2xl font-bold" style={{color: couleur}}>{stats.chantiers}</p>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.chantiers === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={stats.chantiers > 0 ? {color: couleur} : {}}>{stats.chantiers}</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Home size={12} /> Chantiers</p>
           </div>
-          <div className={`${cardBg} rounded-xl border p-4 text-center`}>
-            <p className="text-2xl font-bold text-blue-500">{stats.devis}</p>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.devis === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-blue-500'}`}>{stats.devis}</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Devis</p>
           </div>
-          <div className={`${cardBg} rounded-xl border p-4 text-center`}>
-            <p className="text-2xl font-bold text-purple-500">{stats.factures}</p>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.factures === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-purple-500'}`}>{stats.factures}</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
           </div>
-          <div className={`${cardBg} rounded-xl border p-4 text-center`}>
-            <p className={`text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{stats.ca.toLocaleString('fr-FR')}€</p>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{stats.ca.toLocaleString('fr-FR')}€</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
           </div>
         </div>
@@ -360,7 +371,7 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
             style={{background: `${couleur}20`, color: couleur}}
             title="Ajout rapide"
           >
-            <Zap size={16} /><span className="hidden sm:inline">Rapide</span>
+            <Zap size={16} /><span className="hidden sm:inline">Ajout rapide</span>
           </button>
           <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
@@ -479,12 +490,12 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer group`} onClick={() => setViewId(c.id)}>
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200 cursor-pointer group`} onClick={() => setViewId(c.id)}>
                 {/* Header with gradient */}
                 <div className="p-4 sm:p-5 relative" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`}}>
                   <div className="flex gap-3 sm:gap-4">
-                    <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg flex-shrink-0" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
-                      {c.nom?.[0]?.toUpperCase()}
+                    <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-lg flex-shrink-0" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+                      {c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?')}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-bold text-base sm:text-lg ${textPrimary}`}>{c.nom} {c.prenom}</h3>
@@ -494,8 +505,8 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                         </p>
                       )}
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[40px] min-h-[40px] flex items-center justify-center sm:opacity-50 sm:hover:opacity-100 ${isDark ? 'bg-slate-700/80 hover:bg-slate-600 text-slate-300' : 'bg-white/90 hover:bg-white text-slate-600 shadow-sm'}`}>
-                      <Edit3 size={16} />
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[40px] min-h-[40px] flex items-center justify-center opacity-60 hover:opacity-100 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
+                      <Edit3 size={18} />
                     </button>
                   </div>
                 </div>
@@ -506,12 +517,12 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                     <div className="flex items-center gap-2">
                       <Smartphone size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-blue-50'}`} title="Appeler">
-                          <Phone size={14} className="text-blue-500" />
+                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => callPhone(c.telephone)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
+                          <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-green-50'}`} title="WhatsApp">
-                          <MessageCircle size={14} className="text-green-500" />
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
+                          <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
                     </div>
@@ -526,8 +537,8 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <MapPin size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1 truncate`}>{c.adresse}</span>
-                      <button onClick={() => openGPS(c.adresse)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-purple-50'}`} title="Itinéraire">
-                        <ExternalLink size={14} className="text-purple-500" />
+                      <button onClick={() => openGPS(c.adresse)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
+                        <ExternalLink size={16} className="text-purple-500" />
                       </button>
                     </div>
                   )}
@@ -538,18 +549,18 @@ export default function Clients({ clients, setClients, devis, chantiers, echange
 
                 {/* Stats footer */}
                 <div className={`px-4 sm:px-5 py-3 border-t flex items-center justify-between ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
-                  <div className="flex gap-3">
-                    <span className={`flex items-center gap-1 text-xs ${textSecondary}`} title="Chantiers">
-                      <Home size={12} /> <span className="font-medium">{s.chantiers}</span>
+                  <div className="flex gap-4">
+                    <span className={`flex items-center gap-1.5 text-sm ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={14} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> <span className="font-medium">{s.chantiers}</span>
                     </span>
-                    <span className={`flex items-center gap-1 text-xs ${textSecondary}`} title="Devis">
-                      <FileText size={12} /> <span className="font-medium">{s.devis}</span>
+                    <span className={`flex items-center gap-1.5 text-sm ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={14} className={s.devis > 0 ? 'text-blue-500' : ''} /> <span className="font-medium">{s.devis}</span>
                     </span>
-                    <span className={`flex items-center gap-1 text-xs ${textSecondary}`} title="Factures">
-                      <FileText size={12} /> <span className="font-medium">{s.factures}</span>
+                    <span className={`flex items-center gap-1.5 text-sm ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
+                      <FileText size={14} className={s.factures > 0 ? 'text-purple-500' : ''} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}}>{s.ca.toLocaleString('fr-FR')}€</span>
+                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-400') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : 'Aucun CA pour ce client'}>{s.ca > 0 ? `${s.ca.toLocaleString('fr-FR')}€` : '—'}</span>
                 </div>
               </div>
             );
