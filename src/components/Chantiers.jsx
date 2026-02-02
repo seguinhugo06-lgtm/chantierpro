@@ -5,6 +5,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks } from '../lib/templates/task-templates';
+import TaskGeneratorModal from './TaskGeneratorModal';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
@@ -78,6 +79,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
+  const [showTaskGenerator, setShowTaskGenerator] = useState(false); // Task generator modal
   const [weather, setWeather] = useState(null); // Weather data for active chantier
   const [showTaskModal, setShowTaskModal] = useState(false); // Efficient task management modal
 
@@ -442,7 +444,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <p className={`text-sm font-medium ${textPrimary} mb-1`}>Planifiez vos tâches</p>
                   <p className={`text-xs ${textMuted} mb-3`}>Ajoutez des tâches pour suivre l'avancement</p>
                   <button
-                    onClick={() => setActiveTab('taches')}
+                    onClick={() => setShowTaskGenerator(true)}
                     className="px-4 py-2 rounded-xl text-sm font-medium text-white"
                     style={{ background: couleur }}
                   >
@@ -732,181 +734,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
           )}
 
-          {/* Avancement intelligent */}
-          <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-100'}`}>
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <span className={`text-sm font-medium ${textPrimary}`}>Avancement du chantier</span>
-              <span className="font-bold text-lg" style={{ color: couleur }}>{Math.round(avancement)}%</span>
-            </div>
-
-            {/* Barre de progression principale */}
-            <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'} mb-3`}>
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${avancement}%`, background: couleur }}
-              />
-            </div>
-
-            {/* Quick Tasks - Next actions */}
-            {(() => {
-              const pendingTasks = (ch.taches || []).filter(t => !t.done);
-              const nextTasks = pendingTasks.slice(0, 3);
-
-              if (nextTasks.length > 0) {
-                return (
-                  <div className={`mb-3 p-3 rounded-xl border-2 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className={`text-xs font-bold uppercase tracking-wide ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                        À faire maintenant
-                      </p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-200 text-blue-700'}`}>
-                        {pendingTasks.length} restante{pendingTasks.length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {nextTasks.map((t, idx) => (
-                        <button
-                          key={t.id}
-                          onClick={() => toggleTache(t.id)}
-                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-all active:scale-[0.98] ${
-                            idx === 0
-                              ? (isDark ? 'bg-blue-800/50 hover:bg-blue-800' : 'bg-white hover:bg-blue-100 shadow-sm')
-                              : (isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-white/50 hover:bg-white')
-                          }`}
-                        >
-                          <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${
-                            idx === 0 ? 'border-blue-500' : (isDark ? 'border-slate-500' : 'border-slate-300')
-                          }`}>
-                            {idx === 0 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
-                          </div>
-                          <span className={`text-sm ${idx === 0 ? 'font-medium' : ''} ${textPrimary}`}>
-                            {t.text.length > 40 ? t.text.substring(0, 40) + '...' : t.text}
-                          </span>
-                          {idx === 0 && (
-                            <span className={`ml-auto text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                              Valider ✓
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    {pendingTasks.length > 3 && (
-                      <button
-                        onClick={() => setActiveTab('taches')}
-                        className={`w-full mt-2 text-xs py-1.5 ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                      >
-                        Voir les {pendingTasks.length - 3} autres →
-                      </button>
-                    )}
-                  </div>
-                );
-              } else if (tasksTotal === 0) {
-                return (
-                  <button
-                    onClick={() => setActiveTab('taches')}
-                    className={`mb-3 w-full p-3 rounded-xl border-2 border-dashed text-center transition-colors ${
-                      isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-700/50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
-                    }`}
-                  >
-                    <p className={`text-sm font-medium ${textMuted}`}>+ Ajouter des tâches pour suivre l'avancement</p>
-                  </button>
-                );
-              } else {
-                return (
-                  <div className={`mb-3 p-3 rounded-xl ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'}`}>
-                    <p className={`text-sm font-medium text-center ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                      ✓ Toutes les tâches sont terminées!
-                    </p>
-                  </div>
-                );
-              }
-            })()}
-
-            {/* Signaux de progression - Compact */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {/* Taches */}
-              <button
-                onClick={() => setActiveTab('taches')}
-                className={`p-2 rounded-lg text-center transition-colors ${isDark ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
-              >
-                <p className={`text-xs ${textMuted} mb-1`}>Tâches</p>
-                <p className={`text-sm font-bold ${tasksDone === tasksTotal && tasksTotal > 0 ? 'text-emerald-500' : textPrimary}`}>
-                  {tasksTotal > 0 ? `${tasksDone}/${tasksTotal}` : '-'}
-                </p>
-                {tasksTotal > 0 && (
-                  <div className={`h-1 rounded-full mt-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${(tasksDone / tasksTotal) * 100}%` }} />
-                  </div>
-                )}
-              </button>
-              {/* Heures */}
-              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-                <p className={`text-xs ${textMuted} mb-1`}>Heures</p>
-                <p className={`text-sm font-bold ${ch.heures_estimees > 0 && bilan.heuresTotal >= ch.heures_estimees ? 'text-amber-500' : textPrimary}`}>
-                  {ch.heures_estimees > 0 ? `${bilan.heuresTotal}/${ch.heures_estimees}h` : `${bilan.heuresTotal}h`}
-                </p>
-                {ch.heures_estimees > 0 && (
-                  <div className={`h-1 rounded-full mt-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <div className={`h-full rounded-full ${bilan.heuresTotal > ch.heures_estimees ? 'bg-red-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(100, (bilan.heuresTotal / ch.heures_estimees) * 100)}%` }} />
-                  </div>
-                )}
-              </div>
-              {/* Couts */}
-              <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-                <p className={`text-xs ${textMuted} mb-1`}>Coûts</p>
-                <p className={`text-sm font-bold ${ch.budget_materiaux > 0 && bilan.coutMateriaux >= ch.budget_materiaux ? 'text-amber-500' : textPrimary}`}>
-                  {ch.budget_materiaux > 0 ? `${((bilan.coutMateriaux / ch.budget_materiaux) * 100).toFixed(0)}%` : formatMoney(bilan.totalDepenses)}
-                </p>
-                {ch.budget_materiaux > 0 && (
-                  <div className={`h-1 rounded-full mt-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <div className={`h-full rounded-full ${bilan.coutMateriaux > ch.budget_materiaux ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (bilan.coutMateriaux / ch.budget_materiaux) * 100)}%` }} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Slider manuel */}
-            <div className={`pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-xs ${textMuted}`}>Ajustement manuel</span>
-                <span className={`text-xs ${textMuted}`}>{Math.round(avancement)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={avancement}
-                onChange={e => updateChantier(ch.id, { avancement: parseInt(e.target.value) })}
-                className="w-full h-1.5 appearance-none cursor-pointer rounded-full"
-                style={{
-                  background: `linear-gradient(to right, ${couleur} 0%, ${couleur} ${avancement}%, ${isDark ? '#475569' : '#e2e8f0'} ${avancement}%, ${isDark ? '#475569' : '#e2e8f0'} 100%)`,
-                  WebkitAppearance: 'none'
-                }}
-              />
-              <style>{`
-                input[type="range"]::-webkit-slider-thumb {
-                  -webkit-appearance: none;
-                  width: 14px;
-                  height: 14px;
-                  border-radius: 50%;
-                  background: ${couleur};
-                  cursor: pointer;
-                  border: 2px solid white;
-                  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-                }
-                input[type="range"]::-moz-range-thumb {
-                  width: 14px;
-                  height: 14px;
-                  border-radius: 50%;
-                  background: ${couleur};
-                  cursor: pointer;
-                  border: 2px solid white;
-                  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-                }
-              `}</style>
-            </div>
-          </div>
-
           {/* Projection */}
           {avancement > 0 && avancement < 100 && revenuTotal > 0 && (
             <div className={`mt-4 rounded-xl p-4 border-2 border-dashed ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
@@ -942,7 +769,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
             { key: 'finances', label: 'Finances', icon: Wallet },
-            { key: 'taches', label: 'Tâches', icon: CheckSquare },
             { key: 'photos', label: 'Photos', icon: Camera },
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'messages', label: 'Messages', icon: MessageSquare }
@@ -980,302 +806,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             </div>
           </div>
         )}
-
-        {activeTab === 'taches' && (() => {
-          const metierTemplates = getTaskTemplatesForMetier(entreprise?.metier);
-          const devisSuggestions = devisLie ? suggestTasksFromDevis(devisLie.lignes) : [];
-          const existingTexts = (ch.taches || []).map(t => t.text.toLowerCase());
-          const pendingTasks = (ch.taches || []).filter(t => !t.done);
-          const completedTasks = (ch.taches || []).filter(t => t.done);
-          // Task weight in progression: 40% of total / number of tasks
-          const taskWeight = tasksTotal > 0 ? (40 / tasksTotal) : 0;
-
-          return (
-          <div className="space-y-4">
-            {/* Progression Impact Card */}
-            <div className={`${cardBg} rounded-2xl border p-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                    <CheckSquare size={18} style={{ color: couleur }} />
-                  </div>
-                  <div>
-                    <h3 className={`font-semibold ${textPrimary}`}>Tâches</h3>
-                    <p className={`text-xs ${textMuted}`}>Comptent pour 40% de la progression</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setShowTaskModal(true)}
-                    className="px-3 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-1.5 min-h-[40px]"
-                    style={{ background: couleur }}
-                  >
-                    <GripVertical size={14} /> Gérer
-                  </button>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold" style={{ color: tasksDone === tasksTotal && tasksTotal > 0 ? '#10b981' : couleur }}>
-                      {tasksDone}/{tasksTotal}
-                    </p>
-                    <p className={`text-xs ${textMuted}`}>terminées</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Visual progress bar with task segments */}
-              {tasksTotal > 0 && (
-                <div className="relative">
-                  <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex`}>
-                    {(ch.taches || []).map((t, idx) => (
-                      <div
-                        key={t.id}
-                        className={`h-full transition-all ${idx > 0 ? 'border-l border-white/30' : ''}`}
-                        style={{
-                          width: `${100 / tasksTotal}%`,
-                          background: t.done ? '#10b981' : (isDark ? '#475569' : '#e2e8f0')
-                        }}
-                      />
-                    ))}
-                  </div>
-                  {/* Impact indicator */}
-                  {pendingTasks.length > 0 && (
-                    <p className={`mt-2 text-xs text-center ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                      Compléter 1 tâche = +{taskWeight.toFixed(1)}% progression
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Template Buttons */}
-            {tasksTotal === 0 && (
-              <div className={`${cardBg} rounded-2xl border p-4`}>
-                <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
-                  <Zap size={14} className="inline mr-1" style={{ color: couleur }} />
-                  Démarrer rapidement
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setShowTaskTemplates(true)}
-                    className="px-3 py-2.5 text-white rounded-xl text-sm flex items-center gap-1.5 min-h-[44px]"
-                    style={{ background: couleur }}
-                  >
-                    <Sparkles size={14} /> Modèles {metierTemplates.label}
-                  </button>
-                  {QUICK_TASKS.slice(0, 4).map(qt => (
-                    <button
-                      key={qt.text}
-                      onClick={() => {
-                        updateChantier(ch.id, { taches: [...(ch.taches || []), { id: generateId(), text: qt.text, done: false }] });
-                      }}
-                      className={`px-3 py-2.5 rounded-xl text-sm min-h-[44px] ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border'}`}
-                    >
-                      + {qt.text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Suggestions from Devis */}
-            {devisSuggestions.length > 0 && devisSuggestions.filter(s => !existingTexts.includes(s.text.toLowerCase())).length > 0 && (
-              <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-xs font-medium mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                  <FileText size={12} className="inline mr-1" />
-                  Suggestions depuis le devis
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {devisSuggestions.filter(s => !existingTexts.includes(s.text.toLowerCase())).slice(0, 5).map((s, i) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        updateChantier(ch.id, { taches: [...(ch.taches || []), { id: generateId(), text: s.text, done: false, source: 'devis' }] });
-                      }}
-                      className={`px-3 py-2 rounded-lg text-sm min-h-[44px] ${isDark ? 'bg-blue-800/50 hover:bg-blue-800 text-blue-200' : 'bg-white hover:bg-blue-100 text-blue-700'}`}
-                    >
-                      + {s.text.length > 25 ? s.text.substring(0, 25) + '...' : s.text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Critical Tasks - Blocking for chantier closure */}
-            {pendingTasks.filter(t => t.critical).length > 0 && (
-              <div className={`${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'} rounded-2xl border-2 p-4`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className={`font-medium flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                    <AlertCircle size={18} />
-                    Points critiques ({pendingTasks.filter(t => t.critical).length})
-                  </h4>
-                  <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-600'}`}>
-                    Bloquent la clôture
-                  </span>
-                </div>
-                <p className={`text-xs mb-3 ${isDark ? 'text-red-400/80' : 'text-red-600/80'}`}>
-                  Ces tâches doivent être complétées avant de terminer le chantier
-                </p>
-                <div className="space-y-2">
-                  {pendingTasks.filter(t => t.critical).map((t) => (
-                    <div
-                      key={t.id}
-                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
-                        isDark ? 'bg-red-900/30 border border-red-800' : 'bg-white border border-red-200'
-                      }`}
-                    >
-                      <button
-                        onClick={() => toggleTache(t.id)}
-                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 ${
-                          isDark ? 'border-red-500 bg-red-500/10 hover:bg-red-500/20' : 'border-red-400 hover:bg-red-50'
-                        }`}
-                      />
-                      <span className={`flex-1 font-medium ${textPrimary}`}>{t.text}</span>
-                      <button
-                        onClick={() => updateChantier(ch.id, { taches: ch.taches.map(task => task.id === t.id ? { ...task, critical: false } : task) })}
-                        className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700 text-red-400' : 'hover:bg-slate-100 text-red-500'}`}
-                        title="Retirer des points critiques"
-                      >
-                        <AlertCircle size={16} />
-                      </button>
-                      <button
-                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Regular Pending Tasks */}
-            {pendingTasks.filter(t => !t.critical).length > 0 && (
-              <div className={`${cardBg} rounded-2xl border p-4`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className={`font-medium ${textPrimary}`}>À faire ({pendingTasks.filter(t => !t.critical).length})</h4>
-                  <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
-                    +{(taskWeight * pendingTasks.filter(t => !t.critical).length).toFixed(0)}% restant
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {pendingTasks.filter(t => !t.critical).map((t, idx) => (
-                    <div
-                      key={t.id}
-                      className={`group flex items-center gap-3 p-3 rounded-xl transition-all ${
-                        idx === 0
-                          ? (isDark ? 'bg-blue-900/30 border-2 border-blue-700' : 'bg-blue-50 border-2 border-blue-200')
-                          : (isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100')
-                      }`}
-                    >
-                      <button
-                        onClick={() => toggleTache(t.id)}
-                        className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 ${
-                          idx === 0
-                            ? 'border-blue-500 bg-blue-500/10 hover:bg-blue-500/20'
-                            : (isDark ? 'border-slate-500 hover:border-slate-400' : 'border-slate-300 hover:border-slate-400')
-                        }`}
-                      >
-                        {idx === 0 && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
-                      </button>
-                      <span className={`flex-1 ${textPrimary} ${idx === 0 ? 'font-medium' : ''}`}>{t.text}</span>
-                      {idx === 0 && (
-                        <span className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-blue-800 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                          +{taskWeight.toFixed(1)}%
-                        </span>
-                      )}
-                      <button
-                        onClick={() => updateChantier(ch.id, { taches: ch.taches.map(task => task.id === t.id ? { ...task, critical: true } : task) })}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}
-                        title="Marquer comme critique"
-                      >
-                        <AlertCircle size={16} />
-                      </button>
-                      <button
-                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Add Task Input */}
-            <div className={`${cardBg} rounded-2xl border p-4`}>
-              <div className="flex gap-2">
-                <input
-                  placeholder="Ajouter une tâche..."
-                  value={newTache}
-                  onChange={e => setNewTache(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && addTache()}
-                  className={`flex-1 px-4 py-3 border rounded-xl min-h-[44px] ${inputBg}`}
-                />
-                <button onClick={addTache} className="px-5 py-3 text-white rounded-xl min-h-[44px] font-medium" style={{ background: couleur }}>
-                  Ajouter
-                </button>
-              </div>
-              {/* Critical task toggle */}
-              <button
-                onClick={() => setNewTaskCritical(!newTaskCritical)}
-                className={`mt-3 w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2 min-h-[48px] transition-all border-2 ${
-                  newTaskCritical
-                    ? (isDark ? 'bg-red-900/30 border-red-700 text-red-400' : 'bg-red-50 border-red-300 text-red-600')
-                    : (isDark ? 'bg-slate-700 border-slate-600 hover:border-slate-500 text-slate-400' : 'bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-500')
-                }`}
-              >
-                <AlertCircle size={18} className={newTaskCritical ? (isDark ? 'text-red-400' : 'text-red-500') : ''} />
-                {newTaskCritical ? 'Tâche critique (bloque la clôture)' : 'Marquer comme critique'}
-                {newTaskCritical && <Check size={16} className={isDark ? 'text-red-400' : 'text-red-500'} />}
-              </button>
-              {/* Templates Button */}
-              <button
-                onClick={() => setShowTaskTemplates(true)}
-                className={`mt-2 w-full py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 min-h-[44px] ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-              >
-                <Sparkles size={14} /> Ajouter depuis modèles
-              </button>
-            </div>
-
-            {/* Completed Tasks */}
-            {completedTasks.length > 0 && (
-              <div className={`${cardBg} rounded-2xl border p-4`}>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className={`font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                    ✓ Terminées ({completedTasks.length})
-                  </h4>
-                  <span className={`text-xs ${textMuted}`}>
-                    +{(taskWeight * completedTasks.length).toFixed(0)}% acquis
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {completedTasks.map(t => (
-                    <div
-                      key={t.id}
-                      className={`group flex items-center gap-3 p-2.5 rounded-lg ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50/50'}`}
-                    >
-                      <button
-                        onClick={() => toggleTache(t.id)}
-                        className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center flex-shrink-0"
-                      >
-                        <Check size={14} className="text-white" />
-                      </button>
-                      <span className={`flex-1 text-sm line-through ${textMuted}`}>{t.text}</span>
-                      <button
-                        onClick={() => updateChantier(ch.id, { taches: (ch.taches || []).filter(task => task.id !== t.id) })}
-                        className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          );
-        })()}
 
         {activeTab === 'photos' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
@@ -2552,6 +2082,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         couleur={couleur}
         editChantier={editingChantier}
       />
+
+      {/* Task Generator Modal */}
+      {view && (
+        <TaskGeneratorModal
+          isOpen={showTaskGenerator}
+          onClose={() => setShowTaskGenerator(false)}
+          onGenerateTasks={(newTasks) => {
+            const ch = chantiers.find(c => c.id === view);
+            if (ch) {
+              const existingTasks = ch.taches || [];
+              updateChantier(view, {
+                taches: [...existingTasks, ...newTasks]
+              });
+              showToast?.(`${newTasks.length} tâche${newTasks.length > 1 ? 's' : ''} ajoutée${newTasks.length > 1 ? 's' : ''}`, 'success');
+            }
+          }}
+          existingTasks={chantiers.find(c => c.id === view)?.taches || []}
+          entrepriseMetier={entreprise?.metier}
+          devisLignes={devis.find(d => d.chantier_id === view)?.lignes}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
     </div>
   );
 }
