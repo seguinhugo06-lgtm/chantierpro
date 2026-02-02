@@ -64,9 +64,10 @@ export default function TaskGeneratorModal({
     icon: METIER_ICONS[key] || Wrench
   }));
 
-  // Generate tasks based on selection
-  const handleGenerateSmart = () => {
-    const tasks = generateSmartTasks(entrepriseMetier, selectedProjectType, devisLignes);
+  // Generate tasks based on selection (with optional projectType override for immediate use)
+  const handleGenerateSmart = (projectTypeOverride = null) => {
+    const typeToUse = projectTypeOverride || selectedProjectType;
+    const tasks = generateSmartTasks(entrepriseMetier, typeToUse, devisLignes);
     const filteredTasks = tasks.filter(t => !existingTexts.includes(t.text.toLowerCase()));
     setSelectedTasks(filteredTasks.map(t => ({ ...t, selected: true })));
     setStep(2);
@@ -98,7 +99,8 @@ export default function TaskGeneratorModal({
   // Generate tasks for a project type
   const handleSelectProjectType = (projectKey) => {
     setSelectedProjectType(projectKey);
-    handleGenerateSmart();
+    // Pass projectKey directly to avoid async state issue
+    handleGenerateSmart(projectKey);
   };
 
   // Toggle task selection
@@ -255,7 +257,7 @@ export default function TaskGeneratorModal({
                     Basé sur votre métier et le devis associé
                   </p>
                   <button
-                    onClick={handleGenerateSmart}
+                    onClick={() => handleGenerateSmart(null)}
                     className="w-full py-3 text-white rounded-xl font-medium transition-all hover:opacity-90"
                     style={{ background: couleur }}
                   >
