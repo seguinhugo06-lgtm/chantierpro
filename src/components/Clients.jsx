@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
@@ -44,10 +44,31 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
     }
   };
 
+  const clientStatsMap = useMemo(() => {
+    const map = new Map();
+    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
+    (devis || []).forEach(d => {
+      const cid = d.client_id;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      if (d.type === 'devis') s.devis++;
+      if (d.type === 'facture') s.factures++;
+      if (d.statut === 'payee') s.ca += d.total_ttc || 0;
+    });
+    (chantiers || []).forEach(ch => {
+      const cid = ch.client_id;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      s.chantiers++;
+      if (ch.statut === 'en_cours') s.chantiersEnCours++;
+    });
+    return map;
+  }, [devis, chantiers]);
+
   const getClientStats = (id) => {
-    const cd = devis?.filter(d => d.client_id === id) || [];
-    const cc = chantiers?.filter(c => c.client_id === id) || [];
-    return { devis: cd.filter(d => d.type === 'devis').length, factures: cd.filter(d => d.type === 'facture').length, ca: cd.filter(d => d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0), chantiers: cc.length, chantiersEnCours: cc.filter(c => c.statut === 'en_cours').length };
+    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
   };
 
   const submit = async () => {
