@@ -481,6 +481,49 @@ export default function App() {
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
   
+  // Generate notifications from data
+  useEffect(() => {
+    const notifs = [];
+    const now = new Date();
+
+    // Overdue invoices (factures unpaid > 30 days)
+    devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
+      const days = Math.floor((now - new Date(f.date)) / 86400000);
+      if (days > 30) {
+        notifs.push({ id: `overdue-${f.id}`, message: `Facture ${f.numero || '#'} impayée depuis ${days} jours`, date: `${days}j de retard`, read: false, type: 'urgent' });
+      }
+    });
+
+    // Stale devis (sent > 10 days without response)
+    devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
+      const days = Math.floor((now - new Date(d.date)) / 86400000);
+      if (days > 10) {
+        notifs.push({ id: `stale-${d.id}`, message: `Devis ${d.numero || '#'} sans réponse depuis ${days} jours`, date: 'À relancer', read: false, type: 'warning' });
+      }
+    });
+
+    // Expired insurance
+    if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
+      notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expirée', date: 'Action requise', read: false, type: 'urgent' });
+    }
+    if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
+      notifs.push({ id: 'dec-expired', message: 'Votre assurance Décennale est expirée', date: 'Action requise', read: false, type: 'urgent' });
+    }
+
+    // Incomplete profile
+    const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
+    const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
+    if (missingFields.length > 0) {
+      notifs.push({ id: 'profile-incomplete', message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`, date: 'Paramètres', read: false, type: 'info' });
+    }
+
+    // Preserve read status from previous notifications
+    setNotifications(prev => {
+      const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
+      return notifs.map(n => ({ ...n, read: readIds.has(n.id) }));
+    });
+  }, [devis, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
+
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
@@ -759,11 +802,20 @@ export default function App() {
                           style={!n.read ? {borderLeftColor: couleur} : {}}
                         >
                           <div className="flex items-start gap-3">
-                            {!n.read && <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: couleur}}></span>}
+                            <div className={`flex-shrink-0 mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center ${
+                              n.type === 'urgent' ? (isDark ? 'bg-red-500/15' : 'bg-red-50') :
+                              n.type === 'warning' ? (isDark ? 'bg-amber-500/15' : 'bg-amber-50') :
+                              (isDark ? 'bg-blue-500/15' : 'bg-blue-50')
+                            }`}>
+                              {n.type === 'urgent' ? <AlertCircle size={14} className="text-red-500" /> :
+                               n.type === 'warning' ? <Clock size={14} className="text-amber-500" /> :
+                               <Info size={14} className="text-blue-500" />}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${tc.text}`}>{n.message}</p>
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} ${tc.text}`}>{n.message}</p>
                               <p className={`text-xs mt-1 ${tc.textMuted}`}>{n.date}</p>
                             </div>
+                            {!n.read && <span className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{background: couleur}}></span>}
                           </div>
                         </div>
                       ))
