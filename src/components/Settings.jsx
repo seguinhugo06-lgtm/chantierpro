@@ -38,6 +38,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
 
   // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
   useEffect(() => {
@@ -298,12 +300,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`rounded-xl p-4 flex items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
           <span className="text-xl">📝</span>
-          <div>
+          <div className="flex-1">
             <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
           </div>
+          <button
+            onClick={() => { setShowSetupWizard(true); setWizardStep(0); }}
+            className="px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
+            style={{ background: couleur }}
+          >
+            🪄 Assistant de configuration
+          </button>
         </div>
       )}
 
@@ -1166,6 +1175,139 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
         </div>
       </div>
+
+      {/* Setup Wizard Modal */}
+      {showSetupWizard && (() => {
+        const WIZARD_STEPS = [
+          {
+            title: 'Identité de l\'entreprise',
+            desc: 'Informations essentielles pour vos documents',
+            fields: [
+              { key: 'nom', label: 'Nom de l\'entreprise *', placeholder: 'Ex : Martin Rénovation' },
+              { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris', multiline: true },
+              { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
+              { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
+            ],
+          },
+          {
+            title: 'Informations légales',
+            desc: 'Numéros obligatoires sur vos devis et factures',
+            fields: [
+              { key: 'siret', label: 'N° SIRET *', placeholder: '123 456 789 00012' },
+              { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
+              { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
+              { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
+            ],
+          },
+          {
+            title: 'Assurances',
+            desc: 'Obligatoires pour les entreprises du BTP',
+            fields: [
+              { key: 'rcProAssureur', label: 'Assureur RC Pro', placeholder: 'AXA, MAAF, Allianz...' },
+              { key: 'rcProNumero', label: 'N° Police RC Pro', placeholder: 'N° de contrat' },
+              { key: 'decennaleAssureur', label: 'Assureur Décennale', placeholder: 'AXA, MAAF, Allianz...' },
+              { key: 'decennaleNumero', label: 'N° Police Décennale', placeholder: 'N° de contrat' },
+            ],
+          },
+          {
+            title: 'Banque & Paiements',
+            desc: 'Coordonnées bancaires pour vos factures',
+            fields: [
+              { key: 'banque', label: 'Nom de la banque', placeholder: 'Crédit Agricole, BNP...' },
+              { key: 'iban', label: 'IBAN', placeholder: 'FR76 1234 5678 9012 3456 7890 123' },
+              { key: 'bic', label: 'BIC', placeholder: 'BNPAFRPP' },
+              { key: 'conditionsPaiement', label: 'Conditions de paiement', placeholder: 'Paiement à 30 jours fin de mois' },
+            ],
+          },
+        ];
+
+        const currentStep = WIZARD_STEPS[wizardStep];
+        const isLast = wizardStep === WIZARD_STEPS.length - 1;
+        const filledInStep = currentStep.fields.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '').length;
+        const progress = ((wizardStep + 1) / WIZARD_STEPS.length) * 100;
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+              {/* Progress */}
+              <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
+                <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
+              </div>
+
+              {/* Header */}
+              <div className="p-5 pb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {wizardStep + 1}/{WIZARD_STEPS.length}</p>
+                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
+                </div>
+                <h3 className={`text-lg font-bold ${textPrimary}`}>{currentStep.title}</h3>
+                <p className={`text-sm ${textMuted}`}>{currentStep.desc}</p>
+              </div>
+
+              {/* Fields */}
+              <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-3">
+                {currentStep.fields.map(field => (
+                  <div key={field.key}>
+                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{field.label}</label>
+                    {field.multiline ? (
+                      <textarea
+                        value={entreprise[field.key] || ''}
+                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        rows={2}
+                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={entreprise[field.key] || ''}
+                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                      />
+                    )}
+                  </div>
+                ))}
+                {filledInStep === currentStep.fields.length && (
+                  <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <CheckCircle size={16} /> Tous les champs de cette étape sont remplis
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Navigation */}
+              <div className={`p-5 pt-3 border-t flex items-center gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                {wizardStep > 0 && (
+                  <button
+                    onClick={() => setWizardStep(s => s - 1)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+                  >
+                    ← Précédent
+                  </button>
+                )}
+                <div className="flex-1" />
+                {!isLast ? (
+                  <button
+                    onClick={() => setWizardStep(s => s + 1)}
+                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
+                    style={{ background: couleur }}
+                  >
+                    Suivant →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setShowSetupWizard(false); showToast('Configuration terminée !', 'success'); }}
+                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
+                    style={{ background: '#22c55e' }}
+                  >
+                    ✓ Terminer
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Export Comptable */}
       {showExportModal && (
