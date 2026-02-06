@@ -85,12 +85,18 @@ export function usePWA(syncHandlers = {}) {
     };
   }, []);
 
-  // Setup online sync
+  // Keep syncHandlers in a ref to avoid re-running the effect on every render
+  const syncHandlersRef = React.useRef(syncHandlers);
   React.useEffect(() => {
-    const cleanup = setupOnlineSync(syncHandlers);
+    syncHandlersRef.current = syncHandlers;
+  }, [syncHandlers]);
+
+  // Setup online sync (runs once, uses ref for latest handlers)
+  React.useEffect(() => {
+    const cleanup = setupOnlineSync(syncHandlersRef.current);
 
     // Listen for sync complete events
-    const handleSyncComplete = (e) => {
+    const handleSyncComplete = () => {
       setPendingSyncCount(getSyncQueue().length);
     };
     window.addEventListener('sync-complete', handleSyncComplete);
@@ -99,7 +105,7 @@ export function usePWA(syncHandlers = {}) {
       cleanup();
       window.removeEventListener('sync-complete', handleSyncComplete);
     };
-  }, [syncHandlers]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update pending sync count periodically
   React.useEffect(() => {
