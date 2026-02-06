@@ -4,6 +4,7 @@
  */
 
 import { registerSW } from 'virtual:pwa-register';
+import { logger } from './lib/logger';
 
 // Check if we're in a browser environment
 const isSupported = 'serviceWorker' in navigator;
@@ -32,7 +33,7 @@ export function initServiceWorker(options = {}) {
   let needRefresh = false;
 
   if (!isSupported) {
-    console.log('Service Worker not supported');
+    logger.debug('Service Worker not supported');
     return { updateSW: () => Promise.resolve(), offlineReady: false, needRefresh: false };
   }
 
@@ -42,15 +43,15 @@ export function initServiceWorker(options = {}) {
       onNeedRefresh() {
         needRefresh = true;
         onNeedRefresh(true);
-        console.log('[SW] New content available, refresh needed');
+        logger.debug('[SW] New content available, refresh needed');
       },
       onOfflineReady() {
         offlineReady = true;
         onOfflineReady();
-        console.log('[SW] App ready to work offline');
+        logger.debug('[SW] App ready to work offline');
       },
       onRegistered(registration) {
-        console.log('[SW] Registered:', registration?.scope);
+        logger.debug('[SW] Registered:', registration?.scope);
 
         // Check for updates every hour
         if (registration) {
@@ -112,7 +113,7 @@ export function addToSyncQueue(type, data) {
   queue.push(operation);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 
-  console.log(`[Sync] Added to queue: ${type}`, id);
+  logger.debug(`[Sync] Added to queue: ${type}`, id);
   return id;
 }
 
@@ -136,7 +137,7 @@ export function getSyncQueue() {
 export function removeFromSyncQueue(id) {
   const queue = getSyncQueue().filter(op => op.id !== id);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
-  console.log(`[Sync] Removed from queue: ${id}`);
+  logger.debug(`[Sync] Removed from queue: ${id}`);
 }
 
 /**
@@ -144,7 +145,7 @@ export function removeFromSyncQueue(id) {
  */
 export function clearSyncQueue() {
   localStorage.removeItem(SYNC_QUEUE_KEY);
-  console.log('[Sync] Queue cleared');
+  logger.debug('[Sync] Queue cleared');
 }
 
 /**
@@ -154,7 +155,7 @@ export function clearSyncQueue() {
  */
 export async function processSyncQueue(handlers = {}) {
   if (!navigator.onLine) {
-    console.log('[Sync] Offline, skipping queue processing');
+    logger.debug('[Sync] Offline, skipping queue processing');
     return { success: 0, failed: 0 };
   }
 
@@ -163,7 +164,7 @@ export async function processSyncQueue(handlers = {}) {
     return { success: 0, failed: 0 };
   }
 
-  console.log(`[Sync] Processing ${queue.length} queued operations`);
+  logger.debug(`[Sync] Processing ${queue.length} queued operations`);
 
   let success = 0;
   let failed = 0;
@@ -180,7 +181,7 @@ export async function processSyncQueue(handlers = {}) {
       await handler(operation.data);
       removeFromSyncQueue(operation.id);
       success++;
-      console.log(`[Sync] Success: ${operation.type}`, operation.id);
+      logger.debug(`[Sync] Success: ${operation.type}`, operation.id);
     } catch (error) {
       console.error(`[Sync] Failed: ${operation.type}`, error);
 
@@ -191,7 +192,7 @@ export async function processSyncQueue(handlers = {}) {
       if (operation.retries >= 3) {
         removeFromSyncQueue(operation.id);
         failed++;
-        console.log(`[Sync] Max retries reached, removing: ${operation.id}`);
+        logger.debug(`[Sync] Max retries reached, removing: ${operation.id}`);
       } else {
         // Update in queue with new retry count
         const updatedQueue = getSyncQueue().map(op =>
@@ -211,7 +212,7 @@ export async function processSyncQueue(handlers = {}) {
  */
 export function setupOnlineSync(handlers = {}) {
   const handleOnline = async () => {
-    console.log('[Sync] Back online, processing queue...');
+    logger.debug('[Sync] Back online, processing queue...');
     const result = await processSyncQueue(handlers);
 
     if (result.success > 0 || result.failed > 0) {

@@ -3,6 +3,7 @@ import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
+import { logger } from '../lib/logger';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -29,7 +30,7 @@ function loadDemoData() {
     const stored = localStorage.getItem(DEMO_STORAGE_KEY);
     if (stored) {
       cachedDemoData = JSON.parse(stored);
-      console.log('📥 Loaded demo data from localStorage:', {
+      logger.debug('📥 Loaded demo data from localStorage:', {
         clients: cachedDemoData?.clients?.length || 0,
         devis: cachedDemoData?.devis?.length || 0,
         chantiers: cachedDemoData?.chantiers?.length || 0,
@@ -171,7 +172,7 @@ export function DataProvider({ children, initialData = {} }) {
         paiements,
         echanges,
       });
-      console.log('💾 Demo data saved to localStorage');
+      logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
@@ -185,7 +186,7 @@ export function DataProvider({ children, initialData = {} }) {
     const getCurrentUser = async () => {
       const user = await auth.getCurrentUser();
       if (user?.id) {
-        console.log('📱 User authenticated:', user.id);
+        logger.debug('📱 User authenticated:', user.id);
         setUserId(user.id);
       }
     };
@@ -194,11 +195,11 @@ export function DataProvider({ children, initialData = {} }) {
     // Subscribe to auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('🔑 User signed in:', session.user.id);
+        logger.debug('🔑 User signed in:', session.user.id);
         setUserId(session.user.id);
         setDataLoaded(false); // Reset to trigger data reload
       } else if (event === 'SIGNED_OUT') {
-        console.log('🚪 User signed out');
+        logger.debug('🚪 User signed out');
         setUserId(null);
         // Clear data on sign out
         setClients([]);
@@ -222,7 +223,7 @@ export function DataProvider({ children, initialData = {} }) {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        console.log('📥 Loading data from Supabase...');
+        logger.debug('📥 Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
           // Deduplicate by ID to prevent duplicates from sync issues
@@ -235,7 +236,7 @@ export function DataProvider({ children, initialData = {} }) {
           setPointages(dedup(data.pointages));
           setCatalogue(dedup(data.catalogue));
           setDataLoaded(true);
-          console.log('✅ Data loaded from Supabase:', {
+          logger.debug('✅ Data loaded from Supabase:', {
             clients: data.clients.length,
             chantiers: data.chantiers.length,
             devis: data.devis.length,

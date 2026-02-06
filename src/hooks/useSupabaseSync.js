@@ -5,6 +5,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
+import { logger } from '../lib/logger';
 
 
 /**
@@ -231,12 +232,12 @@ const FIELD_MAPPINGS = {
  */
 export async function loadAllData(userId) {
   if (isDemo || !supabase || !userId) {
-    console.log('Skipping Supabase load - demo mode or no user');
+    logger.debug('Skipping Supabase load - demo mode or no user');
     return null;
   }
 
   try {
-    console.log('Loading data from Supabase for user:', userId);
+    logger.debug('Loading data from Supabase for user:', userId);
 
     const [
       clientsRes,
@@ -266,7 +267,7 @@ export async function loadAllData(userId) {
       catalogue: (catalogueRes.data || []).map(FIELD_MAPPINGS.catalogue.fromSupabase),
     };
 
-    console.log('Loaded data from Supabase:', {
+    logger.debug('Loaded data from Supabase:', {
       clients: data.clients.length,
       chantiers: data.chantiers.length,
       devis: data.devis.length,
@@ -301,7 +302,7 @@ export async function saveItem(table, item, userId) {
       user_id: userId,
     };
 
-    console.log(`💾 Saving to ${table}:`, supabaseData);
+    logger.debug(`💾 Saving to ${table}:`, supabaseData);
 
     const { data, error } = await supabase
       .from(table)
@@ -315,7 +316,7 @@ export async function saveItem(table, item, userId) {
       throw new Error(`Failed to save to ${table}: ${error.message}`);
     }
 
-    console.log(`✅ Saved to ${table}:`, data?.id);
+    logger.debug(`✅ Saved to ${table}:`, data?.id);
     return mapping.fromSupabase(data);
   } catch (error) {
     console.error(`❌ Error saving to ${table}:`, error);
@@ -341,7 +342,7 @@ export async function deleteItem(table, itemId, userId) {
       return false;
     }
 
-    console.log(`Deleted from ${table}:`, itemId);
+    logger.debug(`Deleted from ${table}:`, itemId);
     return true;
   } catch (error) {
     console.error(`Error deleting from ${table}:`, error);
