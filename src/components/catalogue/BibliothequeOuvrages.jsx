@@ -20,7 +20,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, Plus, Search, Edit3, Trash2, Copy, Star, X, Save,
-  ChevronDown, ChevronUp, Layers, Hammer, Wrench, Truck, Clock
+  ChevronDown, ChevronUp, Layers, Hammer, Wrench, Truck, Clock,
+  BookTemplate, Zap, Droplets, Building, Paintbrush, DoorOpen,
+  ThermometerSun, Home, TreePine
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 
@@ -45,6 +47,326 @@ const TYPES_COMPOSANT = [
   { value: 'main_oeuvre', label: "Main d'oeuvre", icon: Hammer, color: 'amber' },
   { value: 'sous_traitance', label: 'Sous-traitance', icon: Wrench, color: 'purple' },
   { value: 'location', label: 'Location', icon: Truck, color: 'emerald' },
+];
+
+// ---------- Templates prédéfinis par corps de métier ----------
+const TEMPLATES_OUVRAGES = [
+  {
+    trade: 'Plomberie',
+    icon: Droplets,
+    color: '#3b82f6',
+    templates: [
+      {
+        designation: 'Pose lavabo avec robinetterie',
+        description: 'Fourniture et pose d\'un lavabo céramique avec mitigeur, raccordements eau chaude/froide et évacuation',
+        unite: 'u',
+        categorie: 'Plomberie',
+        difficulte: 2,
+        tempsPoseHeures: 3,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Lavabo céramique', quantite: 1, prixUnitaire: 85, unite: 'u' },
+          { type: 'materiau', description: 'Mitigeur lavabo', quantite: 1, prixUnitaire: 55, unite: 'u' },
+          { type: 'materiau', description: 'Kit raccordement (flexibles, siphon, joints)', quantite: 1, prixUnitaire: 25, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Plombier qualifié', quantite: 3, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Pose WC suspendu avec bâti-support',
+        description: 'Fourniture et pose WC suspendu avec bâti-support encastré, raccordement et mise en service',
+        unite: 'u',
+        categorie: 'Plomberie',
+        difficulte: 3,
+        tempsPoseHeures: 5,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Bâti-support WC suspendu', quantite: 1, prixUnitaire: 180, unite: 'u' },
+          { type: 'materiau', description: 'Cuvette céramique + abattant', quantite: 1, prixUnitaire: 150, unite: 'u' },
+          { type: 'materiau', description: 'Plaque de commande double chasse', quantite: 1, prixUnitaire: 45, unite: 'u' },
+          { type: 'materiau', description: 'Kit raccordement (pipe, manchette, joint)', quantite: 1, prixUnitaire: 20, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Plombier qualifié', quantite: 5, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Installation chauffe-eau électrique 200L',
+        description: 'Fourniture et pose chauffe-eau électrique 200L mural, raccordement hydraulique et électrique',
+        unite: 'u',
+        categorie: 'Plomberie',
+        difficulte: 3,
+        tempsPoseHeures: 4,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Chauffe-eau électrique 200L', quantite: 1, prixUnitaire: 350, unite: 'u' },
+          { type: 'materiau', description: 'Groupe de sécurité + siphon', quantite: 1, prixUnitaire: 35, unite: 'u' },
+          { type: 'materiau', description: 'Kit raccordement (flexibles, réducteur pression)', quantite: 1, prixUnitaire: 40, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Plombier qualifié', quantite: 4, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Électricité',
+    icon: Zap,
+    color: '#eab308',
+    templates: [
+      {
+        designation: 'Point lumineux avec interrupteur',
+        description: 'Création d\'un point lumineux : tirage de câbles, pose interrupteur, boîte DCL, raccordement tableau',
+        unite: 'u',
+        categorie: 'Électricité',
+        difficulte: 2,
+        tempsPoseHeures: 2,
+        coefficientVente: 1.40,
+        composants: [
+          { type: 'materiau', description: 'Câble R2V 3G1.5mm² (10m)', quantite: 10, prixUnitaire: 1.2, unite: 'ml' },
+          { type: 'materiau', description: 'Interrupteur complet', quantite: 1, prixUnitaire: 12, unite: 'u' },
+          { type: 'materiau', description: 'Boîte DCL + douille', quantite: 1, prixUnitaire: 8, unite: 'u' },
+          { type: 'materiau', description: 'Gaine ICTA 20mm (10m)', quantite: 10, prixUnitaire: 0.8, unite: 'ml' },
+          { type: 'main_oeuvre', description: 'Électricien qualifié', quantite: 2, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Prise de courant 16A',
+        description: 'Création d\'une prise de courant 16A : tirage de câbles, encastrement, raccordement tableau',
+        unite: 'u',
+        categorie: 'Électricité',
+        difficulte: 2,
+        tempsPoseHeures: 1.5,
+        coefficientVente: 1.40,
+        composants: [
+          { type: 'materiau', description: 'Câble R2V 3G2.5mm² (10m)', quantite: 10, prixUnitaire: 1.5, unite: 'ml' },
+          { type: 'materiau', description: 'Prise 16A complète', quantite: 1, prixUnitaire: 10, unite: 'u' },
+          { type: 'materiau', description: 'Gaine ICTA 20mm (10m)', quantite: 10, prixUnitaire: 0.8, unite: 'ml' },
+          { type: 'materiau', description: 'Boîte d\'encastrement', quantite: 1, prixUnitaire: 2, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Électricien qualifié', quantite: 1.5, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Tableau électrique 2 rangées',
+        description: 'Fourniture et pose tableau 2 rangées, disjoncteur de branchement, différentiels, disjoncteurs divisionnaires',
+        unite: 'u',
+        categorie: 'Électricité',
+        difficulte: 4,
+        tempsPoseHeures: 8,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Coffret 2 rangées + accessoires', quantite: 1, prixUnitaire: 65, unite: 'u' },
+          { type: 'materiau', description: 'Interrupteur différentiel 40A 30mA (x2)', quantite: 2, prixUnitaire: 45, unite: 'u' },
+          { type: 'materiau', description: 'Disjoncteurs divisionnaires (lot 10)', quantite: 1, prixUnitaire: 80, unite: 'u' },
+          { type: 'materiau', description: 'Peigne de raccordement + bornes', quantite: 1, prixUnitaire: 25, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Électricien qualifié', quantite: 8, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Maçonnerie',
+    icon: Building,
+    color: '#78716c',
+    templates: [
+      {
+        designation: 'Mur en parpaings 20cm (au m²)',
+        description: 'Montage mur en parpaings creux 20x20x50, mortier, ferraillage vertical tous les 1m, arase',
+        unite: 'm²',
+        categorie: 'Gros oeuvre',
+        difficulte: 3,
+        tempsPoseHeures: 1.5,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Parpaings creux 20x20x50', quantite: 10, prixUnitaire: 1.5, unite: 'u' },
+          { type: 'materiau', description: 'Mortier (sac 25kg)', quantite: 0.5, prixUnitaire: 8, unite: 'u' },
+          { type: 'materiau', description: 'Fer à béton HA10', quantite: 1.5, prixUnitaire: 2, unite: 'ml' },
+          { type: 'main_oeuvre', description: 'Maçon qualifié', quantite: 1.5, prixUnitaire: 42, unite: 'h' },
+          { type: 'main_oeuvre', description: 'Manoeuvre', quantite: 0.75, prixUnitaire: 30, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Dalle béton 15cm (au m²)',
+        description: 'Coulage dalle béton armé épaisseur 15cm, treillis soudé, coffrage périphérique',
+        unite: 'm²',
+        categorie: 'Gros oeuvre',
+        difficulte: 3,
+        tempsPoseHeures: 1,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Béton C25/30 (0.15 m³/m²)', quantite: 0.15, prixUnitaire: 120, unite: 'm³' },
+          { type: 'materiau', description: 'Treillis soudé ST25C', quantite: 1.1, prixUnitaire: 5, unite: 'm²' },
+          { type: 'materiau', description: 'Film polyane + cales', quantite: 1.1, prixUnitaire: 1.5, unite: 'm²' },
+          { type: 'main_oeuvre', description: 'Maçon qualifié', quantite: 0.5, prixUnitaire: 42, unite: 'h' },
+          { type: 'main_oeuvre', description: 'Manoeuvre', quantite: 0.5, prixUnitaire: 30, unite: 'h' },
+          { type: 'location', description: 'Pompe à béton (quote-part)', quantite: 1, prixUnitaire: 5, unite: 'm²' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Carrelage',
+    icon: Layers,
+    color: '#06b6d4',
+    templates: [
+      {
+        designation: 'Pose carrelage sol 60x60 (au m²)',
+        description: 'Fourniture et pose carrelage grès cérame 60x60, colle, joints, primaire d\'accrochage',
+        unite: 'm²',
+        categorie: 'Carrelage',
+        difficulte: 3,
+        tempsPoseHeures: 1,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Carrelage grès cérame 60x60', quantite: 1.1, prixUnitaire: 25, unite: 'm²' },
+          { type: 'materiau', description: 'Colle à carrelage (sac 25kg)', quantite: 0.2, prixUnitaire: 15, unite: 'u' },
+          { type: 'materiau', description: 'Joint carrelage (sac 5kg)', quantite: 0.1, prixUnitaire: 12, unite: 'u' },
+          { type: 'materiau', description: 'Primaire d\'accrochage', quantite: 0.15, prixUnitaire: 18, unite: 'L' },
+          { type: 'materiau', description: 'Croisillons + cales', quantite: 1, prixUnitaire: 1, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Carreleur qualifié', quantite: 1, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Faïence murale 30x60 (au m²)',
+        description: 'Fourniture et pose faïence murale 30x60, colle, joints, primaire',
+        unite: 'm²',
+        categorie: 'Carrelage',
+        difficulte: 3,
+        tempsPoseHeures: 1.2,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Faïence murale 30x60', quantite: 1.1, prixUnitaire: 20, unite: 'm²' },
+          { type: 'materiau', description: 'Colle carrelage mural (sac 25kg)', quantite: 0.2, prixUnitaire: 16, unite: 'u' },
+          { type: 'materiau', description: 'Joint fin (sac 5kg)', quantite: 0.1, prixUnitaire: 14, unite: 'u' },
+          { type: 'materiau', description: 'Profilé de finition alu', quantite: 0.5, prixUnitaire: 8, unite: 'ml' },
+          { type: 'main_oeuvre', description: 'Carreleur qualifié', quantite: 1.2, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Peinture',
+    icon: Paintbrush,
+    color: '#f43f5e',
+    templates: [
+      {
+        designation: 'Peinture murs et plafonds (au m²)',
+        description: 'Préparation des supports, sous-couche + 2 couches finition acrylique mate, murs et plafonds',
+        unite: 'm²',
+        categorie: 'Peinture',
+        difficulte: 2,
+        tempsPoseHeures: 0.3,
+        coefficientVente: 1.40,
+        composants: [
+          { type: 'materiau', description: 'Peinture acrylique mate (0.15L/m²/couche x3)', quantite: 0.45, prixUnitaire: 8, unite: 'L' },
+          { type: 'materiau', description: 'Enduit de rebouchage', quantite: 0.05, prixUnitaire: 12, unite: 'kg' },
+          { type: 'materiau', description: 'Bâche + adhésif masquage', quantite: 0.1, prixUnitaire: 5, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Peintre qualifié', quantite: 0.3, prixUnitaire: 40, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Menuiserie',
+    icon: DoorOpen,
+    color: '#a855f7',
+    templates: [
+      {
+        designation: 'Pose porte intérieure bloc-porte',
+        description: 'Fourniture et pose bloc-porte intérieur 83cm, huisserie bois, poignées, finitions',
+        unite: 'u',
+        categorie: 'Menuiserie',
+        difficulte: 2,
+        tempsPoseHeures: 2,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Bloc-porte intérieur 83cm pré-peint', quantite: 1, prixUnitaire: 120, unite: 'u' },
+          { type: 'materiau', description: 'Poignées + serrure', quantite: 1, prixUnitaire: 25, unite: 'u' },
+          { type: 'materiau', description: 'Mousse PU + vis fixation', quantite: 1, prixUnitaire: 8, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Menuisier qualifié', quantite: 2, prixUnitaire: 42, unite: 'h' },
+        ],
+      },
+      {
+        designation: 'Pose fenêtre PVC double vitrage',
+        description: 'Fourniture et pose fenêtre PVC 2 vantaux 120x135, double vitrage, finitions intérieures',
+        unite: 'u',
+        categorie: 'Menuiserie',
+        difficulte: 3,
+        tempsPoseHeures: 3,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Fenêtre PVC 2 vantaux 120x135 DV', quantite: 1, prixUnitaire: 280, unite: 'u' },
+          { type: 'materiau', description: 'Kit calfeutrement (mousse, silicone, compriband)', quantite: 1, prixUnitaire: 15, unite: 'u' },
+          { type: 'materiau', description: 'Tapée + habillage intérieur', quantite: 1, prixUnitaire: 30, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Menuisier qualifié', quantite: 3, prixUnitaire: 42, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Isolation',
+    icon: ThermometerSun,
+    color: '#22c55e',
+    templates: [
+      {
+        designation: 'Isolation murs intérieurs laine minérale (au m²)',
+        description: 'Pose isolant laine de verre 120mm + plaque de plâtre BA13, ossature métallique',
+        unite: 'm²',
+        categorie: 'Isolation',
+        difficulte: 2,
+        tempsPoseHeures: 0.5,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Laine de verre GR32 120mm', quantite: 1.05, prixUnitaire: 8, unite: 'm²' },
+          { type: 'materiau', description: 'Plaque BA13 standard', quantite: 1.05, prixUnitaire: 4.5, unite: 'm²' },
+          { type: 'materiau', description: 'Rail + montant métallique', quantite: 1.5, prixUnitaire: 2.5, unite: 'ml' },
+          { type: 'materiau', description: 'Vis, bande, enduit à joint', quantite: 1, prixUnitaire: 2, unite: 'm²' },
+          { type: 'main_oeuvre', description: 'Plaquiste qualifié', quantite: 0.5, prixUnitaire: 42, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Toiture',
+    icon: Home,
+    color: '#dc2626',
+    templates: [
+      {
+        designation: 'Couverture tuiles mécaniques (au m²)',
+        description: 'Pose tuiles mécaniques terre cuite sur liteaux, faîtières, rives, closoir ventilé',
+        unite: 'm²',
+        categorie: 'Toiture',
+        difficulte: 4,
+        tempsPoseHeures: 0.8,
+        coefficientVente: 1.30,
+        composants: [
+          { type: 'materiau', description: 'Tuiles mécaniques terre cuite', quantite: 12, prixUnitaire: 1.2, unite: 'u' },
+          { type: 'materiau', description: 'Liteaux sapin 27x40mm', quantite: 3, prixUnitaire: 1.5, unite: 'ml' },
+          { type: 'materiau', description: 'Écran sous-toiture HPV', quantite: 1.1, prixUnitaire: 3, unite: 'm²' },
+          { type: 'materiau', description: 'Clous, crochets, accessoires', quantite: 1, prixUnitaire: 2, unite: 'm²' },
+          { type: 'main_oeuvre', description: 'Couvreur qualifié', quantite: 0.8, prixUnitaire: 45, unite: 'h' },
+        ],
+      },
+    ],
+  },
+  {
+    trade: 'Extérieur',
+    icon: TreePine,
+    color: '#65a30d',
+    templates: [
+      {
+        designation: 'Terrasse bois composite (au m²)',
+        description: 'Fourniture et pose lames composites sur lambourdes, plots réglables, finitions',
+        unite: 'm²',
+        categorie: 'Aménagement extérieur',
+        difficulte: 3,
+        tempsPoseHeures: 1,
+        coefficientVente: 1.35,
+        composants: [
+          { type: 'materiau', description: 'Lames composites 2400x150mm', quantite: 5, prixUnitaire: 8, unite: 'u' },
+          { type: 'materiau', description: 'Lambourdes composites', quantite: 3, prixUnitaire: 4.5, unite: 'ml' },
+          { type: 'materiau', description: 'Plots réglables', quantite: 5, prixUnitaire: 3.5, unite: 'u' },
+          { type: 'materiau', description: 'Clips fixation inox', quantite: 20, prixUnitaire: 0.3, unite: 'u' },
+          { type: 'main_oeuvre', description: 'Poseur qualifié', quantite: 1, prixUnitaire: 42, unite: 'h' },
+        ],
+      },
+    ],
+  },
 ];
 
 const formatEUR = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -184,6 +506,8 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [editingOuvrage, setEditingOuvrage] = useState(null); // null = list view, object = editing
   const [expandedComposants, setExpandedComposants] = useState(true);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [templateTradeFilter, setTemplateTradeFilter] = useState(null);
 
   // ---------- Filtered list ----------
   const categories = useMemo(() => {
@@ -262,6 +586,31 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
   const handleCancel = useCallback(() => {
     setEditingOuvrage(null);
   }, []);
+
+  const handleUseTemplate = useCallback((template) => {
+    const newOuvrage = {
+      ...createEmptyOuvrage(ouvrages),
+      designation: template.designation,
+      description: template.description,
+      unite: template.unite,
+      categorie: template.categorie,
+      difficulte: template.difficulte,
+      tempsPoseHeures: template.tempsPoseHeures,
+      coefficientVente: template.coefficientVente,
+      composants: template.composants.map(c => ({
+        id: generateId('comp'),
+        type: c.type,
+        catalogueId: null,
+        description: c.description,
+        quantite: c.quantite,
+        prixUnitaire: c.prixUnitaire,
+        unite: c.unite,
+      })),
+    };
+    setShowTemplates(false);
+    setTemplateTradeFilter(null);
+    setEditingOuvrage(newOuvrage);
+  }, [ouvrages]);
 
   // ---------- Composant row handlers ----------
   const updateComposant = useCallback((compId, field, value) => {
@@ -705,6 +1054,155 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
   }
 
   // ============================================================
+  // RENDER: Template Picker
+  // ============================================================
+  if (showTemplates) {
+    const filteredTemplates = templateTradeFilter
+      ? TEMPLATES_OUVRAGES.filter(t => t.trade === templateTradeFilter)
+      : TEMPLATES_OUVRAGES;
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setShowTemplates(false); setTemplateTradeFilter(null); }}
+              className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+            >
+              <X size={20} className={textPrimary} />
+            </button>
+            <div>
+              <h1 className={`text-2xl font-bold ${textPrimary}`}>
+                Templates d'ouvrages
+              </h1>
+              <p className={`text-sm ${textMuted}`}>Ouvrages types par corps de métier avec prix moyens du marché</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Trade filter chips */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setTemplateTradeFilter(null)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${
+              !templateTradeFilter
+                ? 'text-white shadow-sm'
+                : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+            style={!templateTradeFilter ? { background: couleur } : {}}
+          >
+            Tous les métiers
+          </button>
+          {TEMPLATES_OUVRAGES.map(trade => {
+            const Icon = trade.icon;
+            return (
+              <button
+                key={trade.trade}
+                onClick={() => setTemplateTradeFilter(trade.trade)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors flex items-center gap-1.5 ${
+                  templateTradeFilter === trade.trade
+                    ? 'text-white shadow-sm'
+                    : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                style={templateTradeFilter === trade.trade ? { background: trade.color } : {}}
+              >
+                <Icon size={14} />
+                {trade.trade}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Templates by trade */}
+        {filteredTemplates.map(trade => {
+          const TradeIcon = trade.icon;
+          return (
+            <div key={trade.trade} className="space-y-3">
+              <h2 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
+                <TradeIcon size={20} style={{ color: trade.color }} />
+                {trade.trade}
+                <span className={`text-sm font-normal ${textMuted}`}>({trade.templates.length} template{trade.templates.length > 1 ? 's' : ''})</span>
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {trade.templates.map((tpl, idx) => {
+                  const prixRevient = tpl.composants.reduce((sum, c) => sum + c.quantite * c.prixUnitaire, 0);
+                  const prixVente = prixRevient * tpl.coefficientVente;
+                  const marge = computeMargePercent(prixRevient, prixVente);
+                  return (
+                    <div
+                      key={idx}
+                      className={`${cardBg} rounded-2xl border p-5 transition-all hover:shadow-lg group`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className={`font-semibold text-sm leading-snug ${textPrimary}`}>{tpl.designation}</h3>
+                        <DifficultyDots value={tpl.difficulte} couleur={trade.color} isDark={isDark} readOnly />
+                      </div>
+                      <p className={`text-xs mb-3 line-clamp-2 ${textMuted}`}>{tpl.description}</p>
+
+                      {/* Composants summary */}
+                      <div className={`flex flex-wrap gap-1 mb-3`}>
+                        {tpl.composants.map((c, ci) => (
+                          <span key={ci} className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                            {c.description.length > 20 ? c.description.substring(0, 20) + '…' : c.description}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Price info */}
+                      <div className={`p-3 rounded-xl mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-xs ${textMuted}`}>Prix de revient</span>
+                          <span className={`text-sm ${textSecondary}`}>{formatEUR.format(prixRevient)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs ${textMuted}`}>Prix de vente HT</span>
+                          <span className="text-sm font-bold" style={{ color: trade.color }}>{formatEUR.format(prixVente)}</span>
+                        </div>
+                        <div className={`flex items-center justify-between mt-1 pt-1 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                          <span className={`text-xs ${textMuted}`}>Marge · Coeff x{tpl.coefficientVente.toFixed(2)}</span>
+                          <span className={`text-sm font-bold ${marge >= 30 ? 'text-emerald-500' : marge >= 15 ? 'text-amber-500' : 'text-red-500'}`}>
+                            {marge.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Meta + CTA */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs flex items-center gap-1 ${textMuted}`}>
+                            <Package size={12} />
+                            {tpl.composants.length}
+                          </span>
+                          {tpl.tempsPoseHeures > 0 && (
+                            <span className={`text-xs flex items-center gap-1 ${textMuted}`}>
+                              <Clock size={12} />
+                              {tpl.tempsPoseHeures}h
+                            </span>
+                          )}
+                          <span className={`text-xs ${textMuted}`}>/{tpl.unite}</span>
+                        </div>
+                        <button
+                          onClick={() => handleUseTemplate(tpl)}
+                          className="px-3 py-1.5 text-white rounded-lg text-xs font-medium hover:shadow-md transition-all flex items-center gap-1"
+                          style={{ background: trade.color }}
+                        >
+                          <Plus size={12} />
+                          Utiliser
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ============================================================
   // RENDER: List View
   // ============================================================
   return (
@@ -714,14 +1212,23 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
         <h1 className={`text-2xl font-bold ${textPrimary}`}>
           Bibliothèque d'ouvrages ({ouvrages.length})
         </h1>
-        <button
-          onClick={handleCreate}
-          className="px-4 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2 hover:shadow-lg transition-all"
-          style={{ background: couleur }}
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Nouvel ouvrage</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowTemplates(true)}
+            className={`px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-2 transition-all font-medium ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          >
+            <BookTemplate size={16} />
+            <span className="hidden sm:inline">Templates</span>
+          </button>
+          <button
+            onClick={handleCreate}
+            className="px-4 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2 hover:shadow-lg transition-all"
+            style={{ background: couleur }}
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nouvel ouvrage</span>
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -830,14 +1337,23 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
                   </div>
                 </div>
               </div>
-              <button
-                onClick={handleCreate}
-                className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium"
-                style={{ background: couleur }}
-              >
-                <Plus size={18} />
-                Créer mon premier ouvrage
-              </button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => setShowTemplates(true)}
+                  className={`w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                >
+                  <BookTemplate size={18} />
+                  Partir d'un template
+                </button>
+                <button
+                  onClick={handleCreate}
+                  className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium"
+                  style={{ background: couleur }}
+                >
+                  <Plus size={18} />
+                  Créer de zéro
+                </button>
+              </div>
             </div>
           )}
 
