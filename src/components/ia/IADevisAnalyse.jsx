@@ -75,9 +75,9 @@ const saveAnalyses = (list) => {
 
 const STATUTS = {
   en_cours: { label: 'En cours', color: 'blue', icon: Loader },
-  terminee: { label: 'Termin\u00e9e', color: 'green', icon: CheckCircle },
+  terminee: { label: 'Terminée', color: 'green', icon: CheckCircle },
   erreur: { label: 'Erreur', color: 'red', icon: AlertCircle },
-  appliquee: { label: 'Appliqu\u00e9e', color: 'purple', icon: FileText },
+  appliquee: { label: 'Appliquée', color: 'purple', icon: FileText },
 };
 
 // ---------------------------------------------------------------------------
@@ -88,9 +88,9 @@ const travauxDb = [
   {
     cat: 'demolition',
     items: [
-      { designation: 'D\u00e9pose carrelage existant', unite: 'm\u00b2', prixMin: 15, prixMax: 25 },
-      { designation: '\u00c9vacuation gravats', unite: 'forfait', prixMin: 200, prixMax: 500 },
-      { designation: 'D\u00e9pose sanitaires', unite: 'u', prixMin: 80, prixMax: 150 },
+      { designation: 'Dépose carrelage existant', unite: 'm²', prixMin: 15, prixMax: 25 },
+      { designation: 'Évacuation gravats', unite: 'forfait', prixMin: 200, prixMax: 500 },
+      { designation: 'Dépose sanitaires', unite: 'u', prixMin: 80, prixMax: 150 },
     ],
   },
   {
@@ -99,37 +99,37 @@ const travauxDb = [
       { designation: 'Fourniture et pose receveur de douche', unite: 'u', prixMin: 400, prixMax: 800 },
       { designation: 'Fourniture et pose WC suspendu', unite: 'u', prixMin: 500, prixMax: 900 },
       { designation: 'Fourniture et pose lavabo + robinetterie', unite: 'u', prixMin: 300, prixMax: 600 },
-      { designation: 'Modification r\u00e9seau eau chaude/froide', unite: 'forfait', prixMin: 300, prixMax: 700 },
+      { designation: 'Modification réseau eau chaude/froide', unite: 'forfait', prixMin: 300, prixMax: 700 },
     ],
   },
   {
     cat: 'carrelage',
     items: [
-      { designation: 'Fourniture et pose carrelage sol', unite: 'm\u00b2', prixMin: 45, prixMax: 85 },
-      { designation: 'Fourniture et pose fa\u00efence murale', unite: 'm\u00b2', prixMin: 50, prixMax: 90 },
-      { designation: 'R\u00e9alisation joints', unite: 'm\u00b2', prixMin: 8, prixMax: 15 },
+      { designation: 'Fourniture et pose carrelage sol', unite: 'm²', prixMin: 45, prixMax: 85 },
+      { designation: 'Fourniture et pose faïence murale', unite: 'm²', prixMin: 50, prixMax: 90 },
+      { designation: 'Réalisation joints', unite: 'm²', prixMin: 8, prixMax: 15 },
     ],
   },
   {
     cat: 'electricite',
     items: [
-      { designation: 'Mise aux normes tableau \u00e9lectrique', unite: 'forfait', prixMin: 400, prixMax: 800 },
+      { designation: 'Mise aux normes tableau électrique', unite: 'forfait', prixMin: 400, prixMax: 800 },
       { designation: 'Fourniture et pose spots LED', unite: 'u', prixMin: 45, prixMax: 85 },
-      { designation: 'Point lumineux suppl\u00e9mentaire', unite: 'u', prixMin: 80, prixMax: 150 },
+      { designation: 'Point lumineux supplémentaire', unite: 'u', prixMin: 80, prixMax: 150 },
     ],
   },
   {
     cat: 'peinture',
     items: [
-      { designation: 'Pr\u00e9paration murs (enduit + pon\u00e7age)', unite: 'm\u00b2', prixMin: 12, prixMax: 22 },
-      { designation: 'Peinture murs 2 couches', unite: 'm\u00b2', prixMin: 15, prixMax: 28 },
-      { designation: 'Peinture plafond', unite: 'm\u00b2', prixMin: 18, prixMax: 30 },
+      { designation: 'Préparation murs (enduit + ponçage)', unite: 'm²', prixMin: 12, prixMax: 22 },
+      { designation: 'Peinture murs 2 couches', unite: 'm²', prixMin: 15, prixMax: 28 },
+      { designation: 'Peinture plafond', unite: 'm²', prixMin: 18, prixMax: 30 },
     ],
   },
   {
     cat: 'menuiserie',
     items: [
-      { designation: 'Fourniture et pose porte int\u00e9rieure', unite: 'u', prixMin: 250, prixMax: 500 },
+      { designation: 'Fourniture et pose porte intérieure', unite: 'u', prixMin: 250, prixMax: 500 },
       { designation: 'Fourniture et pose meuble vasque', unite: 'u', prixMin: 400, prixMax: 900 },
     ],
   },
@@ -145,7 +145,7 @@ function pickRandom(arr, count) {
 }
 
 function mockAnalyse(description) {
-  const surface = parseFloat((description || '').match(/(\d+)\s*m\u00b2/)?.[1] || '12');
+  const surface = parseFloat((description || '').match(/(\d+)\s*m²/)?.[1] || '12');
   const descLower = (description || '').toLowerCase();
 
   // Determine relevant categories based on keywords
@@ -159,16 +159,16 @@ function mockAnalyse(description) {
   if (/peinture|mur|plafond|rafra/i.test(descLower)) {
     relevantCats.push('peinture');
   }
-  if (/\u00e9lectr|spot|luminaire|tableau/i.test(descLower)) {
+  if (/électr|spot|luminaire|tableau/i.test(descLower)) {
     relevantCats.push('electricite');
   }
-  if (/carrelage|sol|fa\u00efence/i.test(descLower)) {
+  if (/carrelage|sol|faïence/i.test(descLower)) {
     relevantCats.push('carrelage');
   }
-  if (/porte|fen\u00eatre|menuiserie|meuble/i.test(descLower)) {
+  if (/porte|fenêtre|menuiserie|meuble/i.test(descLower)) {
     relevantCats.push('menuiserie');
   }
-  if (/r\u00e9novation|r\u00e9nov/i.test(descLower) && relevantCats.length === 0) {
+  if (/rénovation|rénov/i.test(descLower) && relevantCats.length === 0) {
     relevantCats = ['demolition', 'plomberie', 'carrelage', 'electricite', 'peinture'];
   }
   if (relevantCats.length === 0) {
@@ -188,7 +188,7 @@ function mockAnalyse(description) {
 
   const travaux = selected.map((item) => {
     let quantite;
-    if (item.unite === 'm\u00b2') {
+    if (item.unite === 'm²') {
       quantite = Math.round(surface * (0.6 + Math.random() * 0.8) * 10) / 10;
     } else if (item.unite === 'u') {
       quantite = Math.floor(Math.random() * 3) + 1;
@@ -290,7 +290,7 @@ function StepIndicator({ currentStep, isDark, couleur }) {
   const steps = [
     { key: 1, label: 'Photo' },
     { key: 2, label: 'Analyse' },
-    { key: 3, label: 'R\u00e9sultats' },
+    { key: 3, label: 'Résultats' },
   ];
 
   return (
@@ -494,7 +494,7 @@ export default function IADevisAnalyse({
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith('image/')) {
-      setError('Veuillez s\u00e9lectionner une image.');
+      setError('Veuillez sélectionner une image.');
       return;
     }
     setError(null);
@@ -527,9 +527,9 @@ export default function IADevisAnalyse({
     setError(null);
 
     const labels = [
-      'Analyse de l\u2019image...',
+      'Analyse de l’image...',
       'Identification des travaux...',
-      'Estimation des quantit\u00e9s...',
+      'Estimation des quantités...',
       'Calcul des prix...',
     ];
 
@@ -568,7 +568,7 @@ export default function IADevisAnalyse({
 
           setTimeout(() => setStep(3), 400);
         } catch {
-          setError('Erreur lors de l\u2019analyse. Veuillez r\u00e9essayer.');
+          setError('Erreur lors de l’analyse. Veuillez réessayer.');
           setStep(1);
         }
       }
@@ -624,8 +624,8 @@ export default function IADevisAnalyse({
       </div>
       <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>Analyse IA de devis</h2>
       <p className={`text-sm text-center max-w-md mb-6 ${textMuted}`}>
-        Prenez une photo de votre chantier et notre IA g\u00e9n\u00e8rera automatiquement une estimation
-        d\u00e9taill\u00e9e des travaux avec les prix du march\u00e9.
+        Prenez une photo de votre chantier et notre IA génèrera automatiquement une estimation
+        détaillée des travaux avec les prix du marché.
       </p>
       <button
         onClick={handleOpenNew}
@@ -642,14 +642,14 @@ export default function IADevisAnalyse({
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
       <KpiCard
         icon={BarChart3}
-        label="Analyses r\u00e9alis\u00e9es"
+        label="Analyses réalisées"
         value={analyses.length}
         isDark={isDark}
         couleur={couleur}
       />
       <KpiCard
         icon={Euro}
-        label="Total estim\u00e9 HT"
+        label="Total estimé HT"
         value={fmtCurrency.format(totalHTAll)}
         isDark={isDark}
         couleur={couleur}
@@ -671,7 +671,7 @@ export default function IADevisAnalyse({
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Analyses IA</h1>
           <p className={`text-sm ${textMuted}`}>
-            G\u00e9n\u00e9rez des estimations de travaux \u00e0 partir de photos
+            Générez des estimations de travaux à partir de photos
           </p>
         </div>
         <button
@@ -719,7 +719,7 @@ export default function IADevisAnalyse({
           {filteredAnalyses.length === 0 && searchTerm && (
             <div className={`text-center py-12 ${textMuted}`}>
               <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Aucune analyse trouv\u00e9e pour &laquo;&nbsp;{searchTerm}&nbsp;&raquo;</p>
+              <p className="text-sm">Aucune analyse trouvée pour &laquo;&nbsp;{searchTerm}&nbsp;&raquo;</p>
             </div>
           )}
         </>
@@ -749,7 +749,7 @@ export default function IADevisAnalyse({
           <div className="relative">
             <img
               src={preview}
-              alt="Aper\u00e7u"
+              alt="Aperçu"
               className="w-full max-h-64 object-contain rounded-lg mx-auto"
             />
             <button
@@ -808,12 +808,12 @@ export default function IADevisAnalyse({
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ex : R\u00e9novation salle de bain 8m\u00b2, cuisine 15m\u00b2..."
+          placeholder="Ex : Rénovation salle de bain 8m², cuisine 15m²..."
           className={`w-full px-4 py-2.5 rounded-lg border text-sm ${inputCls} focus:outline-none focus:ring-2`}
           style={{ '--tw-ring-color': couleur }}
         />
         <p className={`text-xs mt-1 ${textMuted}`}>
-          Pr\u00e9cisez la surface et le type de travaux pour une meilleure estimation.
+          Précisez la surface et le type de travaux pour une meilleure estimation.
         </p>
       </div>
 
@@ -881,9 +881,9 @@ export default function IADevisAnalyse({
         {/* Step labels */}
         <div className="mt-8 space-y-2 w-full max-w-xs">
           {[
-            { label: 'Analyse de l\u2019image', threshold: 0 },
+            { label: 'Analyse de l’image', threshold: 0 },
             { label: 'Identification des travaux', threshold: 25 },
-            { label: 'Estimation des quantit\u00e9s', threshold: 50 },
+            { label: 'Estimation des quantités', threshold: 50 },
             { label: 'Calcul des prix', threshold: 75 },
           ].map((s) => {
             const done = progress >= s.threshold + 25;
@@ -935,9 +935,9 @@ export default function IADevisAnalyse({
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className={`text-lg font-bold ${textPrimary}`}>R\u00e9sultats de l&rsquo;analyse</h3>
+            <h3 className={`text-lg font-bold ${textPrimary}`}>Résultats de l&rsquo;analyse</h3>
             <p className={`text-sm ${textMuted}`}>
-              {description || 'Analyse photo'} &mdash; {surfaceEstimee} m\u00b2 estim\u00e9s
+              {description || 'Analyse photo'} &mdash; {surfaceEstimee} m² estimés
             </p>
           </div>
           <ConfidenceBadge value={confiance} couleur={couleur} />
@@ -960,9 +960,9 @@ export default function IADevisAnalyse({
             <table className="w-full text-sm">
               <thead>
                 <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                  <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>D\u00e9signation</th>
-                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qt\u00e9</th>
-                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Unit\u00e9</th>
+                  <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Désignation</th>
+                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
+                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Unité</th>
                   <th className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>P.U. HT</th>
                   <th className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>Total HT</th>
                 </tr>
@@ -997,7 +997,7 @@ export default function IADevisAnalyse({
 
         {/* Summary */}
         <div className={`rounded-xl border p-5 mb-6 ${cardBg}`}>
-          <h4 className={`text-sm font-semibold mb-3 ${textPrimary}`}>R\u00e9capitulatif</h4>
+          <h4 className={`text-sm font-semibold mb-3 ${textPrimary}`}>Récapitulatif</h4>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className={`text-sm ${textMuted}`}>Total HT</span>
@@ -1006,7 +1006,7 @@ export default function IADevisAnalyse({
               </span>
             </div>
             <div className="flex justify-between">
-              <span className={`text-sm ${textMuted}`}>TVA 10% (r\u00e9novation)</span>
+              <span className={`text-sm ${textMuted}`}>TVA 10% (rénovation)</span>
               <span className={`text-sm ${textMuted}`}>{fmtCurrency.format(tva10)}</span>
             </div>
             <div className="flex justify-between">
@@ -1042,7 +1042,7 @@ export default function IADevisAnalyse({
               style={{ backgroundColor: couleur }}
             >
               <FileText className="w-4 h-4" />
-              Cr\u00e9er un devis
+              Créer un devis
             </button>
           )}
           <button
@@ -1134,7 +1134,7 @@ export default function IADevisAnalyse({
                 <div
                   className={`rounded-lg border p-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
                 >
-                  <div className={`text-xs ${textMuted}`}>Cat\u00e9gorie</div>
+                  <div className={`text-xs ${textMuted}`}>Catégorie</div>
                   <div className={`text-sm font-semibold ${textPrimary}`}>
                     {result.categorie.charAt(0).toUpperCase() + result.categorie.slice(1)}
                   </div>
@@ -1142,9 +1142,9 @@ export default function IADevisAnalyse({
                 <div
                   className={`rounded-lg border p-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
                 >
-                  <div className={`text-xs ${textMuted}`}>Surface estim\u00e9e</div>
+                  <div className={`text-xs ${textMuted}`}>Surface estimée</div>
                   <div className={`text-sm font-semibold ${textPrimary}`}>
-                    {result.surfaceEstimee} m\u00b2
+                    {result.surfaceEstimee} m²
                   </div>
                 </div>
                 <div
@@ -1164,11 +1164,11 @@ export default function IADevisAnalyse({
                     <thead>
                       <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
                         <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>
-                          D\u00e9signation
+                          Désignation
                         </th>
-                        <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qt\u00e9</th>
+                        <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
                         <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>
-                          Unit\u00e9
+                          Unité
                         </th>
                         <th className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>
                           P.U. HT
@@ -1210,7 +1210,7 @@ export default function IADevisAnalyse({
               <div
                 className={`rounded-xl border p-5 mb-6 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
               >
-                <h4 className={`text-sm font-semibold mb-3 ${textPrimary}`}>R\u00e9capitulatif</h4>
+                <h4 className={`text-sm font-semibold mb-3 ${textPrimary}`}>Récapitulatif</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={`text-sm ${textMuted}`}>Total HT</span>
@@ -1219,7 +1219,7 @@ export default function IADevisAnalyse({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className={`text-sm ${textMuted}`}>TVA 10% (r\u00e9novation)</span>
+                    <span className={`text-sm ${textMuted}`}>TVA 10% (rénovation)</span>
                     <span className={`text-sm ${textMuted}`}>
                       {fmtCurrency.format(Math.round(result.totalHT * 0.1 * 100) / 100)}
                     </span>
@@ -1260,7 +1260,7 @@ export default function IADevisAnalyse({
           ) : (
             <div className={`text-center py-8 ${textMuted}`}>
               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">Aucun r\u00e9sultat disponible pour cette analyse.</p>
+              <p className="text-sm">Aucun résultat disponible pour cette analyse.</p>
             </div>
           )}
 
@@ -1273,13 +1273,13 @@ export default function IADevisAnalyse({
                 style={{ backgroundColor: couleur }}
               >
                 <FileText className="w-4 h-4" />
-                Cr\u00e9er un devis
+                Créer un devis
               </button>
             )}
             {selectedAnalyse.statut === 'appliquee' && (
               <span className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium text-purple-600 bg-purple-50 border border-purple-200">
                 <CheckCircle className="w-4 h-4" />
-                Devis d\u00e9j\u00e0 cr\u00e9\u00e9
+                Devis déjà créé
               </span>
             )}
             <button

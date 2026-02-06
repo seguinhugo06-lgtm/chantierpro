@@ -19,19 +19,19 @@ const TYPES_BIEN = [
   { id: 'appartement', label: 'Appartement' },
   { id: 'commerce', label: 'Commerce' },
   { id: 'bureau', label: 'Bureau' },
-  { id: 'batiment', label: 'B\u00e2timent' },
+  { id: 'batiment', label: 'Bâtiment' },
   { id: 'autre', label: 'Autre' },
 ];
 
 const CATEGORIES = [
   { id: 'chauffage', label: 'Chauffage' },
   { id: 'plomberie', label: 'Plomberie' },
-  { id: 'electricite', label: '\u00c9lectricit\u00e9' },
+  { id: 'electricite', label: 'Électricité' },
   { id: 'toiture', label: 'Toiture' },
-  { id: 'facade', label: 'Fa\u00e7ade' },
+  { id: 'facade', label: 'Façade' },
   { id: 'menuiserie', label: 'Menuiserie' },
   { id: 'ventilation', label: 'Ventilation' },
-  { id: 'general', label: 'G\u00e9n\u00e9ral' },
+  { id: 'general', label: 'Général' },
 ];
 
 const RECURRENCES = [
@@ -44,8 +44,8 @@ const RECURRENCES = [
 ];
 
 const MOIS_LABELS = [
-  'Janvier', 'F\u00e9vrier', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Ao\u00fbt', 'Septembre', 'Octobre', 'Novembre', 'D\u00e9cembre',
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 
 const categorieIcons = {
@@ -117,7 +117,7 @@ function getWarrantyStatus(endDate) {
 }
 
 function formatRemainingDays(days) {
-  if (days <= 0) return 'Expir\u00e9e';
+  if (days <= 0) return 'Expirée';
   if (days < 30) return `${days} jour${days > 1 ? 's' : ''}`;
   if (days < 365) {
     const m = Math.floor(days / 30);
@@ -194,9 +194,9 @@ function WarrantyDot({ label, endDate }) {
 
 function WarrantyTimeline({ carnet, isDark }) {
   const warranties = [
-    { key: 'decennale', label: 'Garantie d\u00e9cennale', endDate: carnet.garantie_decennale_fin },
+    { key: 'decennale', label: 'Garantie décennale', endDate: carnet.garantie_decennale_fin },
     { key: 'biennale', label: 'Garantie biennale', endDate: carnet.garantie_biennale_fin },
-    { key: 'parfait_achevement', label: 'Parfait ach\u00e8vement', endDate: carnet.garantie_parfait_achevement_fin },
+    { key: 'parfait_achevement', label: 'Parfait achèvement', endDate: carnet.garantie_parfait_achevement_fin },
   ];
 
   return (
@@ -253,7 +253,7 @@ function TaskRow({ task, isDark, couleur, onToggle, onEdit, onDelete }) {
         onClick={() => onToggle(task.id)}
         className="flex-shrink-0 p-0.5 rounded-md transition-colors"
         style={isCompleted ? { color: couleur } : {}}
-        title={isCompleted ? 'Marquer comme \u00e0 faire' : 'Marquer comme r\u00e9alis\u00e9'}
+        title={isCompleted ? 'Marquer comme à faire' : 'Marquer comme réalisé'}
       >
         {isCompleted
           ? <CheckCircle size={20} style={{ color: couleur }} />
@@ -286,7 +286,7 @@ function TaskRow({ task, isDark, couleur, onToggle, onEdit, onDelete }) {
           )}
           {task.cout_estime > 0 && (
             <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              {task.cout_estime}\u00a0\u20ac
+              {task.cout_estime} €
             </span>
           )}
         </div>
@@ -352,7 +352,7 @@ function CarnetCard({ carnet, tasks, clients, isDark, couleur, onClick }) {
       )}
 
       <div className="flex items-center gap-3 mb-3">
-        <WarrantyDot label="D\u00e9cennale" endDate={carnet.garantie_decennale_fin} />
+        <WarrantyDot label="Décennale" endDate={carnet.garantie_decennale_fin} />
         <WarrantyDot label="Biennale" endDate={carnet.garantie_biennale_fin} />
         <WarrantyDot label="PA" endDate={carnet.garantie_parfait_achevement_fin} />
       </div>
@@ -361,7 +361,7 @@ function CarnetCard({ carnet, tasks, clients, isDark, couleur, onClick }) {
         <div className="flex items-center gap-2">
           {pendingCount > 0 && (
             <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-              {pendingCount} t\u00e2che{pendingCount > 1 ? 's' : ''}
+              {pendingCount} tâche{pendingCount > 1 ? 's' : ''}
             </span>
           )}
           {overdueCount > 0 && (
@@ -372,7 +372,7 @@ function CarnetCard({ carnet, tasks, clients, isDark, couleur, onClick }) {
         </div>
         {carnet.date_livraison && (
           <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Livr\u00e9 le {formatDate(carnet.date_livraison)}
+            Livré le {formatDate(carnet.date_livraison)}
           </span>
         )}
       </div>
@@ -624,7 +624,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
         >
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
             <h2 className={`text-lg font-semibold ${textCls}`}>
-              {editingCarnet ? 'Modifier le carnet' : 'Nouveau carnet d\u2019entretien'}
+              {editingCarnet ? 'Modifier le carnet' : 'Nouveau carnet d’entretien'}
             </h2>
             <button onClick={() => setShowCarnetModal(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}>
               <X size={18} />
@@ -639,7 +639,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 type="text"
                 value={carnetForm.nom}
                 onChange={e => setCarnetForm(prev => ({ ...prev, nom: e.target.value }))}
-                placeholder="Maison Dupont - R\u00e9novation"
+                placeholder="Maison Dupont - Rénovation"
                 className={`w-full px-3 py-2 rounded-lg border text-sm ${inputCls}`}
               />
             </div>
@@ -676,7 +676,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
             {/* Chantier + Adresse */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Chantier li\u00e9</label>
+                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Chantier lié</label>
                 <select
                   value={carnetForm.chantier_id}
                   onChange={e => setCarnetForm(prev => ({ ...prev, chantier_id: e.target.value }))}
@@ -718,7 +718,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
               <p className={`text-xs font-semibold mb-2 ${textCls}`}>Dates de fin de garantie</p>
               <div className="space-y-2">
                 <div>
-                  <label className={`block text-[10px] mb-0.5 ${textMuted}`}>D\u00e9cennale (livraison + 10 ans)</label>
+                  <label className={`block text-[10px] mb-0.5 ${textMuted}`}>Décennale (livraison + 10 ans)</label>
                   <input
                     type="date"
                     value={carnetForm.garantie_decennale_fin}
@@ -736,7 +736,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                   />
                 </div>
                 <div>
-                  <label className={`block text-[10px] mb-0.5 ${textMuted}`}>Parfait ach\u00e8vement (livraison + 1 an)</label>
+                  <label className={`block text-[10px] mb-0.5 ${textMuted}`}>Parfait achèvement (livraison + 1 an)</label>
                   <input
                     type="date"
                     value={carnetForm.garantie_parfait_achevement_fin}
@@ -754,7 +754,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 value={carnetForm.notes}
                 onChange={e => setCarnetForm(prev => ({ ...prev, notes: e.target.value }))}
                 rows={3}
-                placeholder="Informations compl\u00e9mentaires..."
+                placeholder="Informations complémentaires..."
                 className={`w-full px-3 py-2 rounded-lg border text-sm resize-none ${inputCls}`}
               />
             </div>
@@ -773,7 +773,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
               className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40"
               style={{ backgroundColor: couleur }}
             >
-              {editingCarnet ? 'Enregistrer' : 'Cr\u00e9er'}
+              {editingCarnet ? 'Enregistrer' : 'Créer'}
             </button>
           </div>
         </div>
@@ -791,7 +791,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
         >
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
             <h2 className={`text-lg font-semibold ${textCls}`}>
-              {editingTask ? 'Modifier la t\u00e2che' : 'Nouvelle t\u00e2che'}
+              {editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
             </h2>
             <button onClick={() => setShowTaskModal(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}>
               <X size={18} />
@@ -801,12 +801,12 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
           <div className="p-4 space-y-4">
             {/* Designation */}
             <div>
-              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>D\u00e9signation *</label>
+              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Désignation *</label>
               <input
                 type="text"
                 value={taskForm.designation}
                 onChange={e => setTaskForm(prev => ({ ...prev, designation: e.target.value }))}
-                placeholder="V\u00e9rification chaudi\u00e8re"
+                placeholder="Vérification chaudière"
                 className={`w-full px-3 py-2 rounded-lg border text-sm ${inputCls}`}
               />
             </div>
@@ -818,7 +818,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 value={taskForm.description}
                 onChange={e => setTaskForm(prev => ({ ...prev, description: e.target.value }))}
                 rows={2}
-                placeholder="D\u00e9tails de la t\u00e2che..."
+                placeholder="Détails de la tâche..."
                 className={`w-full px-3 py-2 rounded-lg border text-sm resize-none ${inputCls}`}
               />
             </div>
@@ -826,7 +826,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
             {/* Categorie + Recurrence */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Cat\u00e9gorie</label>
+                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Catégorie</label>
                 <select
                   value={taskForm.categorie}
                   onChange={e => setTaskForm(prev => ({ ...prev, categorie: e.target.value }))}
@@ -836,7 +836,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 </select>
               </div>
               <div>
-                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>R\u00e9currence</label>
+                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Récurrence</label>
                 <select
                   value={taskForm.recurrence}
                   onChange={e => setTaskForm(prev => ({ ...prev, recurrence: e.target.value }))}
@@ -850,7 +850,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
             {/* Mois prevu + Echeance */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Mois pr\u00e9vu</label>
+                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Mois prévu</label>
                 <select
                   value={taskForm.mois_prevu}
                   onChange={e => setTaskForm(prev => ({ ...prev, mois_prevu: Number(e.target.value) }))}
@@ -860,7 +860,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 </select>
               </div>
               <div>
-                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Prochaine \u00e9ch\u00e9ance</label>
+                <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Prochaine échéance</label>
                 <input
                   type="date"
                   value={taskForm.prochaine_echeance}
@@ -872,7 +872,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
 
             {/* Priorite */}
             <div>
-              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Priorit\u00e9</label>
+              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Priorité</label>
               <div className="flex gap-2">
                 {[{ v: 1, label: 'Haute', color: '#ef4444' }, { v: 2, label: 'Moyenne', color: '#f59e0b' }, { v: 3, label: 'Basse', color: '#22c55e' }].map(p => (
                   <button
@@ -893,7 +893,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
 
             {/* Cout */}
             <div>
-              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Co\u00fbt estim\u00e9 (\u20ac)</label>
+              <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Coût estimé (€)</label>
               <input
                 type="number"
                 min="0"
@@ -912,7 +912,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 value={taskForm.notes}
                 onChange={e => setTaskForm(prev => ({ ...prev, notes: e.target.value }))}
                 rows={2}
-                placeholder="Notes suppl\u00e9mentaires..."
+                placeholder="Notes supplémentaires..."
                 className={`w-full px-3 py-2 rounded-lg border text-sm resize-none ${inputCls}`}
               />
             </div>
@@ -953,8 +953,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
           </div>
           <p className={`text-sm mb-6 ${textMuted}`}>
             {isCarnet
-              ? 'Ce carnet et toutes ses t\u00e2ches seront supprim\u00e9s. Cette action est irr\u00e9versible.'
-              : 'Cette t\u00e2che sera d\u00e9finitivement supprim\u00e9e.'}
+              ? 'Ce carnet et toutes ses tâches seront supprimés. Cette action est irréversible.'
+              : 'Cette tâche sera définitivement supprimée.'}
           </p>
           <div className="flex justify-end gap-2">
             <button
@@ -988,9 +988,9 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
 
     const taskFilterTabs = [
       { id: 'toutes', label: 'Toutes' },
-      { id: 'a_faire', label: '\u00c0 faire' },
-      { id: 'planifie', label: 'Planifi\u00e9' },
-      { id: 'realise', label: 'R\u00e9alis\u00e9' },
+      { id: 'a_faire', label: 'À faire' },
+      { id: 'planifie', label: 'Planifié' },
+      { id: 'realise', label: 'Réalisé' },
       { id: 'en_retard', label: `En retard${overdueCount > 0 ? ` (${overdueCount})` : ''}` },
     ];
 
@@ -1055,7 +1055,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
         {/* Tasks Section */}
         <div className={`p-4 rounded-xl border ${cardCls}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-sm font-semibold ${textCls}`}>T\u00e2ches d\u2019entretien</h3>
+            <h3 className={`text-sm font-semibold ${textCls}`}>Tâches d’entretien</h3>
             <button
               onClick={openNewTask}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
@@ -1088,13 +1088,13 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
           {filteredTasks.length === 0 ? (
             <div className="text-center py-8">
               <ClipboardList size={32} className={isDark ? 'text-slate-600 mx-auto mb-2' : 'text-slate-300 mx-auto mb-2'} />
-              <p className={`text-sm ${textMuted}`}>Aucune t\u00e2che trouv\u00e9e</p>
+              <p className={`text-sm ${textMuted}`}>Aucune tâche trouvée</p>
               <button
                 onClick={openNewTask}
                 className="mt-2 text-xs font-medium"
                 style={{ color: couleur }}
               >
-                Ajouter une t\u00e2che
+                Ajouter une tâche
               </button>
             </div>
           ) : (
@@ -1132,8 +1132,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={ClipboardList} label="Total carnets" value={kpis.total} color={couleur} isDark={isDark} />
-          <KpiCard icon={AlertTriangle} label="T\u00e2ches en retard" value={kpis.overdue} color="#ef4444" isDark={isDark} />
-          <KpiCard icon={Clock} label="T\u00e2ches ce mois" value={kpis.thisMonth} color="#f59e0b" isDark={isDark} />
+          <KpiCard icon={AlertTriangle} label="Tâches en retard" value={kpis.overdue} color="#ef4444" isDark={isDark} />
+          <KpiCard icon={Clock} label="Tâches ce mois" value={kpis.thisMonth} color="#f59e0b" isDark={isDark} />
           <KpiCard icon={Shield} label="Garanties actives" value={kpis.activeWarranties} color="#22c55e" isDark={isDark} />
         </div>
 
@@ -1182,8 +1182,8 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
             <h3 className={`text-base font-semibold mb-1 ${textCls}`}>Aucun carnet d&apos;entretien</h3>
             <p className={`text-sm mb-4 ${textMuted}`}>
               {search || filterType !== 'all'
-                ? 'Aucun r\u00e9sultat pour cette recherche.'
-                : 'Cr\u00e9ez votre premier carnet pour suivre l\u2019entretien de vos biens.'}
+                ? 'Aucun résultat pour cette recherche.'
+                : 'Créez votre premier carnet pour suivre l’entretien de vos biens.'}
             </p>
             {!search && filterType === 'all' && (
               <button
@@ -1192,7 +1192,7 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
                 style={{ backgroundColor: couleur }}
               >
                 <Plus size={16} />
-                Cr\u00e9er un carnet
+                Créer un carnet
               </button>
             )}
           </div>

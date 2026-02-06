@@ -51,7 +51,7 @@ const generateHash = () => {
 const generateIP = () => `192.168.1.${Math.floor(Math.random() * 200) + 10}`;
 
 const formatMoney = (n) =>
-  (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20ac';
+  (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 const formatDate = (d) => {
   if (!d) return '-';
@@ -77,14 +77,14 @@ const ROLE_LABELS = {
   client: 'Client',
   artisan: 'Artisan',
   sous_traitant: 'Sous-traitant',
-  maitre_ouvrage: "Ma\u00eetre d'ouvrage",
+  maitre_ouvrage: "Maître d'ouvrage",
 };
 
 const STATUT_CONFIG = {
   en_attente: { label: 'En attente', color: 'amber', Icon: Clock },
-  signee: { label: 'Sign\u00e9', color: 'green', Icon: CheckCircle },
-  refusee: { label: 'Refus\u00e9', color: 'red', Icon: XCircle },
-  expiree: { label: 'Expir\u00e9', color: 'gray', Icon: AlertCircle },
+  signee: { label: 'Signé', color: 'green', Icon: CheckCircle },
+  refusee: { label: 'Refusé', color: 'red', Icon: XCircle },
+  expiree: { label: 'Expiré', color: 'gray', Icon: AlertCircle },
 };
 
 // ---------------------------------------------------------------------------
@@ -400,7 +400,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
   const goToStep2 = () => {
     setAuditEvents((prev) => [
       ...prev,
-      { action: 'Signature commenc\u00e9e', timestamp: new Date().toISOString() },
+      { action: 'Signature commencée', timestamp: new Date().toISOString() },
     ]);
     setSignStep(2);
   };
@@ -418,7 +418,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
     const now = new Date().toISOString();
     const finalAudit = [
       ...auditEvents,
-      { action: 'Signature valid\u00e9e', timestamp: now },
+      { action: 'Signature validée', timestamp: now },
     ];
 
     const newSig = {
@@ -440,7 +440,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
     };
 
     setSignatures((prev) => [newSig, ...prev]);
-    setToast('Signature enregistr\u00e9e avec succ\u00e8s');
+    setToast('Signature enregistrée avec succès');
     setView('dashboard');
   };
 
@@ -487,7 +487,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
           </button>
           <div className="flex-1">
             <h2 className={`text-lg font-bold ${textClass}`}>
-              D\u00e9tail de la signature
+              Détail de la signature
             </h2>
             <p className={`text-sm ${mutedClass}`}>{sig.document_ref}</p>
           </div>
@@ -503,7 +503,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
             <div className="flex items-center gap-3">
               <FileText size={16} className={mutedClass} />
               <div>
-                <p className={`text-xs ${mutedClass}`}>R\u00e9f\u00e9rence</p>
+                <p className={`text-xs ${mutedClass}`}>Référence</p>
                 <p className={`text-sm font-medium ${textClass}`}>{sig.document_ref}</p>
               </div>
             </div>
@@ -572,7 +572,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
             <div className="flex items-center gap-3">
               <Users size={16} className={mutedClass} />
               <div>
-                <p className={`text-xs ${mutedClass}`}>R\u00f4le</p>
+                <p className={`text-xs ${mutedClass}`}>Rôle</p>
                 <p className={`text-sm font-medium ${textClass}`}>
                   {ROLE_LABELS[sig.signataire_role] || sig.signataire_role}
                 </p>
@@ -624,12 +624,12 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
         {/* Actions */}
         <div className="flex gap-3">
           <button
-            onClick={() => setToast('Fonctionnalit\u00e9 disponible prochainement')}
+            onClick={() => setToast('Fonctionnalité disponible prochainement')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-colors"
             style={{ backgroundColor: couleur }}
           >
             <Download size={16} />
-            T\u00e9l\u00e9charger le certificat
+            Télécharger le certificat
           </button>
           <button
             onClick={backToDashboard}
@@ -698,11 +698,11 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
             {/* Doc summary card */}
             <div className={`rounded-xl border p-5 space-y-4 ${cardClass}`}>
               <h3 className={`text-base font-semibold ${textClass}`}>
-                R\u00e9sum\u00e9 du document
+                Résumé du document
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <p className={`text-xs ${mutedClass}`}>R\u00e9f\u00e9rence</p>
+                  <p className={`text-xs ${mutedClass}`}>Référence</p>
                   <p className={`text-sm font-medium ${textClass}`}>{selectedDoc.ref}</p>
                 </div>
                 <div>
@@ -770,7 +770,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
                   />
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${textClass}`}>R\u00f4le</label>
+                  <label className={`block text-sm font-medium mb-1 ${textClass}`}>Rôle</label>
                   <select
                     value={signataireRole}
                     onChange={(e) => setSignataireRole(e.target.value)}
@@ -871,7 +871,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
                   Effacer
                 </button>
                 <p className={`text-xs ${mutedClass}`}>
-                  {hasSignature ? 'Signature d\u00e9tect\u00e9e' : 'En attente de signature...'}
+                  {hasSignature ? 'Signature détectée' : 'En attente de signature...'}
                 </p>
               </div>
             </div>
@@ -917,7 +917,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
                 >
                   <img
                     src={signatureData}
-                    alt="Aper\u00e7u de la signature"
+                    alt="Aperçu de la signature"
                     className="max-w-full h-auto max-h-28"
                   />
                 </div>
@@ -958,8 +958,8 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
             >
               <Shield size={18} className={isDark ? 'text-blue-400 mt-0.5' : 'text-blue-600 mt-0.5'} />
               <p className={`text-xs leading-relaxed ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
-                En validant, vous confirmez que cette signature a la m\u00eame valeur juridique
-                qu'une signature manuscrite conform\u00e9ment au r\u00e8glement eIDAS.
+                En validant, vous confirmez que cette signature a la même valeur juridique
+                qu'une signature manuscrite conformément au règlement eIDAS.
               </p>
             </div>
 
@@ -1009,10 +1009,10 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
       <div className="flex items-center justify-between">
         <div>
           <h1 className={`text-2xl font-bold ${textClass}`}>
-            Signature \u00e9lectronique
+            Signature électronique
           </h1>
           <p className={`text-sm mt-1 ${mutedClass}`}>
-            Signez et g\u00e9rez vos documents en toute s\u00e9curit\u00e9
+            Signez et gérez vos documents en toute sécurité
           </p>
         </div>
         <div
@@ -1040,14 +1040,14 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
           isDark={isDark}
         />
         <KpiCard
-          label="Sign\u00e9s"
+          label="Signés"
           value={signes}
           color="green"
           Icon={CheckCircle}
           isDark={isDark}
         />
         <KpiCard
-          label="Refus\u00e9s"
+          label="Refusés"
           value={refuses}
           color="red"
           Icon={XCircle}
@@ -1059,7 +1059,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className={`text-lg font-semibold ${textClass}`}>
-            Documents \u00e0 signer
+            Documents à signer
           </h2>
           <span className={`text-sm ${mutedClass}`}>
             {unsignedDocs.length} document{unsignedDocs.length !== 1 ? 's' : ''}
@@ -1072,7 +1072,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
           >
             <FileCheck size={40} className={`mx-auto mb-3 ${mutedClass}`} />
             <p className={`text-sm font-medium ${textClass}`}>
-              Tous les documents sont sign\u00e9s
+              Tous les documents sont signés
             </p>
             <p className={`text-xs mt-1 ${mutedClass}`}>
               Aucun document en attente de signature.
@@ -1112,7 +1112,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
                           : 'bg-slate-100 text-slate-500 border-slate-200'
                       }`}
                     >
-                      Non sign\u00e9
+                      Non signé
                     </span>
                     <ChevronRight
                       size={18}
@@ -1130,7 +1130,7 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className={`text-lg font-semibold ${textClass}`}>
-            Signatures r\u00e9centes
+            Signatures récentes
           </h2>
           <span className={`text-sm ${mutedClass}`}>
             {recentSigs.length} signature{recentSigs.length !== 1 ? 's' : ''}
@@ -1143,10 +1143,10 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
           >
             <PenTool size={40} className={`mx-auto mb-3 ${mutedClass}`} />
             <p className={`text-sm font-medium ${textClass}`}>
-              Aucune signature enregistr\u00e9e
+              Aucune signature enregistrée
             </p>
             <p className={`text-xs mt-1 ${mutedClass}`}>
-              Les signatures appara\u00eetront ici une fois effectu\u00e9es.
+              Les signatures apparaîtront ici une fois effectuées.
             </p>
           </div>
         ) : (
@@ -1202,12 +1202,12 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
         <Shield size={18} className={mutedClass} />
         <div>
           <p className={`text-sm font-medium ${textClass}`}>
-            Signatures s\u00e9curis\u00e9es
+            Signatures sécurisées
           </p>
           <p className={`text-xs mt-0.5 ${mutedClass}`}>
-            Vos signatures \u00e9lectroniques sont conformes au r\u00e8glement eIDAS et ont la
-            m\u00eame valeur juridique qu'une signature manuscrite. Chaque signature est
-            horodat\u00e9e et associ\u00e9e \u00e0 un hash unique pour garantir l'int\u00e9grit\u00e9 du document.
+            Vos signatures électroniques sont conformes au règlement eIDAS et ont la
+            même valeur juridique qu'une signature manuscrite. Chaque signature est
+            horodatée et associée à un hash unique pour garantir l'intégrité du document.
           </p>
         </div>
       </div>
