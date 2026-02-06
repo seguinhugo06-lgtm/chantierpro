@@ -980,6 +980,100 @@ export default function Dashboard({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto">
+        {/* Quick Shortcuts */}
+        <section className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { icon: FileText, label: '+ Devis', action: () => { setCreateMode?.((p) => ({ ...p, devis: true })); setPage?.('devis'); } },
+              { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
+              { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
+              { icon: Receipt, label: '+ Facture', action: () => { setCreateMode?.((p) => ({ ...p, devis: true, type: 'facture' })); setPage?.('devis'); } },
+            ].map((shortcut) => (
+              <button
+                key={shortcut.label}
+                onClick={shortcut.action}
+                className={`
+                  flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all
+                  border hover:shadow-md hover:-translate-y-0.5
+                  ${isDark
+                    ? 'bg-slate-800 border-slate-700 text-white hover:border-slate-600'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                  }
+                `}
+              >
+                <shortcut.icon size={16} style={{ color: couleur }} />
+                {shortcut.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Devis à relancer */}
+        {(() => {
+          const staleDevis = safeDevis.filter(d => {
+            if (d.type !== 'devis' || d.statut !== 'envoye') return false;
+            return daysSince(d.date) >= 7;
+          }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
+
+          if (staleDevis.length === 0) return null;
+
+          return (
+            <section className="px-4 sm:px-6 pb-6">
+              <div className={`rounded-2xl border p-5 ${isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className={`p-2 rounded-xl ${isDark ? 'bg-amber-500/10' : 'bg-amber-100'}`}>
+                    <Clock size={18} className="text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Devis à relancer
+                    </h3>
+                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {staleDevis.length} devis envoyé{staleDevis.length > 1 ? 's' : ''} depuis plus de 7 jours sans réponse
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {staleDevis.slice(0, 3).map((d) => {
+                    const client = safeClients.find(c => c.id === d.client_id);
+                    const days = daysSince(d.date);
+                    return (
+                      <div
+                        key={d.id}
+                        className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-white'}`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            {d.numero || 'Devis'} — {client?.nom || 'Client'}
+                          </p>
+                          <p className={`text-xs ${days > 14 ? 'text-red-500 font-medium' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Envoyé il y a {days} jours • {formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleOpenRelance(d)}
+                          className="flex-shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                          style={{ backgroundColor: couleur }}
+                        >
+                          Relancer
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {staleDevis.length > 3 && (
+                  <button
+                    onClick={() => setPage?.('devis')}
+                    className={`mt-3 text-sm font-medium ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:text-amber-700'}`}
+                  >
+                    Voir les {staleDevis.length} devis →
+                  </button>
+                )}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* KPI Section - Enhanced with more info */}
         <section className="px-4 sm:px-6 pb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
