@@ -24,13 +24,16 @@ const TresorerieModule = lazy(() => import('./components/tresorerie/TresorerieMo
 const BibliothequeOuvrages = lazy(() => import('./components/catalogue/BibliothequeOuvrages'));
 const SousTraitantsModule = lazy(() => import('./components/soustraitants/SousTraitantsModule'));
 const CommandesFournisseurs = lazy(() => import('./components/commandes/CommandesFournisseurs'));
+const IADevisAnalyse = lazy(() => import('./components/ia/IADevisAnalyse'));
+const CarnetEntretien = lazy(() => import('./components/entretien/CarnetEntretien'));
+const SignatureModule = lazy(() => import('./components/signatures/SignatureModule'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 
 // Theme classes helper
@@ -468,6 +471,9 @@ export default function App() {
     { id: 'soustraitants', icon: UserCheck, label: 'Sous-Traitants' },
     { id: 'commandes', icon: ShoppingCart, label: 'Commandes' },
     { id: 'tresorerie', icon: Wallet, label: 'Trésorerie' },
+    { id: 'ia-devis', icon: Camera, label: 'IA Devis' },
+    { id: 'entretien', icon: ClipboardList, label: 'Entretien' },
+    { id: 'signatures', icon: PenTool, label: 'Signatures' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'admin', icon: HelpCircle, label: 'Administratif' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
@@ -828,6 +834,9 @@ export default function App() {
               {page === 'soustraitants' && <SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'commandes' && <CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'tresorerie' && <TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'ia-devis' && <IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} />}
+              {page === 'entretien' && <CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'signatures' && <SignatureModule devis={devis} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
