@@ -6,6 +6,8 @@ import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks } from '../lib/templates/task-templates';
 import TaskGeneratorModal from './TaskGeneratorModal';
+import SituationsTravaux from './chantiers/SituationsTravaux';
+import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
@@ -769,6 +771,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
             { key: 'finances', label: 'Finances', icon: Wallet },
+            { key: 'situations', label: 'Situations', icon: Receipt },
+            { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'photos', label: 'Photos', icon: Camera },
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'messages', label: 'Messages', icon: MessageSquare }
@@ -805,6 +809,26 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'situations' && (
+          <SituationsTravaux
+            chantier={ch}
+            devis={devis.filter(d => d.chantier_id === ch.id)}
+            isDark={isDark}
+            couleur={couleur}
+            onClose={() => setActiveTab('finances')}
+          />
+        )}
+
+        {activeTab === 'rapports' && (
+          <RapportChantier
+            chantier={ch}
+            equipe={equipe}
+            isDark={isDark}
+            couleur={couleur}
+            onClose={() => setActiveTab('finances')}
+          />
         )}
 
         {activeTab === 'photos' && (
