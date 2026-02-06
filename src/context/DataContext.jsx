@@ -225,13 +225,15 @@ export function DataProvider({ children, initialData = {} }) {
         console.log('📥 Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
-          setClients(data.clients);
-          setChantiers(data.chantiers);
-          setDevis(data.devis);
-          setDepenses(data.depenses);
-          setEquipe(data.equipe);
-          setPointages(data.pointages);
-          setCatalogue(data.catalogue);
+          // Deduplicate by ID to prevent duplicates from sync issues
+          const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
+          setClients(dedup(data.clients));
+          setChantiers(dedup(data.chantiers));
+          setDevis(dedup(data.devis));
+          setDepenses(dedup(data.depenses));
+          setEquipe(dedup(data.equipe));
+          setPointages(dedup(data.pointages));
+          setCatalogue(dedup(data.catalogue));
           setDataLoaded(true);
           console.log('✅ Data loaded from Supabase:', {
             clients: data.clients.length,
@@ -258,8 +260,8 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    // Optimistic update
-    setClients(prev => [...prev, newClient]);
+    // Optimistic update (prevent duplicates)
+    setClients(prev => prev.some(c => c.id === newClient.id) ? prev : [...prev, newClient]);
 
     // Save to Supabase and wait for response
     if (!isDemo && userId) {
@@ -317,7 +319,7 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    setDevis(prev => [...prev, newDevis]);
+    setDevis(prev => prev.some(d => d.id === newDevis.id) ? prev : [...prev, newDevis]);
 
     if (!isDemo && userId) {
       try {
@@ -328,8 +330,6 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving devis to Supabase:', error);
-        // Don't remove the devis from local state - keep it for offline use
-        // The user can still work with it locally
         console.warn('Devis kept locally despite Supabase error');
       }
     }
@@ -382,7 +382,7 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    setChantiers(prev => [...prev, newChantier]);
+    setChantiers(prev => prev.some(c => c.id === newChantier.id) ? prev : [...prev, newChantier]);
 
     if (!isDemo && userId) {
       try {
@@ -393,7 +393,6 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving chantier to Supabase:', error);
-        // Don't remove the chantier from local state - keep it for offline use
         console.warn('Chantier kept locally despite Supabase error');
       }
     }
