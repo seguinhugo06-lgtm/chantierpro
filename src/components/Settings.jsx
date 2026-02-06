@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
 import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2 } from 'lucide-react';
 import {
@@ -16,6 +16,10 @@ import {
   syncToIndy
 } from '../lib/integrations/accounting';
 
+// Sprint 1 - New tabs
+import Facture2026Tab from './settings/Facture2026Tab';
+import RelanceConfigTab from './settings/RelanceConfigTab';
+
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
@@ -32,6 +36,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
+
+  // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
+  useEffect(() => {
+    const handleTabNav = (e) => {
+      if (e.detail?.tab) setTab(e.detail.tab);
+    };
+    window.addEventListener('navigate-settings-tab', handleTabNav);
+    return () => window.removeEventListener('navigate-settings-tab', handleTabNav);
+  }, []);
 
   // Comptabilite state
   const [comptaSubTab, setComptaSubTab] = useState('integrations');
@@ -300,6 +313,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
           ['documents', '📄 Documents'],
+          ['facture2026', '🧾 Facture 2026'],
+          ['relances', '🔔 Relances'],
           ['rentabilite', '📊 Rentabilité'],
           ['comptabilite', '🧮 Comptabilité']
         ].map(([k, v]) => (
@@ -708,6 +723,25 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
+      )}
+
+      {/* FACTURE 2026 */}
+      {tab === 'facture2026' && (
+        <Facture2026Tab
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {/* RELANCES */}
+      {tab === 'relances' && (
+        <RelanceConfigTab
+          entreprise={entreprise}
+          updateEntreprise={updateEntreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
       )}
 
       {/* RENTABILITÉ */}

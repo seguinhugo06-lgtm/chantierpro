@@ -28,5 +28,8 @@ export { default as ActionsList } from './ActionsList';
 export { default as OverviewWidget, OverviewWidgetSkeleton } from './OverviewWidget';
 export { default as RevenueChartWidget, RevenueChartWidgetSkeleton } from './RevenueChartWidget';
 
+// Health Score Widget
+export { default as ScoreSanteWidget, ScoreSanteWidget as ScoreSanteWidgetNamed } from './ScoreSanteWidget';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';

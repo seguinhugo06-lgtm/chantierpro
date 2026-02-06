@@ -66,6 +66,8 @@ import {
   // Unified overview widget
   OverviewWidget,
   RevenueChartWidget,
+  // Health Score Widget
+  ScoreSanteWidget,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -1180,6 +1182,12 @@ export default function Dashboard({
             <TresorerieWidget
               setPage={setPage}
               isDark={isDark}
+            />
+
+            {/* Score Santé Entreprise */}
+            <ScoreSanteWidget
+              isDark={isDark}
+              setPage={setPage}
             />
 
             {/* Recent Activity */}
