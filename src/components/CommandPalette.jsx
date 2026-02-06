@@ -108,31 +108,35 @@ export default function CommandPalette({
 
   // Quick actions (always available)
   const quickActions = useMemo(() => [
-    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
-    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
-    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
-    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
-  ], [onNewDevis, onNewClient, onNewChantier, onClose]);
+    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
+    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
+    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
+    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
+    { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
+    { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
+    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
+    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('equipe'); onClose(); }, color: '#14b8a6' },
+  ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
 
   // Navigation items
   const navigationItems = useMemo(() => [
-    { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
-    { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents', icon: FileText, action: () => { setPage('devis'); onClose(); } },
-    { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
-    { id: 'nav-clients', label: 'Clients', keywords: 'contacts', icon: Users, action: () => { setPage('clients'); onClose(); } },
-    { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
-    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
-    { id: 'nav-ouvrages', label: 'Bibliothèque d\'Ouvrages', keywords: 'ouvrages composites prix', icon: Library, action: () => { setPage('ouvrages'); onClose(); } },
-    { id: 'nav-soustraitants', label: 'Sous-Traitants', keywords: 'sous-traitants prestataires', icon: UserCheck, action: () => { setPage('soustraitants'); onClose(); } },
-    { id: 'nav-commandes', label: 'Commandes Fournisseurs', keywords: 'commandes achats fournisseurs', icon: ShoppingCart, action: () => { setPage('commandes'); onClose(); } },
-    { id: 'nav-tresorerie', label: 'Trésorerie', keywords: 'tresorerie cash flow finances', icon: Wallet, action: () => { setPage('tresorerie'); onClose(); } },
-    { id: 'nav-ia-devis', label: 'IA Devis', keywords: 'ia photo analyse devis automatique', icon: Camera, action: () => { setPage('ia-devis'); onClose(); } },
-    { id: 'nav-entretien', label: 'Carnet d\'Entretien', keywords: 'entretien maintenance garantie', icon: ClipboardList, action: () => { setPage('entretien'); onClose(); } },
-    { id: 'nav-signatures', label: 'Signatures', keywords: 'signature electronique signer', icon: PenTool, action: () => { setPage('signatures'); onClose(); } },
-    { id: 'nav-export', label: 'Export Comptable', keywords: 'export comptabilite fec csv', icon: Download, action: () => { setPage('export'); onClose(); } },
-    { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
-    { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
-    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration reglages', icon: Settings, action: () => { setPage('settings'); onClose(); } },
+    { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord résumé', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
+    { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents devis factures liste', icon: FileText, action: () => { setPage('devis'); onClose(); } },
+    { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
+    { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire', icon: Users, action: () => { setPage('clients'); onClose(); } },
+    { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda planning semaine mois jour', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
+    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
+    { id: 'nav-ouvrages', label: 'Bibliothèque d\'Ouvrages', keywords: 'ouvrages composites prix bibliothèque prestations', icon: Library, action: () => { setPage('ouvrages'); onClose(); } },
+    { id: 'nav-soustraitants', label: 'Sous-Traitants', keywords: 'sous-traitants prestataires intervenants', icon: UserCheck, action: () => { setPage('soustraitants'); onClose(); } },
+    { id: 'nav-commandes', label: 'Commandes Fournisseurs', keywords: 'commandes achats fournisseurs approvisionnement', icon: ShoppingCart, action: () => { setPage('commandes'); onClose(); } },
+    { id: 'nav-tresorerie', label: 'Trésorerie', keywords: 'trésorerie cash flow finances tréso banque', icon: Wallet, action: () => { setPage('tresorerie'); onClose(); } },
+    { id: 'nav-ia-devis', label: 'IA Devis', keywords: 'ia photo analyse devis automatique intelligence artificielle', icon: Camera, action: () => { setPage('ia-devis'); onClose(); } },
+    { id: 'nav-entretien', label: 'Carnet d\'Entretien', keywords: 'entretien maintenance garantie contrat SAV', icon: ClipboardList, action: () => { setPage('entretien'); onClose(); } },
+    { id: 'nav-signatures', label: 'Signatures', keywords: 'signature électronique signer contrat acceptation', icon: PenTool, action: () => { setPage('signatures'); onClose(); } },
+    { id: 'nav-export', label: 'Export Comptable', keywords: 'export comptabilité fec csv comptable déclaration', icon: Download, action: () => { setPage('export'); onClose(); } },
+    { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés ouvriers salariés pointage', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
+    { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse marge rentabilité bénéfice', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
+    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 
   // Create Fuse instances for fuzzy search
