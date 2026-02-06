@@ -156,7 +156,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
 
     form.sections.forEach(s => s.lignes.forEach(l => {
-      const montant = l.montant || 0;
+      const montant = l.montant || (l.quantite || 0) * (l.prixUnitaire || 0);
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
       totalHT += montant;
@@ -541,8 +541,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (!details[rate]) {
           details[rate] = { base: 0, montant: 0 };
         }
-        details[rate].base += (l.montant || 0);
-        details[rate].montant += (l.montant || 0) * (rate / 100);
+        const lineMontant = l.montant || (l.quantite || 0) * (l.prixUnitaire || 0);
+        details[rate].base += lineMontant;
+        details[rate].montant += lineMontant * (rate / 100);
       });
       return details;
     })();
@@ -554,7 +555,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${l.montant<0?'color:#dc2626;':''}">${(l.montant||0).toFixed(2)} €</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${(l.montant || (l.quantite||0)*(l.prixUnitaire||0))<0?'color:#dc2626;':''}">${(l.montant || (l.quantite||0)*(l.prixUnitaire||0)).toFixed(2)} €</td>
       </tr>
     `).join('');
 
@@ -1426,7 +1427,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
                       <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
                       <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
-                      <td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+                      <td className={`text-right font-medium ${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)) < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toFixed(2)}€</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1792,7 +1793,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Header with count */}
               <div className="flex items-center justify-between">
                 <p className={`text-sm font-medium ${textMuted}`}>
-                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + (l.montant || 0), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + (l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </p>
               </div>
 
@@ -1815,7 +1816,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-bold tabular-nums transition-all" style={{ color: couleur }}>
-                          {(l.montant || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                          {(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </p>
                         <p className={`text-xs ${textMuted}`}>HT</p>
                       </div>
