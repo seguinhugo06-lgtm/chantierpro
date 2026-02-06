@@ -1484,17 +1484,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const handleEditChantier = (formData) => {
     if (!formData.id) return;
 
+    const clientIdValue = formData.clientId || formData.client_id || '';
     updateChantier(formData.id, {
       nom: formData.nom,
-      client_id: formData.client_id,
-      clientId: formData.client_id,
+      client_id: clientIdValue,
+      clientId: clientIdValue,
       adresse: formData.adresse,
       ville: formData.ville,
       codePostal: formData.codePostal,
-      dateDebut: formData.date_debut,
-      dateFin: formData.date_fin,
-      budget_estime: formData.budget_estime,
-      budgetPrevu: formData.budget_estime,
+      dateDebut: formData.dateDebut || formData.date_debut,
+      date_debut: formData.date_debut || formData.dateDebut,
+      dateFin: formData.dateFin || formData.date_fin,
+      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
+      budget_estime: formData.budget_estime || formData.budgetPrevu || 0,
       budget_materiaux: formData.budget_materiaux,
       heures_estimees: formData.heures_estimees,
       notes: formData.notes,
