@@ -53,7 +53,7 @@ const PERIOD_OPTIONS = [
 /** Tabs for the main content area */
 const TABS = [
   { key: 'apercu', label: 'Apercu' },
-  { key: 'previsions', label: 'Previsions' },
+  { key: 'previsions', label: 'Prévisions' },
   { key: 'historique', label: 'Historique' },
 ];
 
@@ -324,11 +324,11 @@ function CashFlowChart({ data, isDark, couleur }) {
       {/* Legend */}
       <g transform={`translate(${padLeft}, 10)`}>
         <rect width={12} height={12} rx={3} fill={positiveColor} opacity={0.85} />
-        <text x={16} y={10} fill={textColor} fontSize={11}>Entrees</text>
+        <text x={16} y={10} fill={textColor} fontSize={11}>Entrées</text>
         <rect x={80} width={12} height={12} rx={3} fill={negativeColor} opacity={0.85} />
         <text x={96} y={10} fill={textColor} fontSize={11}>Sorties</text>
         <line x1={160} y1={6} x2={180} y2={6} stroke={isDark ? '#facc15' : '#ca8a04'} strokeWidth={2.5} />
-        <text x={184} y={10} fill={textColor} fontSize={11}>Solde cumule</text>
+        <text x={184} y={10} fill={textColor} fontSize={11}>Solde cumulé</text>
       </g>
     </svg>
   );
@@ -388,7 +388,7 @@ function QuickAddModal({ isOpen, onClose, onSave, isDark, couleur }) {
         {/* Header */}
         <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
           <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Nouvelle prevision
+            Nouvelle prévision
           </h3>
           <button type="button" onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
             <X size={18} />
@@ -787,7 +787,7 @@ export default function TresorerieModule({
             <Wallet size={24} className="text-white" />
           </div>
           <div>
-            <h1 className={`text-2xl font-bold ${textPrimary}`}>Tresorerie</h1>
+            <h1 className={`text-2xl font-bold ${textPrimary}`}>Trésorerie</h1>
             <p className={`text-sm ${textSecondary}`}>
               Solde actuel :{' '}
               <span className={`font-bold ${soldeActuel >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -827,10 +827,10 @@ export default function TresorerieModule({
           <AlertTriangle size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
           <div>
             <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-              Attention : solde negatif prevu
+              Attention : solde négatif prévu
             </p>
             <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-              La projection indique un solde negatif dans les 30 prochains jours. Pensez a relancer vos factures impayees.
+              La projection indique un solde négatif dans les 30 prochains jours. Pensez à relancer vos factures impayées.
             </p>
           </div>
         </div>
@@ -869,19 +869,19 @@ export default function TresorerieModule({
           isDark={isDark}
         />
         <KpiCard
-          label="Entrees prevues"
+          label="Entrées prévues"
           value={formatCurrency(entreesPrevues)}
           icon={ArrowDown}
           color="#3b82f6"
-          trendLabel="Factures impayees"
+          trendLabel="Factures impayées"
           isDark={isDark}
         />
         <KpiCard
-          label="Sorties prevues"
+          label="Sorties prévues"
           value={formatCurrency(sortiesPrevues)}
           icon={ArrowUp}
           color="#f59e0b"
-          trendLabel="Charges recurrentes + previsions"
+          trendLabel="Charges récurrentes + prévisions"
           isDark={isDark}
         />
         <KpiCard
@@ -898,11 +898,11 @@ export default function TresorerieModule({
       <div className={`rounded-2xl border p-5 ${cardBg}`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className={`text-base font-bold ${textPrimary}`}>
-            Flux de tresorerie
+            Flux de trésorerie
           </h2>
           <div className={`flex items-center gap-2 text-xs ${textSecondary}`}>
             <BarChart3 size={14} />
-            {monthlyData.length} mois affiches
+            {monthlyData.length} mois affichés
           </div>
         </div>
         {monthlyData.length > 0 ? (
@@ -910,7 +910,7 @@ export default function TresorerieModule({
         ) : (
           <div className={`flex flex-col items-center justify-center py-16 ${textSecondary}`}>
             <BarChart3 size={40} className="opacity-30 mb-3" />
-            <p className="text-sm">Aucune donnee a afficher</p>
+            <p className="text-sm">Aucune donnée à afficher</p>
           </div>
         )}
       </div>
@@ -1012,7 +1012,7 @@ export default function TresorerieModule({
                                 className={`p-1.5 rounded-lg transition-colors ${
                                   isDark ? 'hover:bg-red-500/20 text-gray-500 hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'
                                 }`}
-                                title="Supprimer la prevision"
+                                title="Supprimer la prévision"
                               >
                                 <X size={14} />
                               </button>
@@ -1034,7 +1034,7 @@ export default function TresorerieModule({
         onClick={() => setShowAddModal(true)}
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-xl text-white transition-transform hover:scale-110 active:scale-95"
         style={{ backgroundColor: couleur }}
-        title="Ajouter une prevision"
+        title="Ajouter une prévision"
       >
         <Plus size={24} />
       </button>

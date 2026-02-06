@@ -51,11 +51,11 @@ const SENT_STATUSES = [
 const INDICATOR_CONFIG = [
   {
     key: 'tresorerie',
-    label: 'Tresorerie',
+    label: 'Trésorerie',
     weight: 0.25,
     icon: Wallet,
     color: '#10b981',
-    advice: 'Relancez vos factures impayees pour ameliorer votre tresorerie.',
+    advice: 'Relancez vos factures impayées pour améliorer votre trésorerie.',
   },
   {
     key: 'carnet',
@@ -71,7 +71,7 @@ const INDICATOR_CONFIG = [
     weight: 0.15,
     icon: TrendingUp,
     color: '#8b5cf6',
-    advice: 'Ameliorez vos devis et relances pour augmenter votre taux de conversion.',
+    advice: 'Améliorez vos devis et relances pour augmenter votre taux de conversion.',
   },
   {
     key: 'marge',
@@ -79,23 +79,23 @@ const INDICATOR_CONFIG = [
     weight: 0.15,
     icon: TrendingUp,
     color: '#f59e0b',
-    advice: 'Revisez vos prix ou reduisez vos couts pour ameliorer vos marges.',
+    advice: 'Révisez vos prix ou réduisez vos coûts pour améliorer vos marges.',
   },
   {
     key: 'impayes',
-    label: 'Impayes',
+    label: 'Impayés',
     weight: 0.15,
     icon: AlertTriangle,
     color: '#ef4444',
-    advice: 'Reduisez vos impayes en envoyant des relances regulieres.',
+    advice: 'Réduisez vos impayés en envoyant des relances régulières.',
   },
   {
     key: 'conformite',
-    label: 'Conformite',
+    label: 'Conformité',
     weight: 0.10,
     icon: Shield,
     color: '#06b6d4',
-    advice: 'Completez votre profil entreprise (SIRET, assurance, RIB) pour etre conforme.',
+    advice: 'Complétez votre profil entreprise (SIRET, assurance, RIB) pour être conforme.',
   },
 ];
 
