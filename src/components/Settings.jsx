@@ -19,6 +19,8 @@ import {
 // Sprint 1 - New tabs
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
+// Sprint 5 - Multi-entreprise
+import MultiEntreprise from './settings/MultiEntreprise';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
@@ -316,7 +318,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['facture2026', '🧾 Facture 2026'],
           ['relances', '🔔 Relances'],
           ['rentabilite', '📊 Rentabilité'],
-          ['comptabilite', '🧮 Comptabilité']
+          ['comptabilite', '🧮 Comptabilité'],
+          ['multi', '🏗️ Multi-entreprise']
         ].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
@@ -1110,6 +1113,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           )}
         </div>
+      )}
+
+      {/* Multi-entreprise Tab */}
+      {tab === 'multi' && (
+        <MultiEntreprise
+          entreprise={entreprise}
+          setEntreprise={setEntreprise}
+          isDark={isDark}
+          couleur={entreprise.couleur || couleur}
+        />
       )}
 
       {/* APERÇU DOCUMENT */}

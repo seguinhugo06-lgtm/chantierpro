@@ -5,7 +5,8 @@ import Fuse from 'fuse.js';
 import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
-  Zap, Receipt, Clock, BarChart3, History, Star
+  Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
+  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download
 } from 'lucide-react';
 
 /**
@@ -121,6 +122,14 @@ export default function CommandPalette({
     { id: 'nav-clients', label: 'Clients', keywords: 'contacts', icon: Users, action: () => { setPage('clients'); onClose(); } },
     { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
+    { id: 'nav-ouvrages', label: 'Bibliothèque d\'Ouvrages', keywords: 'ouvrages composites prix', icon: Library, action: () => { setPage('ouvrages'); onClose(); } },
+    { id: 'nav-soustraitants', label: 'Sous-Traitants', keywords: 'sous-traitants prestataires', icon: UserCheck, action: () => { setPage('soustraitants'); onClose(); } },
+    { id: 'nav-commandes', label: 'Commandes Fournisseurs', keywords: 'commandes achats fournisseurs', icon: ShoppingCart, action: () => { setPage('commandes'); onClose(); } },
+    { id: 'nav-tresorerie', label: 'Trésorerie', keywords: 'tresorerie cash flow finances', icon: Wallet, action: () => { setPage('tresorerie'); onClose(); } },
+    { id: 'nav-ia-devis', label: 'IA Devis', keywords: 'ia photo analyse devis automatique', icon: Camera, action: () => { setPage('ia-devis'); onClose(); } },
+    { id: 'nav-entretien', label: 'Carnet d\'Entretien', keywords: 'entretien maintenance garantie', icon: ClipboardList, action: () => { setPage('entretien'); onClose(); } },
+    { id: 'nav-signatures', label: 'Signatures', keywords: 'signature electronique signer', icon: PenTool, action: () => { setPage('signatures'); onClose(); } },
+    { id: 'nav-export', label: 'Export Comptable', keywords: 'export comptabilite fec csv', icon: Download, action: () => { setPage('export'); onClose(); } },
     { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
     { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration reglages', icon: Settings, action: () => { setPage('settings'); onClose(); } },

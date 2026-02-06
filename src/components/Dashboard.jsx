@@ -41,6 +41,10 @@ import {
   Target,
   Zap,
   Settings,
+  Eye,
+  EyeOff,
+  GripVertical,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Dashboard components
@@ -480,6 +484,62 @@ export default function Dashboard({
   const [encaisserModalOpen, setEncaisserModalOpen] = useState(false);
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
+  const [showWidgetConfig, setShowWidgetConfig] = useState(false);
+
+  // Widget configuration - persisted in localStorage
+  const DEFAULT_WIDGETS = [
+    { id: 'overview', label: 'Vue d\'ensemble', visible: true },
+    { id: 'revenue', label: 'Chiffre d\'affaires', visible: true },
+    { id: 'devis', label: 'Devis & Factures', visible: true },
+    { id: 'chantiers', label: 'Chantiers', visible: true },
+    { id: 'tresorerie', label: 'Trésorerie', visible: true },
+    { id: 'score', label: 'Score Santé', visible: true },
+    { id: 'activity', label: 'Activité récente', visible: true },
+    { id: 'weather', label: 'Alertes Météo', visible: true },
+    { id: 'stock', label: 'Stock', visible: true },
+  ];
+
+  const [widgetConfig, setWidgetConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cp_dashboard_widgets');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge with defaults to handle new widgets added in updates
+        return DEFAULT_WIDGETS.map(dw => {
+          const found = parsed.find(p => p.id === dw.id);
+          return found ? { ...dw, visible: found.visible, order: found.order } : dw;
+        }).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+      }
+      return DEFAULT_WIDGETS;
+    } catch { return DEFAULT_WIDGETS; }
+  });
+
+  const updateWidgetConfig = (newConfig) => {
+    const ordered = newConfig.map((w, i) => ({ ...w, order: i }));
+    setWidgetConfig(ordered);
+    localStorage.setItem('cp_dashboard_widgets', JSON.stringify(ordered));
+  };
+
+  const toggleWidgetVisibility = (widgetId) => {
+    const updated = widgetConfig.map(w => w.id === widgetId ? { ...w, visible: !w.visible } : w);
+    updateWidgetConfig(updated);
+  };
+
+  const moveWidget = (widgetId, direction) => {
+    const idx = widgetConfig.findIndex(w => w.id === widgetId);
+    if (idx < 0) return;
+    const newIdx = direction === 'up' ? Math.max(0, idx - 1) : Math.min(widgetConfig.length - 1, idx + 1);
+    if (newIdx === idx) return;
+    const arr = [...widgetConfig];
+    const [item] = arr.splice(idx, 1);
+    arr.splice(newIdx, 0, item);
+    updateWidgetConfig(arr);
+  };
+
+  const isWidgetVisible = (widgetId) => {
+    const w = widgetConfig.find(wc => wc.id === widgetId);
+    return w ? w.visible : true;
+  };
 
   // Safe arrays
   const safeChantiers = chantiers || [];
@@ -1144,68 +1204,136 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* Overview Widget - Single unified card */}
-        <section className="px-4 sm:px-6 pb-6">
-          <OverviewWidget
-            setPage={setPage}
-            isDark={isDark}
-          />
+        {/* Dashboard Customization Button */}
+        <section className="px-4 sm:px-6 pb-4 flex items-center justify-end">
+          <button
+            onClick={() => setShowWidgetConfig(!showWidgetConfig)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              showWidgetConfig
+                ? `text-white`
+                : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+            }`}
+            style={showWidgetConfig ? { backgroundColor: couleur } : {}}
+          >
+            <LayoutDashboard size={16} />
+            Personnaliser
+          </button>
         </section>
 
+        {/* Widget Configuration Panel */}
+        {showWidgetConfig && (
+          <section className="px-4 sm:px-6 pb-6">
+            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h3>
+                <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 rounded ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
+                  Réinitialiser
+                </button>
+              </div>
+              <div className="space-y-1">
+                {widgetConfig.map((w, idx) => (
+                  <div key={w.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                    <GripVertical size={14} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                    <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0">
+                      {w.visible
+                        ? <Eye size={16} className="text-green-500" />
+                        : <EyeOff size={16} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                      }
+                    </button>
+                    <span className={`flex-1 text-sm ${w.visible ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-600' : 'text-slate-300')}`}>{w.label}</span>
+                    <div className="flex gap-1">
+                      <button onClick={() => moveWidget(w.id, 'up')} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
+                        <ChevronDown size={14} className="rotate-180" />
+                      </button>
+                      <button onClick={() => moveWidget(w.id, 'down')} disabled={idx === widgetConfig.length - 1} className={`p-1 rounded ${idx === widgetConfig.length - 1 ? 'opacity-20' : isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Overview Widget - Single unified card */}
+        {isWidgetVisible('overview') && (
+          <section className="px-4 sm:px-6 pb-6">
+            <OverviewWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
+          </section>
+        )}
+
         {/* Revenue Chart - Full width */}
-        <section className="px-4 sm:px-6 pb-8">
-          <RevenueChartWidget
-            setPage={setPage}
-            isDark={isDark}
-          />
-        </section>
+        {isWidgetVisible('revenue') && (
+          <section className="px-4 sm:px-6 pb-8">
+            <RevenueChartWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
+          </section>
+        )}
 
         {/* Operational Widgets Grid */}
         <section className="px-4 sm:px-6 pb-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {/* Devis Widget - Actions required */}
-            <DevisWidget
-              setPage={setPage}
-              setSelectedDevis={setSelectedDevis}
-              onRelance={handleOpenRelance}
-              isDark={isDark}
-            />
+            {isWidgetVisible('devis') && (
+              <DevisWidget
+                setPage={setPage}
+                setSelectedDevis={setSelectedDevis}
+                onRelance={handleOpenRelance}
+                isDark={isDark}
+              />
+            )}
 
             {/* Chantiers Widget - Upcoming */}
-            <ChantiersWidget
-              setPage={setPage}
-              setSelectedChantier={setSelectedChantier}
-              isDark={isDark}
-            />
+            {isWidgetVisible('chantiers') && (
+              <ChantiersWidget
+                setPage={setPage}
+                setSelectedChantier={setSelectedChantier}
+                isDark={isDark}
+              />
+            )}
 
             {/* Tresorerie Widget */}
-            <TresorerieWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
+            {isWidgetVisible('tresorerie') && (
+              <TresorerieWidget
+                setPage={setPage}
+                isDark={isDark}
+              />
+            )}
 
             {/* Score Santé Entreprise */}
-            <ScoreSanteWidget
-              isDark={isDark}
-              setPage={setPage}
-            />
+            {isWidgetVisible('score') && (
+              <ScoreSanteWidget
+                isDark={isDark}
+                setPage={setPage}
+              />
+            )}
 
             {/* Recent Activity */}
-            <RecentActivityWidget
-              activities={recentActivity}
-              isDark={isDark}
-              formatMoney={(n) => formatMoney(n, modeDiscret)}
-              onActivityClick={handleActivityClick}
-            />
+            {isWidgetVisible('activity') && (
+              <RecentActivityWidget
+                activities={recentActivity}
+                isDark={isDark}
+                formatMoney={(n) => formatMoney(n, modeDiscret)}
+                onActivityClick={handleActivityClick}
+              />
+            )}
 
             {/* Weather Alerts */}
-            <WeatherAlertsWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
+            {isWidgetVisible('weather') && (
+              <WeatherAlertsWidget
+                setPage={setPage}
+                isDark={isDark}
+              />
+            )}
 
             {/* Stock Widget - only if low stock */}
-            {stats.lowStockItems?.length > 0 && (
+            {isWidgetVisible('stock') && stats.lowStockItems?.length > 0 && (
               <StockWidget
                 setPage={setPage}
                 isDark={isDark}
