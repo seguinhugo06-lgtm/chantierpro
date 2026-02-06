@@ -1466,9 +1466,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Handle chantier creation from modal
   const handleCreateChantier = (formData) => {
+    const clientIdValue = formData.clientId || formData.client_id || '';
     const newChantier = addChantier({
       ...formData,
-      date_debut: formData.date_debut || new Date().toISOString().split('T')[0],
+      client_id: clientIdValue,
+      clientId: clientIdValue,
+      dateDebut: formData.dateDebut || formData.date_debut || new Date().toISOString().split('T')[0],
+      date_debut: formData.date_debut || formData.dateDebut || new Date().toISOString().split('T')[0],
+      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
       statut: 'prospect'
     });
     setShow(false);
