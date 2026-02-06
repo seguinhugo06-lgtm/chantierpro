@@ -72,7 +72,13 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   };
 
   const submit = async () => {
-    if (!validateAll(form)) {
+    // Trim all string fields before validation and save
+    const trimmedForm = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+    );
+    setForm(trimmedForm);
+
+    if (!validateAll(trimmedForm)) {
       showToast('Veuillez corriger les erreurs du formulaire', 'error');
       return;
     }
@@ -81,13 +87,13 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       if (editId) {
         // Use updateClient which syncs to Supabase
         if (updateClient) {
-          await updateClient(editId, form);
+          await updateClient(editId, trimmedForm);
         } else {
           // Fallback to direct state update if updateClient not provided
-          setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
+          setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
         }
       } else {
-        onSubmit(form);
+        onSubmit(trimmedForm);
       }
     } catch (error) {
       console.error('Error saving client:', error);

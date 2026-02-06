@@ -131,8 +131,14 @@ export default function QuickChantierModal({
   const handleSubmit = (e) => {
     e?.preventDefault();
 
+    // Trim all string fields
+    const trimmedForm = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+    );
+    setForm(trimmedForm);
+
     // Validate using shared schema
-    const newErrors = validateForm(form, chantierSchema);
+    const newErrors = validateForm(trimmedForm, chantierSchema);
 
     // If errors, show them and focus first error field
     if (hasErrors(newErrors)) {
@@ -145,10 +151,10 @@ export default function QuickChantierModal({
 
     setErrors({});
     const formData = {
-      ...form,
-      budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : 0,
-      budget_materiaux: form.budget_materiaux ? parseFloat(form.budget_materiaux) : 0,
-      heures_estimees: form.heures_estimees ? parseFloat(form.heures_estimees) : 0
+      ...trimmedForm,
+      budget_estime: trimmedForm.budget_estime ? parseFloat(trimmedForm.budget_estime) : 0,
+      budget_materiaux: trimmedForm.budget_materiaux ? parseFloat(trimmedForm.budget_materiaux) : 0,
+      heures_estimees: trimmedForm.heures_estimees ? parseFloat(trimmedForm.heures_estimees) : 0
     };
 
     // Include ID if editing
