@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Check, ChevronDown, ChevronUp, Building2, MapPin, User, Calendar, Euro, FileText, Zap, Clock, Package, AlertCircle } from 'lucide-react';
+import { validateForm, hasErrors, chantierSchema } from '../lib/validation';
 
 /**
  * QuickChantierModal - Quick add/edit chantier with minimal fields
@@ -130,15 +131,11 @@ export default function QuickChantierModal({
   const handleSubmit = (e) => {
     e?.preventDefault();
 
-    // Validate required fields
-    const newErrors = {};
-
-    if (!form.nom.trim()) {
-      newErrors.nom = 'Le nom du chantier est requis';
-    }
+    // Validate using shared schema
+    const newErrors = validateForm(form, chantierSchema);
 
     // If errors, show them and focus first error field
-    if (Object.keys(newErrors).length > 0) {
+    if (hasErrors(newErrors)) {
       setErrors(newErrors);
       if (newErrors.nom) {
         inputRef.current?.focus();
