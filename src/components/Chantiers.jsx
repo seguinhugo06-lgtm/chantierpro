@@ -35,9 +35,9 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
     signals.push({ value: costProgress, weight: 0.3 });
   }
 
-  // If no signals available, fall back to manual or 0
+  // If no signals available, return 0 (no data = no progress)
   if (signals.length === 0) {
-    return chantier.avancement || 0;
+    return 0;
   }
 
   // Normalize weights if not all signals are present
