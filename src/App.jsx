@@ -838,7 +838,7 @@ export default function App() {
               {page === 'tresorerie' && <TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'ia-devis' && <IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} />}
               {page === 'entretien' && <CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'signatures' && <SignatureModule devis={devis} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
+              {page === 'signatures' && <SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} />}
               {page === 'export' && <ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}

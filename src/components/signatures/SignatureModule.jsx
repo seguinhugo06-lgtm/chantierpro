@@ -209,7 +209,7 @@ function AuditTrail({ events, isDark }) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export default function SignatureModule({ devis = [], chantiers = [], isDark = false, couleur = '#f97316' }) {
+export default function SignatureModule({ devis = [], chantiers = [], clients = [], isDark = false, couleur = '#f97316' }) {
   // ---- State ----
   const [signatures, setSignatures] = useState(loadSignatures);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'sign' | 'detail'
@@ -264,7 +264,9 @@ export default function SignatureModule({ devis = [], chantiers = [], isDark = f
       d.client_name ||
       d.client?.nom ||
       (d.client_id
-        ? `Client ${d.client_id.slice(0, 6)}`
+        ? (clients.find(c => c.id === d.client_id)?.nom ||
+           clients.find(c => c.id === d.client_id)?.entreprise ||
+           `Client ${d.client_id.slice(0, 6)}`)
         : 'Client inconnu'),
     date: d.date || d.created_at || new Date().toISOString(),
     montant_ttc: d.montant_ttc ?? d.total_ttc ?? d.montant ?? 0,
