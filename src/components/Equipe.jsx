@@ -413,7 +413,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   };
 
   const deleteEmploye = async (id) => {
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet employe ?' });
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet employé ?' });
     if (confirmed) {
       setEquipe(equipe.filter(e => e.id !== id));
       showToast('Employé supprimé', 'success');
@@ -421,7 +421,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   };
 
   const exportCSV = () => {
-    const rows = [['Date', 'Employe', 'Chantier', 'Heures', 'Statut', 'Note']];
+    const rows = [['Date', 'Employé', 'Chantier', 'Heures', 'Statut', 'Note']];
     weekPointages.forEach(p => {
       const emp = equipe.find(e => e.id === p.employeId);
       const ch = chantiers.find(c => c.id === p.chantierId);
@@ -504,7 +504,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employe</h1>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -729,7 +729,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
           <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
             <UserPlus size={18} />
-            Ajouter mon premier employe
+            Ajouter mon premier employé
           </button>
         </div>
       </div>
@@ -771,7 +771,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <Zap size={16} /> <span className="hidden sm:inline">Saisie groupee</span>
           </button>
           <button onClick={() => setShowAdd(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
-            <Plus size={16} /> <span className="hidden sm:inline">Employe</span>
+            <Plus size={16} /> <span className="hidden sm:inline">Employé</span>
           </button>
         </div>
       </div>
@@ -1115,7 +1115,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher un employe..."
+                  placeholder="Rechercher un employé..."
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
               </div>
@@ -1210,7 +1210,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             {/* Results count */}
             <div className="flex items-center justify-between px-1">
               <span className={`text-sm ${textMuted}`}>
-                {getFilteredEquipe.length} employe{getFilteredEquipe.length > 1 ? 's' : ''}
+                {getFilteredEquipe.length} employé{getFilteredEquipe.length > 1 ? 's' : ''}
                 {searchQuery && ` pour "${searchQuery}"`}
                 {filterRole && ` • ${filterRole}`}
               </span>
@@ -1232,7 +1232,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                 animate={{ opacity: 1 }}
               >
                 <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
-                <p className={`font-medium ${textPrimary}`}>Aucun employe trouve</p>
+                <p className={`font-medium ${textPrimary}`}>Aucun employé trouvé</p>
                 <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres criteres</p>
               </motion.div>
             ) : (
@@ -1324,7 +1324,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                           </div>
                           <div className="min-w-0">
                             <h3 className={`font-bold text-lg ${textPrimary}`}>{e.nom}</h3>
-                            <p className={`text-sm ${textMuted}`}>{e.prenom || e.role || 'Employe'}</p>
+                            <p className={`text-sm ${textMuted}`}>{e.prenom || e.role || 'Employé'}</p>
                           </div>
                         </div>
                       </div>
@@ -1512,7 +1512,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                           <p className={`font-medium ${textPrimary}`}>
                             {currentEmployeForSmartClock.nom} {currentEmployeForSmartClock.prenom}
                           </p>
-                          <p className={`text-sm ${textMuted}`}>{currentEmployeForSmartClock.role || 'Employe'}</p>
+                          <p className={`text-sm ${textMuted}`}>{currentEmployeForSmartClock.role || 'Employé'}</p>
                         </div>
                       </div>
                       <button
@@ -1740,7 +1740,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   {/* Employee Selection Grid */}
                   {!chrono.running && (
                     <div className="w-full mb-6">
-                      <p className={`text-sm font-medium mb-3 ${textPrimary}`}>Selectionner l'employe:</p>
+                      <p className={`text-sm font-medium mb-3 ${textPrimary}`}>Sélectionner l'employé :</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {equipe.map(emp => {
                           const config = getRoleConfig(emp.role);
@@ -1765,7 +1765,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                                 </div>
                                 <div className="min-w-0">
                                   <p className={`text-sm font-medium truncate ${textPrimary}`}>{emp.nom}</p>
-                                  <p className={`text-xs truncate ${textMuted}`}>{emp.role || 'Employe'}</p>
+                                  <p className={`text-xs truncate ${textMuted}`}>{emp.role || 'Employé'}</p>
                                 </div>
                               </div>
                             </button>
@@ -1864,7 +1864,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   value={pForm.employeId}
                   onChange={e => setPForm(p => ({ ...p, employeId: e.target.value }))}
                 >
-                  <option value="">Employe *</option>
+                  <option value="">Employé *</option>
                   {equipe.map(e => <option key={e.id} value={e.id}>{e.nom} {e.prenom}</option>)}
                 </select>
                 <select

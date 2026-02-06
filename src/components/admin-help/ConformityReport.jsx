@@ -91,7 +91,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
     <div className="space-y-6">
       <div>
         <h2 className={`text-lg font-bold ${textPrimary}`}>Audit Conformité</h2>
-        <p className={`text-sm ${textMuted}`}>Vérifie ta conformité réglementaire</p>
+        <p className={`text-sm ${textMuted}`}>Vérifiez votre conformité réglementaire</p>
       </div>
 
       {/* Score */}
@@ -110,7 +110,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
           </div>
         </div>
         {score === 100 && (
-          <p className="text-sm text-emerald-600 mt-3">Bravo, tu es en conformité !</p>
+          <p className="text-sm text-emerald-600 mt-3">Bravo, vous êtes en conformité !</p>
         )}
       </div>
 

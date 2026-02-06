@@ -52,7 +52,7 @@ const PERIOD_OPTIONS = [
 
 /** Tabs for the main content area */
 const TABS = [
-  { key: 'apercu', label: 'Apercu' },
+  { key: 'apercu', label: 'Aperçu' },
   { key: 'previsions', label: 'Prévisions' },
   { key: 'historique', label: 'Historique' },
 ];
@@ -71,10 +71,10 @@ const CATEGORIES_PREVISION = [
 
 /** Mock recurring charges used when projecting future months */
 const RECURRING_CHARGES = [
-  { description: 'Loyer local / depot', montant: 1800, categorie: 'Loyer' },
-  { description: 'Assurance pro (RC/decennale)', montant: 450, categorie: 'Assurance' },
+  { description: 'Loyer local / dépôt', montant: 1800, categorie: 'Loyer' },
+  { description: 'Assurance pro (RC/décennale)', montant: 450, categorie: 'Assurance' },
   { description: 'Salaires et charges', montant: 8500, categorie: 'Salaires' },
-  { description: 'Leasing vehicules', montant: 650, categorie: 'Divers' },
+  { description: 'Leasing véhicules', montant: 650, categorie: 'Divers' },
 ];
 
 const MONTHLY_RECURRING_TOTAL = RECURRING_CHARGES.reduce((s, c) => s + c.montant, 0);
@@ -433,7 +433,7 @@ function QuickAddModal({ isOpen, onClose, onSave, isDark, couleur }) {
               <input type="number" className={inputCls} placeholder="0" min="0" step="0.01" value={form.montant} onChange={(e) => handleChange('montant', e.target.value)} required />
             </div>
             <div>
-              <label className={labelCls}>Date prevue</label>
+              <label className={labelCls}>Date prévue</label>
               <input type="date" className={inputCls} value={form.date} onChange={(e) => handleChange('date', e.target.value)} required />
             </div>
           </div>
@@ -679,10 +679,10 @@ export default function TresorerieModule({
         payments.push({
           id: `dep_${dep.id}`,
           date: dep.date || dep.createdAt,
-          description: dep.description || `Depense ${dep.fournisseur || ''}`,
+          description: dep.description || `Dépense ${dep.fournisseur || ''}`,
           type: 'sortie',
           montant: dep.montant || 0,
-          statut: 'Paye',
+          statut: 'Payé',
           source: 'depense',
         });
       });
@@ -696,7 +696,7 @@ export default function TresorerieModule({
         description: rc.description,
         type: 'sortie',
         montant: rc.montant,
-        statut: new Date(dateStr) <= now ? 'Paye' : 'Prevu',
+        statut: new Date(dateStr) <= now ? 'Payé' : 'Prévu',
         source: 'recurrent',
       });
     });
@@ -709,7 +709,7 @@ export default function TresorerieModule({
         description: p.description,
         type: p.type,
         montant: p.montant,
-        statut: 'Prevu',
+        statut: 'Prévu',
         source: 'prevision',
       });
     });
@@ -760,10 +760,10 @@ export default function TresorerieModule({
 
   const filteredPayments = useMemo(() => {
     if (activeTab === 'previsions') {
-      return upcomingPayments.filter((p) => p.statut === 'Prevu' || p.statut === 'En attente');
+      return upcomingPayments.filter((p) => p.statut === 'Prévu' || p.statut === 'En attente');
     }
     if (activeTab === 'historique') {
-      return upcomingPayments.filter((p) => p.statut === 'Paye');
+      return upcomingPayments.filter((p) => p.statut === 'Payé');
     }
     return upcomingPayments;
   }, [upcomingPayments, activeTab]);
@@ -889,7 +889,7 @@ export default function TresorerieModule({
           value={formatCurrency(projectionFinMois)}
           icon={TrendingUp}
           color={projectionFinMois >= 0 ? '#10b981' : '#ef4444'}
-          trendLabel="Solde + entrees - sorties"
+          trendLabel="Solde + entrées - sorties"
           isDark={isDark}
         />
       </div>
@@ -952,7 +952,7 @@ export default function TresorerieModule({
               <table className="w-full text-sm">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
-                    <th className="text-left py-3 pr-4 font-semibold">Date prevue</th>
+                    <th className="text-left py-3 pr-4 font-semibold">Date prévue</th>
                     <th className="text-left py-3 pr-4 font-semibold">Description</th>
                     <th className="text-left py-3 pr-4 font-semibold">Type</th>
                     <th className="text-right py-3 pr-4 font-semibold">Montant</th>
@@ -995,7 +995,7 @@ export default function TresorerieModule({
                         </td>
                         <td className="py-3">
                           <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
-                            p.statut === 'Paye'
+                            p.statut === 'Payé'
                               ? isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500'
                               : p.statut === 'En attente'
                                 ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600'
