@@ -351,7 +351,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     );
   };
 
-  // Corps de metier badge
+  // Corps de métier badge
   const CorpsMetierBadge = ({ corpsMetier }) => {
     const cm = getCorpsMetier(corpsMetier);
     return (
@@ -398,11 +398,11 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
 
         {/* Form sections */}
         <div className="space-y-6">
-          {/* Informations generales */}
+          {/* Informations générales */}
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
               <Building2 size={18} style={{ color: couleur }} />
-              Informations generales
+              Informations générales
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
@@ -436,7 +436,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Telephone</label>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
                 <input
                   type="tel"
                   value={form.telephone}
@@ -458,11 +458,11 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             </div>
           </div>
 
-          {/* Informations legales */}
+          {/* Informations légales */}
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
               <FileCheck size={18} style={{ color: couleur }} />
-              Informations legales
+              Informations légales
             </h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -476,7 +476,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Corps de metier</label>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Corps de métier</label>
                 <select
                   value={form.corpsMetier}
                   onChange={e => setForm(p => ({ ...p, corpsMetier: e.target.value }))}
@@ -522,7 +522,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                 <h3 className={`text-sm font-semibold mb-3 ${textPrimary}`}>Assurance RC Pro</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-sm mb-1 ${textSecondary}`}>Numero de police</label>
+                    <label className={`block text-sm mb-1 ${textSecondary}`}>Numéro de police</label>
                     <input
                       type="text"
                       value={form.assuranceRcPro}
@@ -614,7 +614,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                 size={28}
               />
               <span className={`text-sm ${textMuted}`}>
-                {form.noteQualite > 0 ? `${form.noteQualite}/5` : 'Non note'}
+                {form.noteQualite > 0 ? `${form.noteQualite}/5` : 'Non noté'}
               </span>
             </div>
           </div>
@@ -772,7 +772,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
 
           {/* Legal & tarif */}
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`text-sm font-semibold mb-3 ${textMuted} uppercase tracking-wide`}>Informations legales</h3>
+            <h3 className={`text-sm font-semibold mb-3 ${textMuted} uppercase tracking-wide`}>Informations légales</h3>
             <div className="space-y-3">
               {selected.siret && (
                 <div className="flex items-center gap-3">
@@ -795,7 +795,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                 {selected.noteQualite > 0 ? (
                   <StarRating value={selected.noteQualite} readOnly size={16} />
                 ) : (
-                  <span className={`text-sm italic ${textMuted}`}>Non note</span>
+                  <span className={`text-sm italic ${textMuted}`}>Non noté</span>
                 )}
               </div>
             </div>
@@ -835,7 +835,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-red-500 font-medium">Non renseignee</p>
+                <p className="text-sm text-red-500 font-medium">Non renseignée</p>
               )}
             </div>
 
@@ -1033,7 +1033,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           onChange={e => setFilterCorps(e.target.value)}
           className={`px-4 py-2.5 border rounded-xl ${inputBg} min-w-[180px]`}
         >
-          <option value="all">Tous les corps de metier</option>
+          <option value="all">Tous les corps de métier</option>
           {CORPS_METIER.map(cm => (
             <option key={cm.id} value={cm.id}>{cm.label}</option>
           ))}

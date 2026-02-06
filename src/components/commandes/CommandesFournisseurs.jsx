@@ -28,11 +28,11 @@ const UNITES = ['u', 'm', 'm2', 'm3', 'kg', 'L', 'ml', 'rouleau', 'sac', 'boite'
 
 const STATUT_CONFIG = {
   brouillon: { label: 'Brouillon', color: 'gray', icon: FileText },
-  envoyee: { label: 'Envoyee', color: 'blue', icon: Send },
-  confirmee: { label: 'Confirmee', color: 'purple', icon: Check },
+  envoyee: { label: 'Envoyée', color: 'blue', icon: Send },
+  confirmee: { label: 'Confirmée', color: 'purple', icon: Check },
   livree_partiel: { label: 'Livraison partielle', color: 'amber', icon: Truck },
-  livree: { label: 'Livree', color: 'green', icon: CheckCircle },
-  annulee: { label: 'Annulee', color: 'red', icon: XCircle },
+  livree: { label: 'Livrée', color: 'green', icon: CheckCircle },
+  annulee: { label: 'Annulée', color: 'red', icon: XCircle },
 };
 
 const STATUT_BADGE_CLASSES = {
@@ -417,7 +417,7 @@ export default function CommandesFournisseurs({
   const renderKPIs = () => {
     const cards = [
       { label: 'Commandes en cours', value: kpis.enCours, icon: ShoppingCart, color: couleur },
-      { label: 'Montant engage', value: formatCurrency(kpis.montantEngage), icon: FileText, color: '#3b82f6' },
+      { label: 'Montant engagé', value: formatCurrency(kpis.montantEngage), icon: FileText, color: '#3b82f6' },
       { label: 'En attente livraison', value: kpis.enAttente, icon: Truck, color: '#f59e0b' },
       { label: 'Livraisons en retard', value: kpis.enRetard, icon: AlertTriangle, color: '#ef4444' },
     ];
@@ -446,8 +446,8 @@ export default function CommandesFournisseurs({
     const tabs = [
       { id: 'tous', label: 'Tous' },
       { id: 'en_cours', label: 'En cours' },
-      { id: 'livrees', label: 'Livrees' },
-      { id: 'annulees', label: 'Annulees' },
+      { id: 'livrees', label: 'Livrées' },
+      { id: 'annulees', label: 'Annulées' },
     ];
 
     return (
@@ -513,7 +513,7 @@ export default function CommandesFournisseurs({
           {filteredCommandes.length === 0 ? (
             <div className="p-12 text-center">
               <ShoppingCart className={`mx-auto mb-3 ${textMuted}`} size={40} />
-              <p className={`font-medium ${textSecondary}`}>Aucune commande trouvee</p>
+              <p className={`font-medium ${textSecondary}`}>Aucune commande trouvée</p>
               <p className={`text-sm mt-1 ${textMuted}`}>
                 Creez votre premiere commande fournisseur
               </p>
@@ -523,7 +523,7 @@ export default function CommandesFournisseurs({
               <table className="w-full">
                 <thead>
                   <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Numero</th>
+                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Numéro</th>
                     <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Fournisseur</th>
                     <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden md:table-cell`}>Chantier</th>
                     <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden sm:table-cell`}>Date</th>
@@ -738,7 +738,7 @@ export default function CommandesFournisseurs({
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>
                     <Truck size={14} className="inline mr-1" />
-                    Livraison prevue
+                    Livraison prévue
                   </label>
                   <input
                     type="date"
@@ -1089,7 +1089,7 @@ export default function CommandesFournisseurs({
                 </p>
                 {cmd.dateLivraisonPrevue && (
                   <p className={`text-sm ${textSecondary}`}>
-                    Livraison prevue : {formatDate(cmd.dateLivraisonPrevue)}
+                    Livraison prévue : {formatDate(cmd.dateLivraisonPrevue)}
                   </p>
                 )}
                 {cmd.dateLivraisonReelle && (
