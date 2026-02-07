@@ -416,6 +416,13 @@ export default function IADevisAnalyse({
   const [view, setView] = useState('list'); // list | new | detail
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [sortOrder, setSortOrder] = useState('recent');
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertAnalyse, setConvertAnalyse] = useState(null);
+  const [convertClient, setConvertClient] = useState('');
+  const [convertTva, setConvertTva] = useState(20);
+  const [convertNotes, setConvertNotes] = useState('');
 
   // New analysis flow
   const [step, setStep] = useState(1); // 1: photo, 2: analyse, 3: results
@@ -447,13 +454,31 @@ export default function IADevisAnalyse({
   // ---- Derived ----
   const selectedAnalyse = analyses.find((a) => a.id === selectedId) || null;
 
-  const filteredAnalyses = searchTerm.trim()
-    ? analyses.filter(
+  const filteredAnalyses = (() => {
+    let result = [...analyses];
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
         (a) =>
-          (a.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (a.analyse_resultat?.categorie || '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : analyses;
+          (a.description || '').toLowerCase().includes(term) ||
+          (a.analyse_resultat?.categorie || '').toLowerCase().includes(term)
+      );
+    }
+    if (statusFilter) {
+      result = result.filter((a) => a.statut === statusFilter);
+    }
+    // Sort
+    if (sortOrder === 'oldest') {
+      result.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (sortOrder === 'montant_asc') {
+      result.sort((a, b) => (a.analyse_resultat?.totalHT || 0) - (b.analyse_resultat?.totalHT || 0));
+    } else if (sortOrder === 'montant_desc') {
+      result.sort((a, b) => (b.analyse_resultat?.totalHT || 0) - (a.analyse_resultat?.totalHT || 0));
+    } else {
+      result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    return result;
+  })();
 
   const totalHTAll = analyses.reduce((s, a) => s + (a.analyse_resultat?.totalHT || 0), 0);
   const avgConfiance =
@@ -593,23 +618,36 @@ export default function IADevisAnalyse({
 
   const handleCreateDevis = (analyse) => {
     if (!onCreateDevis || !analyse?.analyse_resultat) return;
-    // Mark as applied
+    setConvertAnalyse(analyse);
+    setConvertClient('');
+    setConvertTva(20);
+    setConvertNotes('');
+    setShowConvertModal(true);
+  };
+
+  const handleConfirmCreateDevis = () => {
+    if (!convertAnalyse?.analyse_resultat) return;
     setAnalyses((prev) =>
-      prev.map((a) => (a.id === analyse.id ? { ...a, statut: 'appliquee' } : a))
+      prev.map((a) => (a.id === convertAnalyse.id ? { ...a, statut: 'appliquee' } : a))
     );
     onCreateDevis({
-      lignes: analyse.analyse_resultat.travaux.map((t) => ({
+      lignes: convertAnalyse.analyse_resultat.travaux.map((t) => ({
         designation: t.designation,
         quantite: t.quantite,
         unite: t.unite,
         prixUnitaire: t.prixUnitaire,
         totalHT: t.totalHT,
       })),
-      description: analyse.description,
-      totalHT: analyse.analyse_resultat.totalHT,
+      description: convertAnalyse.description,
+      totalHT: convertAnalyse.analyse_resultat.totalHT,
       source: 'ia_analyse',
-      analyseId: analyse.id,
+      analyseId: convertAnalyse.id,
+      client_id: convertClient || undefined,
+      tvaRate: convertTva,
+      notes: convertNotes.trim() || undefined,
     });
+    setShowConvertModal(false);
+    setConvertAnalyse(null);
   };
 
   // ---- Renderers ----
@@ -701,6 +739,41 @@ export default function IADevisAnalyse({
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm ${inputCls} focus:outline-none focus:ring-2`}
               style={{ '--tw-ring-color': couleur }}
             />
+          </div>
+
+          {/* Filters & Sort */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {[
+              { key: null, label: 'Tous' },
+              { key: 'terminee', label: 'Terminées' },
+              { key: 'appliquee', label: 'Appliquées' },
+              { key: 'erreur', label: 'Erreurs' },
+            ].map((f) => (
+              <button
+                key={f.key || 'all'}
+                onClick={() => setStatusFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === f.key
+                    ? 'text-white'
+                    : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                style={statusFilter === f.key ? { backgroundColor: couleur } : {}}
+              >
+                {f.label}
+              </button>
+            ))}
+            <div className="ml-auto">
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className={`text-xs px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+              >
+                <option value="recent">Plus récentes</option>
+                <option value="oldest">Plus anciennes</option>
+                <option value="montant_desc">Montant ↓</option>
+                <option value="montant_asc">Montant ↑</option>
+              </select>
+            </div>
           </div>
 
           {/* Grid */}
@@ -1304,6 +1377,96 @@ export default function IADevisAnalyse({
         {view === 'new' && renderNewAnalysis()}
         {view === 'detail' && renderDetailView()}
       </div>
+
+      {/* Convert to Devis Modal */}
+      {showConvertModal && convertAnalyse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl ${cardBg} p-6`}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className={`text-lg font-bold ${textPrimary}`}>Créer un devis</h3>
+              <button
+                onClick={() => setShowConvertModal(false)}
+                className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label>
+                <select
+                  value={convertClient}
+                  onChange={(e) => setConvertClient(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm ${inputCls}`}
+                >
+                  <option value="">— Sélectionner un client —</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux TVA</label>
+                <div className="flex gap-3">
+                  {[10, 20].map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => setConvertTva(rate)}
+                      className={`flex-1 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        convertTva === rate
+                          ? 'text-white border-transparent'
+                          : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-700'
+                      }`}
+                      style={convertTva === rate ? { backgroundColor: couleur } : {}}
+                    >
+                      {rate}%{rate === 10 ? ' (rénovation)' : ' (standard)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes (optionnel)</label>
+                <textarea
+                  value={convertNotes}
+                  onChange={(e) => setConvertNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Notes pour le devis..."
+                  className={`w-full px-3 py-2 rounded-lg border text-sm resize-none ${inputCls}`}
+                />
+              </div>
+              <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className="flex justify-between text-sm">
+                  <span className={textMuted}>Total HT</span>
+                  <span className={`font-semibold ${textPrimary}`}>{fmtCurrency.format(convertAnalyse.analyse_resultat?.totalHT || 0)}</span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className={textMuted}>Total TTC ({convertTva}%)</span>
+                  <span className="font-bold" style={{ color: couleur }}>
+                    {fmtCurrency.format((convertAnalyse.analyse_resultat?.totalHT || 0) * (1 + convertTva / 100))}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowConvertModal(false)}
+                className={`flex-1 px-4 py-2.5 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-700'}`}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmCreateDevis}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md"
+                style={{ backgroundColor: couleur }}
+              >
+                <FileText className="w-4 h-4" />
+                Créer le devis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

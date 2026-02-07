@@ -28,6 +28,8 @@ import {
   Clock,
   BarChart3,
   Save,
+  Settings,
+  Filter,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -68,6 +70,18 @@ const CATEGORIES_PREVISION = [
   'Sous-traitance',
   'Divers',
 ];
+
+/** Category colors for badges */
+const CATEGORY_COLORS = {
+  Client: { bg: 'bg-blue-100 text-blue-700', dark: 'bg-blue-900/30 text-blue-400' },
+  Fournisseur: { bg: 'bg-orange-100 text-orange-700', dark: 'bg-orange-900/30 text-orange-400' },
+  Loyer: { bg: 'bg-purple-100 text-purple-700', dark: 'bg-purple-900/30 text-purple-400' },
+  Assurance: { bg: 'bg-green-100 text-green-700', dark: 'bg-green-900/30 text-green-400' },
+  Salaires: { bg: 'bg-amber-100 text-amber-700', dark: 'bg-amber-900/30 text-amber-400' },
+  Materiaux: { bg: 'bg-cyan-100 text-cyan-700', dark: 'bg-cyan-900/30 text-cyan-400' },
+  'Sous-traitance': { bg: 'bg-indigo-100 text-indigo-700', dark: 'bg-indigo-900/30 text-indigo-400' },
+  Divers: { bg: 'bg-gray-100 text-gray-600', dark: 'bg-gray-700 text-gray-300' },
+};
 
 /** Mock recurring charges used when projecting future months */
 const RECURRING_CHARGES = [
@@ -499,6 +513,11 @@ export default function TresorerieModule({
   const [activeTab, setActiveTab] = useState('apercu');
   const [showAddModal, setShowAddModal] = useState(false);
   const [previsions, setPrevisions] = useState(loadPrevisions);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [seuilAlerte, setSeuilAlerte] = useState(() => {
+    try { return parseInt(localStorage.getItem('cp_tresorerie_seuil')) || 5000; } catch { return 5000; }
+  });
+  const [showSeuilConfig, setShowSeuilConfig] = useState(false);
 
   // Persist previsions to localStorage whenever they change
   useEffect(() => {
@@ -667,6 +686,7 @@ export default function TresorerieModule({
         montant: reste,
         statut: 'En attente',
         source: 'facture',
+        categorie: 'Client',
       });
     });
 
@@ -684,6 +704,7 @@ export default function TresorerieModule({
           montant: dep.montant || 0,
           statut: 'Payé',
           source: 'depense',
+          categorie: dep.categorie || 'Fournisseur',
         });
       });
 
@@ -698,6 +719,7 @@ export default function TresorerieModule({
         montant: rc.montant,
         statut: new Date(dateStr) <= now ? 'Payé' : 'Prévu',
         source: 'recurrent',
+        categorie: rc.categorie || 'Divers',
       });
     });
 
@@ -711,6 +733,7 @@ export default function TresorerieModule({
         montant: p.montant,
         statut: 'Prévu',
         source: 'prevision',
+        categorie: p.categorie || 'Divers',
       });
     });
 
@@ -759,14 +782,17 @@ export default function TresorerieModule({
   // -- Filtered payments for current tab -----------------------------------
 
   const filteredPayments = useMemo(() => {
+    let result = upcomingPayments;
     if (activeTab === 'previsions') {
-      return upcomingPayments.filter((p) => p.statut === 'Prévu' || p.statut === 'En attente');
+      result = result.filter((p) => p.statut === 'Prévu' || p.statut === 'En attente');
+    } else if (activeTab === 'historique') {
+      result = result.filter((p) => p.statut === 'Payé');
     }
-    if (activeTab === 'historique') {
-      return upcomingPayments.filter((p) => p.statut === 'Payé');
+    if (categoryFilter !== 'all') {
+      result = result.filter((p) => p.categorie === categoryFilter);
     }
-    return upcomingPayments;
-  }, [upcomingPayments, activeTab]);
+    return result;
+  }, [upcomingPayments, activeTab, categoryFilter]);
 
   // -- Render -----------------------------------------------------------------
 
@@ -797,7 +823,44 @@ export default function TresorerieModule({
           </div>
         </div>
 
-        {/* Period selector */}
+        {/* Settings + Period selector */}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setShowSeuilConfig(!showSeuilConfig)}
+              className={`p-2 rounded-xl border transition-colors ${isDark ? 'border-slate-700 hover:bg-slate-700 text-slate-400' : 'border-gray-200 hover:bg-gray-50 text-gray-500'}`}
+              title="Configurer le seuil d'alerte"
+            >
+              <Settings size={18} />
+            </button>
+            {showSeuilConfig && (
+              <div className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ minWidth: 220 }}>
+                <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>
+                  Seuil d'alerte (€)
+                </label>
+                <input
+                  type="number"
+                  value={seuilAlerte}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setSeuilAlerte(val);
+                    try { localStorage.setItem('cp_tresorerie_seuil', String(val)); } catch {}
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
+                />
+                <p className={`text-xs mt-1.5 ${textSecondary}`}>
+                  Alerte si le solde passe sous ce montant
+                </p>
+                <button
+                  onClick={() => setShowSeuilConfig(false)}
+                  className="mt-2 text-xs font-medium w-full py-1.5 rounded-lg text-white"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Fermer
+                </button>
+              </div>
+            )}
+          </div>
         <div className={`inline-flex rounded-xl p-1 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-gray-100'}`}>
           {PERIOD_OPTIONS.map((opt) => (
             <button
@@ -813,7 +876,29 @@ export default function TresorerieModule({
             </button>
           ))}
         </div>
+        </div>
       </div>
+
+      {/* ── Threshold Alert ───────────────────────────────────────────── */}
+      {soldeActuel < seuilAlerte && (
+        <div
+          className={`flex items-start gap-3 p-4 rounded-2xl border ${
+            soldeActuel < 0
+              ? isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'
+              : isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'
+          }`}
+        >
+          <AlertTriangle size={20} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')} />
+          <div>
+            <p className={`text-sm font-semibold ${soldeActuel < 0 ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
+              Solde en dessous du seuil d'alerte ({formatCurrency(seuilAlerte)})
+            </p>
+            <p className={`text-xs mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
+              Votre solde actuel de {formatCurrency(soldeActuel)} est inférieur au seuil configuré.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Alerts ──────────────────────────────────────────────────────── */}
       {alertNegativeBalance && (
@@ -938,6 +1023,19 @@ export default function TresorerieModule({
               )}
             </button>
           ))}
+          <div className="ml-auto flex items-center gap-2">
+            <Filter size={14} className={textSecondary} />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className={`text-sm px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-700'}`}
+            >
+              <option value="all">Toutes catégories</option>
+              {CATEGORIES_PREVISION.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Table content */}
@@ -955,6 +1053,7 @@ export default function TresorerieModule({
                     <th className="text-left py-3 pr-4 font-semibold">Date prévue</th>
                     <th className="text-left py-3 pr-4 font-semibold">Description</th>
                     <th className="text-left py-3 pr-4 font-semibold">Type</th>
+                    <th className="text-left py-3 pr-4 font-semibold">Catégorie</th>
                     <th className="text-right py-3 pr-4 font-semibold">Montant</th>
                     <th className="text-left py-3 font-semibold">Statut</th>
                     {activeTab !== 'historique' && (
@@ -987,6 +1086,17 @@ export default function TresorerieModule({
                             {isEntree ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
                             {isEntree ? 'Entree' : 'Sortie'}
                           </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          {(() => {
+                            const cat = p.categorie || 'Divers';
+                            const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Divers;
+                            return (
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? colors.dark : colors.bg}`}>
+                                {cat}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${
                           isEntree ? 'text-emerald-500' : 'text-red-500'

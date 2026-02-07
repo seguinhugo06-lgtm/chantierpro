@@ -17,7 +17,7 @@ import {
   HardHat, Plus, Search, Edit3, Trash2, Star, X, Save,
   Shield, ShieldCheck, ShieldAlert, ShieldOff, Phone, Mail,
   MapPin, FileCheck, AlertTriangle, Building2, Calendar,
-  Clock, ChevronRight, Users
+  Clock, ChevronRight, Users, Upload, File, FilePlus
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 
@@ -41,6 +41,15 @@ const CORPS_METIER = [
   { id: 'autre', label: 'Autre', color: '#64748b' }
 ];
 
+const DOCUMENT_TYPES = [
+  'RC Pro',
+  'Décennale',
+  'Attestation URSSAF',
+  'Kbis',
+  'Attestation TVA',
+  'Autre'
+];
+
 const EMPTY_FORM = {
   nom: '',
   contact: '',
@@ -57,7 +66,8 @@ const EMPTY_FORM = {
   noteQualite: 0,
   chantierIds: [],
   notes: '',
-  actif: true
+  actif: true,
+  documents: []
 };
 
 // ---------- Helpers ----------
@@ -92,6 +102,20 @@ function getComplianceStatus(st) {
       worst = 'red';
     } else if (urssafDate < in30Days && worst !== 'red') {
       worst = 'yellow';
+    }
+  }
+
+  // Check documents expiration
+  if (st.documents && st.documents.length > 0) {
+    for (const doc of st.documents) {
+      if (doc.dateExpiration) {
+        const docDate = new Date(doc.dateExpiration);
+        if (docDate < now) {
+          worst = 'red';
+        } else if (docDate < in30Days && worst !== 'red') {
+          worst = 'yellow';
+        }
+      }
     }
   }
 
@@ -210,7 +234,8 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           noteQualite: st.noteQualite || 0,
           chantierIds: st.chantierIds || [],
           notes: st.notes || '',
-          actif: st.actif !== undefined ? st.actif : true
+          actif: st.actif !== undefined ? st.actif : true,
+          documents: st.documents || []
         });
         setEditId(stId);
       }
@@ -241,7 +266,8 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       noteQualite: form.noteQualite || 0,
       chantierIds: form.chantierIds || [],
       notes: form.notes.trim(),
-      actif: form.actif
+      actif: form.actif,
+      documents: form.documents || []
     };
 
     if (editId) {
@@ -363,6 +389,60 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       </span>
     );
   };
+
+  // Document expiration badge
+  const DocumentExpirationBadge = ({ dateExpiration }) => {
+    if (!dateExpiration) return <span className={`text-xs ${textMuted}`}>Pas de date</span>;
+    const days = daysUntil(dateExpiration);
+    if (days < 0) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Expiré</span>;
+    }
+    if (days < 30) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Expire bientôt</span>;
+    }
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Valide</span>;
+  };
+
+  // Get documents expiring within 30 days
+  const getExpiringDocuments = (st) => {
+    if (!st.documents || st.documents.length === 0) return [];
+    return st.documents.filter(doc => {
+      if (!doc.dateExpiration) return false;
+      const days = daysUntil(doc.dateExpiration);
+      return days !== null && days >= 0 && days < 30;
+    });
+  };
+
+  // Add/remove document in form
+  const addDocument = useCallback(() => {
+    setForm(prev => ({
+      ...prev,
+      documents: [...(prev.documents || []), {
+        id: generateId('doc'),
+        nom: '',
+        type: 'RC Pro',
+        dateAjout: new Date().toISOString().slice(0, 10),
+        dateExpiration: '',
+        fichier: 'document_simule.pdf'
+      }]
+    }));
+  }, []);
+
+  const removeDocument = useCallback((docId) => {
+    setForm(prev => ({
+      ...prev,
+      documents: (prev.documents || []).filter(d => d.id !== docId)
+    }));
+  }, []);
+
+  const updateDocument = useCallback((docId, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      documents: (prev.documents || []).map(d =>
+        d.id === docId ? { ...d, [field]: value } : d
+      )
+    }));
+  }, []);
 
   // ---------- RENDER: Form View ----------
 
@@ -631,6 +711,66 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             />
           </div>
 
+          {/* Documents */}
+          <div className={`${cardBg} rounded-2xl border p-6`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-lg font-semibold flex items-center gap-2 ${textPrimary}`}>
+                <File size={18} style={{ color: couleur }} />
+                Documents ({(form.documents || []).length})
+              </h2>
+              <button
+                type="button"
+                onClick={addDocument}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
+                style={{ backgroundColor: couleur }}
+              >
+                <FilePlus size={14} />
+                Ajouter
+              </button>
+            </div>
+            {(form.documents || []).length === 0 ? (
+              <p className={`text-sm italic ${textMuted}`}>Aucun document. Cliquez sur "Ajouter" pour joindre un document.</p>
+            ) : (
+              <div className="space-y-3">
+                {(form.documents || []).map(doc => (
+                  <div key={doc.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <File size={16} style={{ color: couleur }} className="flex-shrink-0 mt-2" />
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <select
+                        value={doc.type}
+                        onChange={e => updateDocument(doc.id, 'type', e.target.value)}
+                        className={`px-3 py-1.5 border rounded-lg text-sm ${inputBg}`}
+                      >
+                        {DOCUMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <input
+                        type="text"
+                        value={doc.nom}
+                        onChange={e => updateDocument(doc.id, 'nom', e.target.value)}
+                        placeholder="Nom du document"
+                        className={`px-3 py-1.5 border rounded-lg text-sm ${inputBg}`}
+                      />
+                      <input
+                        type="date"
+                        value={doc.dateExpiration}
+                        onChange={e => updateDocument(doc.id, 'dateExpiration', e.target.value)}
+                        className={`px-3 py-1.5 border rounded-lg text-sm ${inputBg}`}
+                        title="Date d'expiration"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDocument(doc.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Chantiers assignes */}
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
@@ -697,6 +837,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     const compliance = getComplianceStatus(selected);
     const cm = getCorpsMetier(selected.corpsMetier);
     const linkedChantiers = chantiers.filter(ch => (selected.chantierIds || []).includes(ch.id));
+    const selectedDocuments = selected.documents || [];
 
     return (
       <div className="space-y-6">
@@ -865,10 +1006,50 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-red-500 font-medium">Non recue</p>
+                <p className="text-sm text-red-500 font-medium">Non reçue</p>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Documents detail card */}
+        <div className={`${cardBg} rounded-2xl border p-5`}>
+          <h3 className={`text-sm font-semibold mb-4 ${textMuted} uppercase tracking-wide flex items-center gap-2`}>
+            <File size={14} />
+            Documents ({selectedDocuments.length})
+          </h3>
+          {selectedDocuments.length > 0 ? (
+            <div className="space-y-3">
+              {selectedDocuments.map(doc => (
+                <div
+                  key={doc.id}
+                  className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <File size={16} style={{ color: couleur }} className="flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className={`font-medium text-sm truncate ${textPrimary}`}>
+                        {doc.nom || 'Document sans nom'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-xs ${textMuted}`}>{doc.type}</span>
+                        {doc.dateExpiration && (
+                          <span className={`text-xs ${textMuted}`}>
+                            — Expire le {formatDate(doc.dateExpiration)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-3">
+                    <DocumentExpirationBadge dateExpiration={doc.dateExpiration} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className={`text-sm italic ${textMuted}`}>Aucun document enregistré.</p>
+          )}
         </div>
 
         {/* Linked chantiers */}
@@ -905,7 +1086,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
               ))}
             </div>
           ) : (
-            <p className={`text-sm italic ${textMuted}`}>Aucun chantier assigne.</p>
+            <p className={`text-sm italic ${textMuted}`}>Aucun chantier assigné.</p>
           )}
         </div>
 
@@ -920,7 +1101,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
         {/* Meta */}
         <div className={`text-xs ${textMuted} flex items-center gap-2`}>
           <Calendar size={12} />
-          Cree le {formatDate(selected.createdAt)}
+          Créé le {formatDate(selected.createdAt)}
         </div>
       </div>
     );
@@ -936,10 +1117,10 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           <AlertTriangle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-              {stats.alertes} sous-traitant{stats.alertes > 1 ? 's' : ''} avec documents expires ou manquants
+              {stats.alertes} sous-traitant{stats.alertes > 1 ? 's' : ''} avec documents expirés ou manquants
             </p>
             <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
-              Verifiez la conformite de vos sous-traitants pour eviter tout risque juridique.
+              Vérifiez la conformité de vos sous-traitants pour éviter tout risque juridique.
             </p>
           </div>
         </div>
@@ -967,7 +1148,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           </div>
           <div>
             <h1 className={`text-2xl font-bold ${textPrimary}`}>Sous-Traitants</h1>
-            <p className={`text-sm ${textMuted}`}>Gestion des sous-traitants et conformite</p>
+            <p className={`text-sm ${textMuted}`}>Gestion des sous-traitants et conformité</p>
           </div>
         </div>
         <button
@@ -1073,6 +1254,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             const compliance = getComplianceStatus(st);
             const cm = getCorpsMetier(st.corpsMetier);
             const chantierCount = (st.chantierIds || []).length;
+            const expiringDocs = getExpiringDocuments(st);
 
             return (
               <button
@@ -1085,6 +1267,15 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                     <div className="flex items-center gap-2 mb-1.5">
                       <h3 className={`font-semibold truncate ${textPrimary}`}>{st.nom}</h3>
                       <CorpsMetierBadge corpsMetier={st.corpsMetier} />
+                      {expiringDocs.length > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1 text-amber-500"
+                          title={`Documents expirant bientôt : ${expiringDocs.map(d => d.nom || d.type).join(', ')}`}
+                        >
+                          <AlertTriangle size={14} />
+                          <span className="text-xs font-medium">{expiringDocs.length}</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">

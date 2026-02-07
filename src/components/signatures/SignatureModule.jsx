@@ -21,7 +21,10 @@ import {
   X,
   ChevronRight,
   Info,
-  Check
+  Check,
+  Send,
+  RefreshCw,
+  Bell
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -29,6 +32,26 @@ import {
 // ---------------------------------------------------------------------------
 
 const LS_KEY = 'cp_signatures';
+const LS_RELANCES_KEY = 'cp_signature_relances';
+
+const loadRelances = () => {
+  try {
+    const raw = localStorage.getItem(LS_RELANCES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveRelances = (rels) => {
+  localStorage.setItem(LS_RELANCES_KEY, JSON.stringify(rels));
+};
+
+const daysSince = (dateStr) => {
+  if (!dateStr) return 0;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+};
 
 const loadSignatures = () => {
   try {
@@ -216,6 +239,15 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [selectedSignature, setSelectedSignature] = useState(null);
   const [toast, setToast] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  const [relances, setRelances] = useState(loadRelances);
+
+  // Persist relances
+  useEffect(() => {
+    saveRelances(relances);
+  }, [relances]);
 
   // Sign flow state
   const [signStep, setSignStep] = useState(1); // 1, 2, 3
@@ -443,7 +475,34 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
 
     setSignatures((prev) => [newSig, ...prev]);
     setToast('Signature enregistrée avec succès');
+    // Show email modal after signing
+    setEmailTo(signataireEmail.trim());
+    setEmailSent(false);
+    setShowEmailModal(true);
     setView('dashboard');
+  };
+
+  const handleSendEmail = () => {
+    // Simulate email sending
+    setEmailSent(true);
+    setToast(`Email envoyé à ${emailTo}`);
+    setTimeout(() => setShowEmailModal(false), 1500);
+  };
+
+  const handleRelance = (docId) => {
+    const now = new Date().toISOString();
+    setRelances((prev) => [...prev, { docId, date: now }]);
+    setToast('Relance envoyée avec succès');
+  };
+
+  const getRelanceCount = (docId) => {
+    return relances.filter((r) => r.docId === docId).length;
+  };
+
+  const getLastRelance = (docId) => {
+    const docRelances = relances.filter((r) => r.docId === docId);
+    if (docRelances.length === 0) return null;
+    return docRelances[docRelances.length - 1].date;
   };
 
   const cancelSignature = () => {
@@ -1107,6 +1166,21 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {getRelanceCount(doc.id) > 0 && (
+                      <span className={`text-xs ${mutedClass}`}>
+                        {getRelanceCount(doc.id)} relance{getRelanceCount(doc.id) > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRelance(doc.id); }}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        isDark ? 'bg-amber-900/30 text-amber-400 hover:bg-amber-900/50' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                      }`}
+                      title="Envoyer une relance"
+                    >
+                      <Bell size={12} />
+                      Relancer
+                    </button>
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${
                         isDark
@@ -1195,6 +1269,52 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
         )}
       </div>
 
+      {/* Relance suggestions */}
+      {unsignedDocs.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Bell size={16} style={{ color: couleur }} />
+            <h2 className={`text-lg font-semibold ${textClass}`}>Relances suggérées</h2>
+          </div>
+          <div className={`rounded-xl border p-4 ${cardClass}`}>
+            {unsignedDocs.filter(doc => {
+              const last = getLastRelance(doc.id);
+              return !last || daysSince(last) >= 3;
+            }).length === 0 ? (
+              <p className={`text-sm ${mutedClass}`}>Toutes les relances sont à jour.</p>
+            ) : (
+              <div className="space-y-2">
+                {unsignedDocs.filter(doc => {
+                  const last = getLastRelance(doc.id);
+                  return !last || daysSince(last) >= 3;
+                }).map((doc) => {
+                  const last = getLastRelance(doc.id);
+                  const count = getRelanceCount(doc.id);
+                  return (
+                    <div key={doc.id} className={`flex items-center justify-between p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${textClass}`}>{doc.ref}</p>
+                        <p className={`text-xs ${mutedClass}`}>
+                          {doc.client_name} — {count > 0 ? `Dernière relance il y a ${daysSince(last)}j` : 'Jamais relancé'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRelance(doc.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
+                        style={{ backgroundColor: couleur }}
+                      >
+                        <Send size={12} />
+                        Relancer
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Security footer */}
       <div
         className={`rounded-xl border p-4 flex items-start gap-3 ${
@@ -1213,6 +1333,57 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
           </p>
         </div>
       </div>
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className={`w-full max-w-sm rounded-2xl border shadow-2xl p-6 ${cardClass}`}>
+            {emailSent ? (
+              <div className="text-center py-4">
+                <CheckCircle size={40} className="mx-auto mb-3 text-emerald-500" />
+                <p className={`font-semibold ${textClass}`}>Email envoyé !</p>
+                <p className={`text-sm mt-1 ${mutedClass}`}>Le document signé a été envoyé à {emailTo}</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-bold ${textClass}`}>Envoyer par email</h3>
+                  <button onClick={() => setShowEmailModal(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <p className={`text-sm mb-4 ${mutedClass}`}>
+                  Envoyer une copie du document signé par email ?
+                </p>
+                <input
+                  type="email"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  placeholder="email@exemple.fr"
+                  className={`w-full px-3 py-2 rounded-lg border text-sm mb-4 ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-300'}`}
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowEmailModal(false)}
+                    className={`flex-1 px-4 py-2 rounded-xl border text-sm font-medium ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-700'}`}
+                  >
+                    Plus tard
+                  </button>
+                  <button
+                    onClick={handleSendEmail}
+                    disabled={!emailTo.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-40"
+                    style={{ backgroundColor: couleur }}
+                  >
+                    <Send size={14} />
+                    Envoyer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

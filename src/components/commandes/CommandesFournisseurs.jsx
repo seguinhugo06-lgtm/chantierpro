@@ -44,6 +44,13 @@ const STATUT_BADGE_CLASSES = {
   red: { bg: 'bg-red-100 text-red-700', dark: 'bg-red-900/40 text-red-300' },
 };
 
+const WORKFLOW_STEPS = [
+  { key: 'brouillon', label: 'Brouillon', icon: FileText },
+  { key: 'envoyee', label: 'Envoyée', icon: Send },
+  { key: 'confirmee', label: 'Confirmée', icon: Check },
+  { key: 'livree', label: 'Livrée', icon: CheckCircle },
+];
+
 function formatCurrency(value) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value || 0);
 }
@@ -110,6 +117,7 @@ export default function CommandesFournisseurs({
   const [form, setForm] = useState(null);
   const [showCatalogueModal, setShowCatalogueModal] = useState(false);
   const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [showFournisseurSuggestions, setShowFournisseurSuggestions] = useState(false);
 
   // Theme classes
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
@@ -189,6 +197,30 @@ export default function CommandesFournisseurs({
       (item.categorie || '').toLowerCase().includes(term)
     );
   }, [catalogue, catalogueSearch]);
+
+  // Fournisseur auto-completion suggestions
+  const fournisseurSuggestions = useMemo(() => {
+    if (!form || !form.fournisseurNom || form.fournisseurNom.trim().length < 2) return [];
+    const term = form.fournisseurNom.toLowerCase().trim();
+    const uniqueNames = [...new Set(commandes.map(c => c.fournisseurNom).filter(Boolean))];
+    return uniqueNames
+      .filter(name => name.toLowerCase().includes(term) && name.toLowerCase() !== term)
+      .slice(0, 5);
+  }, [commandes, form?.fournisseurNom]);
+
+  const selectFournisseurSuggestion = useCallback((name) => {
+    const pastCmd = commandes.find(c => c.fournisseurNom === name);
+    if (pastCmd) {
+      setForm(prev => ({
+        ...prev,
+        fournisseurNom: pastCmd.fournisseurNom,
+        fournisseurContact: pastCmd.fournisseurContact || prev.fournisseurContact,
+        fournisseurEmail: pastCmd.fournisseurEmail || prev.fournisseurEmail,
+        fournisseurTel: pastCmd.fournisseurTel || prev.fournisseurTel,
+      }));
+    }
+    setShowFournisseurSuggestions(false);
+  }, [commandes]);
 
   // Recalculate totals for the form
   const recalcTotals = useCallback((lignes, tvaRate) => {
@@ -460,7 +492,7 @@ export default function CommandesFournisseurs({
               Bons de Commande
             </h1>
             <p className={`text-sm mt-1 ${textMuted}`}>
-              Gerez vos commandes fournisseurs et suivez les livraisons
+              Gérez vos commandes fournisseurs et suivez les livraisons
             </p>
           </div>
           <button
@@ -500,7 +532,7 @@ export default function CommandesFournisseurs({
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} size={16} />
               <input
                 type="text"
-                placeholder="Rechercher numero ou fournisseur..."
+                placeholder="Rechercher numéro ou fournisseur..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className={`w-full sm:w-64 pl-10 pr-4 py-2 rounded-lg border text-sm ${inputBg} focus:outline-none focus:ring-2`}
@@ -515,7 +547,7 @@ export default function CommandesFournisseurs({
               <ShoppingCart className={`mx-auto mb-3 ${textMuted}`} size={40} />
               <p className={`font-medium ${textSecondary}`}>Aucune commande trouvée</p>
               <p className={`text-sm mt-1 ${textMuted}`}>
-                Creez votre premiere commande fournisseur
+                Créez votre première commande fournisseur
               </p>
             </div>
           ) : (
@@ -650,18 +682,38 @@ export default function CommandesFournisseurs({
                 Fournisseur
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+                <div className="relative">
                   <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>
                     Nom du fournisseur *
                   </label>
                   <input
                     type="text"
                     value={form.fournisseurNom}
-                    onChange={e => setForm({ ...form, fournisseurNom: e.target.value })}
+                    onChange={e => {
+                      setForm({ ...form, fournisseurNom: e.target.value });
+                      setShowFournisseurSuggestions(true);
+                    }}
+                    onFocus={() => setShowFournisseurSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowFournisseurSuggestions(false), 200)}
                     placeholder="Nom de l'entreprise"
                     className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg} focus:outline-none focus:ring-2`}
                     style={{ '--tw-ring-color': couleur }}
+                    autoComplete="off"
                   />
+                  {showFournisseurSuggestions && fournisseurSuggestions.length > 0 && (
+                    <div className={`absolute z-20 left-0 right-0 mt-1 rounded-lg border shadow-lg overflow-hidden ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
+                      {fournisseurSuggestions.map((name, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onMouseDown={() => selectFournisseurSuggestion(name)}
+                          className={`w-full text-left px-3 py-2 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-50'} transition-colors`}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>
@@ -689,7 +741,7 @@ export default function CommandesFournisseurs({
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>
-                    Telephone
+                    Téléphone
                   </label>
                   <input
                     type="tel"
@@ -874,7 +926,7 @@ export default function CommandesFournisseurs({
               </h3>
               <textarea
                 rows={3}
-                placeholder="Notes internes, conditions particulieres..."
+                placeholder="Notes internes, conditions particulières..."
                 value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
                 className={`w-full px-3 py-2 rounded-lg border text-sm resize-none ${inputBg} focus:outline-none focus:ring-2`}
@@ -886,7 +938,7 @@ export default function CommandesFournisseurs({
           <div className="space-y-4">
             <div className={`rounded-xl border p-4 ${cardBg} sticky top-4`}>
               <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${textMuted}`}>
-                Recapitulatif
+                Récapitulatif
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -1056,6 +1108,45 @@ export default function CommandesFournisseurs({
             </button>
           </div>
         </div>
+
+        {/* Workflow Stepper */}
+        {cmd.statut !== 'annulee' && (
+          <div className={`rounded-xl border p-4 ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              {WORKFLOW_STEPS.map((step, idx) => {
+                const stepIdx = WORKFLOW_STEPS.findIndex(s => s.key === cmd.statut);
+                const currentIdx = cmd.statut === 'livree_partiel' ? 2.5 : stepIdx;
+                const isCompleted = idx <= currentIdx;
+                const isCurrent = step.key === cmd.statut || (cmd.statut === 'livree_partiel' && step.key === 'confirmee');
+                const StepIcon = step.icon;
+                return (
+                  <React.Fragment key={step.key}>
+                    {idx > 0 && (
+                      <div className={`flex-1 h-0.5 mx-2 rounded-full ${isCompleted ? '' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}
+                        style={isCompleted ? { backgroundColor: couleur } : {}}
+                      />
+                    )}
+                    <div className="flex flex-col items-center gap-1">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                          isCompleted
+                            ? 'text-white shadow-md'
+                            : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-400'
+                        }`}
+                        style={isCompleted ? { backgroundColor: couleur } : {}}
+                      >
+                        <StepIcon size={16} />
+                      </div>
+                      <span className={`text-xs font-medium ${isCurrent ? textPrimary : textMuted}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* PDF-like preview */}
         <div className={`rounded-xl border ${cardBg} overflow-hidden`}>
