@@ -14,7 +14,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   const [date, setDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
+  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day'
   const [showAdd, setShowAdd] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -224,6 +224,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <button onClick={() => setViewMode('month')} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
           <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
+          <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
         </div>
       </div>
 
@@ -255,13 +256,13 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
         <div className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
             <ChevronLeft size={24} className={textPrimary} />
           </button>
           <h2 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>
-            {viewMode === 'month' ? `${MOIS[month]} ${year}` : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+            {viewMode === 'month' ? `${MOIS[month]} ${year}` : viewMode === 'day' ? date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
           </h2>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
             <ChevronRight size={24} className={textPrimary} />
           </button>
         </div>
@@ -306,18 +307,21 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
               })}
             </div>
           </>
-        ) : (
-          // Week view
+        ) : viewMode === 'week' ? (
+          // Week view with drag & drop
           <div className="divide-y divide-slate-200 dark:divide-slate-700">
             {weekDays.map((dayDate, i) => {
               const dayEvents = getEventsForDate(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
               const dateStr = dayDate.toISOString().split('T')[0];
               return (
-                <div key={i} className={`flex ${isToday ? (isDark ? 'bg-slate-700/30' : 'bg-blue-50/50') : ''}`}>
+                <div key={i} className={`flex ${isToday ? (isDark ? 'bg-slate-700/30' : 'bg-blue-50/50') : ''}`}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id) moveEvent(id, dateStr); }}
+                >
                   <div className={`w-20 sm:w-28 p-3 flex-shrink-0 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                     <p className={`text-xs ${textMuted}`}>{JOURS_FULL[i].slice(0, 3)}</p>
-                    <p className={`text-lg sm:text-xl font-bold ${isToday ? '' : textPrimary}`} style={isToday ? { color: couleur } : {}}>{dayDate.getDate()}</p>
+                    <p className={`text-lg sm:text-xl font-bold cursor-pointer hover:underline ${isToday ? '' : textPrimary}`} style={isToday ? { color: couleur } : {}} onClick={() => { setDate(dayDate); setViewMode('day'); }}>{dayDate.getDate()}</p>
                   </div>
                   <div className="flex-1 p-2 min-h-[80px]" onClick={() => handleQuickAdd(dateStr)}>
                     {dayEvents.length === 0 ? (
@@ -328,7 +332,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
                           const eventColor = getEventColor(ev);
                           return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border-l-4 ${isDark ? 'hover:bg-slate-700 bg-slate-800/50' : 'hover:bg-slate-100 bg-slate-50'}`} style={{ borderLeftColor: eventColor }}>
+                            <div key={ev.id} draggable={!ev.isChantier} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border-l-4 ${isDark ? 'hover:bg-slate-700 bg-slate-800/50' : 'hover:bg-slate-100 bg-slate-50'}`} style={{ borderLeftColor: eventColor }}>
                               <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${eventColor}20` }}>
                                 <TypeIcon size={18} style={{ color: eventColor }} />
                               </div>
@@ -349,6 +353,79 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
               );
             })}
           </div>
+        ) : (
+          // Day view with hourly slots
+          (() => {
+            const dayStr = date.toISOString().split('T')[0];
+            const dayEvents = getEventsForDay(dayStr);
+            const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h-20h
+
+            return (
+              <div>
+                <div className={`text-center py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <p className={`text-lg font-bold ${textPrimary}`}>
+                    {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </p>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  {HOURS.map(hour => {
+                    const hourStr = `${String(hour).padStart(2, '0')}:00`;
+                    const hourEvents = dayEvents.filter(ev => {
+                      if (!ev.time) return hour === 8; // Default no-time events to 8h
+                      const evHour = parseInt(ev.time.split(':')[0]);
+                      return evHour === hour;
+                    });
+
+                    return (
+                      <div
+                        key={hour}
+                        className={`flex min-h-[60px] ${isDark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50'}`}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => {
+                          e.preventDefault();
+                          const id = e.dataTransfer.getData('eventId');
+                          if (id) {
+                            const ev = allEvents.find(evt => evt.id === id);
+                            if (ev && !ev.isChantier) {
+                              setEvents(events.map(evt => evt.id === id ? { ...evt, date: dayStr, time: hourStr } : evt));
+                            }
+                          }
+                        }}
+                        onClick={() => {
+                          setForm(f => ({ ...f, date: dayStr, time: hourStr }));
+                          setShowAdd(true);
+                        }}
+                      >
+                        <div className={`w-16 sm:w-20 p-2 text-right flex-shrink-0 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                          <span className={`text-xs font-medium ${textMuted}`}>{hourStr}</span>
+                        </div>
+                        <div className="flex-1 p-1.5">
+                          {hourEvents.map(ev => {
+                            const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                            const eventColor = getEventColor(ev);
+                            return (
+                              <div
+                                key={ev.id}
+                                draggable={!ev.isChantier}
+                                onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                                onClick={e => { e.stopPropagation(); handleEventClick(e, ev); }}
+                                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer border-l-3 mb-1 ${isDark ? 'bg-slate-800/80 hover:bg-slate-700' : 'bg-white hover:bg-slate-50 shadow-sm'}`}
+                                style={{ borderLeft: `3px solid ${eventColor}` }}
+                              >
+                                <TypeIcon size={14} style={{ color: eventColor }} />
+                                <span className={`text-sm font-medium truncate ${textPrimary}`}>{ev.title}</span>
+                                {ev.time && <span className={`text-xs ${textMuted} ml-auto`}>{ev.time}</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()
         )}
       </div>
 

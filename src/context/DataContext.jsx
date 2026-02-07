@@ -3,6 +3,7 @@ import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
+import { logger } from '../lib/logger';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -29,7 +30,7 @@ function loadDemoData() {
     const stored = localStorage.getItem(DEMO_STORAGE_KEY);
     if (stored) {
       cachedDemoData = JSON.parse(stored);
-      console.log('📥 Loaded demo data from localStorage:', {
+      logger.debug('📥 Loaded demo data from localStorage:', {
         clients: cachedDemoData?.clients?.length || 0,
         devis: cachedDemoData?.devis?.length || 0,
         chantiers: cachedDemoData?.chantiers?.length || 0,
@@ -171,7 +172,7 @@ export function DataProvider({ children, initialData = {} }) {
         paiements,
         echanges,
       });
-      console.log('💾 Demo data saved to localStorage');
+      logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
@@ -185,7 +186,7 @@ export function DataProvider({ children, initialData = {} }) {
     const getCurrentUser = async () => {
       const user = await auth.getCurrentUser();
       if (user?.id) {
-        console.log('📱 User authenticated:', user.id);
+        logger.debug('📱 User authenticated:', user.id);
         setUserId(user.id);
       }
     };
@@ -194,11 +195,11 @@ export function DataProvider({ children, initialData = {} }) {
     // Subscribe to auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('🔑 User signed in:', session.user.id);
+        logger.debug('🔑 User signed in:', session.user.id);
         setUserId(session.user.id);
         setDataLoaded(false); // Reset to trigger data reload
       } else if (event === 'SIGNED_OUT') {
-        console.log('🚪 User signed out');
+        logger.debug('🚪 User signed out');
         setUserId(null);
         // Clear data on sign out
         setClients([]);
@@ -222,18 +223,20 @@ export function DataProvider({ children, initialData = {} }) {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        console.log('📥 Loading data from Supabase...');
+        logger.debug('📥 Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
-          setClients(data.clients);
-          setChantiers(data.chantiers);
-          setDevis(data.devis);
-          setDepenses(data.depenses);
-          setEquipe(data.equipe);
-          setPointages(data.pointages);
-          setCatalogue(data.catalogue);
+          // Deduplicate by ID to prevent duplicates from sync issues
+          const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
+          setClients(dedup(data.clients));
+          setChantiers(dedup(data.chantiers));
+          setDevis(dedup(data.devis));
+          setDepenses(dedup(data.depenses));
+          setEquipe(dedup(data.equipe));
+          setPointages(dedup(data.pointages));
+          setCatalogue(dedup(data.catalogue));
           setDataLoaded(true);
-          console.log('✅ Data loaded from Supabase:', {
+          logger.debug('✅ Data loaded from Supabase:', {
             clients: data.clients.length,
             chantiers: data.chantiers.length,
             devis: data.devis.length,
@@ -258,8 +261,8 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    // Optimistic update
-    setClients(prev => [...prev, newClient]);
+    // Optimistic update (prevent duplicates)
+    setClients(prev => prev.some(c => c.id === newClient.id) ? prev : [...prev, newClient]);
 
     // Save to Supabase and wait for response
     if (!isDemo && userId) {
@@ -272,8 +275,9 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving client to Supabase:', error);
-        // Don't remove the client from local state - keep it for offline use
-        console.warn('Client kept locally despite Supabase error');
+        // Rollback optimistic update
+        setClients(prev => prev.filter(c => c.id !== newClient.id));
+        throw error;
       }
     }
 
@@ -317,7 +321,7 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    setDevis(prev => [...prev, newDevis]);
+    setDevis(prev => prev.some(d => d.id === newDevis.id) ? prev : [...prev, newDevis]);
 
     if (!isDemo && userId) {
       try {
@@ -328,9 +332,9 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving devis to Supabase:', error);
-        // Don't remove the devis from local state - keep it for offline use
-        // The user can still work with it locally
-        console.warn('Devis kept locally despite Supabase error');
+        // Rollback optimistic update
+        setDevis(prev => prev.filter(d => d.id !== newDevis.id));
+        throw error;
       }
     }
 
@@ -382,7 +386,7 @@ export function DataProvider({ children, initialData = {} }) {
       createdAt: new Date().toISOString()
     };
 
-    setChantiers(prev => [...prev, newChantier]);
+    setChantiers(prev => prev.some(c => c.id === newChantier.id) ? prev : [...prev, newChantier]);
 
     if (!isDemo && userId) {
       try {
@@ -393,8 +397,9 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving chantier to Supabase:', error);
-        // Don't remove the chantier from local state - keep it for offline use
-        console.warn('Chantier kept locally despite Supabase error');
+        // Rollback optimistic update
+        setChantiers(prev => prev.filter(c => c.id !== newChantier.id));
+        throw error;
       }
     }
 
@@ -445,8 +450,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving depense to Supabase:', error);
-        // Don't remove the depense from local state - keep it for offline use
-        console.warn('Depense kept locally despite Supabase error');
+        setDepenses(prev => prev.filter(d => d.id !== newDepense.id));
+        throw error;
       }
     }
 
@@ -498,8 +503,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving pointage to Supabase:', error);
-        // Don't remove the pointage from local state - keep it for offline use
-        console.warn('Pointage kept locally despite Supabase error');
+        setPointages(prev => prev.filter(p => p.id !== newPointage.id));
+        throw error;
       }
     }
 
@@ -569,8 +574,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving employee to Supabase:', error);
-        // Don't remove the employee from local state - keep it for offline use
-        console.warn('Employee kept locally despite Supabase error');
+        setEquipe(prev => prev.filter(e => e.id !== newEmployee.id));
+        throw error;
       }
     }
 
@@ -619,8 +624,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving catalogue item to Supabase:', error);
-        // Don't remove the catalogue item from local state - keep it for offline use
-        console.warn('Catalogue item kept locally despite Supabase error');
+        setCatalogue(prev => prev.filter(c => c.id !== newItem.id));
+        throw error;
       }
     }
 

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Check, ChevronDown, ChevronUp, Building2, MapPin, User, Calendar, Euro, FileText, Zap, Clock, Package, AlertCircle } from 'lucide-react';
+import { validateForm, hasErrors, chantierSchema } from '../lib/validation';
 
 /**
  * QuickChantierModal - Quick add/edit chantier with minimal fields
@@ -130,15 +131,17 @@ export default function QuickChantierModal({
   const handleSubmit = (e) => {
     e?.preventDefault();
 
-    // Validate required fields
-    const newErrors = {};
+    // Trim all string fields
+    const trimmedForm = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+    );
+    setForm(trimmedForm);
 
-    if (!form.nom.trim()) {
-      newErrors.nom = 'Le nom du chantier est requis';
-    }
+    // Validate using shared schema
+    const newErrors = validateForm(trimmedForm, chantierSchema);
 
     // If errors, show them and focus first error field
-    if (Object.keys(newErrors).length > 0) {
+    if (hasErrors(newErrors)) {
       setErrors(newErrors);
       if (newErrors.nom) {
         inputRef.current?.focus();
@@ -148,10 +151,10 @@ export default function QuickChantierModal({
 
     setErrors({});
     const formData = {
-      ...form,
-      budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : 0,
-      budget_materiaux: form.budget_materiaux ? parseFloat(form.budget_materiaux) : 0,
-      heures_estimees: form.heures_estimees ? parseFloat(form.heures_estimees) : 0
+      ...trimmedForm,
+      budget_estime: trimmedForm.budget_estime ? parseFloat(trimmedForm.budget_estime) : 0,
+      budget_materiaux: trimmedForm.budget_materiaux ? parseFloat(trimmedForm.budget_materiaux) : 0,
+      heures_estimees: trimmedForm.heures_estimees ? parseFloat(trimmedForm.heures_estimees) : 0
     };
 
     // Include ID if editing

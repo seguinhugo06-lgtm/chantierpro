@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
-import { useConfirm } from '../context/AppContext';
+import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
+import { useFormValidation, clientSchema } from '../lib/validation';
 
 export default function Clients({ clients, setClients, updateClient, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
+  const { errors, validateAll, clearErrors } = useFormValidation(clientSchema);
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -20,8 +23,8 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   const [viewId, setViewId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [activeTab, setActiveTab] = useState('chantiers');
-  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+  const [activeTab, setActiveTab] = useState('historique');
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -41,33 +44,64 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
     }
   };
 
+  const clientStatsMap = useMemo(() => {
+    const map = new Map();
+    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
+    (devis || []).forEach(d => {
+      const cid = d.client_id;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      if (d.type === 'devis') s.devis++;
+      if (d.type === 'facture') s.factures++;
+      if (d.statut === 'payee') s.ca += d.total_ttc || 0;
+    });
+    (chantiers || []).forEach(ch => {
+      const cid = ch.client_id;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      s.chantiers++;
+      if (ch.statut === 'en_cours') s.chantiersEnCours++;
+    });
+    return map;
+  }, [devis, chantiers]);
+
   const getClientStats = (id) => {
-    const cd = devis?.filter(d => d.client_id === id) || [];
-    const cc = chantiers?.filter(c => c.client_id === id) || [];
-    return { devis: cd.filter(d => d.type === 'devis').length, factures: cd.filter(d => d.type === 'facture').length, ca: cd.filter(d => d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0), chantiers: cc.length, chantiersEnCours: cc.filter(c => c.statut === 'en_cours').length };
+    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
   };
 
   const submit = async () => {
-    if (!form.nom) return;
+    // Trim all string fields before validation and save
+    const trimmedForm = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
+    );
+    setForm(trimmedForm);
+
+    if (!validateAll(trimmedForm)) {
+      showToast('Veuillez corriger les erreurs du formulaire', 'error');
+      return;
+    }
     const wasEditing = editId;
     try {
       if (editId) {
         // Use updateClient which syncs to Supabase
         if (updateClient) {
-          await updateClient(editId, form);
+          await updateClient(editId, trimmedForm);
         } else {
           // Fallback to direct state update if updateClient not provided
-          setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
+          setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
         }
       } else {
-        onSubmit(form);
+        onSubmit(trimmedForm);
       }
     } catch (error) {
       console.error('Error saving client:', error);
       // Still close the form but show error was handled
     }
     setShow(false);
-    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
+    clearErrors();
     // Return to detail view if we were editing
     if (wasEditing) {
       setViewId(wasEditing);
@@ -76,7 +110,8 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   };
 
   const startEdit = (client) => {
-    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '' });
+    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '' });
+    clearErrors();
     setEditId(client.id);
     setViewId(null); // Close detail view to show edit form
     setShow(true);
@@ -119,7 +154,10 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
           </button>
           <div className="flex-1 min-w-0">
             <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h1>
-            {client.entreprise && <p className={`${textMuted} flex items-center gap-1`}><Building2 size={14} />{client.entreprise}</p>}
+            <div className="flex items-center gap-2 flex-wrap">
+              {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-sm`}><Building2 size={14} />{client.entreprise}</span>}
+              {client.categorie && <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}><Tag size={10} />{client.categorie}</span>}
+            </div>
           </div>
           <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
             <Edit3 size={14} /><span>Modifier</span>
@@ -219,6 +257,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         {/* Onglets Historique */}
         <div className={`flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
+            ['historique', <History size={14} />, 'Historique'],
             ['chantiers', <Home size={14} />, 'Chantiers'],
             ['documents', <FileText size={14} />, 'Documents'],
             ['echanges', <MessageSquare size={14} />, 'Échanges'],
@@ -229,6 +268,71 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             </button>
           ))}
         </div>
+
+        {activeTab === 'historique' && (() => {
+          const timeline = [];
+          // Devis
+          clientDevis.filter(d => d.type === 'devis').forEach(d => timeline.push({
+            id: `d-${d.id}`, date: d.date, type: 'devis', icon: FileText,
+            label: `Devis ${d.numero || '#'}`, statut: d.statut,
+            montant: d.total_ttc || d.total_ht || 0,
+            color: '#f97316', onClick: () => { setSelectedDevis?.(d); setPage?.('devis'); }
+          }));
+          // Factures
+          clientDevis.filter(d => d.type === 'facture').forEach(f => timeline.push({
+            id: `f-${f.id}`, date: f.date, type: 'facture', icon: Receipt,
+            label: `Facture ${f.numero || '#'}`, statut: f.statut,
+            montant: f.total_ttc || f.total_ht || 0,
+            color: '#8b5cf6', onClick: () => { setSelectedDevis?.(f); setPage?.('devis'); }
+          }));
+          // Chantiers
+          clientChantiers.forEach(c => timeline.push({
+            id: `c-${c.id}`, date: c.date_debut || c.created_at, type: 'chantier', icon: Building2,
+            label: c.nom, statut: c.statut,
+            color: '#22c55e', onClick: () => { setSelectedChantier?.(c.id); setPage?.('chantiers'); }
+          }));
+          timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+          const statusLabel = (s) => ({ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', refuse: 'Refusé', payee: 'Payée', en_cours: 'En cours', termine: 'Terminé', prospect: 'Prospect' }[s] || s || '');
+          const statusColor = (s) => ({ accepte: 'text-emerald-500', payee: 'text-emerald-500', termine: 'text-emerald-500', refuse: 'text-red-500', envoye: 'text-blue-500', en_cours: 'text-amber-500' }[s] || textMuted);
+
+          return (
+            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
+              {timeline.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                  </div>
+                  <p className={`font-medium ${textPrimary}`}>Aucun historique</p>
+                  <p className={`text-sm ${textMuted}`}>Les devis, factures et chantiers apparaîtront ici</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {timeline.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                    >
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${item.color}15` }}>
+                        <item.icon size={16} style={{ color: item.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${textPrimary}`}>{item.label}</p>
+                        <p className={`text-xs ${textMuted}`}>
+                          {item.date ? new Date(item.date).toLocaleDateString('fr-FR') : '—'}
+                          {item.montant ? ` • ${item.montant.toLocaleString('fr-FR')} €` : ''}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium ${statusColor(item.statut)}`}>{statusLabel(item.statut)}</span>
+                      <ChevronRight size={14} className={textMuted} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {activeTab === 'chantiers' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
@@ -481,18 +585,19 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} />{errors.nom && <p className="text-red-500 text-xs mt-1">{errors.nom}</p>}</div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /></div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} />{errors.telephone && <p className="text-red-500 text-xs mt-1">{errors.telephone}</p>}</div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} />{errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}</div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}><option value="">— Sélectionner —</option><option value="Particulier">Particulier</option><option value="Professionnel">Professionnel</option><option value="Syndic">Syndic</option><option value="Architecte">Architecte</option><option value="Promoteur">Promoteur</option><option value="Collectivité">Collectivité</option></select></div>
           <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
           <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
         </div>

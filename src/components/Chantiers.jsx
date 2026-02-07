@@ -6,6 +6,8 @@ import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks } from '../lib/templates/task-templates';
 import TaskGeneratorModal from './TaskGeneratorModal';
+import SituationsTravaux from './chantiers/SituationsTravaux';
+import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
@@ -35,9 +37,9 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
     signals.push({ value: costProgress, weight: 0.3 });
   }
 
-  // If no signals available, fall back to manual or 0
+  // If no signals available, return 0 (no data = no progress)
   if (signals.length === 0) {
-    return chantier.avancement || 0;
+    return 0;
   }
 
   // Normalize weights if not all signals are present
@@ -769,6 +771,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
             { key: 'finances', label: 'Finances', icon: Wallet },
+            { key: 'situations', label: 'Situations', icon: Receipt },
+            { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'photos', label: 'Photos', icon: Camera },
             { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'messages', label: 'Messages', icon: MessageSquare }
@@ -805,6 +809,26 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'situations' && (
+          <SituationsTravaux
+            chantier={ch}
+            devis={devis.filter(d => d.chantier_id === ch.id)}
+            isDark={isDark}
+            couleur={couleur}
+            onClose={() => setActiveTab('finances')}
+          />
+        )}
+
+        {activeTab === 'rapports' && (
+          <RapportChantier
+            chantier={ch}
+            equipe={equipe}
+            isDark={isDark}
+            couleur={couleur}
+            onClose={() => setActiveTab('finances')}
+          />
         )}
 
         {activeTab === 'photos' && (
@@ -1466,9 +1490,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Handle chantier creation from modal
   const handleCreateChantier = (formData) => {
+    const clientIdValue = formData.clientId || formData.client_id || '';
     const newChantier = addChantier({
       ...formData,
-      date_debut: formData.date_debut || new Date().toISOString().split('T')[0],
+      client_id: clientIdValue,
+      clientId: clientIdValue,
+      dateDebut: formData.dateDebut || formData.date_debut || new Date().toISOString().split('T')[0],
+      date_debut: formData.date_debut || formData.dateDebut || new Date().toISOString().split('T')[0],
+      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
       statut: 'prospect'
     });
     setShow(false);
@@ -1479,17 +1508,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const handleEditChantier = (formData) => {
     if (!formData.id) return;
 
+    const clientIdValue = formData.clientId || formData.client_id || '';
     updateChantier(formData.id, {
       nom: formData.nom,
-      client_id: formData.client_id,
-      clientId: formData.client_id,
+      client_id: clientIdValue,
+      clientId: clientIdValue,
       adresse: formData.adresse,
       ville: formData.ville,
       codePostal: formData.codePostal,
-      dateDebut: formData.date_debut,
-      dateFin: formData.date_fin,
-      budget_estime: formData.budget_estime,
-      budgetPrevu: formData.budget_estime,
+      dateDebut: formData.dateDebut || formData.date_debut,
+      date_debut: formData.date_debut || formData.dateDebut,
+      dateFin: formData.dateFin || formData.date_fin,
+      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
+      budget_estime: formData.budget_estime || formData.budgetPrevu || 0,
       budget_materiaux: formData.budget_materiaux,
       heures_estimees: formData.heures_estimees,
       notes: formData.notes,
@@ -1787,7 +1818,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const bilan = bilanRaw3 || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
             const devisLie = devis?.find(d => d.chantier_id === ch.id && d.type === 'devis');
             const budgetPrevu = devisLie?.total_ht || ch.budget_estime || 0;
-            const hasAlert = bilan.tauxMarge < 0;
+            const revenuTotalList = bilan.revenuPrevu + (bilan.adjRevenus || 0);
+            const budgetDepleted = revenuTotalList > 0 && bilan.totalDepenses > revenuTotalList * 0.9;
+            const hasAlert = bilan.tauxMarge < 0 || budgetDepleted;
             const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
               ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
@@ -1803,7 +1836,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, allTasks.length);
 
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'border-amber-700 hover:border-amber-600' : 'border-amber-300 hover:border-amber-400')) : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0 flex-1">
@@ -1831,9 +1864,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Stats row */}
                 <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                   <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-1.5 ${hasAlert ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={hasAlert ? 'Marge négative - Le chantier génère une perte' : `Marge: ${formatPct(bilan.tauxMarge)}`}>
+                    <div className={`flex items-center gap-1.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200')) : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={bilan.tauxMarge < 0 ? 'Marge négative — le chantier génère une perte' : budgetDepleted ? `Budget consommé à ${revenuTotalList > 0 ? ((bilan.totalDepenses / revenuTotalList) * 100).toFixed(0) : 0}%` : `Marge : ${formatPct(bilan.tauxMarge)}`}>
                       <span className={`text-sm font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
-                      {hasAlert && <AlertTriangle size={14} className="text-red-500 animate-pulse" />}
+                      {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'} animate-pulse`} />}
                     </div>
                     {/* Task indicator */}
                     {allTasks.length > 0 && (

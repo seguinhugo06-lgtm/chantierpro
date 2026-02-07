@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
 import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2 } from 'lucide-react';
 import {
@@ -16,6 +16,12 @@ import {
   syncToIndy
 } from '../lib/integrations/accounting';
 
+// Sprint 1 - New tabs
+import Facture2026Tab from './settings/Facture2026Tab';
+import RelanceConfigTab from './settings/RelanceConfigTab';
+// Sprint 5 - Multi-entreprise
+import MultiEntreprise from './settings/MultiEntreprise';
+
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
@@ -32,6 +38,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+
+  // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
+  useEffect(() => {
+    const handleTabNav = (e) => {
+      if (e.detail?.tab) setTab(e.detail.tab);
+    };
+    window.addEventListener('navigate-settings-tab', handleTabNav);
+    return () => window.removeEventListener('navigate-settings-tab', handleTabNav);
+  }, []);
 
   // Comptabilite state
   const [comptaSubTab, setComptaSubTab] = useState('integrations');
@@ -283,12 +300,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`rounded-xl p-4 flex items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
           <span className="text-xl">📝</span>
-          <div>
+          <div className="flex-1">
             <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
           </div>
+          <button
+            onClick={() => { setShowSetupWizard(true); setWizardStep(0); }}
+            className="px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
+            style={{ background: couleur }}
+          >
+            🪄 Assistant de configuration
+          </button>
         </div>
       )}
 
@@ -300,8 +324,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
           ['documents', '📄 Documents'],
+          ['facture2026', '🧾 Facture 2026'],
+          ['relances', '🔔 Relances'],
           ['rentabilite', '📊 Rentabilité'],
-          ['comptabilite', '🧮 Comptabilité']
+          ['comptabilite', '🧮 Comptabilité'],
+          ['donnees', '💾 Données'],
+          ['multi', '🏗️ Multi-entreprise']
         ].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
@@ -710,6 +738,25 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
+      {/* FACTURE 2026 */}
+      {tab === 'facture2026' && (
+        <Facture2026Tab
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {/* RELANCES */}
+      {tab === 'relances' && (
+        <RelanceConfigTab
+          entreprise={entreprise}
+          updateEntreprise={updateEntreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
@@ -1078,6 +1125,194 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
+      {/* Données Import/Export Tab */}
+      {tab === 'donnees' && (
+        <div className="space-y-6">
+          {/* Export Global */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              <Download size={18} style={{ color: couleur }} />
+              Export global des données
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Exportez toutes vos données ChantierPro dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              {[
+                { label: 'Devis/Factures', count: devis.length, color: couleur },
+                { label: 'Clients', count: clients.length, color: '#3b82f6' },
+                { label: 'Chantiers', count: chantiers.length, color: '#10b981' },
+                { label: 'Dépenses', count: depenses.length, color: '#8b5cf6' },
+              ].map((s, i) => (
+                <div key={i} className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
+                  <p className={`text-xs ${textMuted}`}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                try {
+                  const exportData = {
+                    version: '3.0',
+                    exportDate: new Date().toISOString(),
+                    app: 'ChantierPro',
+                    data: {
+                      entreprise,
+                      devis,
+                      clients,
+                      chantiers,
+                      depenses,
+                    },
+                    localStorage: (() => {
+                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
+                      const obj = {};
+                      keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
+                      return obj;
+                    })(),
+                  };
+                  const json = JSON.stringify(exportData, null, 2);
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `chantierpro_backup_${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  showToast('Export global téléchargé', 'success');
+                } catch (err) {
+                  showToast('Erreur lors de l\'export', 'error');
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium transition-all hover:shadow-lg"
+              style={{ background: couleur }}
+            >
+              <Download size={18} />
+              Exporter toutes les données (.json)
+            </button>
+          </div>
+
+          {/* Import Global */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              <RefreshCw size={18} style={{ color: '#3b82f6' }} />
+              Import de données
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Restaurez vos données depuis un fichier d'export ChantierPro (.json). Les données existantes seront fusionnées.
+            </p>
+
+            <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
+              <input
+                type="file"
+                accept=".json"
+                id="import-file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    try {
+                      const data = JSON.parse(ev.target.result);
+                      if (!data.app || data.app !== 'ChantierPro') {
+                        showToast('Fichier non reconnu (pas un export ChantierPro)', 'error');
+                        return;
+                      }
+                      // Restore localStorage keys
+                      if (data.localStorage) {
+                        Object.entries(data.localStorage).forEach(([k, v]) => {
+                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
+                        });
+                      }
+                      // Restore entreprise
+                      if (data.data?.entreprise) {
+                        setEntreprise(prev => ({ ...prev, ...data.data.entreprise }));
+                      }
+                      showToast(`Import réussi — ${data.exportDate ? new Date(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
+                    } catch {
+                      showToast('Erreur de lecture du fichier', 'error');
+                    }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+              <label htmlFor="import-file" className="cursor-pointer">
+                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <RefreshCw size={24} className={textMuted} />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
+                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export ChantierPro)</p>
+              </label>
+            </div>
+          </div>
+
+          {/* Onboarding Replay */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              🎓 Visite guidée
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de ChantierPro.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('chantierpro_onboarding_complete');
+                localStorage.removeItem('chantierpro_onboarding_skipped');
+                showToast('Rechargez la page pour relancer la visite guidée', 'info');
+              }}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              <RefreshCw size={18} />
+              Relancer la visite guidée
+            </button>
+          </div>
+
+          {/* Data Management */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 text-red-500`}>
+              <AlertCircle size={18} />
+              Gestion des données locales
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length > 0 && (
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className={`text-xs ${textMuted}`}>Clés stockées</p>
+                  <p className="text-lg font-bold" style={{ color: couleur }}>
+                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length}
+                  </p>
+                </div>
+              )}
+              <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-xs ${textMuted}`}>Taille estimée</p>
+                <p className="text-lg font-bold" style={{ color: couleur }}>
+                  {(() => {
+                    let total = 0;
+                    Object.keys(localStorage).forEach(k => { total += (localStorage.getItem(k) || '').length; });
+                    return total > 1024 * 1024 ? `${(total / (1024 * 1024)).toFixed(1)} Mo` : `${Math.round(total / 1024)} Ko`;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-entreprise Tab */}
+      {tab === 'multi' && (
+        <MultiEntreprise
+          entreprise={entreprise}
+          setEntreprise={setEntreprise}
+          isDark={isDark}
+          couleur={entreprise.couleur || couleur}
+        />
+      )}
+
       {/* APERÇU DOCUMENT */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
@@ -1119,6 +1354,139 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
         </div>
       </div>
+
+      {/* Setup Wizard Modal */}
+      {showSetupWizard && (() => {
+        const WIZARD_STEPS = [
+          {
+            title: 'Identité de l\'entreprise',
+            desc: 'Informations essentielles pour vos documents',
+            fields: [
+              { key: 'nom', label: 'Nom de l\'entreprise *', placeholder: 'Ex : Martin Rénovation' },
+              { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris', multiline: true },
+              { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
+              { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
+            ],
+          },
+          {
+            title: 'Informations légales',
+            desc: 'Numéros obligatoires sur vos devis et factures',
+            fields: [
+              { key: 'siret', label: 'N° SIRET *', placeholder: '123 456 789 00012' },
+              { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
+              { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
+              { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
+            ],
+          },
+          {
+            title: 'Assurances',
+            desc: 'Obligatoires pour les entreprises du BTP',
+            fields: [
+              { key: 'rcProAssureur', label: 'Assureur RC Pro', placeholder: 'AXA, MAAF, Allianz...' },
+              { key: 'rcProNumero', label: 'N° Police RC Pro', placeholder: 'N° de contrat' },
+              { key: 'decennaleAssureur', label: 'Assureur Décennale', placeholder: 'AXA, MAAF, Allianz...' },
+              { key: 'decennaleNumero', label: 'N° Police Décennale', placeholder: 'N° de contrat' },
+            ],
+          },
+          {
+            title: 'Banque & Paiements',
+            desc: 'Coordonnées bancaires pour vos factures',
+            fields: [
+              { key: 'banque', label: 'Nom de la banque', placeholder: 'Crédit Agricole, BNP...' },
+              { key: 'iban', label: 'IBAN', placeholder: 'FR76 1234 5678 9012 3456 7890 123' },
+              { key: 'bic', label: 'BIC', placeholder: 'BNPAFRPP' },
+              { key: 'conditionsPaiement', label: 'Conditions de paiement', placeholder: 'Paiement à 30 jours fin de mois' },
+            ],
+          },
+        ];
+
+        const currentStep = WIZARD_STEPS[wizardStep];
+        const isLast = wizardStep === WIZARD_STEPS.length - 1;
+        const filledInStep = currentStep.fields.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '').length;
+        const progress = ((wizardStep + 1) / WIZARD_STEPS.length) * 100;
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
+              {/* Progress */}
+              <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
+                <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
+              </div>
+
+              {/* Header */}
+              <div className="p-5 pb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {wizardStep + 1}/{WIZARD_STEPS.length}</p>
+                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
+                </div>
+                <h3 className={`text-lg font-bold ${textPrimary}`}>{currentStep.title}</h3>
+                <p className={`text-sm ${textMuted}`}>{currentStep.desc}</p>
+              </div>
+
+              {/* Fields */}
+              <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-3">
+                {currentStep.fields.map(field => (
+                  <div key={field.key}>
+                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{field.label}</label>
+                    {field.multiline ? (
+                      <textarea
+                        value={entreprise[field.key] || ''}
+                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        rows={2}
+                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={entreprise[field.key] || ''}
+                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                      />
+                    )}
+                  </div>
+                ))}
+                {filledInStep === currentStep.fields.length && (
+                  <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                    <CheckCircle size={16} /> Tous les champs de cette étape sont remplis
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Navigation */}
+              <div className={`p-5 pt-3 border-t flex items-center gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                {wizardStep > 0 && (
+                  <button
+                    onClick={() => setWizardStep(s => s - 1)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+                  >
+                    ← Précédent
+                  </button>
+                )}
+                <div className="flex-1" />
+                {!isLast ? (
+                  <button
+                    onClick={() => setWizardStep(s => s + 1)}
+                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
+                    style={{ background: couleur }}
+                  >
+                    Suivant →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setShowSetupWizard(false); showToast('Configuration terminée !', 'success'); }}
+                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
+                    style={{ background: '#22c55e' }}
+                  >
+                    ✓ Terminer
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Export Comptable */}
       {showExportModal && (

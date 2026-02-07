@@ -20,13 +20,21 @@ const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
 const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const DesignSystemDemo = lazy(() => import('./components/DesignSystemDemo'));
+const TresorerieModule = lazy(() => import('./components/tresorerie/TresorerieModule'));
+const BibliothequeOuvrages = lazy(() => import('./components/catalogue/BibliothequeOuvrages'));
+const SousTraitantsModule = lazy(() => import('./components/soustraitants/SousTraitantsModule'));
+const CommandesFournisseurs = lazy(() => import('./components/commandes/CommandesFournisseurs'));
+const IADevisAnalyse = lazy(() => import('./components/ia/IADevisAnalyse'));
+const CarnetEntretien = lazy(() => import('./components/entretien/CarnetEntretien'));
+const SignatureModule = lazy(() => import('./components/signatures/SignatureModule'));
+const ExportComptable = lazy(() => import('./components/export/ExportComptable'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 
 // Theme classes helper
@@ -460,11 +468,62 @@ export default function App() {
     },
     { id: 'clients', icon: Users, label: 'Clients' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'ouvrages', icon: Library, label: 'Ouvrages' },
+    { id: 'soustraitants', icon: UserCheck, label: 'Sous-Traitants' },
+    { id: 'commandes', icon: ShoppingCart, label: 'Commandes' },
+    { id: 'tresorerie', icon: Wallet, label: 'Trésorerie' },
+    { id: 'ia-devis', icon: Camera, label: 'IA Devis' },
+    { id: 'entretien', icon: ClipboardList, label: 'Entretien' },
+    { id: 'signatures', icon: PenTool, label: 'Signatures' },
+    { id: 'export', icon: Download, label: 'Export Compta' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'admin', icon: HelpCircle, label: 'Administratif' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
   
+  // Generate notifications from data
+  useEffect(() => {
+    const notifs = [];
+    const now = new Date();
+
+    // Overdue invoices (factures unpaid > 30 days)
+    devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
+      const days = Math.floor((now - new Date(f.date)) / 86400000);
+      if (days > 30) {
+        notifs.push({ id: `overdue-${f.id}`, message: `Facture ${f.numero || '#'} impayée depuis ${days} jours`, date: `${days}j de retard`, read: false, type: 'urgent' });
+      }
+    });
+
+    // Stale devis (sent > 10 days without response)
+    devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
+      const days = Math.floor((now - new Date(d.date)) / 86400000);
+      if (days > 10) {
+        notifs.push({ id: `stale-${d.id}`, message: `Devis ${d.numero || '#'} sans réponse depuis ${days} jours`, date: 'À relancer', read: false, type: 'warning' });
+      }
+    });
+
+    // Expired insurance
+    if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
+      notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expirée', date: 'Action requise', read: false, type: 'urgent' });
+    }
+    if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
+      notifs.push({ id: 'dec-expired', message: 'Votre assurance Décennale est expirée', date: 'Action requise', read: false, type: 'urgent' });
+    }
+
+    // Incomplete profile
+    const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
+    const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
+    if (missingFields.length > 0) {
+      notifs.push({ id: 'profile-incomplete', message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`, date: 'Paramètres', read: false, type: 'info' });
+    }
+
+    // Preserve read status from previous notifications
+    setNotifications(prev => {
+      const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
+      return notifs.map(n => ({ ...n, read: readIds.has(n.id) }));
+    });
+  }, [devis, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
+
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
@@ -743,11 +802,20 @@ export default function App() {
                           style={!n.read ? {borderLeftColor: couleur} : {}}
                         >
                           <div className="flex items-start gap-3">
-                            {!n.read && <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: couleur}}></span>}
+                            <div className={`flex-shrink-0 mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center ${
+                              n.type === 'urgent' ? (isDark ? 'bg-red-500/15' : 'bg-red-50') :
+                              n.type === 'warning' ? (isDark ? 'bg-amber-500/15' : 'bg-amber-50') :
+                              (isDark ? 'bg-blue-500/15' : 'bg-blue-50')
+                            }`}>
+                              {n.type === 'urgent' ? <AlertCircle size={14} className="text-red-500" /> :
+                               n.type === 'warning' ? <Clock size={14} className="text-amber-500" /> :
+                               <Info size={14} className="text-blue-500" />}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${tc.text}`}>{n.message}</p>
+                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} ${tc.text}`}>{n.message}</p>
                               <p className={`text-xs mt-1 ${tc.textMuted}`}>{n.date}</p>
                             </div>
+                            {!n.read && <span className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{background: couleur}}></span>}
                           </div>
                         </div>
                       ))
@@ -816,6 +884,14 @@ export default function App() {
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
+              {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} isDark={isDark} couleur={couleur} />}
+              {page === 'soustraitants' && <SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'commandes' && <CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'tresorerie' && <TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'ia-devis' && <IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} />}
+              {page === 'entretien' && <CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'signatures' && <SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} />}
+              {page === 'export' && <ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
