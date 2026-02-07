@@ -4,7 +4,7 @@ import {
   AlertTriangle, Clock, Shield, ClipboardList, Filter,
   Flame, Droplets, Zap, Home, Building2, Layers, Wind, Wrench,
   ArrowLeft, Eye, CheckCircle, Circle, Tag, MapPin, FileText,
-  ChevronDown, MoreVertical, RefreshCw
+  ChevronDown, MoreVertical, RefreshCw, Bell, Copy, Sparkles
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -77,6 +77,58 @@ const typeBienColors = {
   bureau: '#06b6d4',
   batiment: '#6b7280',
   autre: '#64748b',
+};
+
+// ---------------------------------------------------------------------------
+// Templates by property type
+// ---------------------------------------------------------------------------
+
+const TASK_TEMPLATES = {
+  maison: [
+    { designation: 'Ramonage cheminée/conduit', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 9, priorite: 1 },
+    { designation: 'Entretien chaudière', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 10, priorite: 1 },
+    { designation: 'Vérification toiture', categorie: 'toiture', recurrence: 'annuel', mois_prevu: 3, priorite: 2 },
+    { designation: 'Nettoyage gouttières', categorie: 'toiture', recurrence: 'semestriel', mois_prevu: 11, priorite: 2 },
+    { designation: 'Contrôle installation électrique', categorie: 'electricite', recurrence: 'annuel', mois_prevu: 1, priorite: 2 },
+    { designation: 'Purge radiateurs', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 9, priorite: 3 },
+    { designation: 'Entretien VMC', categorie: 'ventilation', recurrence: 'semestriel', mois_prevu: 4, priorite: 2 },
+    { designation: 'Vérification joints plomberie', categorie: 'plomberie', recurrence: 'annuel', mois_prevu: 6, priorite: 3 },
+  ],
+  appartement: [
+    { designation: 'Entretien chaudière/PAC', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 10, priorite: 1 },
+    { designation: 'Contrôle VMC', categorie: 'ventilation', recurrence: 'annuel', mois_prevu: 4, priorite: 2 },
+    { designation: 'Vérification robinetterie', categorie: 'plomberie', recurrence: 'annuel', mois_prevu: 6, priorite: 3 },
+    { designation: 'Contrôle détecteurs fumée', categorie: 'electricite', recurrence: 'annuel', mois_prevu: 1, priorite: 1 },
+    { designation: 'Purge radiateurs', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 9, priorite: 3 },
+  ],
+  commerce: [
+    { designation: 'Contrôle extincteurs', categorie: 'general', recurrence: 'annuel', mois_prevu: 1, priorite: 1 },
+    { designation: 'Vérification éclairage de sécurité', categorie: 'electricite', recurrence: 'semestriel', mois_prevu: 6, priorite: 1 },
+    { designation: 'Entretien climatisation', categorie: 'ventilation', recurrence: 'annuel', mois_prevu: 4, priorite: 2 },
+    { designation: 'Contrôle installation électrique ERP', categorie: 'electricite', recurrence: 'annuel', mois_prevu: 3, priorite: 1 },
+    { designation: 'Vérification accessibilité PMR', categorie: 'general', recurrence: 'annuel', mois_prevu: 2, priorite: 2 },
+    { designation: 'Nettoyage façade', categorie: 'facade', recurrence: 'annuel', mois_prevu: 5, priorite: 3 },
+  ],
+  bureau: [
+    { designation: 'Entretien climatisation', categorie: 'ventilation', recurrence: 'semestriel', mois_prevu: 4, priorite: 2 },
+    { designation: 'Contrôle extincteurs', categorie: 'general', recurrence: 'annuel', mois_prevu: 1, priorite: 1 },
+    { designation: 'Vérification installation électrique', categorie: 'electricite', recurrence: 'annuel', mois_prevu: 3, priorite: 2 },
+    { designation: 'Entretien VMC', categorie: 'ventilation', recurrence: 'annuel', mois_prevu: 10, priorite: 2 },
+    { designation: 'Contrôle plomberie sanitaire', categorie: 'plomberie', recurrence: 'annuel', mois_prevu: 6, priorite: 3 },
+  ],
+  batiment: [
+    { designation: 'Inspection toiture et étanchéité', categorie: 'toiture', recurrence: 'annuel', mois_prevu: 3, priorite: 1 },
+    { designation: 'Contrôle façade et fissures', categorie: 'facade', recurrence: 'annuel', mois_prevu: 5, priorite: 2 },
+    { designation: 'Vérification parties communes', categorie: 'general', recurrence: 'semestriel', mois_prevu: 6, priorite: 2 },
+    { designation: 'Contrôle installation gaz', categorie: 'chauffage', recurrence: 'annuel', mois_prevu: 10, priorite: 1 },
+    { designation: 'Entretien ascenseur', categorie: 'general', recurrence: 'mensuel', mois_prevu: 1, priorite: 1 },
+    { designation: 'Désinsectisation/dératisation', categorie: 'general', recurrence: 'annuel', mois_prevu: 4, priorite: 2 },
+  ],
+  autre: [
+    { designation: 'Contrôle général', categorie: 'general', recurrence: 'annuel', mois_prevu: 1, priorite: 2 },
+    { designation: 'Vérification installation électrique', categorie: 'electricite', recurrence: 'annuel', mois_prevu: 3, priorite: 2 },
+    { designation: 'Contrôle plomberie', categorie: 'plomberie', recurrence: 'annuel', mois_prevu: 6, priorite: 3 },
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -317,6 +369,13 @@ function CarnetCard({ carnet, tasks, clients, isDark, couleur, onClick }) {
   const carnetTasks = tasks.filter(t => t.carnet_id === carnet.id);
   const pendingCount = carnetTasks.filter(t => t.statut !== 'realise').length;
   const overdueCount = carnetTasks.filter(t => t.statut !== 'realise' && isOverdue(t.prochaine_echeance)).length;
+  const upcomingCount = carnetTasks.filter(t => {
+    if (t.statut === 'realise' || !t.prochaine_echeance) return false;
+    const d = new Date(t.prochaine_echeance);
+    const now = new Date();
+    const diff = (d - now) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  }).length;
   const typeColor = typeBienColors[carnet.type_bien] || '#64748b';
   const typeLabel = TYPES_BIEN.find(t => t.id === carnet.type_bien)?.label || carnet.type_bien;
 
@@ -367,6 +426,12 @@ function CarnetCard({ carnet, tasks, clients, isDark, couleur, onClick }) {
           {overdueCount > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">
               {overdueCount} en retard
+            </span>
+          )}
+          {upcomingCount > 0 && overdueCount === 0 && (
+            <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'} font-medium`}>
+              <Bell size={10} />
+              {upcomingCount} bientôt
             </span>
           )}
         </div>
@@ -468,6 +533,47 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
       return (a.priorite || 3) - (b.priorite || 3);
     });
   }, [carnetTasks, taskFilter, selectedCarnetId]);
+
+  // ---- Notification badges ----
+  const notifications = useMemo(() => {
+    const activeTaches = taches.filter(t => {
+      const carnet = carnets.find(c => c.id === t.carnet_id);
+      return carnet && carnet.actif !== false;
+    });
+    const overdue = activeTaches.filter(t => t.statut !== 'realise' && isOverdue(t.prochaine_echeance));
+    const thisMonth = activeTaches.filter(t => t.statut !== 'realise' && isThisMonth(t.prochaine_echeance));
+    const upcoming7days = activeTaches.filter(t => {
+      if (t.statut === 'realise' || !t.prochaine_echeance) return false;
+      const d = new Date(t.prochaine_echeance);
+      const now = new Date();
+      const diff = (d - now) / (1000 * 60 * 60 * 24);
+      return diff >= 0 && diff <= 7;
+    });
+    return { overdue, thisMonth, upcoming7days, total: overdue.length + upcoming7days.length };
+  }, [taches, carnets]);
+
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  // ---- Template application ----
+  function applyTemplate(carnetId, typeBien) {
+    const templates = TASK_TEMPLATES[typeBien] || TASK_TEMPLATES.autre;
+    const now = new Date();
+    const year = now.getFullYear();
+    const newTasks = templates.map(t => ({
+      id: crypto.randomUUID(),
+      carnet_id: carnetId,
+      ...t,
+      description: '',
+      cout_estime: 0,
+      statut: 'a_faire',
+      derniere_realisation: null,
+      prochaine_echeance: `${year}-${String(t.mois_prevu).padStart(2, '0')}-01`,
+      notes: '',
+      created_at: now.toISOString(),
+    }));
+    setTaches(prev => [...prev, ...newTasks]);
+    setShowTemplateModal(false);
+  }
 
   // ---- Carnet CRUD ----
   const defaultCarnetForm = () => ({
@@ -1055,15 +1161,26 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
         {/* Tasks Section */}
         <div className={`p-4 rounded-xl border ${cardCls}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-sm font-semibold ${textCls}`}>Tâches d’entretien</h3>
-            <button
-              onClick={openNewTask}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
-              style={{ backgroundColor: couleur }}
-            >
-              <Plus size={14} />
-              Ajouter
-            </button>
+            <h3 className={`text-sm font-semibold ${textCls}`}>Tâches d'entretien</h3>
+            <div className="flex items-center gap-2">
+              {carnetTasks.length === 0 && (
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-amber-900/30 text-amber-300 hover:bg-amber-900/50' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                >
+                  <Sparkles size={14} />
+                  Modèles
+                </button>
+              )}
+              <button
+                onClick={openNewTask}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                style={{ backgroundColor: couleur }}
+              >
+                <Plus size={14} />
+                Ajouter
+              </button>
+            </div>
           </div>
 
           {/* Task filter tabs */}
@@ -1129,6 +1246,31 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
   function renderListView() {
     return (
       <div className="space-y-4">
+        {/* Notification Banner */}
+        {notifications.total > 0 && (
+          <div className={`p-4 rounded-xl border flex items-center justify-between ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Bell size={20} className="text-amber-500" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {notifications.total}
+                </span>
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                  {notifications.overdue.length > 0 && `${notifications.overdue.length} tâche${notifications.overdue.length > 1 ? 's' : ''} en retard`}
+                  {notifications.overdue.length > 0 && notifications.upcoming7days.length > 0 && ' • '}
+                  {notifications.upcoming7days.length > 0 && `${notifications.upcoming7days.length} dans les 7 prochains jours`}
+                </p>
+                <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                  {notifications.overdue.slice(0, 2).map(t => t.designation).join(', ')}
+                  {notifications.overdue.length > 2 && '...'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={ClipboardList} label="Total carnets" value={kpis.total} color={couleur} isDark={isDark} />
@@ -1235,6 +1377,67 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
       {renderCarnetModal()}
       {renderTaskModal()}
       {renderDeleteConfirm()}
+
+      {/* Template Modal */}
+      {showTemplateModal && selectedCarnet && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={() => setShowTemplateModal(false)}>
+          <div className={`w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border shadow-xl ${cardCls}`} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+              <div className="flex items-center gap-2">
+                <Sparkles size={18} style={{ color: couleur }} />
+                <h2 className={`text-lg font-semibold ${textCls}`}>Modèle de tâches</h2>
+              </div>
+              <button onClick={() => setShowTemplateModal(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className={`text-sm mb-4 ${textMuted}`}>
+                Appliquer un modèle de tâches pré-configuré pour <strong className={textCls}>{TYPES_BIEN.find(t => t.id === selectedCarnet.type_bien)?.label || selectedCarnet.type_bien}</strong> :
+              </p>
+              <div className="space-y-2 mb-4">
+                {(TASK_TEMPLATES[selectedCarnet.type_bien] || TASK_TEMPLATES.autre).map((t, i) => {
+                  const CatIcon = categorieIcons[t.categorie] || Wrench;
+                  const catColor = categorieColors[t.categorie] || '#64748b';
+                  return (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <div className="p-1.5 rounded-lg flex-shrink-0" style={{ backgroundColor: catColor + '18' }}>
+                        <CatIcon size={14} style={{ color: catColor }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${textCls}`}>{t.designation}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
+                            {RECURRENCES.find(r => r.id === t.recurrence)?.label}
+                          </span>
+                          <span className={`text-[10px] ${textMuted}`}>{MOIS_LABELS[t.mois_prevu - 1]}</span>
+                        </div>
+                      </div>
+                      <PriorityBadge priorite={t.priorite} small />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowTemplateModal(false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => applyTemplate(selectedCarnet.id, selectedCarnet.type_bien)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2"
+                  style={{ backgroundColor: couleur }}
+                >
+                  <Copy size={14} />
+                  Appliquer ({(TASK_TEMPLATES[selectedCarnet.type_bien] || TASK_TEMPLATES.autre).length} tâches)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

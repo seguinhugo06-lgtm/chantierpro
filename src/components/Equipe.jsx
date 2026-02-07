@@ -35,7 +35,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   const [tab, setTab] = useState('overview');
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' });
   const [sortBy, setSortBy] = useState('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -383,7 +383,11 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       id: editId || generateId(),
       ...form,
       tauxHoraire: parseFloat(form.tauxHoraire) || 45,
-      coutHoraireCharge: parseFloat(form.coutHoraireCharge) || parseFloat(form.tauxHoraire) * 0.6 || 28
+      coutHoraireCharge: parseFloat(form.coutHoraireCharge) || parseFloat(form.tauxHoraire) * 0.6 || 28,
+      competences: form.competences || '',
+      certifications: form.certifications || '',
+      dateEmbauche: form.dateEmbauche || '',
+      notes: form.notes || '',
     };
     if (editId) {
       setEquipe(equipe.map(e => e.id === editId ? data : e));
@@ -394,7 +398,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     }
     setShowAdd(false);
     setEditId(null);
-    setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' });
+    setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' });
   };
 
   const startEdit = (emp) => {
@@ -406,7 +410,11 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       role: emp.role || '',
       contrat: emp.contrat || '',
       tauxHoraire: emp.tauxHoraire?.toString() || '',
-      coutHoraireCharge: emp.coutHoraireCharge?.toString() || ''
+      coutHoraireCharge: emp.coutHoraireCharge?.toString() || '',
+      dateEmbauche: emp.dateEmbauche || '',
+      competences: emp.competences || '',
+      certifications: emp.certifications || '',
+      notes: emp.notes || '',
     });
     setEditId(emp.id);
     setShowAdd(true);
@@ -501,7 +509,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1>
@@ -551,6 +559,49 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           </div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Telephone</label><input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" /></div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" /></div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date d'embauche</label>
+            <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.dateEmbauche} onChange={e => setForm(p => ({...p, dateEmbauche: e.target.value}))} />
+          </div>
+        </div>
+
+        {/* Compétences & Certifications */}
+        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><HardHat size={16} style={{ color: couleur }} /> Compétences & Certifications</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Compétences</label>
+              <textarea
+                className={`w-full px-4 py-2.5 border rounded-xl min-h-[80px] resize-none ${inputBg}`}
+                value={form.competences}
+                onChange={e => setForm(p => ({...p, competences: e.target.value}))}
+                placeholder="Plâtrerie, carrelage, plomberie..."
+                rows={3}
+              />
+              <p className={`text-xs ${textMuted} mt-1`}>Séparez par des virgules</p>
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Certifications</label>
+              <textarea
+                className={`w-full px-4 py-2.5 border rounded-xl min-h-[80px] resize-none ${inputBg}`}
+                value={form.certifications}
+                onChange={e => setForm(p => ({...p, certifications: e.target.value}))}
+                placeholder="CACES, Habilitation électrique, SST..."
+                rows={3}
+              />
+              <p className={`text-xs ${textMuted} mt-1`}>Séparez par des virgules</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label>
+            <textarea
+              className={`w-full px-4 py-2.5 border rounded-xl min-h-[60px] resize-none ${inputBg}`}
+              value={form.notes}
+              onChange={e => setForm(p => ({...p, notes: e.target.value}))}
+              placeholder="Notes sur cet employé..."
+              rows={2}
+            />
+          </div>
         </div>
 
         <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -1370,6 +1421,42 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                           </div>
                         )}
 
+                        {/* Employee Details: Date embauche + Compétences */}
+                        {(e.dateEmbauche || e.competences || e.certifications) && (
+                          <div className={`mb-3 p-3 rounded-xl space-y-2 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/80'}`}>
+                            {e.dateEmbauche && (
+                              <div className="flex items-center gap-2">
+                                <Calendar size={12} className={textMuted} />
+                                <span className={`text-xs ${textMuted}`}>Embauché le {new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}</span>
+                                <span className={`text-xs font-medium ${textPrimary}`}>
+                                  ({(() => {
+                                    const diff = Math.floor((Date.now() - new Date(e.dateEmbauche).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+                                    return diff < 1 ? '< 1 an' : `${diff} an${diff > 1 ? 's' : ''}`;
+                                  })()})
+                                </span>
+                              </div>
+                            )}
+                            {e.competences && (
+                              <div className="flex flex-wrap gap-1">
+                                {e.competences.split(',').map((c, i) => c.trim()).filter(Boolean).map((c, i) => (
+                                  <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {e.certifications && (
+                              <div className="flex flex-wrap gap-1">
+                                {e.certifications.split(',').map((c, i) => c.trim()).filter(Boolean).map((c, i) => (
+                                  <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-amber-900/40 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Stats Grid */}
                         <div className="grid grid-cols-3 gap-2">
                           <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
@@ -1399,6 +1486,27 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                             <span className={`text-sm font-bold ${margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                               {margin > 0 ? '+' : ''}{margin}€
                             </span>
+                          </div>
+                        )}
+
+                        {/* Mobile quick pointage: one-tap start on active chantiers */}
+                        {!chrono.running && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                          <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>Pointage rapide</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {chantiers.filter(c => c.statut === 'en_cours').slice(0, 3).map(ch => (
+                                <button
+                                  key={ch.id}
+                                  onClick={(ev) => { ev.stopPropagation(); quickStartTimer(e.id, ch.id); }}
+                                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
+                                    isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  }`}
+                                >
+                                  <Play size={10} fill="currentColor" />
+                                  {ch.nom?.length > 15 ? ch.nom.slice(0, 15) + '...' : ch.nom}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>

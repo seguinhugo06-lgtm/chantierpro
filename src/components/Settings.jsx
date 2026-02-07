@@ -328,6 +328,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['relances', '🔔 Relances'],
           ['rentabilite', '📊 Rentabilité'],
           ['comptabilite', '🧮 Comptabilité'],
+          ['donnees', '💾 Données'],
           ['multi', '🏗️ Multi-entreprise']
         ].map(([k, v]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
@@ -1121,6 +1122,184 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Données Import/Export Tab */}
+      {tab === 'donnees' && (
+        <div className="space-y-6">
+          {/* Export Global */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              <Download size={18} style={{ color: couleur }} />
+              Export global des données
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Exportez toutes vos données ChantierPro dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              {[
+                { label: 'Devis/Factures', count: devis.length, color: couleur },
+                { label: 'Clients', count: clients.length, color: '#3b82f6' },
+                { label: 'Chantiers', count: chantiers.length, color: '#10b981' },
+                { label: 'Dépenses', count: depenses.length, color: '#8b5cf6' },
+              ].map((s, i) => (
+                <div key={i} className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
+                  <p className={`text-xs ${textMuted}`}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                try {
+                  const exportData = {
+                    version: '3.0',
+                    exportDate: new Date().toISOString(),
+                    app: 'ChantierPro',
+                    data: {
+                      entreprise,
+                      devis,
+                      clients,
+                      chantiers,
+                      depenses,
+                    },
+                    localStorage: (() => {
+                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
+                      const obj = {};
+                      keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
+                      return obj;
+                    })(),
+                  };
+                  const json = JSON.stringify(exportData, null, 2);
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `chantierpro_backup_${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  showToast('Export global téléchargé', 'success');
+                } catch (err) {
+                  showToast('Erreur lors de l\'export', 'error');
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium transition-all hover:shadow-lg"
+              style={{ background: couleur }}
+            >
+              <Download size={18} />
+              Exporter toutes les données (.json)
+            </button>
+          </div>
+
+          {/* Import Global */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              <RefreshCw size={18} style={{ color: '#3b82f6' }} />
+              Import de données
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Restaurez vos données depuis un fichier d'export ChantierPro (.json). Les données existantes seront fusionnées.
+            </p>
+
+            <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
+              <input
+                type="file"
+                accept=".json"
+                id="import-file"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    try {
+                      const data = JSON.parse(ev.target.result);
+                      if (!data.app || data.app !== 'ChantierPro') {
+                        showToast('Fichier non reconnu (pas un export ChantierPro)', 'error');
+                        return;
+                      }
+                      // Restore localStorage keys
+                      if (data.localStorage) {
+                        Object.entries(data.localStorage).forEach(([k, v]) => {
+                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
+                        });
+                      }
+                      // Restore entreprise
+                      if (data.data?.entreprise) {
+                        setEntreprise(prev => ({ ...prev, ...data.data.entreprise }));
+                      }
+                      showToast(`Import réussi — ${data.exportDate ? new Date(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
+                    } catch {
+                      showToast('Erreur de lecture du fichier', 'error');
+                    }
+                  };
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+              <label htmlFor="import-file" className="cursor-pointer">
+                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <RefreshCw size={24} className={textMuted} />
+                </div>
+                <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
+                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export ChantierPro)</p>
+              </label>
+            </div>
+          </div>
+
+          {/* Onboarding Replay */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              🎓 Visite guidée
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de ChantierPro.
+            </p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('chantierpro_onboarding_complete');
+                localStorage.removeItem('chantierpro_onboarding_skipped');
+                showToast('Rechargez la page pour relancer la visite guidée', 'info');
+              }}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              <RefreshCw size={18} />
+              Relancer la visite guidée
+            </button>
+          </div>
+
+          {/* Data Management */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 text-red-500`}>
+              <AlertCircle size={18} />
+              Gestion des données locales
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length > 0 && (
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className={`text-xs ${textMuted}`}>Clés stockées</p>
+                  <p className="text-lg font-bold" style={{ color: couleur }}>
+                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length}
+                  </p>
+                </div>
+              )}
+              <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-xs ${textMuted}`}>Taille estimée</p>
+                <p className="text-lg font-bold" style={{ color: couleur }}>
+                  {(() => {
+                    let total = 0;
+                    Object.keys(localStorage).forEach(k => { total += (localStorage.getItem(k) || '').length; });
+                    return total > 1024 * 1024 ? `${(total / (1024 * 1024)).toFixed(1)} Mo` : `${Math.round(total / 1024)} Ko`;
+                  })()}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

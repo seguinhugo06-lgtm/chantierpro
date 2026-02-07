@@ -13,6 +13,9 @@ import {
   ShoppingCart,
   Euro,
   Info,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -246,6 +249,14 @@ const FORMATS = [
   { key: 'excel', label: 'Excel', icon: Table, desc: 'Compatible Excel (UTF-8 BOM)' },
 ];
 
+const JOURNALS = [
+  { key: 'all', label: 'Tous les journaux', color: '#64748b' },
+  { key: 'VE', label: 'Ventes (VE)', color: '#f97316' },
+  { key: 'AC', label: 'Achats (AC)', color: '#8b5cf6' },
+  { key: 'BQ', label: 'Banque (BQ)', color: '#3b82f6' },
+  { key: 'OD', label: 'Opérations diverses (OD)', color: '#10b981' },
+];
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ExportComptable({
@@ -267,6 +278,9 @@ export default function ExportComptable({
   const [showPreview, setShowPreview] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
+  const [journalFilter, setJournalFilter] = useState('all');
+  const [previewPage, setPreviewPage] = useState(0);
+  const PREVIEW_PAGE_SIZE = 50;
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
@@ -350,19 +364,21 @@ export default function ExportComptable({
   // ─── Export handler ─────────────────────────────────────────────────────
 
   const handleExport = () => {
-    if (entries.length === 0) return;
+    const exportEntries = filteredEntries;
+    if (exportEntries.length === 0) return;
 
     const monthStr = `${from.getFullYear()}-${pad(from.getMonth() + 1)}`;
+    const journalSuffix = journalFilter !== 'all' ? `_${journalFilter}` : '';
 
     if (format === 'csv') {
-      const csv = generateCSV(entries);
-      downloadFile(csv, `export_comptable_${monthStr}.csv`, 'text/csv');
+      const csv = generateCSV(exportEntries);
+      downloadFile(csv, `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
     } else if (format === 'fec') {
-      const { content, filename } = generateFEC(entries, entreprise);
+      const { content, filename } = generateFEC(exportEntries, entreprise);
       downloadFile(content, filename, 'text/plain');
     } else if (format === 'excel') {
-      const excel = generateExcel(entries);
-      downloadFile(excel, `export_comptable_${monthStr}.csv`, 'text/csv');
+      const excel = generateExcel(exportEntries);
+      downloadFile(excel, `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
     }
 
     setShowSuccess(true);
@@ -381,7 +397,21 @@ export default function ExportComptable({
     return `export_comptable_${monthStr}.csv`;
   };
 
-  const previewEntries = entries.slice(0, 20);
+  // ─── Journal-filtered entries ──────────────────────────────────────────
+
+  const filteredEntries = useMemo(() => {
+    if (journalFilter === 'all') return entries;
+    return entries.filter((e) => e.journal === journalFilter);
+  }, [entries, journalFilter]);
+
+  const totalFilteredDebit = filteredEntries.reduce((s, e) => s + e.debit, 0);
+  const totalFilteredCredit = filteredEntries.reduce((s, e) => s + e.credit, 0);
+
+  const totalPreviewPages = Math.max(1, Math.ceil(filteredEntries.length / PREVIEW_PAGE_SIZE));
+  const previewEntries = filteredEntries.slice(
+    previewPage * PREVIEW_PAGE_SIZE,
+    (previewPage + 1) * PREVIEW_PAGE_SIZE
+  );
 
   // ─── Stat cards data ───────────────────────────────────────────────────
 
@@ -581,6 +611,47 @@ export default function ExportComptable({
           )}
         </div>
 
+        {/* ── Journal filter ────────────────────────────────────────────── */}
+        <div className={`border rounded-xl p-5 ${cardCls}`}>
+          <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
+            <Filter className="w-4 h-4" style={{ color: couleur }} />
+            Filtre par journal
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {JOURNALS.map((j) => {
+              const isActive = journalFilter === j.key;
+              const count = j.key === 'all'
+                ? entries.length
+                : entries.filter((e) => e.journal === j.key).length;
+              return (
+                <button
+                  key={j.key}
+                  onClick={() => { setJournalFilter(j.key); setPreviewPage(0); }}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'text-white shadow-sm'
+                      : isDark
+                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                  style={isActive ? { backgroundColor: j.color } : {}}
+                >
+                  {j.label}
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* ── Preview toggle ─────────────────────────────────────────────── */}
         <div className={`border rounded-xl ${cardCls}`}>
           <button
@@ -590,7 +661,7 @@ export default function ExportComptable({
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4" style={{ color: couleur }} />
               <span className="text-sm font-semibold">
-                Aperçu des écritures ({entries.length} lignes)
+                Aperçu des écritures ({filteredEntries.length} lignes{journalFilter !== 'all' ? ` — ${JOURNALS.find(j => j.key === journalFilter)?.label}` : ''})
               </span>
             </div>
             <ChevronDown
@@ -601,12 +672,13 @@ export default function ExportComptable({
 
           {showPreview && (
             <div className="px-5 pb-5">
-              {entries.length === 0 ? (
+              {filteredEntries.length === 0 ? (
                 <div className={`text-center py-8 ${mutedCls}`}>
                   <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
                   <p className="text-sm">Aucune écriture pour la période sélectionnée</p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto rounded-lg border" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                   <table className="w-full text-sm">
                     <thead>
@@ -699,24 +771,77 @@ export default function ExportComptable({
                         }`}
                       >
                         <td className={`px-3 py-2.5 ${textCls}`} colSpan={3}>
-                          Total ({entries.length} écritures)
-                          {entries.length > 20 && (
-                            <span className={`text-xs font-normal ml-2 ${mutedCls}`}>
-                              (20 premières affichées)
-                            </span>
-                          )}
+                          Total ({filteredEntries.length} écritures{journalFilter !== 'all' ? ` — ${journalFilter}` : ''})
                         </td>
                         <td className="px-3 py-2.5 text-right text-red-500 whitespace-nowrap">
-                          {fmtEUR.format(totalDebit)}
+                          {fmtEUR.format(totalFilteredDebit)}
                         </td>
                         <td className="px-3 py-2.5 text-right text-emerald-500 whitespace-nowrap">
-                          {fmtEUR.format(totalCredit)}
+                          {fmtEUR.format(totalFilteredCredit)}
                         </td>
                         <td colSpan={2} />
                       </tr>
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {totalPreviewPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <span className={`text-xs ${mutedCls}`}>
+                      Page {previewPage + 1} / {totalPreviewPages} — {filteredEntries.length} écritures
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                        disabled={previewPage === 0}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
+                          isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      {Array.from({ length: Math.min(5, totalPreviewPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPreviewPages <= 5) {
+                          pageNum = i;
+                        } else if (previewPage < 3) {
+                          pageNum = i;
+                        } else if (previewPage > totalPreviewPages - 4) {
+                          pageNum = totalPreviewPages - 5 + i;
+                        } else {
+                          pageNum = previewPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setPreviewPage(pageNum)}
+                            className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
+                              previewPage === pageNum
+                                ? 'text-white shadow-sm'
+                                : isDark
+                                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                            style={previewPage === pageNum ? { backgroundColor: couleur } : {}}
+                          >
+                            {pageNum + 1}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1))}
+                        disabled={previewPage >= totalPreviewPages - 1}
+                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
+                          isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </div>
           )}
@@ -733,16 +858,17 @@ export default function ExportComptable({
                 {getFilenamePreview()}
               </p>
               <p className={`text-xs mt-2 ${mutedCls}`}>
-                {entries.length} écritures comptables seront exportées
+                {filteredEntries.length} écritures comptables seront exportées
+                {journalFilter !== 'all' && ` (journal ${journalFilter})`}
               </p>
             </div>
 
             <button
               onClick={handleExport}
-              disabled={entries.length === 0}
+              disabled={filteredEntries.length === 0}
               className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               style={{
-                backgroundColor: entries.length === 0 ? (isDark ? '#475569' : '#94a3b8') : couleur,
+                backgroundColor: filteredEntries.length === 0 ? (isDark ? '#475569' : '#94a3b8') : couleur,
               }}
             >
               <Download className="w-4 h-4" />
@@ -751,21 +877,21 @@ export default function ExportComptable({
           </div>
 
           {/* Equilibre check */}
-          {entries.length > 0 && (
+          {filteredEntries.length > 0 && (
             <div className={`mt-4 pt-4 border-t ${borderCls}`}>
               <div className="flex items-center gap-2">
                 <ArrowUpDown className="w-4 h-4" style={{ color: couleur }} />
                 <span className={`text-xs font-medium ${mutedCls}`}>
-                  Équilibre des écritures :
+                  Équilibre des écritures{journalFilter !== 'all' ? ` (${journalFilter})` : ''} :
                 </span>
-                {Math.abs(totalDebit - totalCredit) < 0.01 ? (
+                {Math.abs(totalFilteredDebit - totalFilteredCredit) < 0.01 ? (
                   <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
                     <CheckCircle className="w-3.5 h-3.5" />
                     Équilibré
                   </span>
                 ) : (
                   <span className="text-xs font-semibold text-amber-500">
-                    Écart de {fmtEUR.format(Math.abs(totalDebit - totalCredit))}
+                    Écart de {fmtEUR.format(Math.abs(totalFilteredDebit - totalFilteredCredit))}
                   </span>
                 )}
               </div>
