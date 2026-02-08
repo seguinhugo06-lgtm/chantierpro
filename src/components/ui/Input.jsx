@@ -198,7 +198,7 @@ const Input = forwardRef(({
           <div
             className={cn(
               'absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none',
-              error ? 'text-danger-500' : isDark ? 'text-slate-400' : 'text-gray-400'
+              error ? 'text-danger-500' : isDark ? 'text-slate-400' : 'text-gray-500'
             )}
             aria-hidden="true"
           >
@@ -234,7 +234,7 @@ const Input = forwardRef(({
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           {/* Right icon (if not password/clearable/error/success) */}
           {icon && iconPosition === 'right' && !hasRightElements && (
-            <span className={isDark ? 'text-slate-400' : 'text-gray-400'} aria-hidden="true">
+            <span className={isDark ? 'text-slate-400' : 'text-gray-500'} aria-hidden="true">
               {icon}
             </span>
           )}
@@ -248,7 +248,7 @@ const Input = forwardRef(({
                 'p-0.5 rounded transition-colors',
                 isDark
                   ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
-                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                  : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100'
               )}
               tabIndex={-1}
               aria-label="Effacer"
@@ -266,7 +266,7 @@ const Input = forwardRef(({
                 'p-0.5 rounded transition-colors',
                 isDark
                   ? 'text-slate-400 hover:text-slate-200'
-                  : 'text-gray-400 hover:text-gray-600'
+                  : 'text-gray-500 hover:text-gray-600'
               )}
               tabIndex={-1}
               aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
@@ -319,7 +319,7 @@ const Input = forwardRef(({
               'text-xs ml-auto flex-shrink-0',
               valueLength > maxLength
                 ? 'text-danger-500'
-                : isDark ? 'text-slate-400' : 'text-gray-400'
+                : isDark ? 'text-slate-400' : 'text-gray-500'
             )}
             aria-live="polite"
           >
@@ -467,7 +467,7 @@ export const Textarea = forwardRef(({
             id={counterId}
             className={cn(
               'text-xs ml-auto',
-              valueLength > maxLength ? 'text-danger-500' : isDark ? 'text-slate-400' : 'text-gray-400'
+              valueLength > maxLength ? 'text-danger-500' : isDark ? 'text-slate-400' : 'text-gray-500'
             )}
           >
             {valueLength}/{maxLength}
@@ -603,7 +603,7 @@ export const Select = forwardRef(({
         <div
           className={cn(
             'absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none',
-            isDark ? 'text-slate-400' : 'text-gray-400'
+            isDark ? 'text-slate-400' : 'text-gray-500'
           )}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

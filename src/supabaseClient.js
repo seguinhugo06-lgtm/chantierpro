@@ -24,7 +24,7 @@ if (!isDevelopment && urlHasDemoParam && !envDemoMode) {
   console.warn('Demo mode via URL is disabled in production for security reasons.');
 }
 
-// En mode demo, on utilise des URLs factices pour eviter les erreurs 401
+// En mode demo, on utilise des URLs factices pour éviter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 

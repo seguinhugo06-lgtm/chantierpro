@@ -208,8 +208,8 @@ export default function MorningBrief({
           <button
             onClick={() => setIsExpanded(false)}
             className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-            aria-label="Reduire le briefing"
-            title="Reduire"
+            aria-label="Réduire le briefing"
+            title="Réduire"
           >
             <ChevronDown size={18} className={textMuted} />
           </button>
@@ -338,7 +338,7 @@ export default function MorningBrief({
         <div className={`p-4 rounded-xl border ${borderColor} ${isDark ? 'bg-slate-800/50' : 'bg-slate-50/50'}`}>
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp size={16} style={{ color: couleur }} />
-            <h3 className={`font-semibold ${textPrimary}`}>Apercu du mois</h3>
+            <h3 className={`font-semibold ${textPrimary}`}>Aperçu du mois</h3>
           </div>
           <div className="space-y-3">
             <div>

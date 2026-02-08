@@ -27,7 +27,7 @@ import {
 
 const MOVEMENT_TYPES = [
   { id: 'all', label: 'Tous' },
-  { id: 'entree', label: 'Entrees', color: 'emerald' },
+  { id: 'entree', label: 'Entrées', color: 'emerald' },
   { id: 'sortie', label: 'Sorties', color: 'red' },
   { id: 'ajustement', label: 'Ajustements', color: 'blue' },
   { id: 'inventaire', label: 'Inventaire', color: 'purple' },
@@ -281,7 +281,7 @@ export default function StockMovementsHistory({
             <div className={`p-2 rounded-lg ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
               <TrendingUp size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
             </div>
-            <span className={textMuted}>Entrees</span>
+            <span className={textMuted}>Entrées</span>
           </div>
           <p className={`text-2xl font-bold text-emerald-500`}>+{stats.entrees}</p>
         </div>
@@ -318,6 +318,7 @@ export default function StockMovementsHistory({
             <input
               type="text"
               placeholder="Rechercher produit, motif, chantier..."
+              aria-label="Rechercher produit, motif, chantier"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}

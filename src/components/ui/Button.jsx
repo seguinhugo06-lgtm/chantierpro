@@ -54,7 +54,7 @@ export const Button = React.forwardRef(
         className={cn(
           'inline-flex items-center justify-center font-medium',
           'transition-all duration-150',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
           variantStyles[variant],
           sizeStyles[size],
           isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',
@@ -109,7 +109,7 @@ export const IconButton = React.forwardRef(
         className={cn(
           'inline-flex items-center justify-center',
           'rounded-lg transition-all duration-150',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
           variantStyles[variant],
           iconButtonSizes[size],
           isDisabled && 'opacity-50 cursor-not-allowed pointer-events-none',

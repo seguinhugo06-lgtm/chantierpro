@@ -46,12 +46,13 @@ export default function ResponsiveTable({
     <div className={className}>
       {/* Desktop Table - hidden on mobile */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full" aria-label="Tableau de données">
           <thead>
             <tr className={headerBg}>
               {columns.map(col => (
                 <th
                   key={col.key}
+                  scope="col"
                   className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${textMuted} ${col.className || ''}`}
                 >
                   {col.label}

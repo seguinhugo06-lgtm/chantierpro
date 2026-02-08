@@ -326,18 +326,18 @@ export default function QuickClientModal({
             </AnimatePresence>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-3 pt-2">
+          {/* Action buttons - stack on mobile */}
+          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
             <button
               onClick={onClose}
-              className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
             >
               Annuler
             </button>
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
-              className="flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
+              className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
               style={{ backgroundColor: couleur }}
             >
               {isSubmitting ? (

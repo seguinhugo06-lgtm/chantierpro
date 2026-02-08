@@ -187,7 +187,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         <div className={`${cardBg} rounded-2xl border p-5 lg:col-span-2`}>
           <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
             <Shield className="w-5 h-5" style={{ color: couleur }} />
-            Checklist de conformite
+            Checklist de conformité
           </h3>
           <div className="space-y-2.5">
             {results.map((item) => {
@@ -269,7 +269,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
               }}
             >
               <Shield className="w-4 h-4" />
-              Tester la conformite d'une facture
+              Tester la conformité d'une facture
             </button>
           </div>
         </div>

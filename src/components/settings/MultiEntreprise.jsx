@@ -503,7 +503,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
           {/* Contact row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Telephone</label>
+              <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Téléphone</label>
               <div className="relative">
                 <Phone size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input
@@ -592,7 +592,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
               <div className={`mt-2 w-16 h-16 rounded-lg border overflow-hidden ${isDark ? 'border-slate-600 bg-slate-700' : 'border-slate-200 bg-slate-50'}`}>
                 <img
                   src={form.logo}
-                  alt="Apercu logo"
+                  alt="Aperçu logo"
                   className="w-full h-full object-contain"
                   onError={e => { e.target.style.display = 'none'; }}
                 />
@@ -675,7 +675,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
           <div className={`${cardBg} border rounded-2xl p-8 text-center`}>
             <Building2 size={40} className={`mx-auto mb-3 ${textMuted}`} />
             <p className={`font-medium ${textPrimary}`}>Aucune entreprise</p>
-            <p className={`text-sm ${textMuted} mt-1`}>Ajoutez votre premiere entreprise pour commencer.</p>
+            <p className={`text-sm ${textMuted} mt-1`}>Ajoutez votre première entreprise pour commencer.</p>
           </div>
         ) : (
           <div className="space-y-3">

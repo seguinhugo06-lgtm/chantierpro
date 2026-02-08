@@ -27,6 +27,8 @@ import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Mo
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { toast } from '../../stores/toastStore';
+import { sendEmail, sendSMS } from '../../services/CommunicationsService';
+import { createRelanceRecord } from '../../services/RelanceService';
 
 /**
  * @typedef {'devis' | 'facture'} ItemType
@@ -376,27 +378,44 @@ export default function RelanceModal({
     setError(null);
 
     try {
-      // Simulate API call - replace with actual service
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const results = [];
 
-      // TODO: Call actual relance service
-      // await RelanceService.send({
-      //   itemType: item.type,
-      //   itemId: item.id,
-      //   channel,
-      //   message,
-      //   clientEmail: item.client.email,
-      //   clientPhone: item.client.telephone,
-      // });
+      // Send email if channel includes it
+      if (channel === 'email' || channel === 'both') {
+        if (canSendEmail) {
+          const subject = item.type === 'facture'
+            ? `Rappel - Facture ${item.numero || '#'}`
+            : `Rappel - Devis ${item.numero || '#'}`;
+          const htmlMessage = message.split('\n').map(line =>
+            line.trim() ? `<p>${line}</p>` : '<br/>'
+          ).join('');
+          const emailResult = await sendEmail(item.client.email, subject, htmlMessage, { clientId: item.id, documentId: item.id, documentType: item.type });
+          results.push({ channel: 'email', ...emailResult });
+        }
+      }
 
-      // Log for demo
-      console.log('Relance sent:', {
-        type: item?.type,
-        id: item?.id,
-        channel,
-        message,
-        to: channel === 'email' ? item?.client?.email : item?.client?.telephone,
-      });
+      // Send SMS if channel includes it
+      if (channel === 'sms' || channel === 'both') {
+        if (canSendSMS) {
+          const smsResult = await sendSMS(item.client.telephone, message, { clientId: item.id });
+          results.push({ channel: 'sms', ...smsResult });
+        }
+      }
+
+      // Check at least one succeeded
+      const anySuccess = results.some(r => r.success);
+      if (!anySuccess && results.length > 0) {
+        throw new Error(results[0]?.error || "Echec de l'envoi");
+      }
+
+      // Persist relance record to localStorage
+      try {
+        const record = createRelanceRecord(item.id, 'manual', channel);
+        const history = JSON.parse(localStorage.getItem('cp_relance_history') || '{}');
+        if (!history[item.id]) history[item.id] = [];
+        history[item.id].push(record);
+        localStorage.setItem('cp_relance_history', JSON.stringify(history));
+      } catch (e) { console.warn('Failed to save relance history:', e); }
 
       // Success feedback
       const channelLabel = channel === 'both' ? 'Email et SMS' : channel === 'email' ? 'Email' : 'SMS';

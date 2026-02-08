@@ -33,7 +33,7 @@ const getStatusInfo = (statut) => {
     case 'planifie':
       return { variant: 'warning', label: 'Planifie', icon: Calendar };
     default:
-      return { variant: 'secondary', label: 'Prevu', icon: Clock };
+      return { variant: 'secondary', label: 'Prévu', icon: Clock };
   }
 };
 

@@ -141,6 +141,11 @@ export const syncQueue = async (handlers) => {
         case 'delete':
           await handler.delete?.(mutation.data.id);
           break;
+        default:
+          console.warn(`Action sync inconnue: ${mutation.action} pour ${mutation.entity}`);
+          results.failed++;
+          results.errors.push({ mutation, error: `Unknown action: ${mutation.action}` });
+          continue;
       }
 
       await removeMutation(mutation.id);

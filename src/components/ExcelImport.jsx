@@ -534,18 +534,19 @@ export default function ExcelImport({
         {/* Table de prévisualisation */}
         <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="overflow-x-auto max-h-64">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Prévisualisation des données Excel importées">
               <thead className={`sticky top-0 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
                 <tr>
                   {config.requiredFields.slice(0, 4).map((field) => (
                     <th
                       key={field}
+                      scope="col"
                       className={`px-4 py-2 text-left font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}
                     >
                       {field}
                     </th>
                   ))}
-                  <th className="px-4 py-2 w-10"></th>
+                  <th scope="col" className="px-4 py-2 w-10"></th>
                 </tr>
               </thead>
               <tbody className={isDark ? 'bg-gray-900' : 'bg-white'}>

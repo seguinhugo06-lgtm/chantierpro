@@ -151,6 +151,7 @@ export default function CatalogBrowser({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher un article..."
+              aria-label="Rechercher un article"
               className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
             />
           </div>

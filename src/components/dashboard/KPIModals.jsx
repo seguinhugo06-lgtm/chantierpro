@@ -408,7 +408,7 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
         />
         <ActionButton
           icon={Send}
-          label="Relancer"
+          label="Envoyer une relance"
           variant={isOverdue ? 'warning' : 'outline'}
           size="sm"
           onClick={() => onRelance?.(facture)}

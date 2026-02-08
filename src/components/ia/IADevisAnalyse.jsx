@@ -736,6 +736,7 @@ export default function IADevisAnalyse({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Rechercher une analyse..."
+              aria-label="Rechercher une analyse"
               className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm ${inputCls} focus:outline-none focus:ring-2`}
               style={{ '--tw-ring-color': couleur }}
             />
@@ -1030,14 +1031,14 @@ export default function IADevisAnalyse({
         {/* Travaux table */}
         <div className={`rounded-xl border overflow-hidden mb-6 ${cardBg}`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Travaux analysés par IA">
               <thead>
                 <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                  <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Désignation</th>
-                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
-                  <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Unité</th>
-                  <th className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>P.U. HT</th>
-                  <th className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>Total HT</th>
+                  <th scope="col" className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>Désignation</th>
+                  <th scope="col" className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
+                  <th scope="col" className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Unité</th>
+                  <th scope="col" className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>P.U. HT</th>
+                  <th scope="col" className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>Total HT</th>
                 </tr>
               </thead>
               <tbody>
@@ -1233,20 +1234,20 @@ export default function IADevisAnalyse({
               {/* Travaux table */}
               <div className={`rounded-xl border overflow-hidden mb-6 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Détail des travaux du devis IA">
                     <thead>
                       <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                        <th className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>
+                        <th scope="col" className={`text-left px-4 py-3 font-semibold ${textPrimary}`}>
                           Désignation
                         </th>
-                        <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
-                        <th className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>
+                        <th scope="col" className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>Qté</th>
+                        <th scope="col" className={`text-center px-3 py-3 font-semibold ${textPrimary}`}>
                           Unité
                         </th>
-                        <th className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>
+                        <th scope="col" className={`text-right px-3 py-3 font-semibold ${textPrimary}`}>
                           P.U. HT
                         </th>
-                        <th className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>
+                        <th scope="col" className={`text-right px-4 py-3 font-semibold ${textPrimary}`}>
                           Total HT
                         </th>
                       </tr>

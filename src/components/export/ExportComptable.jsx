@@ -680,28 +680,28 @@ export default function ExportComptable({
               ) : (
                 <>
                 <div className="overflow-x-auto rounded-lg border" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Écritures comptables">
                     <thead>
                       <tr className={isDark ? 'bg-slate-700/60' : 'bg-slate-50'}>
-                        <th className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Date
                         </th>
-                        <th className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Réf
                         </th>
-                        <th className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Libellé
                         </th>
-                        <th className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Débit
                         </th>
-                        <th className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Crédit
                         </th>
-                        <th className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Compte
                         </th>
-                        <th className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
+                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
                           Journal
                         </th>
                       </tr>

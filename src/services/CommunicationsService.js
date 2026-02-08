@@ -168,7 +168,6 @@ async function withRetry(fn, maxAttempts = CONFIG.retry.maxAttempts) {
 async function logCommunication(log) {
   try {
     if (!supabase) {
-      console.log('[DEMO] Would log communication:', log);
       return 'demo-log-id';
     }
 
@@ -287,7 +286,6 @@ export async function sendSMS(to, message, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.sid });
     }
 
-    console.log(`SMS sent to ${formattedNumber}, SID: ${result.sid}`);
     return { success: true, messageId: result.sid };
 
   } catch (error) {
@@ -312,7 +310,77 @@ export async function sendSMS(to, message, options = {}) {
  * @param {string} [preheader] - Preheader text
  * @returns {string} Complete HTML email
  */
-function getEmailWrapper(content, preheader = '') {
+/**
+ * Generate a unique tracking ID for email open tracking
+ * @returns {string} tracking ID
+ */
+function generateTrackingId() {
+  return `trk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Record email send event for tracking
+ * @param {string} trackingId - Tracking ID
+ * @param {string} to - Recipient email
+ * @param {string} subject - Email subject
+ * @param {Object} options - Additional tracking data
+ */
+function recordEmailSend(trackingId, to, subject, options = {}) {
+  try {
+    const tracking = JSON.parse(localStorage.getItem('cp_email_tracking') || '{}');
+    tracking[trackingId] = {
+      to,
+      subject,
+      sentAt: new Date().toISOString(),
+      status: 'sent',
+      clientId: options.clientId || null,
+      documentId: options.documentId || null,
+      documentType: options.documentType || null,
+      openedAt: null,
+    };
+    localStorage.setItem('cp_email_tracking', JSON.stringify(tracking));
+  } catch (e) {
+    console.warn('Failed to record email tracking:', e);
+  }
+}
+
+/**
+ * Get all email tracking records
+ * @param {string} [filterDocumentId] - Optional document ID filter
+ * @returns {Array} Tracking records sorted by date desc
+ */
+export function getEmailTrackingRecords(filterDocumentId) {
+  try {
+    const tracking = JSON.parse(localStorage.getItem('cp_email_tracking') || '{}');
+    let records = Object.entries(tracking).map(([id, data]) => ({ id, ...data }));
+    if (filterDocumentId) {
+      records = records.filter(r => r.documentId === filterDocumentId);
+    }
+    return records.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get tracking status for a specific document
+ * @param {string} documentId - Devis/facture ID
+ * @returns {{ sent: number, lastSent: string|null }} Summary
+ */
+export function getDocumentEmailStatus(documentId) {
+  const records = getEmailTrackingRecords(documentId);
+  return {
+    sent: records.length,
+    lastSent: records.length > 0 ? records[0].sentAt : null,
+    records,
+  };
+}
+
+function getEmailWrapper(content, preheader = '', trackingId = '') {
+  const trackingPixel = trackingId
+    ? `<img src="https://chantierpro.vercel.app/api/track/${trackingId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
+    : '';
+
   return `
 <!DOCTYPE html>
 <html lang="fr">
@@ -351,6 +419,7 @@ function getEmailWrapper(content, preheader = '') {
       <div class="email-footer">
         <p>Cet email a été envoyé automatiquement par ChantierPro.</p>
         <p>&copy; ${new Date().getFullYear()} ChantierPro. Tous droits réservés.</p>
+        ${trackingPixel}
       </div>
     </div>
   </center>
@@ -379,13 +448,17 @@ export async function sendEmail(to, subject, html, options = {}) {
     return { success: false, error: 'Subject and HTML content required' };
   }
 
-  // Wrap in responsive template
-  const fullHtml = getEmailWrapper(html, options.preheader);
+  // Generate tracking ID for email open tracking
+  const trackingId = generateTrackingId();
+
+  // Wrap in responsive template with tracking pixel
+  const fullHtml = getEmailWrapper(html, options.preheader, trackingId);
 
   // Check config
   if (!CONFIG.sendgrid.apiKey) {
     console.warn('[DEMO] Email would be sent to:', to, 'Subject:', subject);
-    return { success: true, messageId: 'demo-email-id' };
+    recordEmailSend(trackingId, to, subject, options);
+    return { success: true, messageId: 'demo-email-id', trackingId };
   }
 
   // Log communication (pending)
@@ -439,8 +512,8 @@ export async function sendEmail(to, subject, html, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.messageId });
     }
 
-    console.log(`Email sent to ${to}, ID: ${result.messageId}`);
-    return { success: true, messageId: result.messageId };
+    recordEmailSend(trackingId, to, subject, options);
+    return { success: true, messageId: result.messageId, trackingId };
 
   } catch (error) {
     console.error('Failed to send email:', error);
@@ -928,7 +1001,6 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to email if we have one
     if (options.fallbackEmail) {
-      console.log('SMS failed, falling back to email');
       return sendEmail(options.fallbackEmail, subject, html, options);
     }
 
@@ -940,7 +1012,6 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to SMS if we have a phone
     if (options.fallbackPhone) {
-      console.log('Email failed, falling back to SMS');
       return sendSMS(options.fallbackPhone, message, options);
     }
 

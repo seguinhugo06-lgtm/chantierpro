@@ -45,6 +45,7 @@ import {
   EyeOff,
   GripVertical,
   LayoutDashboard,
+  ShieldCheck,
 } from 'lucide-react';
 
 // Dashboard components
@@ -92,6 +93,9 @@ import {
   transformSuggestions,
 } from '../lib/actionSuggestions';
 import { useData } from '../context/DataContext';
+
+// Subscription
+import UsageAlerts from './subscription/UsageAlerts';
 
 // ============ CONSTANTS ============
 
@@ -142,8 +146,8 @@ function daysSince(date) {
 const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, setCreateMode }) {
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
-  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
-  const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
@@ -239,7 +243,7 @@ const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, 
             <BarChart3 size={20} style={{ color: couleur }} />
           </div>
           <div>
-            <h3 className={`font-semibold ${textPrimary}`}>Votre futur tableau de bord</h3>
+            <h2 className={`font-semibold ${textPrimary}`}>Votre futur tableau de bord</h2>
             <p className={`text-sm ${textMuted}`}>
               Voici ce que vous verrez une fois vos données ajoutées
             </p>
@@ -375,9 +379,9 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
         >
           <Activity size={18} className="text-blue-500" />
         </div>
-        <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h2 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
           Activité récente
-        </h3>
+        </h2>
       </div>
 
       {/* Body */}
@@ -413,7 +417,7 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
                         </p>
                       )}
                     </div>
-                    <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                    <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-500' : 'text-gray-600'}`}>
                       {(() => {
                         const diff = Date.now() - activity.date.getTime();
                         const hours = Math.floor(diff / 3600000);
@@ -497,6 +501,8 @@ export default function Dashboard({
     { id: 'activity', label: 'Activité récente', visible: true },
     { id: 'weather', label: 'Alertes Météo', visible: true },
     { id: 'stock', label: 'Stock', visible: true },
+    { id: 'subscription', label: 'Abonnement', visible: true },
+    { id: 'conformity', label: 'Conformité', visible: true },
   ];
 
   const [widgetConfig, setWidgetConfig] = useState(() => {
@@ -1025,9 +1031,9 @@ export default function Dashboard({
                     <Clock size={18} className="text-amber-500" />
                   </div>
                   <div>
-                    <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       Devis à relancer
-                    </h3>
+                    </h2>
                     <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {staleDevis.length} devis envoyé{staleDevis.length > 1 ? 's' : ''} depuis plus de 7 jours sans réponse
                     </p>
@@ -1319,7 +1325,7 @@ export default function Dashboard({
           <section className="px-4 sm:px-6 pb-6">
             <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h3>
+                <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Widgets du tableau de bord</h2>
                 <button onClick={() => { updateWidgetConfig(DEFAULT_WIDGETS); }} className={`text-xs px-2 py-1 rounded ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
                   Réinitialiser
                 </button>
@@ -1426,6 +1432,11 @@ export default function Dashboard({
               />
             )}
 
+            {/* Subscription Usage Widget */}
+            {isWidgetVisible('subscription') && (
+              <UsageAlerts isDark={isDark} couleur={couleur} />
+            )}
+
             {/* Stock Widget - only if low stock */}
             {isWidgetVisible('stock') && stats.lowStockItems?.length > 0 && (
               <StockWidget
@@ -1433,6 +1444,55 @@ export default function Dashboard({
                 isDark={isDark}
               />
             )}
+
+            {/* Conformity Score Widget */}
+            {isWidgetVisible('conformity') && (() => {
+              // Compute live score from entreprise data (fallback to localStorage cache)
+              let score = 0;
+              const now = new Date();
+              if (entreprise?.siret) score += 7;
+              if (entreprise?.codeApe) score += 7;
+              if (entreprise?.tvaIntra) score += 6;
+              if (entreprise?.rcProAssureur && (!entreprise.rcProValidite || new Date(entreprise.rcProValidite) > now)) score += 20;
+              if (entreprise?.decennaleAssureur && (!entreprise.decennaleValidite || new Date(entreprise.decennaleValidite) > now)) score += 20;
+              if (entreprise?.cgv) score += 10;
+              if (entreprise?.iban && entreprise?.bic) score += 10;
+              if (entreprise?.adresse && entreprise?.nom && entreprise?.tel && entreprise?.email) score += 10;
+              if (entreprise?.rcsVille || entreprise?.rcsNumero) score += 10;
+              // Override with detailed score from Admin panel if available
+              const cached = parseInt(localStorage.getItem('cp_conformity_score') || '0');
+              if (cached > 0) score = cached;
+
+              if (score === 0) return null;
+              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+              const titleClass = isDark ? 'text-white' : 'text-slate-900';
+              const mutedClass = isDark ? 'text-slate-400' : 'text-slate-500';
+              return (
+                <div
+                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-shadow`}
+                  onClick={() => setPage('settings')}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${score >= 80 ? 'bg-emerald-100 text-emerald-600' : score >= 50 ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'} ${isDark ? 'bg-opacity-20' : ''}`}>
+                      <ShieldCheck size={20} />
+                    </div>
+                    <p className={`font-semibold ${titleClass}`}>Conformité</p>
+                  </div>
+                  <div className="flex items-end gap-3">
+                    <p className={`text-3xl font-bold ${score >= 80 ? 'text-emerald-500' : score >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{score}%</p>
+                    <div className="flex-1">
+                      <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                        <div
+                          className={`h-2 rounded-full transition-all ${score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                          style={{ width: `${Math.min(100, score)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <p className={`text-xs ${mutedClass} mt-2`}>Score réglementaire · Voir détails →</p>
+                </div>
+              );
+            })()}
           </div>
         </section>
       </div>

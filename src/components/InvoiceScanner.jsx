@@ -31,8 +31,6 @@ export default function InvoiceScanner({
   const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white border-slate-300";
   const modalBg = isDark ? "bg-slate-900" : "bg-slate-50";
 
-  if (!isOpen) return null;
-
   const handleFileSelect = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,6 +72,8 @@ export default function InvoiceScanner({
     };
     reader.readAsDataURL(file);
   }, [defaultChantierId]);
+
+  if (!isOpen) return null;
 
   const handleReset = () => {
     setStep('capture');
@@ -262,7 +262,7 @@ export default function InvoiceScanner({
               {/* Image preview */}
               {imageData && (
                 <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-                  <img src={imageData} alt="Facture scannee" className="w-full max-h-48 object-contain bg-slate-100 dark:bg-slate-700" />
+                  <img src={imageData} alt="Facture scannée" className="w-full max-h-48 object-contain bg-slate-100 dark:bg-slate-700" />
                 </div>
               )}
 

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
+import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import NoteModal from './NoteModal';
@@ -20,9 +21,17 @@ import useSmartClocking from '../hooks/useSmartClocking';
 // Storage key for timer persistence
 const TIMER_STORAGE_KEY = 'chantierpro_equipe_timer';
 
-export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark, modeDiscret }) {
+export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark, modeDiscret, setPage }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // Form validation
+  const employeeFullSchema = {
+    ...employeeSchema,
+    email: [emailValidator()],
+    telephone: [phoneValidator()],
+  };
+  const { errors: formErrors, validateAll: validateEmployee, clearErrors: clearFormErrors } = useFormValidation(employeeFullSchema);
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -319,7 +328,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       approuve: false,
       manuel: true,
       verrouille: false,
-      note: 'Saisie groupee'
+      note: 'Saisie groupée'
     }));
     setPointages([...pointages, ...newPointages]);
     setShowBulkEntry(false);
@@ -375,8 +384,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   };
 
   const addEmploye = () => {
-    if (!form.nom.trim()) {
-      showToast('Le nom est requis', 'error');
+    if (!validateEmployee(form)) {
+      showToast('Veuillez corriger les erreurs du formulaire', 'error');
       return;
     }
     const data = {
@@ -398,6 +407,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     }
     setShowAdd(false);
     setEditId(null);
+    clearFormErrors();
     setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' });
   };
 
@@ -512,7 +522,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h1>
+        <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h2>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -528,17 +538,17 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <p className="text-red-500 text-xs mt-1">Le nom est requis</p>
             )}
           </div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prenom</label><input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} placeholder="Marie" /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} placeholder="Marie" /></div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Role / Poste</label>
             <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))}>
               <option value="">Sélectionner...</option>
               <option value="Chef de chantier">Chef de chantier</option>
-              <option value="Ouvrier qualifie">Ouvrier qualifie</option>
-              <option value="Electricien">Electricien</option>
+              <option value="Ouvrier qualifié">Ouvrier qualifié</option>
+              <option value="Électricien">Électricien</option>
               <option value="Plombier">Plombier</option>
               <option value="Peintre">Peintre</option>
-              <option value="Macon">Macon</option>
+              <option value="Maçon">Maçon</option>
               <option value="Carreleur">Carreleur</option>
               <option value="Menuisier">Menuisier</option>
               <option value="Apprenti">Apprenti</option>
@@ -551,14 +561,22 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <option value="">Sélectionner...</option>
               <option value="CDI">CDI</option>
               <option value="CDD">CDD</option>
-              <option value="Interim">Interim</option>
+              <option value="Intérim">Intérim</option>
               <option value="Apprentissage">Apprentissage</option>
               <option value="Stage">Stage</option>
               <option value="Auto-entrepreneur">Auto-entrepreneur</option>
             </select>
           </div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Telephone</label><input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" /></div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" /></div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
+            <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.telephone ? 'border-red-400' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" />
+            {formErrors.telephone && <p className="text-red-500 text-xs mt-1">{formErrors.telephone}</p>}
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label>
+            <input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.email ? 'border-red-400' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" />
+            {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
+          </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date d'embauche</label>
             <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.dateEmbauche} onChange={e => setForm(p => ({...p, dateEmbauche: e.target.value}))} />
@@ -613,7 +631,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <p className={`text-xs ${textMuted} mt-1`}>Prix facture au client</p>
             </div>
             <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Cout horaire charge (EUR/h) *</label>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Coût horaire chargé (EUR/h) *</label>
               <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
               <p className={`text-xs ${textMuted} mt-1`}>Salaire brut + charges (~45%)</p>
             </div>
@@ -637,7 +655,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         <button onClick={() => setShowBulkEntry(false)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupée</h1>
+        <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Saisie groupée</h2>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <p className={`text-sm ${textMuted} mb-4`}>Ajoutez les heures pour plusieurs employés en une seule fois</p>
@@ -732,7 +750,19 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
   if (equipe.length === 0) return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
+        </div>
       </div>
 
       <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -806,6 +836,16 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
           {/* Online indicator */}
           <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
@@ -818,10 +858,10 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           </span>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowBulkEntry(true)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupee</span>
+          <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
           </button>
-          <button onClick={() => setShowAdd(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
+          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: couleur}}>
             <Plus size={16} /> <span className="hidden sm:inline">Employé</span>
           </button>
         </div>
@@ -847,7 +887,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               <button
                 onClick={() => setWeekOffset(o => o - 1)}
                 className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg"
-                aria-label="Semaine precedente"
+                aria-label="Semaine précédente"
               >
                 <ChevronLeft size={24} className="text-orange-600" />
               </button>
@@ -946,7 +986,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
               <Euro size={18} className="text-red-500" />
             </div>
-            <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Cout semaine</p>
+            <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Coût semaine</p>
             <p className="text-2xl sm:text-3xl font-bold text-red-500">
               {modeDiscret ? '***' : weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
               <span className="text-base font-normal ml-1">€</span>
@@ -1167,6 +1207,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Rechercher un employé..."
+                  aria-label="Rechercher un employé"
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
               </div>
@@ -1777,9 +1818,9 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                       <Timer size={20} />
                     </div>
                     <div>
-                      <h3 className="font-bold">Chronometre</h3>
+                      <h3 className="font-bold">Chronomètre</h3>
                       <p className="text-sm opacity-80">
-                        {chrono.running ? (chrono.paused ? 'En pause' : 'En cours...') : 'Pret a demarrer'}
+                        {chrono.running ? (chrono.paused ? 'En pause' : 'En cours...') : 'Prêt à démarrer'}
                       </p>
                     </div>
                   </div>
@@ -2115,7 +2156,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                         <span
                           className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`}
                           style={{ borderColor: isDark ? '#1e293b' : '#fff' }}
-                          title={p.manuel ? 'Saisie manuelle' : 'Chronometre'}
+                          title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
                       </div>
 
@@ -2306,7 +2347,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                         {/* Source indicator */}
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-blue-500' : 'bg-orange-500'}`}
-                          title={p.manuel ? 'Saisie manuelle' : 'Chronometre'}
+                          title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
 
                         {/* Hours */}

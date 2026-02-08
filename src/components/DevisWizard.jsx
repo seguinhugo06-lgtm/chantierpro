@@ -230,6 +230,14 @@ export default function DevisWizard({
     }
     if (form.lignes.length === 0) {
       newErrors.lignes = 'Ajoutez au moins un article';
+    } else {
+      // Validate each line item
+      const invalidLines = form.lignes.filter(l =>
+        !l.description?.trim() || !(parseFloat(l.quantite) > 0) || !(parseFloat(l.prixUnitaire) > 0)
+      );
+      if (invalidLines.length > 0) {
+        newErrors.lignes = `${invalidLines.length} ligne(s) incomplète(s) : description, quantité et prix requis`;
+      }
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -671,7 +679,7 @@ export default function DevisWizard({
                       value={form.notes}
                       onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                       rows={2}
-                      placeholder="Conditions particulieres..."
+                      placeholder="Conditions particulières..."
                       className={`w-full px-4 py-2 border rounded-xl resize-none ${inputBg}`}
                     />
                   </div>
@@ -843,9 +851,9 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
             value={ligne.prixUnitaire || ''}
             onChange={e => onUpdate('prixUnitaire', parseFloat(e.target.value) || 0)}
             placeholder="Prix HT"
-            className={`w-full px-3 py-1 border rounded-lg text-sm text-right ${inputBg}`}
+            className={`w-full pl-3 pr-10 py-1 border rounded-lg text-sm text-right ${inputBg}`}
           />
-          <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs ${textMuted}`}>EUR</span>
+          <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${textMuted}`}>EUR</span>
         </div>
 
         <span className="text-lg font-bold min-w-[80px] text-right" style={{ color: couleur }}>

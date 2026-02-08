@@ -26,10 +26,15 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   const [activeTab, setActiveTab] = useState('historique');
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca
+  const [filterCategorie, setFilterCategorie] = useState('');
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
-  const filtered = clients.filter(c => !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase()));
+  const filtered = clients.filter(c => {
+    const matchSearch = !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase());
+    const matchCat = !filterCategorie || c.categorie === filterCategorie;
+    return matchSearch && matchCat;
+  });
 
   const getSortedClients = () => {
     const sorted = [...filtered];
@@ -153,7 +158,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             <ArrowLeft size={20} className={textPrimary} />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h1>
+            <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-sm`}><Building2 size={14} />{client.entreprise}</span>}
               {client.categorie && <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}><Tag size={10} />{client.categorie}</span>}
@@ -194,7 +199,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               {client.telephone ? (
                 <p className={`font-medium ${textPrimary}`}>{client.telephone}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
                   + Ajouter un téléphone
                 </button>
               )}
@@ -204,7 +209,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               {client.email ? (
                 <p className={`font-medium ${textPrimary}`}>{client.email}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
                   + Ajouter un email
                 </button>
               )}
@@ -214,7 +219,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               {client.adresse ? (
                 <p className={`font-medium ${textPrimary}`}>{client.adresse}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
                   + Ajouter une adresse
                 </button>
               )}
@@ -227,7 +232,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             {client.notes ? (
               <p className={`text-sm p-3 rounded-xl ${isDark ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>{client.notes}</p>
             ) : (
-              <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+              <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
                 + Ajouter des notes
               </button>
             )}
@@ -567,7 +572,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {allPhotos.map(p => (
                       <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
-                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt="" />
+                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} />
                         <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
                       </div>
                     ))}
@@ -588,7 +593,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h1>
+        <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h2>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -626,17 +631,29 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       />
 
       <div className="flex justify-between items-center gap-3">
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowQuickModal(true)}
-            className="px-3 py-2.5 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all"
+            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all"
             style={{background: `${couleur}20`, color: couleur}}
             title="Ajout rapide"
           >
             <Zap size={16} /><span className="hidden sm:inline">Ajout rapide</span>
           </button>
-          <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
           </button>
         </div>
@@ -645,10 +662,23 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input type="text" placeholder="Rechercher un client..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+          <input type="text" placeholder="Rechercher un client..." aria-label="Rechercher un client" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
         </div>
         {clients.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto">
+          <div className="flex items-center gap-2 overflow-x-auto flex-wrap">
+            <select
+              value={filterCategorie}
+              onChange={e => setFilterCategorie(e.target.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm border ${inputBg}`}
+            >
+              <option value="">Tous</option>
+              <option value="Particulier">Particulier</option>
+              <option value="Professionnel">Professionnel</option>
+              <option value="Syndic">Syndic</option>
+              <option value="Architecte">Architecte</option>
+              <option value="Promoteur">Promoteur</option>
+              <option value="Collectivité">Collectivité</option>
+            </select>
             <span className={`text-sm ${textMuted} flex items-center gap-1 whitespace-nowrap`}><ArrowUpDown size={14} /> Trier:</span>
             {[
               { key: 'recent', label: 'Recent' },
@@ -767,8 +797,13 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                           <Building2 size={12} /> {c.entreprise}
                         </p>
                       )}
+                      {c.categorie && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-0.5 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                          <Tag size={10} /> {c.categorie}
+                        </span>
+                      )}
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[40px] min-h-[40px] flex items-center justify-center opacity-60 hover:opacity-100 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" aria-label="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center opacity-60 hover:opacity-100 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
                       <Edit3 size={18} />
                     </button>
                   </div>
@@ -781,11 +816,11 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                       <Smartphone size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
                       <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
-                          <Phone size={16} className="text-blue-500" />
+                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler le client" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
+                          <Phone size={18} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
-                          <MessageCircle size={16} className="text-green-500" />
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="Contacter par WhatsApp" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
+                          <MessageCircle size={18} className="text-green-500" />
                         </button>
                       </div>
                     </div>
@@ -800,8 +835,8 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <MapPin size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1 truncate`}>{c.adresse}</span>
-                      <button onClick={() => openGPS(c.adresse)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
-                        <ExternalLink size={16} className="text-purple-500" />
+                      <button onClick={() => openGPS(c.adresse)} aria-label="Ouvrir dans Google Maps" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
+                        <ExternalLink size={18} className="text-purple-500" />
                       </button>
                     </div>
                   )}
@@ -823,7 +858,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                       <FileText size={14} className={s.factures > 0 ? 'text-purple-500' : ''} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-400') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : 'Aucun CA pour ce client'}>{s.ca > 0 ? `${s.ca.toLocaleString('fr-FR')}€` : '—'}</span>
+                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : 'Aucun CA pour ce client'}>{s.ca > 0 ? `${s.ca.toLocaleString('fr-FR')}€` : '—'}</span>
                 </div>
               </div>
             );

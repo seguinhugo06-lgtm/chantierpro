@@ -115,7 +115,7 @@ export default function CommandPalette({
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
     { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
-    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('equipe'); onClose(); }, color: '#14b8a6' },
+    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('dashboard'); onClose(); }, color: '#14b8a6' },
   ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
 
   // Navigation items
@@ -123,20 +123,11 @@ export default function CommandPalette({
     { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord résumé', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
     { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents devis factures liste', icon: FileText, action: () => { setPage('devis'); onClose(); } },
     { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
-    { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire', icon: Users, action: () => { setPage('clients'); onClose(); } },
+    { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire sous-traitants', icon: Users, action: () => { setPage('clients'); onClose(); } },
     { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda planning semaine mois jour', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
-    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
-    { id: 'nav-ouvrages', label: 'Bibliothèque d\'Ouvrages', keywords: 'ouvrages composites prix bibliothèque prestations', icon: Library, action: () => { setPage('ouvrages'); onClose(); } },
-    { id: 'nav-soustraitants', label: 'Sous-Traitants', keywords: 'sous-traitants prestataires intervenants', icon: UserCheck, action: () => { setPage('soustraitants'); onClose(); } },
-    { id: 'nav-commandes', label: 'Commandes Fournisseurs', keywords: 'commandes achats fournisseurs approvisionnement', icon: ShoppingCart, action: () => { setPage('commandes'); onClose(); } },
-    { id: 'nav-tresorerie', label: 'Trésorerie', keywords: 'trésorerie cash flow finances tréso banque', icon: Wallet, action: () => { setPage('tresorerie'); onClose(); } },
-    { id: 'nav-ia-devis', label: 'IA Devis', keywords: 'ia photo analyse devis automatique intelligence artificielle', icon: Camera, action: () => { setPage('ia-devis'); onClose(); } },
-    { id: 'nav-entretien', label: 'Carnet d\'Entretien', keywords: 'entretien maintenance garantie contrat SAV', icon: ClipboardList, action: () => { setPage('entretien'); onClose(); } },
-    { id: 'nav-signatures', label: 'Signatures', keywords: 'signature électronique signer contrat acceptation', icon: PenTool, action: () => { setPage('signatures'); onClose(); } },
-    { id: 'nav-export', label: 'Export Comptable', keywords: 'export comptabilité fec csv comptable déclaration', icon: Download, action: () => { setPage('export'); onClose(); } },
-    { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés ouvriers salariés pointage', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
-    { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse marge rentabilité bénéfice', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
-    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil', icon: Settings, action: () => { setPage('settings'); onClose(); } },
+    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
+    { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
+    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 
   // Create Fuse instances for fuzzy search

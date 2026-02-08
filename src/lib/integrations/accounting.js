@@ -47,7 +47,7 @@ export const INTEGRATION_TYPES = {
   EXPORT_FEC: {
     id: 'export_fec',
     name: 'Export FEC',
-    description: 'Fichier des Ecritures Comptables (legal)',
+    description: 'Fichier des Écritures Comptables (legal)',
     color: '#3b82f6',
     icon: 'file-text',
     features: ['export_fec', 'conformite_fiscale'],
@@ -269,8 +269,8 @@ export const exportExpensesToCSV = (expenses, chantiers) => {
 };
 
 /**
- * Genere un fichier FEC (Fichier des Ecritures Comptables)
- * Format obligatoire pour le fisc francais
+ * Genere un fichier FEC (Fichier des Écritures Comptables)
+ * Format obligatoire pour le fisc français
  */
 export const generateFEC = (invoices, expenses, clients, chantiers, entreprise, dateDebut, dateFin) => {
   // Format FEC conforme a l'article A.47 A-1 du LPF

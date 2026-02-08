@@ -4,6 +4,8 @@ import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
 import { logger } from '../lib/logger';
+import { queueMutation } from '../lib/offline/sync';
+import { toast } from '../stores/toastStore';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -12,6 +14,14 @@ import { logger } from '../lib/logger';
  */
 
 const DataContext = createContext(null);
+
+/** Queue a mutation for offline sync and notify user if actually offline */
+const queueOffline = async (action, entity, data) => {
+  await queueMutation(action, entity, data);
+  if (!navigator.onLine) {
+    toast.info('Sauvegardé hors-ligne', 'Synchronisation automatique au retour du réseau');
+  }
+};
 
 // localStorage keys for demo mode persistence
 const DEMO_STORAGE_KEY = 'chantierpro_demo_data';
@@ -275,9 +285,8 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving client to Supabase:', error);
-        // Rollback optimistic update
-        setClients(prev => prev.filter(c => c.id !== newClient.id));
-        throw error;
+        // Queue for offline sync instead of rollback
+        await queueOffline('create', 'clients', newClient);
       }
     }
 
@@ -285,16 +294,19 @@ export function DataProvider({ children, initialData = {} }) {
   }, [userId]);
 
   const updateClient = useCallback(async (id, data) => {
-    const updatedClient = { id, ...data, updatedAt: new Date().toISOString() };
-
     setClients(prev => prev.map(c =>
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
 
     if (!isDemo && userId) {
-      const current = clients.find(c => c.id === id);
-      if (current) {
-        await saveItem('clients', { ...current, ...data }, userId);
+      try {
+        const current = clients.find(c => c.id === id);
+        if (current) {
+          await saveItem('clients', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating client in Supabase:', error);
+        await queueOffline('update', 'clients', { id, ...data });
       }
     }
   }, [userId, clients]);
@@ -303,7 +315,12 @@ export function DataProvider({ children, initialData = {} }) {
     setClients(prev => prev.filter(c => c.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('clients', id, userId);
+      try {
+        await deleteItem('clients', id, userId);
+      } catch (error) {
+        console.error('Error deleting client from Supabase:', error);
+        await queueOffline('delete', 'clients', { id });
+      }
     }
   }, [userId]);
 
@@ -332,9 +349,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving devis to Supabase:', error);
-        // Rollback optimistic update
-        setDevis(prev => prev.filter(d => d.id !== newDevis.id));
-        throw error;
+        await queueOffline('create', 'devis', newDevis);
       }
     }
 
@@ -347,9 +362,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = devis.find(d => d.id === id);
-      if (current) {
-        await saveItem('devis', { ...current, ...data }, userId);
+      try {
+        const current = devis.find(d => d.id === id);
+        if (current) {
+          await saveItem('devis', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating devis in Supabase:', error);
+        await queueOffline('update', 'devis', { id, ...data });
       }
     }
   }, [userId, devis]);
@@ -358,7 +378,12 @@ export function DataProvider({ children, initialData = {} }) {
     setDevis(prev => prev.filter(d => d.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('devis', id, userId);
+      try {
+        await deleteItem('devis', id, userId);
+      } catch (error) {
+        console.error('Error deleting devis from Supabase:', error);
+        await queueOffline('delete', 'devis', { id });
+      }
     }
   }, [userId]);
 
@@ -397,9 +422,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving chantier to Supabase:', error);
-        // Rollback optimistic update
-        setChantiers(prev => prev.filter(c => c.id !== newChantier.id));
-        throw error;
+        await queueOffline('create', 'chantiers', newChantier);
       }
     }
 
@@ -412,9 +435,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = chantiers.find(c => c.id === id);
-      if (current) {
-        await saveItem('chantiers', { ...current, ...data }, userId);
+      try {
+        const current = chantiers.find(c => c.id === id);
+        if (current) {
+          await saveItem('chantiers', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating chantier in Supabase:', error);
+        await queueOffline('update', 'chantiers', { id, ...data });
       }
     }
   }, [userId, chantiers]);
@@ -423,7 +451,12 @@ export function DataProvider({ children, initialData = {} }) {
     setChantiers(prev => prev.filter(c => c.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('chantiers', id, userId);
+      try {
+        await deleteItem('chantiers', id, userId);
+      } catch (error) {
+        console.error('Error deleting chantier from Supabase:', error);
+        await queueOffline('delete', 'chantiers', { id });
+      }
     }
   }, [userId]);
 
@@ -450,8 +483,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving depense to Supabase:', error);
-        setDepenses(prev => prev.filter(d => d.id !== newDepense.id));
-        throw error;
+        await queueOffline('create', 'depenses', newDepense);
       }
     }
 
@@ -464,9 +496,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = depenses.find(d => d.id === id);
-      if (current) {
-        await saveItem('depenses', { ...current, ...data }, userId);
+      try {
+        const current = depenses.find(d => d.id === id);
+        if (current) {
+          await saveItem('depenses', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating depense in Supabase:', error);
+        await queueOffline('update', 'depenses', { id, ...data });
       }
     }
   }, [userId, depenses]);
@@ -475,7 +512,12 @@ export function DataProvider({ children, initialData = {} }) {
     setDepenses(prev => prev.filter(d => d.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('depenses', id, userId);
+      try {
+        await deleteItem('depenses', id, userId);
+      } catch (error) {
+        console.error('Error deleting depense from Supabase:', error);
+        await queueOffline('delete', 'depenses', { id });
+      }
     }
   }, [userId]);
 
@@ -503,8 +545,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving pointage to Supabase:', error);
-        setPointages(prev => prev.filter(p => p.id !== newPointage.id));
-        throw error;
+        await queueOffline('create', 'pointages', newPointage);
       }
     }
 
@@ -517,9 +558,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = pointages.find(p => p.id === id);
-      if (current) {
-        await saveItem('pointages', { ...current, ...data }, userId);
+      try {
+        const current = pointages.find(p => p.id === id);
+        if (current) {
+          await saveItem('pointages', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating pointage in Supabase:', error);
+        await queueOffline('update', 'pointages', { id, ...data });
       }
     }
   }, [userId, pointages]);
@@ -528,7 +574,12 @@ export function DataProvider({ children, initialData = {} }) {
     setPointages(prev => prev.filter(p => p.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('pointages', id, userId);
+      try {
+        await deleteItem('pointages', id, userId);
+      } catch (error) {
+        console.error('Error deleting pointage from Supabase:', error);
+        await queueOffline('delete', 'pointages', { id });
+      }
     }
   }, [userId]);
 
@@ -574,8 +625,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving employee to Supabase:', error);
-        setEquipe(prev => prev.filter(e => e.id !== newEmployee.id));
-        throw error;
+        await queueOffline('create', 'equipe', newEmployee);
       }
     }
 
@@ -588,9 +638,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = equipe.find(e => e.id === id);
-      if (current) {
-        await saveItem('equipe', { ...current, ...data }, userId);
+      try {
+        const current = equipe.find(e => e.id === id);
+        if (current) {
+          await saveItem('equipe', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating employee in Supabase:', error);
+        await queueOffline('update', 'equipe', { id, ...data });
       }
     }
   }, [userId, equipe]);
@@ -599,7 +654,12 @@ export function DataProvider({ children, initialData = {} }) {
     setEquipe(prev => prev.filter(e => e.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('equipe', id, userId);
+      try {
+        await deleteItem('equipe', id, userId);
+      } catch (error) {
+        console.error('Error deleting employee from Supabase:', error);
+        await queueOffline('delete', 'equipe', { id });
+      }
     }
   }, [userId]);
 
@@ -624,8 +684,7 @@ export function DataProvider({ children, initialData = {} }) {
         }
       } catch (error) {
         console.error('Error saving catalogue item to Supabase:', error);
-        setCatalogue(prev => prev.filter(c => c.id !== newItem.id));
-        throw error;
+        await queueOffline('create', 'catalogue', newItem);
       }
     }
 
@@ -638,9 +697,14 @@ export function DataProvider({ children, initialData = {} }) {
     ));
 
     if (!isDemo && userId) {
-      const current = catalogue.find(c => c.id === id);
-      if (current) {
-        await saveItem('catalogue', { ...current, ...data }, userId);
+      try {
+        const current = catalogue.find(c => c.id === id);
+        if (current) {
+          await saveItem('catalogue', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating catalogue item in Supabase:', error);
+        await queueOffline('update', 'catalogue', { id, ...data });
       }
     }
   }, [userId, catalogue]);
@@ -649,7 +713,12 @@ export function DataProvider({ children, initialData = {} }) {
     setCatalogue(prev => prev.filter(c => c.id !== id));
 
     if (!isDemo && userId) {
-      await deleteItem('catalogue', id, userId);
+      try {
+        await deleteItem('catalogue', id, userId);
+      } catch (error) {
+        console.error('Error deleting catalogue item from Supabase:', error);
+        await queueOffline('delete', 'catalogue', { id });
+      }
     }
   }, [userId]);
 

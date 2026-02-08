@@ -25,6 +25,7 @@ import {
   ThermometerSun, Home, TreePine
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
+import { toast } from '../../stores/toastStore';
 
 const STORAGE_KEY = 'cp_ouvrages';
 
@@ -558,7 +559,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
   const handleSave = useCallback(() => {
     if (!editingOuvrage) return;
     if (!editingOuvrage.designation.trim()) {
-      alert('La désignation est obligatoire.');
+      toast.warning('La désignation est obligatoire');
       return;
     }
 
@@ -830,16 +831,16 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           {expandedComposants && (
             <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" aria-label="Composants de l'ouvrage">
                   <thead className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
                     <tr>
-                      <th className={`text-left px-4 py-3 ${textPrimary}`}>Type</th>
-                      <th className={`text-left px-4 py-3 ${textPrimary}`}>Description</th>
-                      <th className={`text-right px-4 py-3 w-20 ${textPrimary}`}>Qté</th>
-                      <th className={`text-left px-4 py-3 w-20 ${textPrimary}`}>Unité</th>
-                      <th className={`text-right px-4 py-3 w-28 ${textPrimary}`}>P.U. HT</th>
-                      <th className={`text-right px-4 py-3 w-28 ${textPrimary}`}>Montant</th>
-                      <th className="w-12"></th>
+                      <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Type</th>
+                      <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Description</th>
+                      <th scope="col" className={`text-right px-4 py-3 w-20 ${textPrimary}`}>Qté</th>
+                      <th scope="col" className={`text-left px-4 py-3 w-20 ${textPrimary}`}>Unité</th>
+                      <th scope="col" className={`text-right px-4 py-3 w-28 ${textPrimary}`}>P.U. HT</th>
+                      <th scope="col" className={`text-right px-4 py-3 w-28 ${textPrimary}`}>Montant</th>
+                      <th scope="col" className="w-12"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1239,6 +1240,7 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
             <input
               type="text"
               placeholder="Rechercher un ouvrage..."
+              aria-label="Rechercher un ouvrage"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
@@ -1476,16 +1478,16 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
         /* List View (table) */
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Bibliothèque des ouvrages">
               <thead className={`border-b ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                 <tr>
-                  <th className={`text-left px-4 py-3 ${textPrimary}`}>Ouvrage</th>
-                  <th className={`text-right px-4 py-3 w-28 hidden sm:table-cell ${textPrimary}`}>Revient HT</th>
-                  <th className={`text-right px-4 py-3 w-28 ${textPrimary}`}>Vente HT</th>
-                  <th className={`text-right px-4 py-3 w-20 hidden sm:table-cell ${textPrimary}`}>Marge</th>
-                  <th className={`text-center px-4 py-3 w-24 hidden md:table-cell ${textPrimary}`}>Composants</th>
-                  <th className={`text-center px-4 py-3 w-24 hidden md:table-cell ${textPrimary}`}>Difficulté</th>
-                  <th className="w-28"></th>
+                  <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Ouvrage</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-28 hidden sm:table-cell ${textPrimary}`}>Revient HT</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-28 ${textPrimary}`}>Vente HT</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-20 hidden sm:table-cell ${textPrimary}`}>Marge</th>
+                  <th scope="col" className={`text-center px-4 py-3 w-24 hidden md:table-cell ${textPrimary}`}>Composants</th>
+                  <th scope="col" className={`text-center px-4 py-3 w-24 hidden md:table-cell ${textPrimary}`}>Difficulté</th>
+                  <th scope="col" className="w-28"></th>
                 </tr>
               </thead>
               <tbody>

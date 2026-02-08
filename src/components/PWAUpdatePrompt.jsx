@@ -1,11 +1,12 @@
 /**
  * PWAUpdatePrompt
  * Prompts users when a new version is available
+ * Matches app theme (light/dark) with brand color
  */
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Download, RefreshCw, X, Wifi, WifiOff, Smartphone, Share, PlusSquare } from 'lucide-react';
+import { Download, RefreshCw, X, WifiOff, Share, PlusSquare, Smartphone, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/Button';
@@ -14,6 +15,8 @@ import { Button } from './ui/Button';
  * @typedef {Object} PWAUpdatePromptProps
  * @property {Object} [syncHandlers] - Handlers for sync operations
  * @property {string} [className] - Additional CSS classes
+ * @property {boolean} [isDark] - Dark mode flag
+ * @property {string} [couleur] - Brand color
  */
 
 // Check if user dismissed install prompt recently (within 7 days)
@@ -59,7 +62,7 @@ function setDismissedInStorage() {
  * PWAUpdatePrompt - Shows prompts for PWA updates and install
  * @param {PWAUpdatePromptProps} props
  */
-export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
+export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark = false, couleur = '#f97316' }) {
   const {
     canInstall,
     install,
@@ -103,7 +106,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
   // Debug logging
   React.useEffect(() => {
     if (showDelayed) {
-      console.log('📱 PWA Install Debug:', {
+      console.log('PWA Install Debug:', {
         platform,
         canInstall,
         isInstalled,
@@ -124,8 +127,17 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
   const showInstall = showNativeInstall || showIOSInstall || showMobileInstructions;
   const showUpdate = needsRefresh && !dismissed.update;
 
+  // Theme-aware classes
+  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const cardBorder = isDark ? 'border-slate-700' : 'border-slate-200';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textMuted = isDark ? 'text-slate-500' : 'text-slate-500';
+  const stepBg = isDark ? 'bg-slate-700/50' : 'bg-slate-100';
+  const closeBtnHover = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
+
   return (
-    <div className={cn('fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-80', className)}>
+    <div className={cn('fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
       <AnimatePresence mode="popLayout">
         {/* Offline indicator */}
         {isOffline && (
@@ -134,13 +146,13 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="flex items-center gap-3 p-3 rounded-xl bg-yellow-500/90 text-yellow-950 backdrop-blur-sm shadow-lg"
+            className="flex items-center gap-3 p-3 rounded-xl bg-amber-500 text-white shadow-lg"
           >
             <WifiOff className="w-5 h-5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Mode hors ligne</p>
+              <p className="text-sm font-semibold">Mode hors ligne</p>
               {pendingSyncCount > 0 && (
-                <p className="text-xs opacity-80">
+                <p className="text-xs opacity-90">
                   {pendingSyncCount} operation{pendingSyncCount > 1 ? 's' : ''} en attente
                 </p>
               )}
@@ -155,12 +167,12 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="flex items-center gap-3 p-3 rounded-xl bg-green-500/90 text-white backdrop-blur-sm shadow-lg"
+            className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500 text-white shadow-lg"
           >
             <RefreshCw className="w-5 h-5 flex-shrink-0 animate-spin" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Synchronisation...</p>
-              <p className="text-xs opacity-80">
+              <p className="text-sm font-semibold">Synchronisation...</p>
+              <p className="text-xs opacity-90">
                 {pendingSyncCount} operation{pendingSyncCount > 1 ? 's' : ''} en cours
               </p>
             </div>
@@ -174,34 +186,46 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="relative p-4 rounded-xl bg-slate-900 dark:bg-slate-800 text-white shadow-lg border border-slate-700"
+            className={cn(
+              'relative p-4 rounded-2xl shadow-xl border-2',
+              cardBg,
+              cardBorder
+            )}
           >
             <button
               type="button"
               onClick={() => setDismissed(d => ({ ...d, update: true }))}
-              className="absolute top-2 right-2 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+              className={cn(
+                'absolute top-3 right-3 p-1.5 rounded-lg transition-colors',
+                textSecondary,
+                closeBtnHover
+              )}
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div className="flex items-start gap-3 pr-6">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                <RefreshCw className="w-5 h-5 text-orange-400" />
+              <div
+                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${couleur}20` }}
+              >
+                <Sparkles className="w-6 h-6" style={{ color: couleur }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold mb-1">
-                  Mise a jour disponible
+                <p className={cn('text-base font-bold mb-1', textPrimary)}>
+                  Nouvelle version disponible
                 </p>
-                <p className="text-xs text-slate-400 mb-3">
-                  Une nouvelle version est prete a etre installee.
+                <p className={cn('text-sm mb-3', textSecondary)}>
+                  Des ameliorations sont pretes !
                 </p>
                 <Button
                   size="sm"
                   onClick={refresh}
-                  className="w-full bg-orange-500 hover:bg-orange-600"
+                  className="w-full text-white font-semibold py-2.5 rounded-xl shadow-md transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: couleur }}
                 >
-                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                  <RefreshCw className="w-4 h-4 mr-2" />
                   Mettre a jour
                 </Button>
               </div>
@@ -209,7 +233,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
           </motion.div>
         )}
 
-        {/* Install prompt - Enhanced for mobile */}
+        {/* Install prompt - Theme-aware design */}
         {showInstall && (
           <motion.div
             key="install"
@@ -217,111 +241,157 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative overflow-hidden rounded-2xl bg-slate-900 text-white shadow-2xl"
+            className={cn(
+              'relative overflow-hidden rounded-2xl shadow-2xl border-2',
+              cardBg,
+              cardBorder
+            )}
           >
-            {/* Gradient background effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-transparent to-amber-500/20" />
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-500" />
+            {/* Accent bar at top */}
+            <div
+              className="absolute top-0 left-0 right-0 h-1.5"
+              style={{ backgroundColor: couleur }}
+            />
 
-            <div className="relative p-4">
+            <div className="relative p-5 pt-6">
               <button
                 type="button"
                 onClick={handleDismissInstall}
-                className="absolute top-3 right-3 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                className={cn(
+                  'absolute top-4 right-4 p-2 rounded-full transition-colors',
+                  textSecondary,
+                  closeBtnHover
+                )}
                 aria-label="Fermer"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <div className="flex items-start gap-3 pr-6">
-                {/* App Icon */}
-                <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg">
-                  <span className="text-2xl">🏗️</span>
+              {/* Header with app icon */}
+              <div className="flex items-center gap-4 mb-4 pr-8">
+                <div
+                  className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
+                  style={{ backgroundColor: couleur }}
+                >
+                  <span className="text-3xl">🏗️</span>
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-lg font-bold mb-0.5">ChantierPro</p>
-                  <p className="text-xs text-slate-400 mb-3">Gestion de chantiers BTP</p>
-
-                  {/* Native install button for Chrome/Android */}
-                  {canInstall ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={install}
-                        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold py-3 rounded-xl shadow-lg shadow-orange-500/25 transition-all active:scale-[0.98]"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Installer l'app
-                      </Button>
-                      <div className="flex items-center justify-center gap-3 mt-3 text-[11px] text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          Gratuit
-                        </span>
-                        <span>•</span>
-                        <span>Hors-ligne</span>
-                        <span>•</span>
-                        <span>Rapide</span>
-                      </div>
-                    </>
-                  ) : platform.isIOS ? (
-                    /* iOS Instructions */
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                            <Share className="w-4 h-4 text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Partager</p>
-                            <p className="text-xs text-slate-500">Bouton en bas de Safari</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
-                          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                            <PlusSquare className="w-4 h-4 text-green-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Sur l'écran d'accueil</p>
-                            <p className="text-xs text-slate-500">Puis "Ajouter"</p>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    /* Android/Other browsers */
-                    <>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
-                            <span className="text-slate-300 font-bold">⋮</span>
-                          </div>
-                          <div>
-                            <p className="font-medium">Menu du navigateur</p>
-                            <p className="text-xs text-slate-500">3 points en haut</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm bg-slate-800 rounded-xl p-3">
-                          <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                            <PlusSquare className="w-4 h-4 text-green-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Ajouter à l'écran d'accueil</p>
-                            <p className="text-xs text-slate-500">Installer comme app</p>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                <div>
+                  <p className={cn('text-xl font-bold', textPrimary)}>ChantierPro</p>
+                  <p className={cn('text-sm', textSecondary)}>Gestion de chantiers BTP</p>
                 </div>
               </div>
 
+              {/* Native install button for Chrome/Android */}
+              {canInstall ? (
+                <>
+                  <Button
+                    size="lg"
+                    onClick={install}
+                    className="w-full text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-base"
+                    style={{ backgroundColor: couleur }}
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    Installer l'application
+                  </Button>
+
+                  {/* Benefits */}
+                  <div className={cn('flex items-center justify-center gap-4 mt-4 text-xs font-medium', textMuted)}>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      100% Gratuit
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      Hors-ligne
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      Rapide
+                    </span>
+                  </div>
+                </>
+              ) : platform.isIOS ? (
+                /* iOS Instructions */
+                <div className="space-y-3">
+                  <p className={cn('text-sm font-medium mb-3', textSecondary)}>
+                    Pour installer sur votre iPhone :
+                  </p>
+                  <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Share className="w-4 h-4" style={{ color: couleur }} />
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Appuyez sur Partager</p>
+                      </div>
+                      <p className={cn('text-xs', textMuted)}>Icone en bas de Safari</p>
+                    </div>
+                  </div>
+                  <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Sur l'ecran d'accueil</p>
+                      </div>
+                      <p className={cn('text-xs', textMuted)}>Puis "Ajouter"</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Android/Other browsers */
+                <div className="space-y-3">
+                  <p className={cn('text-sm font-medium mb-3', textSecondary)}>
+                    Pour installer sur votre telephone :
+                  </p>
+                  <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={cn('text-lg font-bold', textPrimary)}>⋮</span>
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Menu du navigateur</p>
+                      </div>
+                      <p className={cn('text-xs', textMuted)}>3 points en haut a droite</p>
+                    </div>
+                  </div>
+                  <div className={cn('flex items-center gap-4 p-3 rounded-xl', stepBg)}>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <PlusSquare className="w-4 h-4" style={{ color: couleur }} />
+                        <p className={cn('font-semibold text-sm', textPrimary)}>Ajouter a l'ecran d'accueil</p>
+                      </div>
+                      <p className={cn('text-xs', textMuted)}>L'app sera installee</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Bottom hint for manual install */}
               {!canInstall && (
-                <p className="text-[10px] text-slate-600 text-center mt-3 pt-3 border-t border-slate-800">
-                  ✨ Accès instantané • Fonctionne hors-ligne • Notifications
-                </p>
+                <div className={cn('flex items-center justify-center gap-2 mt-4 pt-4 border-t text-xs', cardBorder, textMuted)}>
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Acces instantane • Fonctionne hors-ligne</span>
+                </div>
               )}
             </div>
           </motion.div>
@@ -334,7 +404,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
 /**
  * PWAInstallButton - Compact install button for header/menu
  */
-export function PWAInstallButton({ className }) {
+export function PWAInstallButton({ className, couleur = '#f97316' }) {
   const { canInstall, install, isInstalled } = usePWA();
 
   if (isInstalled || !canInstall) {
@@ -347,6 +417,7 @@ export function PWAInstallButton({ className }) {
       size="sm"
       onClick={install}
       className={cn('gap-1.5', className)}
+      style={{ borderColor: couleur, color: couleur }}
     >
       <Download className="w-4 h-4" />
       Installer
@@ -368,14 +439,14 @@ export function OfflineIndicator({ className }) {
     <div
       className={cn(
         'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
         className
       )}
     >
       <WifiOff className="w-3 h-3" />
       Hors ligne
       {pendingSyncCount > 0 && (
-        <span className="px-1.5 py-0.5 rounded-full bg-yellow-200 dark:bg-yellow-800 text-[10px]">
+        <span className="px-1.5 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-[10px]">
           {pendingSyncCount}
         </span>
       )}

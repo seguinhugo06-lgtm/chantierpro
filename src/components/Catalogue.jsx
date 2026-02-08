@@ -22,7 +22,7 @@ const UNITES = [
   { value: 'palette', label: 'Palette' },
 ];
 
-export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) {
+export default function Catalogue({ catalogue, setCatalogue, couleur, isDark, setPage }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -121,7 +121,7 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
         <button onClick={() => { setShow(false); setEditId(null); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} article</h1>
+        <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} article</h2>
       </div>
       <div className={`${cardBg} rounded-2xl border p-6`}>
         <div className="space-y-4">
@@ -168,17 +168,29 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue ({catalogue.length})</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue ({catalogue.length})</h1>
+        </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowStock(!showStock)} className={`px-4 py-2.5 rounded-xl text-sm min-h-[44px] flex items-center gap-2 transition-all ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} style={showStock ? {background: couleur} : {}}>
+          <button onClick={() => setShowStock(!showStock)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 transition-all ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} style={showStock ? {background: couleur} : {}}>
             <Box size={16} />
             <span className="hidden sm:inline">Stock</span>
           </button>
-          <button onClick={() => setShowArticlePicker(true)} className={`px-4 py-2.5 rounded-xl min-h-[44px] flex items-center gap-2 transition-all border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
+          <button onClick={() => setShowArticlePicker(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 transition-all border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
             <Sparkles size={16} />
             <span className="hidden sm:inline">Référentiel BTP</span>
           </button>
-          <button onClick={() => setShow(true)} className="px-4 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} />
             <span className="hidden sm:inline">Manuel</span>
           </button>
@@ -229,7 +241,7 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
       <div className="space-y-3">
         <div className={`relative max-w-sm`}>
           <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input type="text" placeholder="Rechercher un article..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
+          <input type="text" placeholder="Rechercher un article..." aria-label="Rechercher un article" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {CATEGORIES.map(cat => (
@@ -338,15 +350,15 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
       ) : (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Catalogue des articles">
               <thead className={`border-b ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                 <tr>
-                  <th className={`text-left px-4 py-3 ${textPrimary}`}>Article</th>
-                  <th className={`text-right px-4 py-3 w-24 ${textPrimary}`}>Vente</th>
-                  <th className={`text-right px-4 py-3 w-24 hidden sm:table-cell ${textPrimary}`}>Achat</th>
-                  <th className={`text-right px-4 py-3 w-20 hidden sm:table-cell ${textPrimary}`}>Marge</th>
-                  {showStock && <th className={`text-center px-4 py-3 w-28 ${textPrimary}`}>Stock</th>}
-                  <th className="w-24"></th>
+                  <th scope="col" className={`text-left px-4 py-3 ${textPrimary}`}>Article</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-24 ${textPrimary}`}>Vente</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-24 hidden sm:table-cell ${textPrimary}`}>Achat</th>
+                  <th scope="col" className={`text-right px-4 py-3 w-20 hidden sm:table-cell ${textPrimary}`}>Marge</th>
+                  {showStock && <th scope="col" className={`text-center px-4 py-3 w-28 ${textPrimary}`}>Stock</th>}
+                  <th scope="col" className="w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -357,7 +369,7 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
                     <tr key={item.id} className={`border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-100'}`} onClick={() => startEdit(item)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} title={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
+                          <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-label={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} title={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
                             <Star size={18} className={item.favori ? 'text-amber-500' : textMuted} fill={item.favori ? 'currentColor' : 'none'} />
                           </button>
                           <div>
@@ -378,12 +390,12 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           {item.stock_actuel !== undefined ? (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => decrementStock(item.id)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`} title="Retirer 1">
-                                <Minus size={14} className={textMuted} />
+                              <button onClick={() => decrementStock(item.id)} aria-label="Retirer une unité du stock" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`} title="Retirer 1">
+                                <Minus size={16} className={textMuted} />
                               </button>
-                              <input type="number" value={item.stock_actuel} onChange={e => updateStock(item.id, e.target.value)} className={`w-12 px-1 py-1 border rounded text-center text-sm ${inputBg}`} />
-                              <button onClick={() => incrementStock(item.id)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`} title="Ajouter 1">
-                                <Plus size={14} className={textMuted} />
+                              <input type="number" value={item.stock_actuel} onChange={e => updateStock(item.id, e.target.value)} aria-label="Quantité en stock" className={`w-14 px-1 py-1 border rounded text-center text-sm ${inputBg}`} />
+                              <button onClick={() => incrementStock(item.id)} aria-label="Ajouter une unité au stock" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`} title="Ajouter 1">
+                                <Plus size={16} className={textMuted} />
                               </button>
                             </div>
                           ) : (
@@ -395,10 +407,10 @@ export default function Catalogue({ catalogue, setCatalogue, couleur, isDark }) 
                       )}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} title="Modifier cet article" className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}>
+                          <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} title="Modifier cet article" aria-label="Modifier cet article" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg transition-all flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}>
                             <Edit3 size={18} />
                           </button>
-                          <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} title="Supprimer cet article" className={`p-2 rounded-lg transition-all ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}>
+                          <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} title="Supprimer cet article" aria-label="Supprimer cet article" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg transition-all flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}>
                             <Trash2 size={18} />
                           </button>
                         </div>

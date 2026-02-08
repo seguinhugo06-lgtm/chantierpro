@@ -149,7 +149,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Nouvel événement</h1>
+        <h2 className={`text-2xl font-bold ${textPrimary}`}>Nouvel événement</h2>
       </div>
 
       {/* Quick type selection */}
@@ -195,12 +195,24 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Planning</h1>
-          <p className={`text-sm ${textMuted}`}>{todayEvents.length} événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui</p>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Planning</h1>
+            <p className={`text-sm ${textMuted}`}>{todayEvents.length} événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui</p>
+          </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowAdd(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Événement</span>
           </button>
         </div>

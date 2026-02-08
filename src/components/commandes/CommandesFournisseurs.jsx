@@ -394,6 +394,7 @@ export default function CommandesFournisseurs({
               <input
                 type="text"
                 placeholder="Rechercher un article..."
+                aria-label="Rechercher un article"
                 value={catalogueSearch}
                 onChange={e => setCatalogueSearch(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2.5 rounded-lg border ${inputBg} focus:outline-none focus:ring-2`}
@@ -533,6 +534,7 @@ export default function CommandesFournisseurs({
               <input
                 type="text"
                 placeholder="Rechercher numéro ou fournisseur..."
+                aria-label="Rechercher numéro ou fournisseur"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className={`w-full sm:w-64 pl-10 pr-4 py-2 rounded-lg border text-sm ${inputBg} focus:outline-none focus:ring-2`}
@@ -552,16 +554,16 @@ export default function CommandesFournisseurs({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" aria-label="Liste des commandes fournisseurs">
                 <thead>
                   <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Numéro</th>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Fournisseur</th>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden md:table-cell`}>Chantier</th>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden sm:table-cell`}>Date</th>
-                    <th className={`text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Montant HT</th>
-                    <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Statut</th>
-                    <th className={`text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Actions</th>
+                    <th scope="col" className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Numéro</th>
+                    <th scope="col" className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Fournisseur</th>
+                    <th scope="col" className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden md:table-cell`}>Chantier</th>
+                    <th scope="col" className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted} hidden sm:table-cell`}>Date</th>
+                    <th scope="col" className={`text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Montant HT</th>
+                    <th scope="col" className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Statut</th>
+                    <th scope="col" className={`text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1223,16 +1225,16 @@ export default function CommandesFournisseurs({
 
           {/* Lignes table */}
           <div className="p-6">
-            <table className="w-full">
+            <table className="w-full" aria-label="Lignes de la commande fournisseur">
               <thead>
                 <tr className={`border-b-2 ${isDark ? 'border-slate-600' : 'border-slate-300'}`}>
-                  <th className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>#</th>
-                  <th className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>Description</th>
-                  <th className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>Ref.</th>
-                  <th className={`text-center py-2 text-xs font-semibold uppercase ${textMuted}`}>Qte</th>
-                  <th className={`text-center py-2 text-xs font-semibold uppercase ${textMuted}`}>Unite</th>
-                  <th className={`text-right py-2 text-xs font-semibold uppercase ${textMuted}`}>P.U. HT</th>
-                  <th className={`text-right py-2 text-xs font-semibold uppercase ${textMuted}`}>Montant HT</th>
+                  <th scope="col" className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>#</th>
+                  <th scope="col" className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>Description</th>
+                  <th scope="col" className={`text-left py-2 text-xs font-semibold uppercase ${textMuted}`}>Ref.</th>
+                  <th scope="col" className={`text-center py-2 text-xs font-semibold uppercase ${textMuted}`}>Qte</th>
+                  <th scope="col" className={`text-center py-2 text-xs font-semibold uppercase ${textMuted}`}>Unite</th>
+                  <th scope="col" className={`text-right py-2 text-xs font-semibold uppercase ${textMuted}`}>P.U. HT</th>
+                  <th scope="col" className={`text-right py-2 text-xs font-semibold uppercase ${textMuted}`}>Montant HT</th>
                 </tr>
               </thead>
               <tbody>

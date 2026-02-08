@@ -423,7 +423,7 @@ function RelanceDetailModal({ relance, onClose, onCopy, onSendEmail, isDark, cou
         <div className="px-6 py-4 border-b flex items-center justify-between"
           style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div>
-            <h3 className={`font-bold ${textPrimary}`}>Apercu du message</h3>
+            <h3 className={`font-bold ${textPrimary}`}>Aperçu du message</h3>
             <p className={`text-sm ${textMuted}`}>{relance.templateName}</p>
           </div>
           <button onClick={onClose} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>

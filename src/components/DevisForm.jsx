@@ -214,14 +214,14 @@ const DevisForm = memo(({
 
       {devisForm.lignes.length > 0 && (
         <div>
-          <table style={styles.table}>
+          <table style={styles.table} aria-label="Lignes du devis en cours">
             <thead style={styles.tableHead}>
               <tr>
-                <th style={styles.th}>Description</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Qté</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Prix HT</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Total</th>
-                <th style={{ ...styles.th, width: '50px' }}></th>
+                <th scope="col" style={styles.th}>Description</th>
+                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Qté</th>
+                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Prix HT</th>
+                <th scope="col" style={{ ...styles.th, textAlign: 'right' }}>Total</th>
+                <th scope="col" style={{ ...styles.th, width: '50px' }}></th>
               </tr>
             </thead>
             <tbody>

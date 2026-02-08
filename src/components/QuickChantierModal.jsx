@@ -497,16 +497,16 @@ export default function QuickChantierModal({
                 </div>
               </div>
 
-              {/* Budget Couts */}
+              {/* Budget Coûts */}
               <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
                 <p className={`text-xs font-medium mb-3 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Objectif de couts (optionnel)
+                  Objectif de coûts (optionnel)
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={`block text-xs mb-1 ${textMuted}`}>
                       <Package size={12} className="inline mr-1" />
-                      Materiaux
+                      Matériaux
                     </label>
                     <div className="relative">
                       <input

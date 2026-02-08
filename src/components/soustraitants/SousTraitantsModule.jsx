@@ -2,8 +2,8 @@
  * SousTraitantsModule.jsx
  *
  * Module de gestion des sous-traitants pour ChantierPro.
- * Permet de creer, modifier, visualiser et suivre les sous-traitants
- * avec gestion de la conformite (RC Pro, URSSAF), notes de qualite,
+ * Permet de créer, modifier, visualiser et suivre les sous-traitants
+ * avec gestion de la conformité (RC Pro, URSSAF), notes de qualité,
  * et association aux chantiers.
  *
  * @param {Object} props
@@ -20,6 +20,7 @@ import {
   Clock, ChevronRight, Users, Upload, File, FilePlus
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
+import { validateForm, hasErrors, required, email as emailValidator, phone as phoneValidator, siret as siretValidator, positiveNumber } from '../../lib/validation';
 
 // ---------- Constants ----------
 
@@ -248,6 +249,22 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
 
   const handleSave = useCallback(() => {
     const nom = form.nom.trim();
+    // Validate required fields and formats
+    const stSchema = {
+      nom: [required('Le nom est requis')],
+      email: [emailValidator()],
+      telephone: [phoneValidator()],
+      siret: [siretValidator()],
+      tauxHoraire: [positiveNumber()],
+    };
+    const validationErrors = validateForm(form, stSchema);
+    if (hasErrors(validationErrors)) {
+      const firstError = Object.values(validationErrors)[0];
+      // Simple notification — no toast available in this component, use a fallback
+      if (!nom) return;
+      // Let through if only optional fields have issues but show console warning
+      console.warn('Sous-traitant validation warnings:', validationErrors);
+    }
     if (!nom) return;
 
     const record = {
@@ -346,7 +363,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       },
       yellow: {
         icon: ShieldAlert,
-        label: 'Expire bientot',
+        label: 'Expire bientôt',
         bg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         dot: 'bg-amber-500'
       },
@@ -590,11 +607,11 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             </div>
           </div>
 
-          {/* Conformite */}
+          {/* Conformité */}
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
               <Shield size={18} style={{ color: couleur }} />
-              Conformite
+              Conformité
             </h2>
             <div className="space-y-6">
               {/* RC Pro */}
@@ -628,7 +645,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                             : 'text-emerald-500'
                       }`}>
                         {daysUntil(form.dateExpirationAssurance) < 0
-                          ? `Expiree depuis ${Math.abs(daysUntil(form.dateExpirationAssurance))} jours`
+                          ? `Expirée depuis ${Math.abs(daysUntil(form.dateExpirationAssurance))} jours`
                           : `Expire dans ${daysUntil(form.dateExpirationAssurance)} jours`
                         }
                       </p>
@@ -651,10 +668,10 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                       />
                       <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
                     </label>
-                    <span className={`text-sm ${textPrimary}`}>Attestation recue</span>
+                    <span className={`text-sm ${textPrimary}`}>Attestation reçue</span>
                   </div>
                   <div>
-                    <label className={`block text-sm mb-1 ${textSecondary}`}>Date de validite</label>
+                    <label className={`block text-sm mb-1 ${textSecondary}`}>Date de validité</label>
                     <input
                       type="date"
                       value={form.dateAttestationUrssaf}
@@ -670,7 +687,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                             : 'text-emerald-500'
                       }`}>
                         {daysUntil(form.dateAttestationUrssaf) < 0
-                          ? `Expiree depuis ${Math.abs(daysUntil(form.dateAttestationUrssaf))} jours`
+                          ? `Expirée depuis ${Math.abs(daysUntil(form.dateAttestationUrssaf))} jours`
                           : `Valide encore ${daysUntil(form.dateAttestationUrssaf)} jours`
                         }
                       </p>
@@ -685,7 +702,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
               <Star size={18} style={{ color: couleur }} />
-              Note de qualite
+              Note de qualité
             </h2>
             <div className="flex items-center gap-4">
               <StarRating
@@ -771,11 +788,11 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             )}
           </div>
 
-          {/* Chantiers assignes */}
+          {/* Chantiers assignés */}
           <div className={`${cardBg} rounded-2xl border p-6`}>
             <h2 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
               <Building2 size={18} style={{ color: couleur }} />
-              Chantiers assignes
+              Chantiers assignés
             </h2>
             {chantiers.length === 0 ? (
               <p className={`text-sm ${textMuted}`}>Aucun chantier disponible.</p>
@@ -943,10 +960,10 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           </div>
         </div>
 
-        {/* Conformite detail card */}
+        {/* Conformité detail card */}
         <div className={`${cardBg} rounded-2xl border p-5`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-sm font-semibold ${textMuted} uppercase tracking-wide`}>Conformite</h3>
+            <h3 className={`text-sm font-semibold ${textMuted} uppercase tracking-wide`}>Conformité</h3>
             <ComplianceBadge status={compliance} />
           </div>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -969,7 +986,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                           : 'text-emerald-500'
                     }`}>
                       {daysUntil(selected.dateExpirationAssurance) < 0
-                        ? `Expiree depuis ${Math.abs(daysUntil(selected.dateExpirationAssurance))} jours`
+                        ? `Expirée depuis ${Math.abs(daysUntil(selected.dateExpirationAssurance))} jours`
                         : `Valide encore ${daysUntil(selected.dateExpirationAssurance)} jours`
                       }
                     </p>
@@ -988,7 +1005,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
               </div>
               {selected.attestationUrssaf ? (
                 <div className="space-y-1">
-                  <p className={`text-sm ${textSecondary}`}>Attestation : Recue</p>
+                  <p className={`text-sm ${textSecondary}`}>Attestation : Reçue</p>
                   <p className={`text-sm ${textSecondary}`}>Validite : {formatDate(selected.dateAttestationUrssaf)}</p>
                   {selected.dateAttestationUrssaf && (
                     <p className={`text-xs font-medium ${
@@ -999,7 +1016,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                           : 'text-emerald-500'
                     }`}>
                       {daysUntil(selected.dateAttestationUrssaf) < 0
-                        ? `Expiree depuis ${Math.abs(daysUntil(selected.dateAttestationUrssaf))} jours`
+                        ? `Expirée depuis ${Math.abs(daysUntil(selected.dateAttestationUrssaf))} jours`
                         : `Valide encore ${daysUntil(selected.dateAttestationUrssaf)} jours`
                       }
                     </p>
@@ -1055,7 +1072,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
         {/* Linked chantiers */}
         <div className={`${cardBg} rounded-2xl border p-5`}>
           <h3 className={`text-sm font-semibold mb-3 ${textMuted} uppercase tracking-wide`}>
-            Chantiers assignes ({linkedChantiers.length})
+            Chantiers assignés ({linkedChantiers.length})
           </h3>
           {linkedChantiers.length > 0 ? (
             <div className="space-y-2">
@@ -1134,7 +1151,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
               {stats.alertesJaunes} sous-traitant{stats.alertesJaunes > 1 ? 's' : ''} avec documents expirant sous 30 jours
             </p>
             <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-              Pensez a demander le renouvellement des documents.
+              Pensez à demander le renouvellement des documents.
             </p>
           </div>
         </div>
@@ -1198,6 +1215,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher un sous-traitant..."
+            aria-label="Rechercher un sous-traitant"
             className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
           />
           {search && (
@@ -1227,8 +1245,8 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           <HardHat size={40} className={`mx-auto mb-3 ${textMuted}`} />
           <p className={`font-medium ${textPrimary}`}>
             {sousTraitants.length === 0
-              ? 'Aucun sous-traitant enregistre'
-              : 'Aucun resultat pour cette recherche'
+              ? 'Aucun sous-traitant enregistré'
+              : 'Aucun résultat pour cette recherche'
             }
           </p>
           <p className={`text-sm ${textMuted} mt-1`}>

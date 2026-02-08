@@ -230,7 +230,7 @@ export function PointageReminderNotification({
               </p>
             </div>
 
-            <button onClick={onDismiss} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={onDismiss} aria-label="Fermer la notification" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <X size={20} className={textSecondary} />
             </button>
           </div>

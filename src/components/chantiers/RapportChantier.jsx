@@ -19,6 +19,7 @@ import {
   CheckCircle, ArrowLeft, X
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
+import { downloadRapportPDF } from '../../lib/rapportChantierPdf';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -524,7 +525,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               <CheckCircle size={14} /> Valider le rapport
             </button>
             <button
-              onClick={() => showToast('Export PDF bientôt disponible', 'info')}
+              onClick={() => { try { downloadRapportPDF(draft, chantier, { couleur }); showToast('PDF téléchargé', 'success'); } catch (e) { showToast('Erreur export PDF', 'error'); } }}
               className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
             >
               <FileText size={14} /> Exporter PDF
@@ -888,7 +889,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               </button>
             )}
             <button
-              onClick={() => showToast('Export PDF bientôt disponible', 'info')}
+              onClick={() => { try { downloadRapportPDF(draft, chantier, { couleur }); showToast('PDF téléchargé', 'success'); } catch (e) { showToast('Erreur export PDF', 'error'); } }}
               className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'} transition-colors`}
             >
               <FileText size={14} /> Exporter PDF
@@ -1002,12 +1003,12 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             <div>
               <h3 className={`text-sm font-semibold uppercase tracking-wide mb-3 ${textSecondary}`}>Matériaux reçus</h3>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" aria-label="Matériaux reçus sur le chantier">
                   <thead>
                     <tr className={`text-left ${textSecondary}`}>
-                      <th className="pb-2 font-medium text-xs">Description</th>
-                      <th className="pb-2 font-medium text-xs">Quantité</th>
-                      <th className="pb-2 font-medium text-xs">Fournisseur</th>
+                      <th scope="col" className="pb-2 font-medium text-xs">Description</th>
+                      <th scope="col" className="pb-2 font-medium text-xs">Quantité</th>
+                      <th scope="col" className="pb-2 font-medium text-xs">Fournisseur</th>
                     </tr>
                   </thead>
                   <tbody>

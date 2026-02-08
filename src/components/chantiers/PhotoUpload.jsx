@@ -811,7 +811,7 @@ function PhotoThumbnail({ photo, onRemove, onRetry, onClick }) {
             type="button"
             onClick={(e) => { e.stopPropagation(); onRetry(); }}
             className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"
-            aria-label="Reessayer"
+            aria-label="Réessayer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>

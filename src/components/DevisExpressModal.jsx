@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge } from '../lib/data/modeles-devis';
+import TemplateSelector from './TemplateSelector';
 
 export default function DevisExpressModal({
   isOpen,
@@ -25,6 +26,7 @@ export default function DevisExpressModal({
   const [clientSearch, setClientSearch] = useState('');
   const [notes, setNotes] = useState('');
   const [remise, setRemise] = useState(0);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
   // Theme classes
   const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
@@ -47,6 +49,7 @@ export default function DevisExpressModal({
     setClientSearch('');
     setNotes('');
     setRemise(0);
+    setShowTemplateSelector(false);
     onClose();
   };
 
@@ -72,6 +75,30 @@ export default function DevisExpressModal({
   const handleSelectModele = (modele) => {
     setSelectedModele(modele);
     setLignes(prepareModeleLignes(modele, tvaDefaut));
+    setStep(3);
+  };
+
+  // Handle template selection from TemplateSelector
+  const handleTemplateSelect = (data) => {
+    // data = { metier, template, lignes }
+    setSelectedModele({
+      id: data.template.id,
+      nom: data.template.nom,
+      description: data.template.description || ''
+    });
+    // Adapter les lignes au format attendu avec TVA
+    const adaptedLignes = data.lignes.map((l, idx) => ({
+      id: `ligne-${Date.now()}-${idx}`,
+      description: l.description,
+      quantite: l.quantite || 1,
+      unite: l.unite || 'u',
+      prixUnitaire: l.prixUnitaire || 0,
+      prixAchat: l.prixAchat || 0,
+      tva: l.tva || tvaDefaut,
+      total: (l.quantite || 1) * (l.prixUnitaire || 0)
+    }));
+    setLignes(adaptedLignes);
+    setShowTemplateSelector(false);
     setStep(3);
   };
 
@@ -184,7 +211,7 @@ export default function DevisExpressModal({
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             {step > 1 && (
-              <button onClick={handleBack} className={`p-2 rounded-lg ${bgHover} ${textSecondary}`}>
+              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textSecondary}`}>
                 <ChevronLeft size={20} />
               </button>
             )}
@@ -201,7 +228,7 @@ export default function DevisExpressModal({
               </p>
             </div>
           </div>
-          <button onClick={handleClose} className={`p-2 rounded-lg ${bgHover} ${textMuted}`}>
+          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textMuted}`}>
             <X size={20} />
           </button>
         </div>
@@ -223,23 +250,52 @@ export default function DevisExpressModal({
         <div className="flex-1 overflow-y-auto p-4">
           {/* Step 1: Métiers */}
           {step === 1 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {metiers.map(metier => (
-                <button
-                  key={metier.id}
-                  onClick={() => handleSelectMetier(metier)}
-                  className={`p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-center transition-all hover:scale-[1.02] hover:shadow-md`}
+            <div className="space-y-4">
+              {/* Option: Charger un modèle existant */}
+              <button
+                onClick={() => setShowTemplateSelector(true)}
+                className={`w-full p-4 rounded-xl border-2 border-dashed ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
+                style={{ borderColor: `${couleur}60` }}
+              >
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${couleur}15` }}
                 >
-                  <div
-                    className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl"
-                    style={{ backgroundColor: `${metier.color}20` }}
+                  <FolderOpen size={24} style={{ color: couleur }} />
+                </div>
+                <div className="text-left flex-1">
+                  <p className={`font-semibold ${textPrimary}`}>Charger un modèle</p>
+                  <p className={`text-sm ${textMuted}`}>Utiliser un template pré-enregistré</p>
+                </div>
+                <ChevronRight className={textMuted} size={20} />
+              </button>
+
+              {/* Séparateur */}
+              <div className="flex items-center gap-3">
+                <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                <span className={`text-xs ${textMuted}`}>ou choisir un métier</span>
+                <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+              </div>
+
+              {/* Grille des métiers */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {metiers.map(metier => (
+                  <button
+                    key={metier.id}
+                    onClick={() => handleSelectMetier(metier)}
+                    className={`p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-center transition-all hover:scale-[1.02] hover:shadow-md`}
                   >
-                    {metier.icon}
-                  </div>
-                  <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
-                  <p className={`text-xs ${textMuted} mt-1`}>{metier.modelesCount} modèles</p>
-                </button>
-              ))}
+                    <div
+                      className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl"
+                      style={{ backgroundColor: `${metier.color}20` }}
+                    >
+                      {metier.icon}
+                    </div>
+                    <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
+                    <p className={`text-xs ${textMuted} mt-1`}>{metier.modelesCount} modèles</p>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -252,6 +308,7 @@ export default function DevisExpressModal({
                 <input
                   type="text"
                   placeholder="Rechercher un modèle..."
+                  aria-label="Rechercher un modèle"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
@@ -313,6 +370,7 @@ export default function DevisExpressModal({
                   <input
                     type="text"
                     placeholder="Rechercher un client..."
+                    aria-label="Rechercher un client"
                     value={clientSearch}
                     onChange={(e) => setClientSearch(e.target.value)}
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
@@ -485,6 +543,15 @@ export default function DevisExpressModal({
           </div>
         )}
       </div>
+
+      {/* TemplateSelector Modal */}
+      <TemplateSelector
+        isOpen={showTemplateSelector}
+        onClose={() => setShowTemplateSelector(false)}
+        onSelectTemplate={handleTemplateSelect}
+        isDark={isDark}
+        couleur={couleur}
+      />
     </div>
   );
 }

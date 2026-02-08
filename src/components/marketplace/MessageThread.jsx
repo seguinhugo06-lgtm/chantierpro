@@ -300,8 +300,8 @@ function SensitiveInfoWarning({ onClose, isDark }) {
           Pour votre sécurité, les numéros de téléphone et emails sont masqués. Utilisez la messagerie pour organiser la transaction.
         </p>
       </div>
-      <button onClick={onClose} className="flex-shrink-0 p-1 hover:opacity-70">
-        <X size={16} />
+      <button onClick={onClose} aria-label="Fermer l'avertissement" className="flex-shrink-0 p-2.5 min-w-[44px] min-h-[44px] hover:opacity-70 rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+        <X size={18} />
       </button>
     </div>
   );

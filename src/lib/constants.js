@@ -175,31 +175,4 @@ export const CURRENCY = {
   LOCALE: 'fr-FR'
 };
 
-// Formatters
-export const formatMoney = (amount, showSymbol = true) => {
-  const formatted = (amount || 0).toLocaleString(CURRENCY.LOCALE, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-  return showSymbol ? `${formatted} ${CURRENCY.SYMBOL}` : formatted;
-};
-
-export const formatPercent = (value, decimals = 1) => {
-  return `${(value || 0).toFixed(decimals)}%`;
-};
-
-export const formatDate = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString(CURRENCY.LOCALE);
-};
-
-export const formatDateTime = (date) => {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString(CURRENCY.LOCALE, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+// Formatters removed — use src/lib/formatters.js instead

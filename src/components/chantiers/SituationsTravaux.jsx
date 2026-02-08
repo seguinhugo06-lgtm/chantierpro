@@ -552,25 +552,25 @@ export default function SituationsTravaux({
               {/* Line items table */}
               <div className={`rounded-2xl border ${cardBg} overflow-hidden mb-4`}>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm" aria-label="Saisie de la situation de travaux">
                     <thead>
                       <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                        <th className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>
+                        <th scope="col" className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>
                           Description
                         </th>
-                        <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>
+                        <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-24`}>
                           Qté totale
                         </th>
-                        <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                        <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                           Cumul préc.
                         </th>
-                        <th className={`text-center px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-44`}>
+                        <th scope="col" className={`text-center px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-44`}>
                           Cumul actuel (%)
                         </th>
-                        <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                        <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                           Montant cumul
                         </th>
-                        <th className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                        <th scope="col" className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                           Montant situation
                         </th>
                       </tr>
@@ -883,22 +883,22 @@ function SituationDetail({
       {/* Lines table (read-only) */}
       <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-label="Détail de la situation de travaux">
             <thead>
               <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                <th className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>
+                <th scope="col" className={`text-left px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide`}>
                   Description
                 </th>
-                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                   Cumul préc.
                 </th>
-                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                   Cumul actuel
                 </th>
-                <th className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                <th scope="col" className={`text-right px-3 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                   Montant cumul
                 </th>
-                <th className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
+                <th scope="col" className={`text-right px-4 py-3 font-semibold ${textSecondary} text-xs uppercase tracking-wide w-28`}>
                   Montant situation
                 </th>
               </tr>

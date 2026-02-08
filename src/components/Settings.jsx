@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2 } from 'lucide-react';
+import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield } from 'lucide-react';
+import { auth } from '../supabaseClient';
+import AdminHelp from './admin-help/AdminHelp';
 import {
   INTEGRATION_TYPES,
   SYNC_STATUS,
@@ -25,7 +27,7 @@ import MultiEntreprise from './settings/MultiEntreprise';
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur }) {
+export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage }) {
   const { showToast } = useToast();
 
   // Theme classes
@@ -266,7 +268,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     <div className="space-y-4 sm:space-y-6">
       {/* Header avec score */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-2xl font-bold">Paramètres</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowExportModal(true)}
@@ -319,18 +333,27 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Tabs */}
       <div className={`flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {[
+          // Mon entreprise
           ['identite', '🏢 Identité'],
           ['legal', '📋 Légal'],
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
+          ['_sep1', ''],
+          // Documents
           ['documents', '📄 Documents'],
           ['facture2026', '🧾 Facture 2026'],
           ['relances', '🔔 Relances'],
+          ['_sep2', ''],
+          // Gestion
           ['rentabilite', '📊 Rentabilité'],
           ['comptabilite', '🧮 Comptabilité'],
+          ['administratif', '📋 Administratif'],
+          ['_sep3', ''],
+          // Système
           ['donnees', '💾 Données'],
           ['multi', '🏗️ Multi-entreprise']
-        ].map(([k, v]) => (
+        ].filter(([k]) => k).map(([k, v]) => (
+          k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
       </div>
@@ -1069,14 +1092,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full" aria-label="Détail par taux de TVA">
                     <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
                       <tr>
-                        <th className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
-                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
-                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
-                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
-                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
+                        <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
+                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
+                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
+                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
+                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1300,6 +1323,106 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             </div>
           </div>
+
+          {/* RGPD — Export données personnelles */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
+              <Shield size={18} style={{ color: '#3b82f6' }} />
+              Vos droits RGPD
+            </h3>
+            <p className={`text-sm ${textMuted} mb-4`}>
+              Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.
+            </p>
+
+            {/* Export RGPD */}
+            <button
+              onClick={() => {
+                try {
+                  const rgpdData = {
+                    export_type: 'RGPD - Droit d\'accès (Art. 15)',
+                    date: new Date().toISOString(),
+                    utilisateur: {
+                      email: user?.email || 'Mode démo',
+                      id: user?.id || 'demo',
+                      date_inscription: user?.created_at || null,
+                    },
+                    entreprise: {
+                      nom: entreprise.nom,
+                      adresse: entreprise.adresse,
+                      siret: entreprise.siret,
+                      email: entreprise.email,
+                      telephone: entreprise.tel,
+                    },
+                    donnees: {
+                      clients: clients.map(c => ({ nom: c.nom, prenom: c.prenom, email: c.email, telephone: c.telephone, adresse: c.adresse })),
+                      nombre_devis: devis.filter(d => d.type === 'devis').length,
+                      nombre_factures: devis.filter(d => d.type === 'facture').length,
+                      nombre_chantiers: chantiers.length,
+                      nombre_depenses: depenses.length,
+                    },
+                    consentements: (() => {
+                      try {
+                        const c = localStorage.getItem('cp_cookie_consent');
+                        return c ? JSON.parse(c) : { info: 'Aucun consentement enregistré' };
+                      } catch { return {}; }
+                    })(),
+                  };
+                  const json = JSON.stringify(rgpdData, null, 2);
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `chantierpro_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                  showToast('Export RGPD téléchargé', 'success');
+                } catch {
+                  showToast('Erreur lors de l\'export RGPD', 'error');
+                }
+              }}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            >
+              <Download size={18} />
+              Exporter mes données personnelles
+            </button>
+          </div>
+
+          {/* Danger Zone — Suppression de compte */}
+          <div className={`rounded-xl sm:rounded-2xl border-2 border-red-300 p-4 sm:p-6 ${isDark ? 'bg-red-950/20' : 'bg-red-50'}`}>
+            <h3 className="font-semibold mb-2 flex items-center gap-2 text-red-500">
+              <Trash2 size={18} />
+              Zone de danger
+            </h3>
+            <p className={`text-sm ${textMuted} mb-2`}>
+              <strong>Supprimer mon compte et mes données.</strong> Cette action est irréversible. Toutes vos données (devis, factures, clients, chantiers) seront définitivement supprimées.
+            </p>
+            <p className={`text-xs ${textMuted} mb-4`}>
+              Nous vous recommandons d'exporter vos données avant de procéder.
+            </p>
+            <button
+              onClick={async () => {
+                const confirmation = prompt('Tapez "SUPPRIMER" pour confirmer la suppression définitive de votre compte et de toutes vos données :');
+                if (confirmation !== 'SUPPRIMER') {
+                  if (confirmation !== null) showToast('Suppression annulée — texte incorrect', 'info');
+                  return;
+                }
+                try {
+                  // Clear all localStorage
+                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
+                  keys.forEach(k => localStorage.removeItem(k));
+                  // Sign out
+                  await auth.signOut();
+                  showToast('Compte et données supprimés', 'success');
+                  window.location.reload();
+                } catch {
+                  showToast('Erreur lors de la suppression', 'error');
+                }
+              }}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-all"
+            >
+              <Trash2 size={18} />
+              Supprimer mon compte
+            </button>
+          </div>
         </div>
       )}
 
@@ -1310,6 +1433,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           setEntreprise={setEntreprise}
           isDark={isDark}
           couleur={entreprise.couleur || couleur}
+        />
+      )}
+
+      {/* Administratif Tab (merged from AdminHelp) */}
+      {tab === 'administratif' && (
+        <AdminHelp
+          chantiers={chantiers}
+          clients={clients}
+          devis={devis}
+          factures={devis.filter(d => d.type === 'facture')}
+          depenses={depenses}
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
         />
       )}
 

@@ -88,10 +88,10 @@ export default function TemplateSelector({
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>
-                {selectedMetier ? TEMPLATES_METIER[selectedMetier]?.nom : 'Modeles de devis'}
+                {selectedMetier ? TEMPLATES_METIER[selectedMetier]?.nom : 'Modèles de devis'}
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {selectedMetier ? 'Choisissez un modele' : 'Selectionnez votre metier'}
+                {selectedMetier ? 'Choisissez un modèle' : 'Sélectionnez votre métier'}
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ export default function TemplateSelector({
                     </div>
                     <div className="text-center">
                       <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
-                      <p className={`text-xs ${textMuted}`}>{metier.templatesCount} modeles</p>
+                      <p className={`text-xs ${textMuted}`}>{metier.templatesCount} modèles</p>
                     </div>
                   </button>
                 );
@@ -178,7 +178,7 @@ export default function TemplateSelector({
                   {/* Preview des lignes (au hover) */}
                   {hoveredTemplate === template.id && (
                     <div className={`p-4 border-t ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                      <p className={`text-xs font-medium mb-2 ${textMuted}`}>Apercu des lignes :</p>
+                      <p className={`text-xs font-medium mb-2 ${textMuted}`}>Aperçu des lignes :</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {template.lignes.slice(0, 6).map((ligne, idx) => (
                           <div key={idx} className="flex items-center justify-between text-xs">
@@ -198,7 +198,7 @@ export default function TemplateSelector({
                         style={{ background: TEMPLATES_METIER[selectedMetier]?.color }}
                       >
                         <Check size={16} />
-                        Utiliser ce modele
+                        Utiliser ce modèle
                       </button>
                     </div>
                   )}

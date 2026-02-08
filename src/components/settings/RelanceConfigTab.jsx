@@ -166,9 +166,9 @@ const CHANNEL_OPTIONS = [
 
 const AVAILABLE_VARIABLES = [
   { key: '{{client_nom}}', description: 'Nom du client' },
-  { key: '{{client_prenom}}', description: 'Prenom du client' },
-  { key: '{{devis_numero}}', description: 'Numero du devis' },
-  { key: '{{facture_numero}}', description: 'Numero de la facture' },
+  { key: '{{client_prenom}}', description: 'Prénom du client' },
+  { key: '{{devis_numero}}', description: 'Numéro du devis' },
+  { key: '{{facture_numero}}', description: 'Numéro de la facture' },
   { key: '{{montant_ttc}}', description: 'Montant TTC' },
   { key: '{{montant}}', description: 'Montant' },
   { key: '{{date_echeance}}', description: 'Date d\'echeance' },
@@ -486,7 +486,7 @@ function TemplatePreview({ template, isDark, onClose }) {
     >
       <div className="flex items-center justify-between mb-2">
         <span className={cn('text-xs font-semibold uppercase tracking-wide', isDark ? 'text-amber-400' : 'text-amber-700')}>
-          Apercu avec donnees d'exemple
+          Aperçu avec données d'exemple
         </span>
         <button
           type="button"
@@ -653,7 +653,7 @@ function ScenarioCard({
             )}
           >
             <Eye className="w-3.5 h-3.5" />
-            Apercu
+            Aperçu
           </button>
         )}
       </div>

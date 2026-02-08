@@ -1047,17 +1047,17 @@ export default function TresorerieModule({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm" aria-label="Mouvements de trésorerie">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
-                    <th className="text-left py-3 pr-4 font-semibold">Date prévue</th>
-                    <th className="text-left py-3 pr-4 font-semibold">Description</th>
-                    <th className="text-left py-3 pr-4 font-semibold">Type</th>
-                    <th className="text-left py-3 pr-4 font-semibold">Catégorie</th>
-                    <th className="text-right py-3 pr-4 font-semibold">Montant</th>
-                    <th className="text-left py-3 font-semibold">Statut</th>
+                    <th scope="col" className="text-left py-3 pr-4 font-semibold">Date prévue</th>
+                    <th scope="col" className="text-left py-3 pr-4 font-semibold">Description</th>
+                    <th scope="col" className="text-left py-3 pr-4 font-semibold">Type</th>
+                    <th scope="col" className="text-left py-3 pr-4 font-semibold">Catégorie</th>
+                    <th scope="col" className="text-right py-3 pr-4 font-semibold">Montant</th>
+                    <th scope="col" className="text-left py-3 font-semibold">Statut</th>
                     {activeTab !== 'historique' && (
-                      <th className="text-right py-3 font-semibold w-10"></th>
+                      <th scope="col" className="text-right py-3 font-semibold w-10"></th>
                     )}
                   </tr>
                 </thead>
