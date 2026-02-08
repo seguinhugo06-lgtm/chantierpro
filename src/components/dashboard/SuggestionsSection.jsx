@@ -184,7 +184,7 @@ function SuggestionItem({
                 'p-1.5 rounded-md transition-all flex-shrink-0 group',
                 isDark
                   ? 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/20'
-                  : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50',
+                  : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50',
                 isPostponing && 'animate-pulse'
               )}
             >
@@ -209,7 +209,7 @@ function SuggestionItem({
                 'p-1 rounded-md transition-colors flex-shrink-0',
                 isDark
                   ? 'text-gray-500 hover:text-gray-300 hover:bg-slate-700'
-                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+                  : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100',
                 isDismissing && 'opacity-50 cursor-not-allowed'
               )}
             >
@@ -220,12 +220,12 @@ function SuggestionItem({
       </div>
 
       {/* Title */}
-      <h4 className={cn(
+      <h3 className={cn(
         'text-sm font-semibold leading-snug mb-1',
         isDark ? 'text-white' : 'text-gray-900'
       )}>
         {suggestion.title}
-      </h4>
+      </h3>
 
       {/* Client/Chantier context - enriched display */}
       {(clientName || chantierName) && (
@@ -237,7 +237,7 @@ function SuggestionItem({
           <span className="font-medium truncate">{clientName || chantierName}</span>
           {daysSince !== undefined && (
             <>
-              <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>•</span>
+              <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>•</span>
               <span className={cn(
                 daysSince > 14 ? (isDark ? 'text-amber-400' : 'text-amber-600') : ''
               )}>
@@ -661,7 +661,7 @@ export default function SuggestionsSection({
                     ? 'hover:bg-slate-700 text-gray-300'
                     : 'hover:bg-gray-100 text-gray-600'
                   : 'opacity-30 cursor-not-allowed',
-                isDark ? 'text-gray-500' : 'text-gray-400'
+                isDark ? 'text-gray-500' : 'text-gray-500'
               )}
             >
               <ChevronLeft size={18} />
@@ -677,7 +677,7 @@ export default function SuggestionsSection({
                     ? 'hover:bg-slate-700 text-gray-300'
                     : 'hover:bg-gray-100 text-gray-600'
                   : 'opacity-30 cursor-not-allowed',
-                isDark ? 'text-gray-500' : 'text-gray-400'
+                isDark ? 'text-gray-500' : 'text-gray-500'
               )}
             >
               <ChevronRight size={18} />

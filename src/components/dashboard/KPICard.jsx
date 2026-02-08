@@ -396,7 +396,7 @@ function TrendBadge({ value, label, inverted = false, isDark = false, size = 'de
       {label && (
         <span className={cn(
           'text-[10px]',
-          isDark ? 'text-gray-500' : 'text-gray-400'
+          isDark ? 'text-gray-400' : 'text-gray-500'
         )}>
           {label}
         </span>
@@ -424,21 +424,21 @@ function DetailItem({ icon: Icon, label, value, highlight, isDark, onClick, subL
     >
       {Icon && (
         <Icon size={12} className={cn(
-          isDark ? 'text-gray-500' : 'text-gray-400',
+          isDark ? 'text-gray-400' : 'text-gray-500',
           onClick && 'group-hover:text-blue-500 transition-colors'
         )} />
       )}
       <div className="flex flex-col min-w-0 flex-1">
         <span className={cn(
           'text-xs truncate',
-          isDark ? 'text-gray-500' : 'text-gray-500'
+          isDark ? 'text-gray-400' : 'text-gray-500'
         )}>
           {label}
         </span>
         {subLabel && (
           <span className={cn(
             'text-[10px] truncate',
-            isDark ? 'text-gray-600' : 'text-gray-400'
+            isDark ? 'text-gray-600' : 'text-gray-500'
           )}>
             {subLabel}
           </span>
@@ -517,12 +517,15 @@ const KPICard = React.forwardRef(
     // Parse trend value
     const trendValue = typeof trend === 'number' ? trend : trend?.value ?? null;
 
+    const Wrapper = isClickable ? 'div' : 'div';
+
     return (
-      <button
+      <Wrapper
         ref={ref}
-        onClick={onClick}
-        type="button"
-        disabled={!isClickable}
+        onClick={isClickable ? onClick : undefined}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(e); } } : undefined}
         className={cn(
           // Base styles - IMPORTANT: h-full and flex for equal heights
           'group relative w-full h-full rounded-2xl overflow-hidden text-left',
@@ -549,7 +552,7 @@ const KPICard = React.forwardRef(
       >
         {/* Top gradient accent */}
         <div
-          className="absolute top-0 left-0 right-0 h-1.5"
+          className="absolute top-0 left-0 right-0 h-1"
           style={{ background: colors.gradient }}
         />
 
@@ -637,7 +640,7 @@ const KPICard = React.forwardRef(
                 {subValue && (
                   <p className={cn(
                     'text-[11px] mt-0.5',
-                    isDark ? 'text-gray-500' : 'text-gray-400'
+                    isDark ? 'text-gray-400' : 'text-gray-500'
                   )}>
                     {subValue}
                   </p>
@@ -711,7 +714,7 @@ const KPICard = React.forwardRef(
                     </span>
                   </div>
                   {progress.label && (
-                    <p className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-500')}>
+                    <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
                       {progress.label}
                     </p>
                   )}
@@ -776,13 +779,13 @@ const KPICard = React.forwardRef(
                 size={16}
                 className={cn(
                   'transition-all duration-300 group-hover:translate-x-0.5',
-                  isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-400 group-hover:text-gray-700'
+                  isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-700'
                 )}
               />
             </div>
           </div>
         )}
-      </button>
+      </Wrapper>
     );
   }
 );
@@ -803,7 +806,7 @@ export function KPICardSkeleton({ isDark = false }) {
           : 'bg-white border-gray-200/80'
       )}
     >
-      <div className={cn('h-1.5', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+      <div className={cn('h-1', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
       <div className="p-5 pt-6 animate-pulse">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">

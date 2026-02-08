@@ -13,6 +13,7 @@ import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
+import { getDocumentEmailStatus } from '../services/CommunicationsService';
 
 export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
   const { confirm } = useConfirm();
@@ -371,6 +372,64 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     });
   };
 
+  // Créer un avenant à partir d'un devis existant
+  const createAvenant = (doc) => {
+    // Count existing avenants for this source devis
+    const sourceId = doc.avenant_source_id || doc.id;
+    const existingAvenants = devis.filter(d => d.avenant_source_id === sourceId);
+    const avenantNum = existingAvenants.length + 1;
+
+    const newLignes = (doc.lignes || []).map(l => ({
+      ...l,
+      id: generateId()
+    }));
+    const newSections = doc.sections ? doc.sections.map(s => ({
+      ...s,
+      id: generateId(),
+      lignes: s.lignes.map(l => ({
+        ...l,
+        id: generateId()
+      }))
+    })) : [{ id: '1', titre: '', lignes: newLignes }];
+
+    const sourceNumero = doc.avenant_source_numero || doc.numero;
+    const newDoc = {
+      id: generateId(),
+      numero: `${sourceNumero}-AV${avenantNum}`,
+      type: 'devis',
+      client_id: doc.client_id,
+      client_nom: doc.client_nom,
+      chantier_id: doc.chantier_id || '',
+      date: new Date().toISOString().split('T')[0],
+      validite: doc.validite || entreprise?.validiteDevis || 30,
+      statut: 'brouillon',
+      sections: newSections,
+      lignes: newLignes,
+      tvaParTaux: doc.tvaParTaux,
+      tvaDetails: doc.tvaDetails,
+      tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
+      remise: doc.remise || 0,
+      total_ht: doc.total_ht,
+      tva: doc.tva,
+      total_ttc: doc.total_ttc,
+      notes: doc.notes || '',
+      // Avenant metadata
+      is_avenant: true,
+      avenant_numero: avenantNum,
+      avenant_source_id: sourceId,
+      avenant_source_numero: sourceNumero,
+    };
+
+    onSubmit(newDoc);
+    setSelected(newDoc);
+    setMode('edit');
+    setSnackbar({
+      type: 'success',
+      message: `Avenant n°${avenantNum} créé pour ${sourceNumero}`,
+      action: { label: 'Voir', onClick: () => setSnackbar(null) }
+    });
+  };
+
   // Canvas signature
   useEffect(() => { if (mode === 'sign' && canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; } }, [mode]);
   const startDraw = (e) => { setIsDrawing(true); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); };
@@ -654,15 +713,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
 
   <!-- TABLEAU PRESTATIONS -->
-  <table>
+  <table aria-label="Détail des prestations du devis">
     <thead>
       <tr>
-        <th style="width:40%">Description</th>
-        <th style="width:10%">Qté</th>
-        <th style="width:10%">Unité</th>
-        <th style="width:15%">PU HT</th>
-        <th style="width:10%">TVA</th>
-        <th style="width:15%">Total HT</th>
+        <th scope="col" style="width:40%">Description</th>
+        <th scope="col" style="width:10%">Qté</th>
+        <th scope="col" style="width:10%">Unité</th>
+        <th scope="col" style="width:15%">PU HT</th>
+        <th scope="col" style="width:10%">TVA</th>
+        <th scope="col" style="width:15%">Total HT</th>
       </tr>
     </thead>
     <tbody>
@@ -903,7 +962,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
+      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h2 className="text-2xl font-bold">Signature Client</h2></div>
       <div className="bg-white rounded-2xl border p-6 text-center">
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
@@ -1047,14 +1106,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
               </div>
-              <h1 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h1>
+              <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h2>
               <p className={`text-sm ${textMuted}`}>{client?.nom} {client?.prenom} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
 
-            {/* Header actions */}
+            {/* Header actions - with labels for better accessibility */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button onClick={() => previewPDF(selected)} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Aperçu PDF">
-                <Eye size={18} />
+              <button
+                onClick={() => printPDF(selected)}
+                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+                title="Télécharger le PDF"
+                aria-label="Télécharger le PDF"
+              >
+                <Download size={18} className="flex-shrink-0" />
+                <span className="hidden sm:inline text-sm font-medium">PDF</span>
+              </button>
+              <button
+                onClick={() => previewPDF(selected)}
+                className={`min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                title="Aperçu du document"
+                aria-label="Voir l'aperçu du document"
+              >
+                <Eye size={18} className="flex-shrink-0" />
+                <span className="hidden sm:inline text-sm font-medium">Aperçu</span>
               </button>
               <div className="relative">
                 <button
@@ -1070,6 +1144,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <button onClick={() => { duplicateDocument(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                         <Copy size={16} /> Dupliquer
                       </button>
+                      {selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
+                        <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <Edit3 size={16} /> Créer un avenant
+                        </button>
+                      )}
                       <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                         <Trash2 size={16} /> Supprimer
                       </button>
@@ -1134,35 +1213,37 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {selected.type === 'facture' && <option value="payee">✅ Payée</option>}
             </select>
 
-            {/* Quick Actions - Always available */}
+            {/* Quick Actions - Always available with improved accessibility */}
             {isDevis ? (
               <>
                 {/* Envoyer - always available */}
                 <button
                   onClick={() => sendEmail(selected)}
-                  className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                  className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
                     selected.statut === 'brouillon'
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
                       : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
-                  title="Envoyer au client"
+                  title="Envoyer au client par email"
+                  aria-label="Envoyer le devis au client"
                 >
-                  <Send size={16} /> <span className="hidden sm:inline">Envoyer</span>
+                  <Send size={16} /> <span>Envoyer</span>
                 </button>
 
                 {/* Signer - always available for devis */}
                 {selected.statut !== 'facture' && (
                   <button
                     onClick={() => setShowSignaturePad(true)}
-                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
                       selected.statut === 'envoye'
-                        ? 'text-white hover:opacity-90'
+                        ? 'text-white hover:opacity-90 shadow-sm'
                         : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                     style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
-                    title="Faire signer le devis"
+                    title="Faire signer le devis par le client"
+                    aria-label="Faire signer le devis"
                   >
-                    <PenTool size={16} /> <span className="hidden sm:inline">Signer</span>
+                    <PenTool size={16} /> <span>Signer</span>
                   </button>
                 )}
 
@@ -1170,14 +1251,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {selected.statut !== 'facture' && (
                   <button
                     onClick={() => canAcompte ? setShowAcompteModal(true) : createSolde()}
-                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
                       selected.statut === 'accepte' || selected.statut === 'acompte_facture'
-                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
                         : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
-                    title={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer'}
+                    title={selected.statut === 'acompte_facture' ? 'Créer la facture de solde' : 'Créer une facture'}
+                    aria-label={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer ce devis'}
                   >
-                    <Receipt size={16} /> <span className="hidden sm:inline">{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
+                    <Receipt size={16} /> <span>{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
                   </button>
                 )}
 
@@ -1194,7 +1276,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {selected.statut !== 'payee' && (
                   <button
                     onClick={() => setShowPaymentModal(true)}
-                    className="px-4 py-2 min-h-[40px] text-white rounded-lg text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                    className="px-4 py-2 min-h-[44px] text-white rounded-xl text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium bg-emerald-500 hover:bg-emerald-600 shadow-sm"
                   >
                     <QrCode size={16} /> Encaisser
                   </button>
@@ -1209,7 +1291,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
             {/* Chantier link - always show for devis */}
             {isDevis && (hasChantier && linkedChantier ? (
-              <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+              <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
                 <Building2 size={14} /> <span className="truncate max-w-[100px]">{linkedChantier.nom}</span>
               </button>
             ) : canCreateChantier && (
@@ -1220,16 +1302,36 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
             <div className="flex-1" />
 
-            {/* Communication buttons */}
-            <div className="flex items-center gap-1">
-              <button onClick={() => sendWhatsApp(selected)} className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center transition-colors" title="WhatsApp">
-                <MessageCircle size={16} />
+            {/* Communication buttons - with labels on larger screens for better accessibility */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={() => sendWhatsApp(selected)}
+                className="min-w-[44px] min-h-[44px] sm:px-3 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+                title="Envoyer par WhatsApp"
+                aria-label="Envoyer par WhatsApp"
+              >
+                <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] flex-shrink-0" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                <span className="hidden sm:inline text-sm font-medium">WhatsApp</span>
               </button>
-              <button onClick={() => sendSMS(selected)} className="w-10 h-10 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center transition-colors" title="SMS">
-                <Send size={16} />
+              <button
+                onClick={() => sendSMS(selected)}
+                className="min-w-[44px] min-h-[44px] sm:px-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+                title="Envoyer par SMS"
+                aria-label="Envoyer par SMS"
+              >
+                <MessageCircle size={18} className="flex-shrink-0" />
+                <span className="hidden sm:inline text-sm font-medium">SMS</span>
               </button>
-              <button onClick={() => sendEmail(selected)} className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center transition-colors" title="Email">
-                <Mail size={16} />
+              <button
+                onClick={() => sendEmail(selected)}
+                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+                title="Envoyer par email"
+                aria-label="Envoyer par email"
+              >
+                <Mail size={18} className="flex-shrink-0" />
+                <span className="hidden sm:inline text-sm font-medium">Email</span>
               </button>
             </div>
           </div>
@@ -1370,14 +1472,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <Tabs defaultValue="document">
             <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
-                <TabsTrigger value="document" className="pb-3">Document</TabsTrigger>
+                <TabsTrigger value="document" variant="underline" className="pb-3">Document</TabsTrigger>
                 {(isDevis && facturesLiees.length > 0) && (
-                  <TabsTrigger value="historique" className="pb-3">
+                  <TabsTrigger value="historique" variant="underline" className="pb-3">
                     Historique {facturesLiees.length > 0 && <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{facturesLiees.length}</span>}
                   </TabsTrigger>
                 )}
                 {selected.type === 'facture' && selected.devis_source_id && (
-                  <TabsTrigger value="source" className="pb-3">Devis source</TabsTrigger>
+                  <TabsTrigger value="source" variant="underline" className="pb-3">Devis source</TabsTrigger>
+                )}
+                {getDocumentEmailStatus(selected.id).sent > 0 && (
+                  <TabsTrigger value="emails" variant="underline" className="pb-3">
+                    Emails <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{getDocumentEmailStatus(selected.id).sent}</span>
+                  </TabsTrigger>
                 )}
               </TabsList>
             </div>
@@ -1411,27 +1518,48 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}
               </div>
 
-              {/* Line items */}
-              <table className="w-full mb-6 text-sm">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                    <th className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
-                    <th className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
-                    <th className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
-                    <th className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(selected.lignes || []).map((l, i) => (
-                    <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                      <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
-                      <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
-                      <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
-                      <td className={`text-right font-medium ${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)) < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toFixed(2)}€</td>
+              {/* Avenant banner */}
+              {selected.is_avenant && (
+                <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 ${isDark ? 'bg-orange-900/20 border-orange-700/50' : 'bg-orange-50 border-orange-200'}`}>
+                  <Edit3 size={16} className="text-orange-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
+                      Avenant n°{selected.avenant_numero} du devis {selected.avenant_source_numero}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { const src = devis.find(d => d.id === selected.avenant_source_id); if (src) setSelected(src); }}
+                    className="text-xs font-medium px-2 py-1 rounded hover:underline"
+                    style={{ color: couleur }}
+                  >
+                    Voir l'original
+                  </button>
+                </div>
+              )}
+
+              {/* Line items - scrollable on mobile */}
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
+                <table className="w-full min-w-[400px] text-sm" aria-label="Lignes du devis">
+                  <thead>
+                    <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                      <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
+                      <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
+                      <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                      <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(selected.lignes || []).map((l, i) => (
+                      <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                        <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
+                        <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                        <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
+                        <td className={`text-right font-medium ${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)) < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toFixed(2)}€</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Totals */}
               <div className="flex justify-end">
@@ -1511,6 +1639,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               </TabsContent>
             )}
+
+              {/* Email tracking tab */}
+              <TabsContent value="emails" className="mt-0 p-4 sm:p-6">
+                <div className="space-y-3">
+                  <p className={`text-sm font-medium ${textPrimary}`}>Historique d'envoi</p>
+                  {getDocumentEmailStatus(selected.id).records.map((rec, idx) => (
+                    <div key={rec.id || idx} className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                      <Mail size={16} className="text-sky-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${textPrimary} truncate`}>{rec.to}</p>
+                        <p className={`text-xs ${textMuted}`}>{rec.subject}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleDateString('fr-FR')}</p>
+                        <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
+                        Envoyé
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
           </Tabs>
         </div>
 
@@ -1639,7 +1790,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Apercu du document</h2>
+                    <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
                     <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
                   </div>
                 </div>
@@ -1674,7 +1825,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const catalogueFiltered = catalogue?.filter(c => !debouncedCatalogueSearch || c.nom?.toLowerCase().includes(debouncedCatalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
+        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2></div>
 
         {/* Template Options */}
         <div className="grid sm:grid-cols-2 gap-3">
@@ -1702,8 +1853,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Charger un modele</p>
-              <p className={`text-xs sm:text-sm ${textMuted}`}>Ajouter des lignes metier</p>
+              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Charger un modèle</p>
+              <p className={`text-xs sm:text-sm ${textMuted}`}>Ajouter des lignes métier</p>
             </div>
             <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
           </button>
@@ -1757,6 +1908,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input
                   placeholder="Rechercher dans le catalogue..."
+                  aria-label="Rechercher dans le catalogue"
                   value={catalogueSearch}
                   onChange={e => setCatalogueSearch(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
@@ -1930,17 +2082,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           
           {/* Totaux avec multi-TVA et marge */}
           <div className="flex flex-col sm:flex-row justify-end gap-4">
-            {/* Apercu marge (visible seulement pour l'artisan, pas sur le PDF) */}
+            {/* Aperçu marge (visible seulement pour l'artisan, pas sur le PDF) */}
             {totals.totalCoutAchat > 0 && (
               <div className={`w-full sm:w-64 p-4 rounded-xl border ${totals.marge >= 0 ? (isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200') : (isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp size={16} className={totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'} />
                   <span className={`text-sm font-medium ${textPrimary}`}>Votre marge</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>prive</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>privé</span>
                 </div>
                 <div className="space-y-1">
                   <div className={`flex justify-between text-sm ${textSecondary}`}>
-                    <span>Cout d'achat</span>
+                    <span>Coût d'achat</span>
                     <span>{modeDiscret ? '·····' : formatMoney(totals.totalCoutAchat)}</span>
                   </div>
                   <div className={`flex justify-between font-medium ${totals.marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -2042,17 +2194,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
+        </div>
         <div className="flex items-center gap-2">
           {/* Quick access to Devis Express Modal */}
           <button
             onClick={() => setShowDevisExpressModal(true)}
-            className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
+            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
           >
             <Sparkles size={16} />
             <span className="hidden sm:inline">Devis express</span>
           </button>
-          <button onClick={() => setShowDevisWizard(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => setShowDevisWizard(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} />
             <span className="hidden sm:inline">Nouveau</span>
           </button>
@@ -2191,10 +2355,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       </div>
 
       <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
-        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
-        {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+        <input placeholder="🔍 Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
+        <div role="group" aria-label="Filtrer par type">
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+        </div>
         <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-        {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
+        <div role="group" aria-label="Trier par">
+          {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} aria-pressed={sortBy === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
+        </div>
       </div>
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -2288,32 +2456,55 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {d.type === 'facture' ? <Receipt size={20} className="text-purple-600" /> : <FileText size={20} className="text-blue-600" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
                     <p className={`font-semibold ${textPrimary}`}>{d.numero}</p>
-                    {/* Status badge - explicit text instead of small icons */}
-                    {d.statut === 'brouillon' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Brouillon</span>}
-                    {d.statut === 'envoye' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Envoyé</span>}
-                    {d.statut === 'accepte' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Signé</span>}
-                    {d.statut === 'acompte_facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte facturé</span>}
-                    {d.statut === 'facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Facturé</span>}
-                    {d.statut === 'payee' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Payé</span>}
-                    {d.statut === 'refuse' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Refusé</span>}
-                    {hasAcompte && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
-                    {d.facture_type === 'acompte' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
-                    {d.facture_type === 'solde' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
-                    {d.facture_type === 'totale' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Complète</span>}
+                    {/* Status badge - improved spacing with py-1 for better readability */}
+                    {d.statut === 'brouillon' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Brouillon</span>}
+                    {d.statut === 'envoye' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Envoyé</span>}
+                    {d.statut === 'accepte' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Signé</span>}
+                    {d.statut === 'acompte_facture' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
+                    {d.statut === 'facture' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Facturé</span>}
+                    {d.statut === 'payee' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Payé</span>}
+                    {d.statut === 'refuse' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Refusé</span>}
+                    {hasAcompte && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
+                    {d.facture_type === 'acompte' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
+                    {d.facture_type === 'solde' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
+                    {d.facture_type === 'totale' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Complète</span>}
+                    {d.is_avenant && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
                     {d.type === 'facture' && isFacturXCompliant(d, client, entreprise) && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>2026 ✓</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>2026 ✓</span>
                     )}
                     {needsFollowUp(d) && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium animate-pulse ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Relancer</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium animate-pulse ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>À relancer</span>
                     )}
+                    {(() => { const es = getDocumentEmailStatus(d.id); return es.sent > 0 ? (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium inline-flex items-center gap-1 ${isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700'}`} title={`Envoyé ${es.sent} fois — Dernier: ${es.lastSent ? new Date(es.lastSent).toLocaleDateString('fr-FR') : ''}`}>
+                        <Mail size={10} /> {es.sent}×
+                      </span>
+                    ) : null; })()}
                   </div>
                   <p className={`text-sm ${textMuted}`}>{client?.nom} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Dupliquer ce document"><Copy size={20} className="text-slate-400 hover:text-slate-600" /></button>
-                <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Voir l'aperçu PDF"><Eye size={20} className="text-slate-400 hover:text-slate-600" /></button>
-                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
+                {/* Action buttons - simple icons for list view */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); sendEmail(d); }}
+                    className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                    title="Envoyer par email"
+                    aria-label={`Envoyer ${d.numero}`}
+                  >
+                    <Send size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); previewPDF(d); }}
+                    className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                    title="Voir l'aperçu PDF"
+                    aria-label={`Aperçu PDF de ${d.numero}`}
+                  >
+                    <Eye size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                  </button>
+                </div>
+                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );
@@ -2332,7 +2523,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Apercu du document</h2>
+                  <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
                   <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
                 </div>
               </div>

@@ -32,16 +32,17 @@ export default function FABMenu({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — mobile only */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 animate-fade-in"
+          className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 animate-fade-in"
           onClick={() => setIsOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* FAB Container - responsive positioning */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
+      {/* FAB Container - mobile only (hidden on desktop where header has "+ Nouveau" button) */}
+      <div className="lg:hidden fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
         {/* Action buttons */}
         {isOpen && actions.map((action, i) => (
           <button

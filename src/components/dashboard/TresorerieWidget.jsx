@@ -186,14 +186,14 @@ function AgeGroupCard({ group, amount, count, percent, onClick, isDark }) {
             />
             <span className={cn(
               'text-xs font-medium',
-              isDark ? 'text-gray-500' : 'text-gray-400'
+              isDark ? 'text-gray-400' : 'text-gray-500'
             )}>
               {config.shortLabel}
             </span>
           </div>
           <span className={cn(
             'text-xs',
-            isDark ? 'text-gray-600' : 'text-gray-400'
+            isDark ? 'text-gray-400' : 'text-gray-500'
           )}>
             —
           </span>
@@ -651,13 +651,13 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
                   )}>
                     <p className={cn(
                       'text-xs',
-                      isDark ? 'text-gray-500' : 'text-gray-400'
+                      isDark ? 'text-gray-400' : 'text-gray-500'
                     )}>
                       {unpaidData.totalCount} facture{unpaidData.totalCount > 1 ? 's' : ''}
                     </p>
                     <p className={cn(
                       'text-xs mt-0.5',
-                      isDark ? 'text-gray-500' : 'text-gray-400'
+                      isDark ? 'text-gray-400' : 'text-gray-500'
                     )}>
                       Âge moyen: ~{Math.round(
                         (unpaidData.groups.under30.count * 15 +
@@ -672,7 +672,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
                 {/* Age breakdown label */}
                 <p className={cn(
                   'text-[10px] font-medium uppercase tracking-wide',
-                  isDark ? 'text-gray-500' : 'text-gray-400'
+                  isDark ? 'text-gray-400' : 'text-gray-500'
                 )}>
                   Répartition par ancienneté
                 </p>

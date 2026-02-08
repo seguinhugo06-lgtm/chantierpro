@@ -5,6 +5,7 @@ import { auth, isDemo } from './supabaseClient';
 import Dashboard from './components/Dashboard';
 import FABMenu from './components/FABMenu';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
+import LandingPage from './components/LandingPage';
 
 // Lazy load heavy page components for code splitting
 const Chantiers = lazy(() => import('./components/Chantiers'));
@@ -28,14 +29,39 @@ const IADevisAnalyse = lazy(() => import('./components/ia/IADevisAnalyse'));
 const CarnetEntretien = lazy(() => import('./components/entretien/CarnetEntretien'));
 const SignatureModule = lazy(() => import('./components/signatures/SignatureModule'));
 const ExportComptable = lazy(() => import('./components/export/ExportComptable'));
+const BillingDashboard = lazy(() => import('./components/subscription/BillingDashboard'));
+const PricingPage = lazy(() => import('./components/subscription/PricingPage'));
+const CheckoutSuccess = lazy(() => import('./components/subscription/CheckoutSuccess'));
+const AnalyticsPage = lazy(() => import('./components/AnalyticsPage'));
+const ImportModal = lazy(() => import('./components/ImportModal'));
+const LegalPages = lazy(() => import('./components/LegalPages'));
+const Changelog = lazy(() => import('./components/Changelog'));
+const FinancesPage = lazy(() => import('./components/FinancesPage'));
+import CookieConsent from './components/CookieConsent';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download } from 'lucide-react';
-import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
+import UpgradeModal from './components/subscription/UpgradeModal';
+import TrialBanner from './components/subscription/TrialBanner';
+import FeatureGuard, { UpgradeBadge } from './components/subscription/FeatureGuard';
+import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionStore';
+import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
+import { usePWA } from './hooks/usePWA';
+import { registerNetworkListeners, getPendingCount, syncQueue } from './lib/offline/sync';
+import OfflineIndicator from './components/ui/OfflineIndicator';
+
+// Safe string renderer — prevents "Objects are not valid as React child" (#310)
+const safeStr = (v, fallback = '') => {
+  if (v == null) return fallback;
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v;
+  if (v instanceof Date) return v.toLocaleDateString('fr-FR');
+  if (typeof v === 'object') { console.warn('[#310 guard] Object rendered as child:', v); return JSON.stringify(v); }
+  return String(v);
+};
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -54,16 +80,19 @@ export default function App() {
   const { confirmModal, closeConfirm } = useConfirm();
   const { showToast, toast, hideToast } = useToast();
 
+  // PWA install hook
+  const { canInstall, install, isInstalled } = usePWA();
+
   // Data from DataContext (replaces local state)
   const {
-    clients, setClients, addClient: dataAddClient, updateClient: dataUpdateClient,
+    clients, setClients, addClient: dataAddClient, updateClient: dataUpdateClient, deleteClient: dataDeleteClient,
     devis, setDevis, addDevis: dataAddDevis, updateDevis: dataUpdateDevis, deleteDevis: dataDeleteDevis,
-    chantiers, setChantiers, addChantier: dataAddChantier, updateChantier: dataUpdateChantier,
-    depenses, setDepenses, addDepense,
-    pointages, setPointages,
-    equipe, setEquipe,
+    chantiers, setChantiers, addChantier: dataAddChantier, updateChantier: dataUpdateChantier, deleteChantier: dataDeleteChantier,
+    depenses, setDepenses, addDepense: dataAddDepense, updateDepense: dataUpdateDepense, deleteDepense: dataDeleteDepense,
+    pointages, setPointages, addPointage: dataAddPointage, updatePointage: dataUpdatePointage, deletePointage: dataDeletePointage,
+    equipe, setEquipe, addEmployee: dataAddEmployee, updateEmployee: dataUpdateEmployee, deleteEmployee: dataDeleteEmployee,
     ajustements, addAjustement: dataAddAjustement, deleteAjustement: dataDeleteAjustement,
-    catalogue, setCatalogue, deductStock,
+    catalogue, setCatalogue, addCatalogueItem: dataAddCatalogueItem, updateCatalogueItem: dataUpdateCatalogueItem, deleteCatalogueItem: dataDeleteCatalogueItem, deductStock,
     paiements, addPaiement: dataAddPaiement,
     echanges, addEchange: dataAddEchange,
     getChantierBilan
@@ -91,7 +120,15 @@ export default function App() {
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([
+    // Notifications basées sur les vraies données de démo
+    { id: 1, message: 'Devis DEV-2026-004 accepté par Claire Rousseau', date: 'Il y a 2 heures', read: false, type: 'success', link: 'devis', itemId: 'd5', itemType: 'devis' },
+    { id: 2, message: 'Facture FAC-2026-001 en attente de paiement (studio Rousseau)', date: 'Il y a 1 jour', read: false, type: 'warning', link: 'devis', itemId: 'd9', itemType: 'facture' },
+    { id: 3, message: 'Chantier "Rénovation cuisine Dupont" à 65% - fin prévue le 15/02', date: 'Il y a 2 jours', read: false, type: 'info', link: 'chantiers', itemId: 'ch1', itemType: 'chantier' },
+    { id: 4, message: 'Devis DEV-2026-005 envoyé à Marc Lefevre - en attente de réponse', date: 'Il y a 3 jours', read: true, type: 'message', link: 'devis', itemId: 'd6', itemType: 'devis' },
+    { id: 5, message: 'Chantier "Salle de bain Martin" - avancement 30%, retard potentiel', date: 'Il y a 4 jours', read: true, type: 'alert', link: 'chantiers', itemId: 'ch2', itemType: 'chantier' },
+    { id: 6, message: 'Nouveau devis DEV-2026-003 créé pour Petit & Fils (extension)', date: 'Il y a 5 jours', read: true, type: 'info', link: 'devis', itemId: 'd4', itemType: 'devis' },
+  ]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -103,6 +140,9 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('chantierpro_onboarding_complete'));
+  const [showLanding, setShowLanding] = useState(true);
+  const [showImport, setShowImport] = useState(false);
+  const [importType, setImportType] = useState('clients');
 
   // Settings state
   const [theme, setTheme] = useState('light');
@@ -127,6 +167,32 @@ export default function App() {
   const addEchange = (data) => dataAddEchange(data);
   const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistré`, 'success'); return p; };
   const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Événement ajouté', 'success'); return e; };
+
+  // Manual sync handler for offline queue
+  const handleManualSync = async () => {
+    try {
+      const results = await syncQueue({
+        clients: { create: dataAddClient, update: dataUpdateClient, delete: dataDeleteClient },
+        devis: { create: dataAddDevis, update: dataUpdateDevis, delete: dataDeleteDevis },
+        chantiers: { create: dataAddChantier, update: dataUpdateChantier, delete: dataDeleteChantier },
+        depenses: { create: dataAddDepense, update: dataUpdateDepense, delete: dataDeleteDepense },
+        pointages: { create: dataAddPointage, update: dataUpdatePointage, delete: dataDeletePointage },
+        equipe: { create: dataAddEmployee, update: dataUpdateEmployee, delete: dataDeleteEmployee },
+        catalogue: { create: dataAddCatalogueItem, update: dataUpdateCatalogueItem, delete: dataDeleteCatalogueItem },
+      });
+      const count = await getPendingCount();
+      setPendingSync(count);
+      if (results.success > 0) {
+        showToast(`${results.success} modification${results.success > 1 ? 's' : ''} synchronisée${results.success > 1 ? 's' : ''}`, 'success');
+      }
+      if (results.failed > 0) {
+        showToast(`${results.failed} erreur${results.failed > 1 ? 's' : ''} de synchronisation`, 'error');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      showToast('Erreur de synchronisation', 'error');
+    }
+  };
 
   // Load settings from localStorage
   useEffect(() => {
@@ -166,6 +232,67 @@ export default function App() {
 
     return () => subscription?.unsubscribe();
   }, []);
+
+  // Initialize subscription store — fetch plan + usage on mount
+  const setSubscriptionData = useSubscriptionStore((s) => s.setSubscription);
+  const setUsageData = useSubscriptionStore((s) => s.setUsage);
+  const subStoreLoading = useSubscriptionStore((s) => s.loading);
+
+  useEffect(() => {
+    const initSubscription = async () => {
+      try {
+        const { data: subData } = await fetchSubscription();
+        if (subData) setSubscriptionData(subData);
+        const { data: usageData } = await fetchUsage();
+        if (usageData) setUsageData(usageData);
+      } catch (err) {
+        console.warn('Subscription init error:', err.message);
+      }
+    };
+    if (user) initSubscription();
+  }, [user, setSubscriptionData, setUsageData]);
+
+  // Handle ?billing=success redirect from Stripe Checkout
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('billing') === 'success') {
+        setPage('checkout-success');
+        // Clean URL without reload
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch (e) { console.warn('URL param check failed:', e.message); }
+  }, []);
+
+  // Listen for storage-based page navigation (used by UpgradeModal "Voir tous les plans")
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const p = localStorage.getItem('cp_current_page');
+        if (p && p !== page) setPage(p);
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [page]);
+
+  // Redirect legacy page IDs to new consolidated pages
+  useEffect(() => {
+    const REDIRECTS = {
+      ouvrages: 'catalogue', soustraitants: 'clients', commandes: 'chantiers',
+      tresorerie: 'finances', 'ia-devis': 'devis', entretien: 'dashboard',
+      signatures: 'devis', export: 'finances', analytique: 'finances',
+      equipe: 'dashboard', admin: 'settings', rentabilite: 'settings',
+      pricing: 'settings', billing: 'settings',
+    };
+    if (REDIRECTS[page]) setPage(REDIRECTS[page]);
+  }, []);
+
+  // Keep usage in sync with live data counts
+  useEffect(() => {
+    const liveUsage = computeLiveUsage({ clients, devis, chantiers, equipe });
+    setUsageData(liveUsage);
+  }, [clients.length, devis.length, chantiers.length, equipe.length, setUsageData]);
 
   const stats = { 
     devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length, 
@@ -272,6 +399,25 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Dynamic page title for accessibility
+  useEffect(() => {
+    const PAGE_TITLES = {
+      dashboard: 'Accueil',
+      devis: 'Devis & Factures',
+      chantiers: 'Chantiers',
+      clients: 'Clients',
+      planning: 'Planning',
+      catalogue: 'Catalogue',
+      finances: 'Finances',
+      settings: 'Paramètres',
+      pricing: 'Tarifs',
+      billing: 'Abonnement',
+      changelog: 'Changelog',
+    };
+    const title = PAGE_TITLES[page] || page;
+    document.title = `${title} — ChantierPro`;
+  }, [page]);
+
   // Network status listener for offline mode
   useEffect(() => {
     const updatePendingCount = async () => {
@@ -284,6 +430,8 @@ export default function App() {
         setIsOnline(true);
         updatePendingCount();
         showToast('Connexion rétablie', 'success');
+        // Auto-sync pending mutations when back online
+        handleManualSync().catch(err => console.warn('Auto-sync failed:', err));
       },
       () => {
         setIsOnline(false);
@@ -295,6 +443,75 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  // Generate notifications from data
+  useEffect(() => {
+    try {
+      const notifs = [];
+      const now = new Date();
+
+      // Overdue invoices (factures unpaid > 30 days)
+      devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
+        const dateStr = typeof f.date === 'string' ? f.date : (f.date instanceof Date ? f.date.toISOString() : '');
+        const days = Math.floor((now - new Date(dateStr)) / 86400000);
+        if (days > 30 && !isNaN(days)) {
+          notifs.push({ id: `overdue-${safeStr(f.id)}`, message: `Facture ${safeStr(f.numero, '#')} impayée depuis ${days} jours`, date: `${days}j de retard`, read: false, type: 'urgent' });
+        }
+      });
+
+      // Stale devis (sent > 10 days without response)
+      devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
+        const dateStr = typeof d.date === 'string' ? d.date : (d.date instanceof Date ? d.date.toISOString() : '');
+        const days = Math.floor((now - new Date(dateStr)) / 86400000);
+        if (days > 10 && !isNaN(days)) {
+          notifs.push({ id: `stale-${safeStr(d.id)}`, message: `Devis ${safeStr(d.numero, '#')} sans réponse depuis ${days} jours`, date: 'À relancer', read: false, type: 'warning' });
+        }
+      });
+
+      // Expired insurance
+      if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
+        notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expirée', date: 'Action requise', read: false, type: 'urgent', link: 'settings' });
+      }
+      if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
+        notifs.push({ id: 'dec-expired', message: 'Votre assurance Décennale est expirée', date: 'Action requise', read: false, type: 'urgent', link: 'settings' });
+      }
+
+      // Incomplete profile
+      const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
+      const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
+      if (missingFields.length > 0) {
+        notifs.push({ id: 'profile-incomplete', message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`, date: 'Paramètres', read: false, type: 'info', link: 'settings' });
+      }
+
+      // Budget overage alerts
+      chantiers.filter(c => c.statut === 'en_cours' && c.budget).forEach(ch => {
+        const totalDepenses = depenses
+          .filter(d => d.chantierId === ch.id)
+          .reduce((sum, d) => sum + (parseFloat(d.montant) || 0), 0);
+        const budgetUsed = ch.budget > 0 ? (totalDepenses / ch.budget) * 100 : 0;
+        if (budgetUsed > 90) {
+          notifs.push({
+            id: `budget-${safeStr(ch.id)}`,
+            message: `Chantier "${safeStr(ch.nom)}" : ${Math.round(budgetUsed)}% du budget utilisé`,
+            date: budgetUsed > 100 ? 'Dépassement' : 'Attention',
+            read: false,
+            type: budgetUsed > 100 ? 'urgent' : 'warning',
+            link: 'chantiers',
+            itemType: 'chantier',
+            itemId: ch.id
+          });
+        }
+      });
+
+      // Preserve read status from previous notifications
+      setNotifications(prev => {
+        const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
+        return notifs.map(n => ({ ...n, message: safeStr(n.message), date: safeStr(n.date), read: readIds.has(n.id) }));
+      });
+    } catch (err) {
+      console.error('[Notifications useEffect] Error:', err);
+    }
+  }, [devis, chantiers, depenses, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
+
   // Loading screen
   if (loading) return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -304,6 +521,33 @@ export default function App() {
 
   const isDark = theme === 'dark';
   const tc = getThemeClasses(isDark);
+
+  // Legal / public pages (accessible without auth)
+  const publicPages = ['cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog'];
+  if (!user && !isDemo && publicPages.includes(page)) return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-100 flex items-center justify-center"><Building2 size={48} className="text-orange-500 animate-bounce" /></div>}>
+      <div className="min-h-screen bg-slate-100 p-4 sm:p-6">
+        {page === 'changelog'
+          ? <Changelog isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
+          : <LegalPages page={page} isDark={false} couleur={entreprise.couleur || '#f97316'} setPage={(p) => { setPage(p); if (!publicPages.includes(p)) setShowLanding(true); }} />
+        }
+      </div>
+      <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
+    </Suspense>
+  );
+
+  // Landing Page (for unauthenticated visitors before they click login)
+  if (!user && !isDemo && showLanding) return (
+    <>
+      <LandingPage
+        couleur={entreprise.couleur || '#f97316'}
+        onLogin={() => setShowLanding(false)}
+        onSignUp={() => { setShowLanding(false); setShowSignUp(true); }}
+        onNavigate={(p) => { setPage(p); setShowLanding(false); }}
+      />
+      <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
+    </>
+  );
 
   // Login Page
   if (!user) return (
@@ -398,7 +642,7 @@ export default function App() {
             </div>
             {authError && (
               <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
-                {authError}
+                {safeStr(authError)}
               </div>
             )}
             <button
@@ -438,6 +682,7 @@ export default function App() {
 
   // Navigation items - full sidebar with all sections
   // Badges now include explicit context for clarity
+  // Simplified sidebar: 7 core modules + settings (was 18 items)
   const nav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     {
@@ -458,6 +703,7 @@ export default function App() {
       badgeColor: '#22c55e',
       badgeTitle: `${stats.chantiersEnCours} chantier${stats.chantiersEnCours > 1 ? 's' : ''} en cours`
     },
+    { id: 'clients', icon: Users, label: 'Clients' },
     {
       id: 'planning',
       icon: Calendar,
@@ -466,64 +712,10 @@ export default function App() {
       badgeColor: '#3b82f6',
       badgeTitle: `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui`
     },
-    { id: 'clients', icon: Users, label: 'Clients' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
-    { id: 'ouvrages', icon: Library, label: 'Ouvrages' },
-    { id: 'soustraitants', icon: UserCheck, label: 'Sous-Traitants' },
-    { id: 'commandes', icon: ShoppingCart, label: 'Commandes' },
-    { id: 'tresorerie', icon: Wallet, label: 'Trésorerie' },
-    { id: 'ia-devis', icon: Camera, label: 'IA Devis' },
-    { id: 'entretien', icon: ClipboardList, label: 'Entretien' },
-    { id: 'signatures', icon: PenTool, label: 'Signatures' },
-    { id: 'export', icon: Download, label: 'Export Compta' },
-    { id: 'equipe', icon: HardHat, label: 'Équipe' },
-    { id: 'admin', icon: HelpCircle, label: 'Administratif' },
+    { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
   ];
-  
-  // Generate notifications from data
-  useEffect(() => {
-    const notifs = [];
-    const now = new Date();
-
-    // Overdue invoices (factures unpaid > 30 days)
-    devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
-      const days = Math.floor((now - new Date(f.date)) / 86400000);
-      if (days > 30) {
-        notifs.push({ id: `overdue-${f.id}`, message: `Facture ${f.numero || '#'} impayée depuis ${days} jours`, date: `${days}j de retard`, read: false, type: 'urgent' });
-      }
-    });
-
-    // Stale devis (sent > 10 days without response)
-    devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
-      const days = Math.floor((now - new Date(d.date)) / 86400000);
-      if (days > 10) {
-        notifs.push({ id: `stale-${d.id}`, message: `Devis ${d.numero || '#'} sans réponse depuis ${days} jours`, date: 'À relancer', read: false, type: 'warning' });
-      }
-    });
-
-    // Expired insurance
-    if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
-      notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expirée', date: 'Action requise', read: false, type: 'urgent' });
-    }
-    if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
-      notifs.push({ id: 'dec-expired', message: 'Votre assurance Décennale est expirée', date: 'Action requise', read: false, type: 'urgent' });
-    }
-
-    // Incomplete profile
-    const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
-    const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
-    if (missingFields.length > 0) {
-      notifs.push({ id: 'profile-incomplete', message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`, date: 'Paramètres', read: false, type: 'info' });
-    }
-
-    // Preserve read status from previous notifications
-    setNotifications(prev => {
-      const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
-      return notifs.map(n => ({ ...n, read: readIds.has(n.id) }));
-    });
-  }, [devis, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
-
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
@@ -549,8 +741,8 @@ export default function App() {
             <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-semibold text-sm truncate">{entreprise.nom || 'ChantierPro'}</h1>
-            <p className="text-slate-500 text-xs truncate">{user?.email}</p>
+            <h1 className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'ChantierPro')}</h1>
+            <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
           </div>
           {/* Close button - mobile only */}
           <button
@@ -641,101 +833,132 @@ export default function App() {
 
       {/* Main content */}
       <div className={`lg:pl-64 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
-        {/* Header - Optimized for mobile */}
-        <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center gap-1.5 sm:gap-3 ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
-          {/* Menu button - mobile only */}
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className={`lg:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
-            aria-label="Ouvrir le menu"
-          >
-            <Menu size={20} />
-          </button>
+        {/* Header - Optimized for mobile with proper left/right distribution */}
+        <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
 
-          {/* Logo - compact on mobile */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0"
-              style={{background: couleur}}
+          {/* LEFT GROUP: Menu + Logo + Badges */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Menu button - mobile only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+              aria-label="Ouvrir le menu"
             >
-              <Building2 size={16} className="text-white" />
+              <Menu size={20} />
+            </button>
+
+            {/* Logo - compact on mobile */}
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0"
+                style={{background: couleur}}
+              >
+                <Building2 size={18} className="text-white" />
+              </div>
+              <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
+                {safeStr(entreprise.nom, 'ChantierPro')}
+              </span>
             </div>
-            <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
-              {entreprise.nom || 'ChantierPro'}
-            </span>
+
+            {/* Status badges - compact on mobile */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {!isOnline && (
+                <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 bg-amber-500 text-white">
+                  <WifiOff size={12} />
+                  <span className="hidden md:inline">Hors ligne</span>
+                </span>
+              )}
+              {isOnline && pendingSync > 0 && (
+                <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                  <Wifi size={12} className="animate-pulse" />
+                  <span className="hidden md:inline">Sync</span>
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Status badges - compact on mobile */}
-          <div className="hidden xs:flex items-center gap-1.5">
-            {!isOnline && (
-              <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 bg-amber-500 text-white">
-                <WifiOff size={12} />
-                <span className="hidden md:inline">Hors ligne</span>
-              </span>
-            )}
-            {isOnline && pendingSync > 0 && (
-              <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                <Wifi size={12} className="animate-pulse" />
-                <span className="hidden md:inline">Sync</span>
-              </span>
-            )}
+          {/* CENTER: Search (desktop only) */}
+          <div className="hidden md:flex flex-1 justify-center px-4">
+            <button
+              onClick={() => setShowSearch(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-500'}`}
+            >
+              <Search size={16} />
+              <span className="text-sm truncate">Rechercher...</span>
+              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>⌘K</kbd>
+            </button>
           </div>
 
-          {/* Search button - tablet and desktop */}
-          <button
-            onClick={() => setShowSearch(true)}
-            className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-1 max-w-[200px] lg:max-w-xs ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-400' : 'border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-500'}`}
-          >
-            <Search size={16} />
-            <span className="text-sm truncate">Rechercher...</span>
-            <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>⌘K</kbd>
-          </button>
+          {/* RIGHT GROUP: Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            {/* Search button - mobile only (icon) */}
+            <button
+              onClick={() => setShowSearch(true)}
+              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+              aria-label="Rechercher"
+            >
+              <Search size={18} />
+            </button>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+            {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
+            <button
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400' : 'hover:bg-slate-200 text-slate-600'}`}
+              title={isDark ? 'Mode clair' : 'Mode sombre'}
+              aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
 
-          {/* Search button - mobile only (icon) */}
-          <button
-            onClick={() => setShowSearch(true)}
-            className={`md:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
-            aria-label="Rechercher"
-          >
-            <Search size={18} />
-          </button>
+            {/* Help button - tablet and desktop only */}
+            <button
+              onClick={() => setShowHelp(true)}
+              className={`hidden md:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+              title="Aide"
+              aria-label="Ouvrir l'aide"
+            >
+              <HelpCircle size={18} />
+            </button>
 
-          {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
-          <button
-            onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className={`hidden sm:flex p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400' : 'hover:bg-slate-200 text-slate-600'}`}
-            title={isDark ? 'Mode clair' : 'Mode sombre'}
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+            {/* Mode discret toggle */}
+            <button
+              onClick={() => setModeDiscret(!modeDiscret)}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+              style={modeDiscret ? {background: couleur} : {}}
+              title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+              aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+              aria-pressed={modeDiscret}
+            >
+              {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
 
-          {/* Help button - tablet and desktop only */}
-          <button
-            onClick={() => setShowHelp(true)}
-            className={`hidden md:flex p-2 rounded-xl min-w-[44px] min-h-[44px] items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
-            title="Aide"
-          >
-            <HelpCircle size={18} />
-          </button>
+            {/* Install PWA button */}
+            {!isInstalled && (
+              <button
+                onClick={() => {
+                  if (canInstall) {
+                    install();
+                  } else {
+                    showToast('Sur iOS: Partager → "Sur l\'écran d\'accueil"', 'info');
+                  }
+                }}
+                className={`w-11 h-11 lg:w-auto lg:h-11 lg:px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
+                  isDark
+                    ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50'
+                    : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
+                }`}
+                title="Installer l'application"
+                aria-label="Installer l'application sur votre appareil"
+              >
+                <Smartphone size={18} className="flex-shrink-0" />
+                <span className="hidden lg:inline whitespace-nowrap">Installer</span>
+              </button>
+            )}
 
-          {/* Mode discret toggle - combined indicator and button */}
-          <button
-            onClick={() => setModeDiscret(!modeDiscret)}
-            className={`p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
-            style={modeDiscret ? {background: couleur} : {}}
-            title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-          >
-            {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-
-          {/* Notifications */}
-          <div className="relative">
+            {/* Notifications */}
             <button
               onClick={() => setShowNotifs(!showNotifs)}
-              className={`relative p-2.5 rounded-xl transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
+              className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-300 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'}`}
               style={showNotifs ? {background: couleur} : {}}
               title={unreadNotifs.length > 0 ? `${unreadNotifs.length} notification${unreadNotifs.length > 1 ? 's' : ''} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Notifications'}
               aria-label={`Notifications${unreadNotifs.length > 0 ? ` (${unreadNotifs.length} non lues)` : ''}`}
@@ -749,130 +972,57 @@ export default function App() {
               )}
             </button>
 
-            {showNotifs && (
-              <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4" onClick={() => setShowNotifs(false)}>
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                <div
-                  className={`relative w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-slide-up ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}
-                  onClick={e => e.stopPropagation()}
-                >
-                  {/* Header */}
-                  <div className="px-4 py-3 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Bell size={16} style={{color: couleur}} />
-                        <h3 className={`font-semibold ${tc.text}`}>Notifications</h3>
-                        {unreadNotifs.length > 0 && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-bold text-white rounded-full" style={{background: couleur}}>
-                            {unreadNotifs.length}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {unreadNotifs.length > 0 && (
-                          <button onClick={markAllNotifsRead} className="text-xs hover:underline" style={{color: couleur}}>
-                            Tout lire
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setShowNotifs(false)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                        >
-                          <X size={18} className={tc.textMuted} />
-                        </button>
-                      </div>
-                    </div>
+            {/* Quick add */}
+            <div className="relative">
+              <button
+                onClick={() => setShowQuickAdd(!showQuickAdd)}
+                className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 transition-all hover:shadow-lg"
+                style={{background: couleur}}
+                aria-label="Créer nouveau"
+              >
+                <Plus size={18} />
+                <span className="hidden sm:inline text-sm font-medium">Nouveau</span>
+              </button>
+
+              {showQuickAdd && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
+                  <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                    {[
+                      { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
+                      { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
+                      { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' }
+                    ].map(item => (
+                      <button
+                        key={item.label}
+                        onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-50 text-slate-900'}`}
+                      >
+                        <item.icon size={18} style={{color: couleur}} />
+                        <span>{item.label}</span>
+                        <ChevronRight size={16} className={`ml-auto ${tc.textMuted}`} />
+                      </button>
+                    ))}
                   </div>
-                  {/* Content */}
-                  <div className="max-h-64 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="px-4 py-6 text-center">
-                        <div className="w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center" style={{background: `${couleur}15`}}>
-                          <Bell size={18} style={{color: couleur}} />
-                        </div>
-                        <p className={`text-sm font-medium ${tc.text}`}>Tout est à jour</p>
-                        <p className={`text-xs mt-0.5 ${tc.textMuted}`}>Aucune notification</p>
-                      </div>
-                    ) : (
-                      notifications.map(n => (
-                        <div
-                          key={n.id}
-                          onClick={() => markNotifRead(n.id)}
-                          className={`px-4 py-3 cursor-pointer transition-all border-b last:border-0 ${!n.read ? (isDark ? 'bg-slate-700/50 border-l-2' : 'bg-orange-50/80 border-l-2') : ''} ${isDark ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-100 hover:bg-slate-50'}`}
-                          style={!n.read ? {borderLeftColor: couleur} : {}}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`flex-shrink-0 mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center ${
-                              n.type === 'urgent' ? (isDark ? 'bg-red-500/15' : 'bg-red-50') :
-                              n.type === 'warning' ? (isDark ? 'bg-amber-500/15' : 'bg-amber-50') :
-                              (isDark ? 'bg-blue-500/15' : 'bg-blue-50')
-                            }`}>
-                              {n.type === 'urgent' ? <AlertCircle size={14} className="text-red-500" /> :
-                               n.type === 'warning' ? <Clock size={14} className="text-amber-500" /> :
-                               <Info size={14} className="text-blue-500" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${!n.read ? 'font-medium' : ''} ${tc.text}`}>{n.message}</p>
-                              <p className={`text-xs mt-1 ${tc.textMuted}`}>{n.date}</p>
-                            </div>
-                            {!n.read && <span className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{background: couleur}}></span>}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Quick add */}
-          <div className="relative">
+                </>
+              )}
+            </div>
+
+            {/* User avatar */}
             <button
-              onClick={() => setShowQuickAdd(!showQuickAdd)}
-              className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all hover:shadow-lg min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px]"
+              onClick={() => setPage('settings')}
+              className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg"
               style={{background: couleur}}
-              aria-label="Créer nouveau"
+              title={user?.email || 'Mon compte'}
+              aria-label="Mon compte"
             >
-              <Plus size={18} />
-              <span className="hidden sm:inline text-sm font-medium">Nouveau</span>
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
             </button>
-
-            {showQuickAdd && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
-                <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
-                  {[
-                    { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
-                    { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
-                    { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' }
-                  ].map(item => (
-                    <button
-                      key={item.label}
-                      onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }} 
-                      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-slate-50 text-slate-900'}`}
-                    >
-                      <item.icon size={18} style={{color: couleur}} />
-                      <span>{item.label}</span>
-                      <ChevronRight size={16} className={`ml-auto ${tc.textMuted}`} />
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
-
-          {/* User avatar */}
-          <button
-            onClick={() => setPage('settings')}
-            className={`ml-1 w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg`}
-            style={{background: couleur}}
-            title={user?.email || 'Mon compte'}
-            aria-label="Mon compte"
-          >
-            {user?.email?.charAt(0).toUpperCase() || 'U'}
-          </button>
         </header>
+
+        {/* Trial / Downgrade Banner */}
+        <TrialBanner />
 
         {/* Page content */}
         <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
@@ -880,22 +1030,32 @@ export default function App() {
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
-              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} />}
+              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} />}
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
-              {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
+              {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} isDark={isDark} couleur={couleur} />}
-              {page === 'soustraitants' && <SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'commandes' && <CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'tresorerie' && <TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'ia-devis' && <IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} />}
-              {page === 'entretien' && <CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'signatures' && <SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} />}
-              {page === 'export' && <ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
-              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
+              {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
+              {page === 'commandes' && <FeatureGuard feature="commandes"><CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
+              {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
+              {page === 'ia-devis' && <FeatureGuard feature="ia_devis"><IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
+              {page === 'entretien' && <FeatureGuard feature="entretien"><CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
+              {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
+              {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
+              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} setPage={setPage} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
-              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
+              {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
+              {page === 'checkout-success' && <CheckoutSuccess isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'design-system' && <DesignSystemDemo />}
+              {page === 'cgv' && <LegalPages page="cgv" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'cgu' && <LegalPages page="cgu" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'confidentialite' && <LegalPages page="confidentialite" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'mentions-legales' && <LegalPages page="mentions-legales" isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'changelog' && <Changelog isDark={isDark} couleur={couleur} setPage={setPage} />}
             </Suspense>
           </ErrorBoundary>
         </main>
@@ -926,7 +1086,7 @@ export default function App() {
             onSubmit={(data) => {
               const newDevis = {
                 id: `d${Date.now()}`,
-                numero: `DEV-${new Date().getFullYear()}-${String(devis.filter(d => d.type === 'devis').length + 1).padStart(3, '0')}`,
+                numero: `DEV-${new Date().getFullYear()}-${String(devis.filter(d => d.type === 'devis').length + 1).padStart(5, '0')}`,
                 ...data,
                 date: new Date().toISOString().split('T')[0],
                 statut: 'brouillon'
@@ -1017,6 +1177,136 @@ export default function App() {
         />
       </Suspense>
 
+      {/* Notifications Modal - Rendered at root level for proper z-index */}
+      {showNotifs && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          {/* Dark Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowNotifs(false)}
+          />
+          {/* Modal */}
+          <div
+            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notif-title"
+          >
+            {/* Header */}
+            <div className="flex-shrink-0 px-5 py-4 border-b" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`, borderColor: isDark ? '#334155' : '#e2e8f0'}}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: `${couleur}20`}}>
+                    <Bell size={20} style={{color: couleur}} />
+                  </div>
+                  <div>
+                    <h3 id="notif-title" className={`font-semibold text-lg ${tc.text}`}>Notifications</h3>
+                    <p className={`text-xs ${tc.textMuted}`}>
+                      {unreadNotifs.length > 0 ? `${unreadNotifs.length} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Tout est à jour'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowNotifs(false)}
+                  className={`p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                  aria-label="Fermer"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+              {unreadNotifs.length > 0 && (
+                <button onClick={markAllNotifsRead} className="mt-3 text-sm font-medium hover:underline" style={{color: couleur}}>
+                  Tout marquer comme lu
+                </button>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="px-6 py-16 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{background: `${couleur}15`}}>
+                    <Bell size={28} style={{color: couleur}} />
+                  </div>
+                  <p className={`text-lg font-medium ${tc.text}`}>Tout est à jour</p>
+                  <p className={`text-sm mt-2 ${tc.textMuted}`}>Aucune notification pour le moment</p>
+                </div>
+              ) : (
+                <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
+                  {notifications.map(n => {
+                    const typeConfig = {
+                      success: { icon: '✅', bg: isDark ? 'bg-emerald-900/40' : 'bg-emerald-100' },
+                      warning: { icon: '⚠️', bg: isDark ? 'bg-amber-900/40' : 'bg-amber-100' },
+                      info: { icon: 'ℹ️', bg: isDark ? 'bg-blue-900/40' : 'bg-blue-100' },
+                      message: { icon: '💬', bg: isDark ? 'bg-purple-900/40' : 'bg-purple-100' },
+                      alert: { icon: '🔔', bg: isDark ? 'bg-orange-900/40' : 'bg-orange-100' }
+                    };
+                    const config = typeConfig[n.type] || typeConfig.alert;
+
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          markNotifRead(n.id);
+                          if (n.link) {
+                            setPage(n.link);
+                            // Navigation directe avec l'itemId
+                            if (n.itemType === 'devis' || n.itemType === 'facture') {
+                              const found = devis.find(d => d.id === n.itemId);
+                              if (found) setSelectedDevis(found);
+                            } else if (n.itemType === 'chantier') {
+                              const found = chantiers.find(c => c.id === n.itemId);
+                              if (found) setSelectedChantier(found);
+                            }
+                            setShowNotifs(false);
+                          }
+                        }}
+                        className={`w-full text-left px-5 py-4 transition-all ${!n.read ? (isDark ? 'bg-slate-700/40' : 'bg-orange-50/70') : ''} ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-slate-50'}`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${config.bg}`}>
+                            <span className="text-lg">{config.icon}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm leading-relaxed ${!n.read ? 'font-medium' : ''} ${tc.text}`}>{safeStr(n.message)}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <p className={`text-xs ${tc.textMuted}`}>{safeStr(n.date)}</p>
+                              {n.link && (
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{background: `${couleur}15`, color: couleur}}>
+                                  Voir →
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {!n.read && (
+                            <span className="w-3 h-3 rounded-full flex-shrink-0 mt-1" style={{background: couleur}} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            {notifications.length > 0 && (
+              <div className={`flex-shrink-0 px-5 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/80' : 'border-slate-200 bg-slate-50'}`}>
+                <button
+                  onClick={() => {
+                    setNotifications([]);
+                    setShowNotifs(false);
+                  }}
+                  className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                >
+                  Effacer toutes les notifications
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       {toast && (
         <div className="fixed bottom-4 right-4 z-50">
@@ -1032,7 +1322,7 @@ export default function App() {
             {toast.type === 'error' && <AlertCircle size={18} />}
             {toast.type === 'warning' && <AlertCircle size={18} />}
             {toast.type === 'info' && <Info size={18} />}
-            <span className="text-sm font-medium">{toast.message}</span>
+            <span className="text-sm font-medium">{safeStr(toast.message)}</span>
             <button onClick={hideToast} className="ml-2 opacity-70 hover:opacity-100" aria-label="Fermer la notification">
               <X size={16} />
             </button>
@@ -1057,11 +1347,47 @@ export default function App() {
       {/* New Zustand-based Modal System */}
       <ModalContainer isDark={isDark} />
 
+      {/* Upgrade Modal (Subscription) */}
+      <UpgradeModal />
+
+      {/* Import Modal (CSV/Excel) */}
+      {showImport && (
+        <Suspense fallback={null}>
+          <ImportModal
+            isOpen={showImport}
+            onClose={() => setShowImport(false)}
+            type={importType}
+            isDark={isDark}
+            couleur={couleur}
+            onImport={(data) => {
+              if (importType === 'clients') {
+                data.forEach(item => {
+                  const c = { id: `imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, ...item };
+                  setClients(prev => [...prev, c]);
+                });
+                showToast(`${data.length} client(s) importé(s)`, 'success');
+              }
+              setShowImport(false);
+            }}
+          />
+        </Suspense>
+      )}
+
       {/* New Zustand-based Toast System */}
       <ToastContainer position="bottom-right" />
 
       {/* PWA Install/Update Prompt - visible sur mobile */}
-      <PWAUpdatePrompt />
+      <PWAUpdatePrompt isDark={isDark} couleur={entreprise.couleur} />
+
+      {/* Offline indicator banner */}
+      <OfflineIndicator
+        pendingCount={pendingSync}
+        onSync={handleManualSync}
+        isDark={isDark}
+      />
+
+      {/* Cookie Consent Banner (RGPD) */}
+      <CookieConsent isDark={isDark} couleur={couleur} setPage={setPage} />
     </div>
   );
 }
@@ -1069,6 +1395,7 @@ export default function App() {
 // Help Modal Component
 function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const [helpSection, setHelpSection] = useState('overview');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-700';
@@ -1200,6 +1527,98 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>📊 Mode discret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>Cliquez sur l'œil pour masquer les montants. Pratique quand un client regarde votre écran !</p>
           </div>
+        </div>
+      )
+    },
+    faq: {
+      title: "FAQ",
+      titleFull: "Questions fréquentes",
+      icon: "❓",
+      content: (() => {
+        const faqItems = [
+          { q: 'Comment créer mon premier devis ?', a: 'Allez dans Devis & Factures, cliquez "Nouveau devis", sélectionnez un client et ajoutez vos lignes depuis le catalogue ou manuellement.' },
+          { q: 'Comment transformer un devis en facture ?', a: 'Ouvrez le devis accepté et cliquez "Convertir en facture". Toutes les lignes sont reprises automatiquement.' },
+          { q: 'Comment ajouter mon logo ?', a: 'Dans Paramètres > Identité, uploadez votre logo. Il apparaîtra sur tous vos devis et factures PDF.' },
+          { q: 'Comment suivre mes dépenses ?', a: 'Dans la fiche d\'un chantier, onglet Dépenses, ajoutez chaque achat de matériel ou paiement de sous-traitant.' },
+          { q: 'Comment envoyer un devis par email ?', a: 'Générez le PDF du devis puis utilisez le bouton "Envoyer" pour l\'envoyer par email directement depuis l\'application.' },
+          { q: 'Puis-je utiliser ChantierPro hors ligne ?', a: 'Oui ! ChantierPro est une PWA. Installez-la sur votre téléphone et vos données se synchronisent automatiquement.' },
+          { q: 'Comment fonctionne le planning ?', a: 'Le planning affiche vos chantiers et événements. Cliquez sur un jour pour ajouter un événement ou glissez-déposez pour réorganiser.' },
+          { q: 'Comment gérer mes clients ?', a: 'Dans la section Clients, ajoutez les coordonnées de vos clients. Vous verrez leur historique de devis et chantiers.' },
+          { q: 'Comment fonctionne le catalogue ?', a: 'Le catalogue stocke vos articles et prestations avec prix unitaires. Réutilisez-les dans vos devis en un clic.' },
+          { q: 'Comment changer mon plan ?', a: 'Dans Paramètres, vous pouvez voir votre plan actuel et passer au Pro pour débloquer toutes les fonctionnalités.' },
+          { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
+          { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
+          { q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Plan Pro)' },
+          { q: 'Comment relancer un client ?', a: 'ChantierPro détecte les devis en attente et vous propose des relances automatiques par email.' },
+          { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
+          { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },
+          { q: 'Comment supprimer mon compte ?', a: 'Dans Paramètres > Données, section RGPD, vous pouvez exporter ou supprimer toutes vos données.' },
+          { q: 'Comment contacter le support ?', a: 'Envoyez un email à support@chantierpro.fr. Nous répondons sous 48h ouvrées.' },
+        ];
+        const filtered = searchQuery.trim()
+          ? faqItems.filter(f => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase()))
+          : faqItems;
+        return (
+          <div className="space-y-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher une question..."
+              className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'}`}
+            />
+            {filtered.length === 0 && (
+              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à support@chantierpro.fr</p>
+            )}
+            {filtered.map((item, i) => (
+              <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <summary className={`px-4 py-3 cursor-pointer text-sm font-medium ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}>
+                  {item.q}
+                </summary>
+                <div className={`px-4 pb-3 text-sm ${textSecondary}`}>{item.a}</div>
+              </details>
+            ))}
+          </div>
+        );
+      })()
+    },
+    contact: {
+      title: "Contact",
+      titleFull: "Contacter le support",
+      icon: "📧",
+      content: (
+        <div className="space-y-4">
+          <p className={textSecondary}>Notre équipe répond sous 48h ouvrées.</p>
+          <div className={`p-5 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'} space-y-3`}>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📧</span>
+              <div>
+                <p className={`font-medium ${textPrimary}`}>Email</p>
+                <p className={`text-sm ${textSecondary}`}>support@chantierpro.fr</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⏰</span>
+              <div>
+                <p className={`font-medium ${textPrimary}`}>Délai de réponse</p>
+                <p className={`text-sm ${textSecondary}`}>Sous 48h ouvrées (prioritaire pour les abonnés Pro)</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📖</span>
+              <div>
+                <p className={`font-medium ${textPrimary}`}>Documentation</p>
+                <p className={`text-sm ${textSecondary}`}>Consultez la FAQ ci-dessus pour une réponse immédiate</p>
+              </div>
+            </div>
+          </div>
+          <a
+            href="mailto:support@chantierpro.fr?subject=Support ChantierPro"
+            className="block w-full py-3 rounded-xl text-center text-white font-semibold text-sm transition-all hover:opacity-90"
+            style={{ backgroundColor: couleur }}
+          >
+            Envoyer un email au support
+          </a>
         </div>
       )
     }

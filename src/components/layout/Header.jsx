@@ -153,7 +153,7 @@ export default function Header({
         <button
           onClick={onNavigateHome}
           className="flex items-center gap-2 group"
-          aria-label="Retour a l'accueil"
+          aria-label="Retour à l'accueil"
         >
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"

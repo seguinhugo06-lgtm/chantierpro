@@ -393,7 +393,7 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
             <h3
               className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
             >
-              Score Sante
+              Score Santé
             </h3>
             <p
               className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}

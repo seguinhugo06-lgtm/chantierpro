@@ -3,10 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>ChantierPro - Gestion Devis & Facturation BTP</title>
+    <title>ChantierPro — Logiciel de gestion de chantier pour artisans BTP</title>
+
+    <!-- SEO Meta -->
+    <meta name="description" content="Créez vos devis et factures BTP en 2 minutes. Gestion de chantier, trésorerie, conformité. Gratuit pour démarrer." />
+    <meta name="keywords" content="devis BTP, facturation artisan, gestion chantier, logiciel BTP, devis en ligne, facture auto-entrepreneur" />
+    <meta name="author" content="ChantierPro" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://chantierpro.vercel.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="ChantierPro — Logiciel de gestion de chantier pour artisans BTP" />
+    <meta property="og:description" content="Créez vos devis et factures BTP en 2 minutes. Gestion de chantier, trésorerie, conformité. Gratuit pour démarrer." />
+    <meta property="og:image" content="https://chantierpro.vercel.app/og-image.png" />
+    <meta property="og:url" content="https://chantierpro.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ChantierPro" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ChantierPro — Gestion de chantier pour artisans BTP" />
+    <meta name="twitter:description" content="Créez vos devis et factures BTP en 2 minutes. Gratuit pour démarrer." />
+    <meta name="twitter:image" content="https://chantierpro.vercel.app/og-image.png" />
 
     <!-- PWA Meta Tags -->
-    <meta name="description" content="Application de gestion devis et facturation pour artisans du BTP. Créez vos devis en 3 minutes." />
     <meta name="theme-color" content="#f97316" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,6 +39,29 @@
 
     <!-- Preconnect to Supabase -->
     <link rel="preconnect" href="https://pxoaqneghwjryplkfvjt.supabase.co" crossorigin />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ChantierPro",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "Logiciel de gestion de chantier, devis et facturation pour artisans et entreprises du BTP.",
+      "url": "https://chantierpro.vercel.app",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "EUR",
+        "lowPrice": "0",
+        "highPrice": "14.90",
+        "offerCount": "2"
+      },
+      "screenshot": "https://chantierpro.vercel.app/og-image.png",
+      "featureList": "Devis et factures, Gestion de chantier, Suivi de trésorerie, Planning, Gestion d'équipe, Mode hors ligne",
+      "inLanguage": "fr"
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

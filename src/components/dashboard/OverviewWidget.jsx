@@ -175,7 +175,7 @@ function StatCard({
           {mainLabel && (
             <span className={cn(
               'text-sm',
-              isDark ? 'text-gray-500' : 'text-gray-400'
+              isDark ? 'text-gray-500' : 'text-gray-500'
             )}>
               {mainLabel}
             </span>
@@ -215,7 +215,7 @@ function StatCard({
           {progress.label && (
             <p className={cn(
               'text-[10px] mt-1',
-              isDark ? 'text-gray-500' : 'text-gray-400'
+              isDark ? 'text-gray-500' : 'text-gray-500'
             )}>
               {progress.label}
             </p>
@@ -515,7 +515,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             onClick={() => setPage?.('equipe')}
             isDark={isDark}
             badge={stats.membresDisponibles > 0 ? {
-              text: `${stats.membresDisponibles} dispo`,
+              text: `${stats.membresDisponibles} disponible${stats.membresDisponibles > 1 ? 's' : ''}`,
               color: '#10b981',
             } : stats.membresActifs > 0 ? {
               text: `${stats.membresActifs} actif${stats.membresActifs > 1 ? 's' : ''}`,
@@ -530,7 +530,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             mainValue={stats.stockAlerts > 0 ? stats.stockAlerts : stats.totalCatalogue}
             mainLabel={stats.stockAlerts > 0 ? 'articles' : 'articles'}
             secondaryValue={stats.avgMargin > 0 ? `${stats.avgMargin}%` : undefined}
-            secondaryLabel="marge moy."
+            secondaryLabel="marge moyenne"
             color={stats.stockAlerts > 0 ? '#ef4444' : stats.marginColor}
             gradient={stats.stockAlerts > 0
               ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
