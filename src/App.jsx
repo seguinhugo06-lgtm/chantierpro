@@ -157,10 +157,10 @@ export default function App() {
   // CRUD wrappers with toasts (delegate to DataContext)
   const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
   const updateClient = async (id, data) => { await dataUpdateClient(id, data); showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); };
-  const addDevis = (data) => dataAddDevis(data);
-  const updateDevis = (id, data) => dataUpdateDevis(id, data);
+  const addDevis = async (data) => { const d = await dataAddDevis(data); showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success'); return d; };
+  const updateDevis = async (id, data) => await dataUpdateDevis(id, data);
   const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
-  const addChantier = (data) => { const c = dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
+  const addChantier = async (data) => { const c = await dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
   const updateChantier = (id, data) => dataUpdateChantier(id, data);
   const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistré', 'success'); return a; };
   const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprimé', 'info'); };
@@ -277,6 +277,7 @@ export default function App() {
   }, [page]);
 
   // Redirect legacy page IDs to new consolidated pages
+  // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
     const REDIRECTS = {
       ouvrages: 'catalogue', soustraitants: 'clients', commandes: 'chantiers',
@@ -286,7 +287,7 @@ export default function App() {
       pricing: 'settings', billing: 'settings',
     };
     if (REDIRECTS[page]) setPage(REDIRECTS[page]);
-  }, []);
+  }, [page]);
 
   // Keep usage in sync with live data counts
   useEffect(() => {
@@ -1083,17 +1084,17 @@ export default function App() {
           <DevisWizard
             isOpen={showFABDevisWizard}
             onClose={() => setShowFABDevisWizard(false)}
-            onSubmit={(data) => {
-              const newDevis = {
-                id: `d${Date.now()}`,
-                numero: `DEV-${new Date().getFullYear()}-${String(devis.filter(d => d.type === 'devis').length + 1).padStart(5, '0')}`,
+            onSubmit={async (data) => {
+              const newDevis = await addDevis({
                 ...data,
                 date: new Date().toISOString().split('T')[0],
                 statut: 'brouillon'
-              };
-              setDevis(prev => [...prev, newDevis]);
+              });
               setShowFABDevisWizard(false);
-              showToast('Devis créé ✓', 'success');
+              if (newDevis?.id) {
+                setSelectedDevis(newDevis);
+                setPage('devis');
+              }
             }}
             clients={clients}
             catalogue={catalogue}

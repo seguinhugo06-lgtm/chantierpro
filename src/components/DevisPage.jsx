@@ -150,6 +150,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return true;
   }));
 
+  // Helper: compute line total robustly (handles montant, camelCase, snake_case)
+  const getLineTotal = (l) => {
+    if (l.montant != null && l.montant !== 0) return parseFloat(l.montant);
+    const qty = parseFloat(l.quantite || 0);
+    const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
+    return qty * pu;
+  };
+
   // Calcul des totaux avec multi-taux TVA et marge
   const calculateTotals = () => {
     let totalHT = 0;
@@ -157,7 +165,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
 
     form.sections.forEach(s => s.lignes.forEach(l => {
-      const montant = l.montant || (l.quantite || 0) * (l.prixUnitaire || 0);
+      const montant = getLineTotal(l);
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
       totalHT += montant;
@@ -246,84 +254,82 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
   };
 
-  const handleCreate = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreate = async () => {
+    if (isSubmitting) return; // Guard against double-submit
     if (!form.clientId) return showToast('Sélectionnez un client', 'error');
     if (form.sections.every(s => s.lignes.length === 0)) return showToast('Ajoutez des lignes', 'error');
 
-    const client = clients.find(c => c.id === form.clientId);
-    const numero = generateNumero(form.type);
+    setIsSubmitting(true);
+    try {
+      const client = clients.find(c => c.id === form.clientId);
+      const numero = generateNumero(form.type);
+      const docType = form.type;
 
-    const newDevis = onSubmit({
-      numero,
-      type: form.type,
-      client_id: form.clientId,
-      client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
-      chantier_id: form.chantierId,
-      date: form.date,
-      validite: form.validite,
-      statut: 'brouillon',
-      sections: form.sections,
-      lignes: form.sections.flatMap(s => s.lignes),
-      tvaParTaux: totals.tvaParTaux,
-      tvaDetails: totals.tvaParTaux, // Pour affichage PDF
-      tvaRate: form.tvaDefaut, // Taux TVA par défaut pour acompte/facture
-      remise: form.remise,
-      total_ht: totals.htApresRemise,
-      tva: totals.totalTVA,
-      total_ttc: totals.ttc,
-      retenueGarantie: form.retenueGarantie,
-      retenue_montant: totals.retenueGarantie,
-      ttc_net: totals.ttcNet,
-      marge: totals.marge,
-      tauxMarge: totals.tauxMarge,
-      notes: form.notes
-    });
-
-    // Reset form
-    setForm({
-      type: 'devis',
-      clientId: '',
-      chantierId: '',
-      date: new Date().toISOString().split('T')[0],
-      validite: entreprise?.validiteDevis || 30,
-      sections: [{ id: '1', titre: '', lignes: [] }],
-      tvaDefaut: entreprise?.tvaDefaut || 10,
-      remise: 0,
-      retenueGarantie: false,
-      notes: ''
-    });
-
-    // Redirect to detail view of the created devis
-    if (newDevis?.id) {
-      setSelected(newDevis);
-      setMode('preview');
-      setSnackbar({
-        type: 'success',
-        message: `${form.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
+      const newDevis = await onSubmit({
+        numero,
+        type: form.type,
+        client_id: form.clientId,
+        client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+        chantier_id: form.chantierId,
+        date: form.date,
+        validite: form.validite,
+        statut: 'brouillon',
+        sections: form.sections,
+        lignes: form.sections.flatMap(s => s.lignes),
+        tvaParTaux: totals.tvaParTaux,
+        tvaDetails: totals.tvaParTaux,
+        tvaRate: form.tvaDefaut,
+        remise: form.remise,
+        total_ht: totals.htApresRemise,
+        tva: totals.totalTVA,
+        total_ttc: totals.ttc,
+        retenueGarantie: form.retenueGarantie,
+        retenue_montant: totals.retenueGarantie,
+        ttc_net: totals.ttcNet,
+        marge: totals.marge,
+        tauxMarge: totals.tauxMarge,
+        notes: form.notes
       });
-      return;
+
+      // Reset form
+      setForm({
+        type: 'devis',
+        clientId: '',
+        chantierId: '',
+        date: new Date().toISOString().split('T')[0],
+        validite: entreprise?.validiteDevis || 30,
+        sections: [{ id: '1', titre: '', lignes: [] }],
+        tvaDefaut: entreprise?.tvaDefaut || 10,
+        remise: 0,
+        retenueGarantie: false,
+        notes: ''
+      });
+
+      // Redirect to detail view of the created devis
+      if (newDevis?.id) {
+        setSelected(newDevis);
+        setMode('preview');
+        setSnackbar({
+          type: 'success',
+          message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
+        });
+      } else {
+        // Fallback to list if no devis returned
+        setMode('list');
+        setSnackbar({ type: 'success', message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé` });
+      }
+    } catch (err) {
+      console.error('Error creating devis:', err);
+      showToast('Erreur lors de la création', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Fallback to list if no devis returned
-    setMode('list');
-
-    // Show snackbar with action to view the created devis
-    setSnackbar({
-      type: 'success',
-      message: `${form.type === 'facture' ? 'Facture' : 'Devis'} ${numero} cree`,
-      action: newDevis ? {
-        label: 'Voir',
-        onClick: () => {
-          setSelected(newDevis);
-          setMode('preview');
-          setSnackbar(null);
-        }
-      } : null
-    });
   };
 
   // Dupliquer un devis/facture
-  const duplicateDocument = (doc) => {
+  const duplicateDocument = async (doc) => {
     const newLignes = (doc.lignes || []).map(l => ({
       ...l,
       id: generateId()
@@ -359,12 +365,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       notes: doc.notes || ''
     };
 
-    onSubmit(newDoc);
-    setSelected(newDoc);
+    const created = await onSubmit(newDoc);
+    setSelected(created || newDoc);
     setMode('preview');
     setSnackbar({
       type: 'success',
-      message: `Devis ${newDoc.numero} cree (copie)`,
+      message: `Devis ${newDoc.numero} créé (copie)`,
       action: {
         label: 'Voir',
         onClick: () => setSnackbar(null)
@@ -373,7 +379,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Créer un avenant à partir d'un devis existant
-  const createAvenant = (doc) => {
+  const createAvenant = async (doc) => {
     // Count existing avenants for this source devis
     const sourceId = doc.avenant_source_id || doc.id;
     const existingAvenants = devis.filter(d => d.avenant_source_id === sourceId);
@@ -420,8 +426,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       avenant_source_numero: sourceNumero,
     };
 
-    onSubmit(newDoc);
-    setSelected(newDoc);
+    const created = await onSubmit(newDoc);
+    setSelected(created || newDoc);
     setMode('edit');
     setSnackbar({
       type: 'success',
@@ -465,7 +471,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Smart Template Wizard handler - creates complete devis from wizard
-  const handleSmartDevisCreate = (devisData) => {
+  const handleSmartDevisCreate = async (devisData) => {
     // Validate required data
     if (!devisData || !devisData.clientId || !devisData.sections?.length) {
       setSnackbar({ type: 'error', message: 'Données du devis incomplètes' });
@@ -513,11 +519,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     // Submit the devis
-    onSubmit(newDevis);
+    const created = await onSubmit(newDevis);
 
     // Close wizard and navigate directly to the new devis
     setShowSmartWizard(false);
-    setSelected(newDevis);
+    setSelected(created || newDevis);
     setMode('preview');
 
     // Show success notification with action to view
@@ -550,7 +556,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
 
-  const createAcompte = () => {
+  const createAcompte = async () => {
     if (!selected || selected.statut !== 'accepte') return showToast('Le devis doit être accepté', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     const montantHT = selected.total_ht * (acomptePct / 100);
@@ -558,14 +564,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const tva = montantHT * (tvaRate / 100);
     const ttc = montantHT + tva;
     const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
-    onSubmit(facture);
+    await onSubmit(facture);
     onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
     setSelected({ ...selected, statut: 'acompte_facture', acompte_pct: acomptePct });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  const createSolde = () => {
+  const createSolde = async () => {
     if (!selected) return;
     const acompte = getAcompteFacture(selected.id);
     const montantAcompteHT = acompte ? acompte.total_ht : 0;
@@ -576,8 +582,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const lignes = [...(selected.lignes || [])];
     if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
     const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
-    onSubmit(facture);
-    onUpdate(selected.id, { statut: 'facture' });
+    await onSubmit(facture);
+    await onUpdate(selected.id, { statut: 'facture' });
     setSelected({ ...selected, statut: 'facture' });
     setSnackbar({ type: 'success', message: `Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
@@ -600,7 +606,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (!details[rate]) {
           details[rate] = { base: 0, montant: 0 };
         }
-        const lineMontant = l.montant || (l.quantite || 0) * (l.prixUnitaire || 0);
+        const lineMontant = getLineTotal(l);
         details[rate].base += lineMontant;
         details[rate].montant += lineMontant * (rate / 100);
       });
@@ -614,7 +620,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${(l.montant || (l.quantite||0)*(l.prixUnitaire||0))<0?'color:#dc2626;':''}">${(l.montant || (l.quantite||0)*(l.prixUnitaire||0)).toFixed(2)} €</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${getLineTotal(l).toFixed(2)} €</td>
       </tr>
     `).join('');
 
@@ -1553,8 +1559,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                         <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
                         <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
-                        <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
-                        <td className={`text-right font-medium ${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)) < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toFixed(2)}€</td>
+                        <td className={`text-right ${textSecondary}`}>{parseFloat(l.prixUnitaire || l.prix_unitaire || 0).toFixed(2)}€</td>
+                        <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{getLineTotal(l).toFixed(2)}€</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1945,7 +1951,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Header with count */}
               <div className="flex items-center justify-between">
                 <p className={`text-sm font-medium ${textMuted}`}>
-                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + (l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + getLineTotal(l), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </p>
               </div>
 
@@ -1968,7 +1974,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-bold tabular-nums transition-all" style={{ color: couleur }}>
-                          {(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                          {getLineTotal(l).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </p>
                         <p className={`text-xs ${textMuted}`}>HT</p>
                       </div>
@@ -2151,13 +2157,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <X size={16} />
                 <span>Annuler</span>
               </button>
-              <button onClick={handleCreate} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
+              <button onClick={handleCreate} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
                 <FileText size={16} />
                 <span>Brouillon</span>
               </button>
-              <button onClick={handleCreate} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+              <button onClick={handleCreate} disabled={isSubmitting} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold disabled:opacity-50" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
                 <Check size={18} />
-                <span>Créer le {form.type}</span>
+                <span>{isSubmitting ? 'Création...' : `Créer le ${form.type}`}</span>
               </button>
             </div>
           </div>
@@ -2601,9 +2607,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <DevisWizard
         isOpen={showDevisWizard}
         onClose={() => setShowDevisWizard(false)}
-        onSubmit={(devisData) => {
+        onSubmit={async (devisData) => {
           const numero = generateNumero(devisData.type);
-          const newDevis = onSubmit({ ...devisData, numero });
+          const newDevis = await onSubmit({ ...devisData, numero });
           if (newDevis?.id) {
             setSelected(newDevis);
             setMode('preview');
@@ -2652,9 +2658,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <DevisExpressModal
         isOpen={showDevisExpressModal}
         onClose={() => setShowDevisExpressModal(false)}
-        onCreateDevis={(devisData) => {
+        onCreateDevis={async (devisData) => {
           const numero = generateNumero(devisData.type);
-          const newDevis = onSubmit({ ...devisData, numero });
+          const newDevis = await onSubmit({ ...devisData, numero });
           if (newDevis?.id) {
             setSelected(newDevis);
             setMode('preview');
