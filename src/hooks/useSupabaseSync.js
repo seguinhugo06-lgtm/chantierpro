@@ -222,6 +222,7 @@ export const FIELD_MAPPINGS = {
       acompte_pct: row.acompte_pct ? parseFloat(row.acompte_pct) : null,
       montant_paye: row.montant_paye ? parseFloat(row.montant_paye) : 0,
       createdAt: row.created_at,
+      updatedAt: row.updated_at,
     }),
   },
   depenses: {
@@ -985,6 +986,11 @@ export async function saveItem(table, item, userId) {
     supabaseData = {
       ...mapping.toSupabase(item),
       user_id: userId,
+      // Always include updated_at — many tables have a BEFORE UPDATE trigger
+      // (update_updated_at_column) that sets NEW.updated_at = NOW().
+      // If the column exists, the trigger overwrites this value; if it doesn't,
+      // the retry logic below will strip it automatically.
+      updated_at: new Date().toISOString(),
     };
     // Verify serializable — if not, deep-sanitize
     JSON.stringify(supabaseData);
@@ -993,10 +999,11 @@ export async function saveItem(table, item, userId) {
     supabaseData = sanitizeForJSON({
       ...mapping.toSupabase(item),
       user_id: userId,
+      updated_at: new Date().toISOString(),
     });
   }
 
-  const MAX_ATTEMPTS = 5;
+  const MAX_ATTEMPTS = 8;
   const strippedCols = [];
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -1011,10 +1018,22 @@ export async function saveItem(table, item, userId) {
 
       if (error) {
         const badCol = extractBadColumn(error.message);
-        if (badCol && attempt < MAX_ATTEMPTS - 1 && supabaseData.hasOwnProperty(badCol)) {
-          console.warn(`⚠️ ${table}: column/field "${badCol}" not in DB, stripping and retrying`);
-          delete supabaseData[badCol];
-          strippedCols.push(badCol);
+        if (badCol && attempt < MAX_ATTEMPTS - 1) {
+          if (supabaseData.hasOwnProperty(badCol)) {
+            // Column is in payload but not in DB → strip it
+            console.warn(`⚠️ ${table}: column "${badCol}" not in DB, stripping and retrying`);
+            delete supabaseData[badCol];
+            strippedCols.push(badCol);
+          } else {
+            // Column is NOT in payload but a trigger references it → add it
+            // This happens when a DB trigger does NEW.col = ... but the column
+            // doesn't exist in the table (or hasn't been added via migration yet).
+            console.warn(`⚠️ ${table}: trigger references "${badCol}" not in payload, adding default and retrying`);
+            supabaseData[badCol] = badCol.includes('_at') || badCol === 'updated_at' || badCol === 'created_at'
+              ? new Date().toISOString()
+              : null;
+            strippedCols.push(`+${badCol}`);
+          }
           continue;
         }
         console.error(`❌ Error saving to ${table}:`, error.message);
@@ -1022,17 +1041,25 @@ export async function saveItem(table, item, userId) {
       }
 
       if (strippedCols.length > 0) {
-        console.info(`✅ ${table}: saved after stripping columns: [${strippedCols.join(', ')}]`);
+        console.info(`✅ ${table}: saved after adjusting columns: [${strippedCols.join(', ')}]`);
       }
       logger.debug(`✅ Saved to ${table}:`, data?.id);
       return mapping.fromSupabase(data);
     } catch (error) {
       const msg = error.message || '';
       const badCol = extractBadColumn(msg);
-      if (badCol && attempt < MAX_ATTEMPTS - 1 && supabaseData.hasOwnProperty(badCol)) {
-        console.warn(`⚠️ ${table}: stripping "${badCol}" and retrying`);
-        delete supabaseData[badCol];
-        strippedCols.push(badCol);
+      if (badCol && attempt < MAX_ATTEMPTS - 1) {
+        if (supabaseData.hasOwnProperty(badCol)) {
+          console.warn(`⚠️ ${table}: stripping "${badCol}" and retrying`);
+          delete supabaseData[badCol];
+          strippedCols.push(badCol);
+        } else {
+          console.warn(`⚠️ ${table}: trigger references "${badCol}", adding default and retrying`);
+          supabaseData[badCol] = badCol.includes('_at') || badCol === 'updated_at' || badCol === 'created_at'
+            ? new Date().toISOString()
+            : null;
+          strippedCols.push(`+${badCol}`);
+        }
         continue;
       }
       if (attempt >= MAX_ATTEMPTS - 1) {
