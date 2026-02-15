@@ -482,17 +482,19 @@ export default function App() {
   const subStoreLoading = useSubscriptionStore((s) => s.loading);
 
   useEffect(() => {
+    let cancelled = false;
     const initSubscription = async () => {
       try {
         const { data: subData } = await fetchSubscription();
-        if (subData) setSubscriptionData(subData);
+        if (!cancelled && subData) setSubscriptionData(subData);
         const { data: usageData } = await fetchUsage();
-        if (usageData) setUsageData(usageData);
+        if (!cancelled && usageData) setUsageData(usageData);
       } catch (err) {
-        console.warn('Subscription init error:', err.message);
+        console.warn('Subscription init error:', err?.message || err);
       }
     };
     if (user) initSubscription();
+    return () => { cancelled = true; };
   }, [user, setSubscriptionData, setUsageData]);
 
   // Handle ?billing=success redirect from Stripe Checkout
@@ -1267,7 +1269,9 @@ export default function App() {
         </header>
 
         {/* Trial / Downgrade Banner */}
-        <TrialBanner />
+        <ErrorBoundary fallback={null}>
+          <TrialBanner />
+        </ErrorBoundary>
 
         {/* Page content */}
         <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
@@ -1595,7 +1599,9 @@ export default function App() {
       <ModalContainer isDark={isDark} />
 
       {/* Upgrade Modal (Subscription) */}
-      <UpgradeModal />
+      <ErrorBoundary fallback={null}>
+        <UpgradeModal />
+      </ErrorBoundary>
 
       {/* Import Modal (CSV/Excel) */}
       {showImport && (

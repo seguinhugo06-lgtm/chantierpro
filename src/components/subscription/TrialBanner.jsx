@@ -122,10 +122,17 @@ const BANNER_CONFIG = {
 export default function TrialBanner() {
   const planId = useSubscriptionStore((s) => s.planId);
   const sub = useSubscriptionStore((s) => s.subscription);
-  const isTrial = useSubscriptionStore((s) => s.isTrial());
-  const daysLeft = useSubscriptionStore((s) => s.trialDaysLeft());
-  const isFree = planId === 'gratuit';
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
+
+  // Compute trial state directly from subscription data
+  // (avoid calling store methods inside selectors — they use get() which can cause issues)
+  const isTrial = sub?.status === 'trialing';
+  const isFree = planId === 'gratuit';
+  const daysLeft = useMemo(() => {
+    if (!sub?.trial_end) return 0;
+    const diff = new Date(sub.trial_end) - new Date();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [sub?.trial_end]);
 
   const bannerState = useMemo(() =>
     getBannerState(daysLeft, isTrial, isFree),

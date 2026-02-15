@@ -24,24 +24,17 @@ const PLAN_ICONS = { gratuit: Zap, pro: Crown };
 
 export default function UpgradeModal() {
   const isOpen = useSubscriptionStore((s) => s.upgradeModalOpen);
+
+  // All hooks must be called unconditionally (Rules of Hooks)
   const blockedFeature = useSubscriptionStore((s) => s.upgradeModalFeature);
   const currentPlanId = useSubscriptionStore((s) => s.planId);
   const closeUpgradeModal = useSubscriptionStore((s) => s.closeUpgradeModal);
   const setSubscription = useSubscriptionStore((s) => s.setSubscription);
-
   const [billing, setBilling] = useState('monthly');
   const [loadingPlan, setLoadingPlan] = useState(null);
 
-  // Determine context
-  const context = UPGRADE_CONTEXTS[blockedFeature] || UPGRADE_CONTEXTS.generic;
-  const currentPlan = PLANS[currentPlanId] || PLANS.gratuit;
-  const proPlan = PLANS.pro;
-  const CurIcon = PLAN_ICONS[currentPlanId] || Zap;
-
   const handleSelectPlan = useCallback(async (planId) => {
-    if (planId === currentPlanId) return;
-    if (planId === 'gratuit') return;
-
+    if (planId === currentPlanId || planId === 'gratuit') return;
     setLoadingPlan(planId);
     try {
       const result = await createCheckoutSession(planId, billing);
@@ -51,7 +44,7 @@ export default function UpgradeModal() {
       }
       if (result.directUpgrade) {
         setSubscription({ plan: planId, status: 'active', billing_interval: billing });
-        toast.success('Plan activé !', `Bienvenue dans le plan ${PLANS[planId].name}`);
+        toast.success('Plan activé !', `Bienvenue dans le plan ${PLANS[planId]?.name || planId}`);
         closeUpgradeModal();
         return;
       }
@@ -63,7 +56,14 @@ export default function UpgradeModal() {
     }
   }, [billing, currentPlanId, closeUpgradeModal, setSubscription]);
 
+  // Early return AFTER all hooks
   if (!isOpen) return null;
+
+  // Derived state (only computed when modal is open)
+  const context = UPGRADE_CONTEXTS[blockedFeature] || UPGRADE_CONTEXTS.generic;
+  const currentPlan = PLANS[currentPlanId] || PLANS.gratuit;
+  const proPlan = PLANS.pro;
+  const CurIcon = PLAN_ICONS[currentPlanId] || Zap;
 
   const proPrice = billing === 'yearly' && proPlan.priceYearly
     ? (proPlan.priceYearly / 12).toFixed(2).replace('.', ',')
