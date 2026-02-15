@@ -21,6 +21,7 @@ import {
   Wallet,
   AlertTriangle,
   CheckCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
@@ -56,6 +57,7 @@ const INDICATOR_CONFIG = [
     icon: Wallet,
     color: '#10b981',
     advice: 'Relancez vos factures impayées pour améliorer votre trésorerie.',
+    page: 'tresorerie',
   },
   {
     key: 'carnet',
@@ -64,6 +66,7 @@ const INDICATOR_CONFIG = [
     icon: FileText,
     color: '#3b82f6',
     advice: 'Envoyez plus de devis pour remplir votre carnet de commandes.',
+    page: 'chantiers',
   },
   {
     key: 'conversion',
@@ -72,6 +75,7 @@ const INDICATOR_CONFIG = [
     icon: TrendingUp,
     color: '#8b5cf6',
     advice: 'Améliorez vos devis et relances pour augmenter votre taux de conversion.',
+    page: 'devis',
   },
   {
     key: 'marge',
@@ -80,6 +84,7 @@ const INDICATOR_CONFIG = [
     icon: TrendingUp,
     color: '#f59e0b',
     advice: 'Révisez vos prix ou réduisez vos coûts pour améliorer vos marges.',
+    page: 'devis',
   },
   {
     key: 'impayes',
@@ -88,6 +93,7 @@ const INDICATOR_CONFIG = [
     icon: AlertTriangle,
     color: '#ef4444',
     advice: 'Réduisez vos impayés en envoyant des relances régulières.',
+    page: 'factures',
   },
   {
     key: 'conformite',
@@ -96,6 +102,7 @@ const INDICATOR_CONFIG = [
     icon: Shield,
     color: '#06b6d4',
     advice: 'Complétez votre profil entreprise (SIRET, assurance, RIB) pour être conforme.',
+    page: 'settings',
   },
 ];
 
@@ -194,12 +201,17 @@ function MiniProgressBar({ value, color, isDark }) {
 /**
  * Single indicator row
  */
-function IndicatorRow({ config, score, isDark }) {
+function IndicatorRow({ config, score, isDark, onClick }) {
   const Icon = config.icon;
   const displayScore = Math.round(Math.min(100, Math.max(0, score)));
 
   return (
-    <div className="flex items-center gap-3">
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 w-full text-left rounded-lg px-2 py-1.5 -mx-2 transition-colors ${
+        isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
+      } cursor-pointer group`}
+    >
       <div
         className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
         style={{
@@ -222,9 +234,10 @@ function IndicatorRow({ config, score, isDark }) {
             {displayScore}
           </span>
         </div>
-        <MiniProgressBar value={displayScore} color={config.color} isDark={isDark} />
+        <MiniProgressBar value={displayScore} color={getScoreColor(displayScore)} isDark={isDark} />
       </div>
-    </div>
+      <ChevronRight size={14} className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
+    </button>
   );
 }
 
@@ -372,7 +385,7 @@ function useHealthScores() {
  * @param {string} props.couleur - Brand accent color
  */
 export function ScoreSanteWidget({ isDark, setPage, couleur }) {
-  const { scores, totalScore, advice } = useHealthScores();
+  const { scores, totalScore, advice, lowestKey } = useHealthScores();
   const scoreColor = getScoreColor(totalScore);
   const scoreLabel = getScoreLabel(totalScore);
 
@@ -390,11 +403,11 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
             <Activity size={18} style={{ color: couleur || '#f97316' }} />
           </div>
           <div>
-            <h3
+            <h2
               className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}
             >
               Score Santé
-            </h3>
+            </h2>
             <p
               className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
             >
@@ -408,21 +421,26 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
       </div>
 
       {/* Indicator rows */}
-      <div className="space-y-3 mb-4">
+      <div className="space-y-1 mb-4">
         {INDICATOR_CONFIG.map(config => (
           <IndicatorRow
             key={config.key}
             config={config}
             score={scores[config.key]}
             isDark={isDark}
+            onClick={() => config.page && setPage?.(config.page)}
           />
         ))}
       </div>
 
-      {/* Contextual advice */}
-      <div
-        className={`flex items-start gap-2 p-3 rounded-xl text-xs leading-relaxed ${
-          isDark ? 'bg-slate-700/50 text-slate-300' : 'bg-slate-50 text-slate-600'
+      {/* Contextual advice — clickable to navigate to relevant page */}
+      <button
+        onClick={() => {
+          const lowestConfig = INDICATOR_CONFIG.find(c => c.key === lowestKey);
+          if (lowestConfig?.page) setPage?.(lowestConfig.page);
+        }}
+        className={`flex items-start gap-2 p-3 rounded-xl text-xs leading-relaxed w-full text-left transition-colors cursor-pointer group ${
+          isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
         }`}
       >
         <CheckCircle
@@ -430,8 +448,9 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
           className="flex-shrink-0 mt-0.5"
           style={{ color: scoreColor }}
         />
-        <span>{advice}</span>
-      </div>
+        <span className="flex-1">{advice}</span>
+        <ChevronRight size={14} className="flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+      </button>
     </div>
   );
 }

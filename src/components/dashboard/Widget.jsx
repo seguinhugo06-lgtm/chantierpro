@@ -154,12 +154,12 @@ export const WidgetHeader = React.forwardRef(
                 })}
             </div>
           )}
-          <h3 className={cn(
+          <h2 className={cn(
             'text-base font-semibold',
             isDark ? 'text-white' : 'text-gray-900'
           )}>
             {title}
-          </h3>
+          </h2>
           {badge && (
             <span className={cn(
               'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold',

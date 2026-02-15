@@ -206,9 +206,9 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {title}
-          </h3>
+          </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -426,7 +426,7 @@ function DevisCard({
               {client?.nom || 'Client inconnu'}
             </p>
             <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
-              {devis.titre || devis.objet || `Devis ${devis.numero || '#' + (devis.id?.slice(-6) || '---')}`}
+              {devis.titre || devis.objet || `${devis.type === 'facture' ? 'Facture' : 'Devis'} ${devis.numero || '#' + (devis.id?.slice(-6) || '---')}`}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
@@ -571,21 +571,22 @@ export default function DevisWidget({
 
     try {
       if (isDemo || !supabase) {
-        // Demo mode: filter from context
+        // Demo mode: filter from context — only devis (not factures)
         const filtered = allDevis
-          .filter(d => WAITING_STATUSES.includes(d.statut))
+          .filter(d => d.type === 'devis' && WAITING_STATUSES.includes(d.statut))
           .sort((a, b) => new Date(b.createdAt || b.date_envoi || b.date) - new Date(a.createdAt || a.date_envoi || a.date))
           .slice(0, displayLimit);
 
         setPendingDevis(filtered);
       } else {
-        // Real Supabase query
+        // Real Supabase query — only devis (exclude factures)
         const { data, error: queryError } = await supabase
           .from('devis')
           .select(`
             *,
             client:clients(id, nom)
           `)
+          .eq('type', 'devis')
           .in('statut', WAITING_STATUSES)
           .order('created_at', { ascending: false })
           .limit(displayLimit);
@@ -734,7 +735,7 @@ export default function DevisWidget({
   // Total count for badge
   const totalPendingCount = useMemo(() => {
     if (isDemo || !supabase) {
-      return allDevis.filter(d => WAITING_STATUSES.includes(d.statut)).length;
+      return allDevis.filter(d => d.type === 'devis' && WAITING_STATUSES.includes(d.statut)).length;
     }
     return pendingDevis.length;
   }, [allDevis, pendingDevis]);

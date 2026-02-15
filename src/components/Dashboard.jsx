@@ -46,6 +46,8 @@ import {
   GripVertical,
   LayoutDashboard,
   ShieldCheck,
+  MessageCircle,
+  ClipboardList,
 } from 'lucide-react';
 
 // Dashboard components
@@ -93,9 +95,14 @@ import {
   transformSuggestions,
 } from '../lib/actionSuggestions';
 import { useData } from '../context/DataContext';
+import DashboardMemos from './dashboard/DashboardMemos';
+import OnboardingChecklist from './dashboard/OnboardingChecklist';
 
 // Subscription
 import UsageAlerts from './subscription/UsageAlerts';
+
+// AI Chat
+import ChatInterface from './ai/ChatInterface';
 
 // ============ CONSTANTS ============
 
@@ -467,6 +474,7 @@ export default function Dashboard({
   catalogue = [],
   entreprise,
   getChantierBilan,
+  addDevis,
   couleur = '#8b5cf6',
   modeDiscret,
   setModeDiscret,
@@ -479,7 +487,13 @@ export default function Dashboard({
   setShowHelp,
   user,
   onOpenSearch,
+  memos = [],
+  addMemo,
+  toggleMemo,
 }) {
+  // Access dataLoading from context to prevent onboarding flash during Supabase load
+  const { dataLoading } = useData();
+
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [kpiPeriod, setKpiPeriod] = useState('month'); // For KPI card period selector
@@ -489,6 +503,7 @@ export default function Dashboard({
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // Widget configuration - persisted in localStorage
   const DEFAULT_WIDGETS = [
@@ -613,9 +628,9 @@ export default function Dashboard({
     const chantiersProspect = safeChantiers.filter((c) => c.statut === 'prospect').length;
     const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
-    // Devis stats - use total_ht for consistency (commercial potential is expressed in HT)
-    const devisEnAttente = devisPipeline.envoye.length;
-    const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ht || 0), 0);
+    // Devis stats - potentiel commercial = brouillon + envoyé (tout ce qui n'est pas encore signé)
+    const devisEnAttente = devisPipeline.brouillon.length + devisPipeline.envoye.length;
+    const montantDevisEnAttente = [...devisPipeline.brouillon, ...devisPipeline.envoye].reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
 
     // Conversion rate
     const devisTotalEnvoyes =
@@ -959,10 +974,37 @@ export default function Dashboard({
     []
   );
 
+  // AI Chat: create devis from AI-generated data
+  const handleAICreateDevis = useCallback(async (devisData) => {
+    if (!addDevis) return;
+    try {
+      const newDevis = await addDevis({
+        type: 'devis',
+        statut: 'brouillon',
+        date: new Date().toISOString().split('T')[0],
+        validite: devisData.validite || 30,
+        objet: devisData.objet || 'Devis IA',
+        client_nom: devisData.client_nom || '',
+        client_id: devisData.client_id || null,
+        lignes: devisData.lignes || [],
+        notes: devisData.notes || '',
+        tvaRate: devisData.tvaRate || 10,
+        total_ht: (devisData.lignes || []).reduce((sum, l) => sum + (parseFloat(l.quantite || 0) * parseFloat(l.prixUnitaire || 0)), 0),
+      });
+      if (newDevis?.id) {
+        setSelectedDevis?.(newDevis);
+        setPage?.('devis');
+      }
+    } catch (e) {
+      console.error('Failed to create devis from AI:', e);
+    }
+  }, [addDevis, setSelectedDevis, setPage]);
+
   // ============ RENDER ============
 
-  // Show new user welcome
-  if (stats.isNewUser) {
+  // Show new user welcome — but ONLY if data has actually finished loading
+  // Prevents flash of onboarding when Supabase data is still in transit
+  if (stats.isNewUser && !dataLoading) {
     return (
       <NewUserWelcome
         isDark={isDark}
@@ -994,6 +1036,7 @@ export default function Dashboard({
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
               { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
               { icon: Receipt, label: '+ Facture', action: () => { setCreateMode?.((p) => ({ ...p, devis: true, type: 'facture' })); setPage?.('devis'); } },
+              { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('memos') },
             ].map((shortcut) => (
               <button
                 key={shortcut.label}
@@ -1012,6 +1055,63 @@ export default function Dashboard({
               </button>
             ))}
           </div>
+        </section>
+
+        {/* Onboarding Checklist — first steps guide */}
+        <section className="px-4 sm:px-6 pb-6">
+          <OnboardingChecklist
+            clients={clients}
+            chantiers={chantiers}
+            devis={devis}
+            memos={memos}
+            couleur={couleur}
+            setPage={setPage}
+            isDark={isDark}
+          />
+        </section>
+
+        {/* AI Assistant Section */}
+        <section className="px-4 sm:px-6 pb-6">
+          {!showAIChat ? (
+            <button
+              onClick={() => setShowAIChat(true)}
+              className={`w-full group p-5 rounded-2xl border-2 border-dashed transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                isDark
+                  ? 'border-slate-600 hover:border-orange-500/50 bg-slate-800/50'
+                  : 'border-slate-300 hover:border-orange-400 bg-white/50'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${couleur}15` }}
+                >
+                  <MessageCircle size={24} style={{ color: couleur }} />
+                </div>
+                <div className="text-left flex-1 min-w-0">
+                  <h3 className={`font-semibold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Assistant IA — Créez un devis en parlant
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Décrivez les travaux par texte, voix ou photo. L'IA génère votre devis en quelques secondes.
+                  </p>
+                </div>
+                <Sparkles size={20} className={`shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'} group-hover:text-orange-500 transition-colors`} />
+              </div>
+            </button>
+          ) : (
+            <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <ChatInterface
+                isDark={isDark}
+                couleur={couleur}
+                onCreateDevis={handleAICreateDevis}
+                onClose={() => setShowAIChat(false)}
+                clients={clients}
+                entreprise={entreprise}
+                compact
+              />
+            </div>
+          )}
         </section>
 
         {/* Devis à relancer */}
@@ -1079,6 +1179,11 @@ export default function Dashboard({
             </section>
           );
         })()}
+
+        {/* Mémos du jour */}
+        <section className="px-4 sm:px-6 pb-6">
+          <DashboardMemos memos={memos} toggleMemo={toggleMemo} setPage={setPage} couleur={couleur} isDark={isDark} />
+        </section>
 
         {/* KPI Section - Enhanced with more info */}
         <section className="px-4 sm:px-6 pb-8">

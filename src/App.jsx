@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { auth, isDemo } from './supabaseClient';
 
 // Eager load critical components
@@ -12,7 +12,10 @@ const Chantiers = lazy(() => import('./components/Chantiers'));
 const Planning = lazy(() => import('./components/Planning'));
 const Clients = lazy(() => import('./components/Clients'));
 const DevisPage = lazy(() => import('./components/DevisPage'));
-const Equipe = lazy(() => import('./components/Equipe'));
+const Equipe = lazy(() => import('./components/Equipe').catch(err => {
+  console.error('[LAZY] Failed to load Equipe:', err);
+  return { default: () => <div style={{padding: '2rem', textAlign:'center', color:'#ef4444'}}>Erreur chargement module Équipe: {err?.message || 'inconnu'}</div> };
+}));
 const Catalogue = lazy(() => import('./components/Catalogue'));
 const Settings = lazy(() => import('./components/Settings'));
 const AdminHelp = lazy(() => import('./components/admin-help/AdminHelp'));
@@ -37,6 +40,8 @@ const ImportModal = lazy(() => import('./components/ImportModal'));
 const LegalPages = lazy(() => import('./components/LegalPages'));
 const Changelog = lazy(() => import('./components/Changelog'));
 const FinancesPage = lazy(() => import('./components/FinancesPage'));
+const MemosPage = lazy(() => import('./components/MemosPage'));
+const ShortcutsHelp = lazy(() => import('./components/ShortcutsHelp'));
 import CookieConsent from './components/CookieConsent';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
@@ -51,7 +56,7 @@ import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionSto
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
-import { registerNetworkListeners, getPendingCount, syncQueue } from './lib/offline/sync';
+import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
@@ -95,11 +100,12 @@ export default function App() {
     catalogue, setCatalogue, addCatalogueItem: dataAddCatalogueItem, updateCatalogueItem: dataUpdateCatalogueItem, deleteCatalogueItem: dataDeleteCatalogueItem, deductStock,
     paiements, addPaiement: dataAddPaiement,
     echanges, addEchange: dataAddEchange,
-    getChantierBilan
+    ouvrages, setOuvrages, addOuvrage: dataAddOuvrage, updateOuvrage: dataUpdateOuvrage, deleteOuvrage: dataDeleteOuvrage,
+    planningEvents, setPlanningEvents, addPlanningEvent: dataAddPlanningEvent, updatePlanningEvent: dataUpdatePlanningEvent, deletePlanningEvent: dataDeletePlanningEvent,
+    memos, addMemo, updateMemo, deleteMemo, toggleMemo,
+    getChantierBilan,
+    generateNextNumero,
   } = useData();
-
-  // Events stored separately (not in DataContext yet)
-  const [events, setEvents] = useState([]);
 
   // Auth state
   const [user, setUser] = useState(null);
@@ -120,15 +126,234 @@ export default function App() {
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
-  const [notifications, setNotifications] = useState([
-    // Notifications basées sur les vraies données de démo
-    { id: 1, message: 'Devis DEV-2026-004 accepté par Claire Rousseau', date: 'Il y a 2 heures', read: false, type: 'success', link: 'devis', itemId: 'd5', itemType: 'devis' },
-    { id: 2, message: 'Facture FAC-2026-001 en attente de paiement (studio Rousseau)', date: 'Il y a 1 jour', read: false, type: 'warning', link: 'devis', itemId: 'd9', itemType: 'facture' },
-    { id: 3, message: 'Chantier "Rénovation cuisine Dupont" à 65% - fin prévue le 15/02', date: 'Il y a 2 jours', read: false, type: 'info', link: 'chantiers', itemId: 'ch1', itemType: 'chantier' },
-    { id: 4, message: 'Devis DEV-2026-005 envoyé à Marc Lefevre - en attente de réponse', date: 'Il y a 3 jours', read: true, type: 'message', link: 'devis', itemId: 'd6', itemType: 'devis' },
-    { id: 5, message: 'Chantier "Salle de bain Martin" - avancement 30%, retard potentiel', date: 'Il y a 4 jours', read: true, type: 'alert', link: 'chantiers', itemId: 'ch2', itemType: 'chantier' },
-    { id: 6, message: 'Nouveau devis DEV-2026-003 créé pour Petit & Fils (extension)', date: 'Il y a 5 jours', read: true, type: 'info', link: 'devis', itemId: 'd4', itemType: 'devis' },
-  ]);
+  // Settings state (declared early because notifications useMemo depends on entreprise)
+  const [entreprise, setEntreprise] = useState({
+    nom: 'Martin Renovation', logo: '', couleur: '#f97316',
+    formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
+    siret: '', codeApe: '', rcs: '', tvaIntra: '', validiteDevis: 30, tvaDefaut: 10,
+    delaiPaiement: 30, acompteDefaut: 30, tauxFraisStructure: 15
+  });
+  // Track which notification IDs have been read (persisted in localStorage)
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cp_read_notifs') || '[]'); } catch { return []; }
+  });
+
+  // Dynamic notifications computed from real data
+  const notifications = useMemo(() => {
+    const now = new Date();
+    const items = [];
+
+    // Helper: relative date label
+    const relDate = (d) => {
+      const diff = Math.floor((now - new Date(d)) / 86400000);
+      if (diff <= 0) return "Aujourd'hui";
+      if (diff === 1) return 'Hier';
+      return `Il y a ${diff} jours`;
+    };
+
+    // Helper: find client name
+    const clientName = (clientId) => {
+      const c = clients.find(cl => cl.id === clientId);
+      return c ? `${c.prenom || ''} ${c.nom || ''}`.trim() : '';
+    };
+
+    // 1. Devis envoyés depuis >7 jours sans réponse
+    (devis || []).forEach(d => {
+      if ((d.statut === 'envoye' || d.statut === 'vu') && d.date) {
+        const age = Math.floor((now - new Date(d.date)) / 86400000);
+        if (age >= 7) {
+          const cn = clientName(d.client_id);
+          items.push({
+            id: `devis-stale-${d.id}`,
+            message: `Devis ${d.numero || ''} envoyé à ${cn || 'un client'} depuis ${age} jours — à relancer`,
+            date: relDate(d.date),
+            type: 'warning',
+            link: 'devis',
+            itemId: d.id,
+            itemType: 'devis',
+            sortDate: new Date(d.date),
+            priority: 2,
+          });
+        }
+      }
+    });
+
+    // 2. Factures impayées >30 jours
+    (devis || []).forEach(d => {
+      if (d.type === 'facture' && d.statut !== 'payee' && d.statut !== 'paye' && d.statut !== 'refuse' && d.date) {
+        const age = Math.floor((now - new Date(d.date)) / 86400000);
+        if (age >= 30) {
+          const cn = clientName(d.client_id);
+          items.push({
+            id: `facture-impayee-${d.id}`,
+            message: `Facture ${d.numero || ''} impayée depuis ${age} jours${cn ? ` (${cn})` : ''} — ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(d.total_ttc || 0)}`,
+            date: relDate(d.date),
+            type: 'alert',
+            link: 'devis',
+            itemId: d.id,
+            itemType: 'facture',
+            sortDate: new Date(d.date),
+            priority: 1,
+          });
+        }
+      }
+    });
+
+    // 3. Devis récemment acceptés (last 7 days)
+    (devis || []).forEach(d => {
+      if ((d.statut === 'accepte' || d.statut === 'signe') && d.date) {
+        const age = Math.floor((now - new Date(d.date)) / 86400000);
+        if (age <= 7) {
+          const cn = clientName(d.client_id);
+          items.push({
+            id: `devis-accepte-${d.id}`,
+            message: `Devis ${d.numero || ''} accepté${cn ? ` par ${cn}` : ''}`,
+            date: relDate(d.date),
+            type: 'success',
+            link: 'devis',
+            itemId: d.id,
+            itemType: 'devis',
+            sortDate: new Date(d.date),
+            priority: 3,
+          });
+        }
+      }
+    });
+
+    // 4. Chantiers en retard (date fin dépassée, pas terminé)
+    (chantiers || []).forEach(ch => {
+      if (ch.dateFin && ch.statut === 'en_cours') {
+        const fin = new Date(ch.dateFin);
+        if (fin < now) {
+          const jours = Math.floor((now - fin) / 86400000);
+          items.push({
+            id: `chantier-retard-${ch.id}`,
+            message: `Chantier "${ch.nom || 'Sans nom'}" en retard de ${jours} jour${jours > 1 ? 's' : ''}`,
+            date: relDate(ch.dateFin),
+            type: 'alert',
+            link: 'chantiers',
+            itemId: ch.id,
+            itemType: 'chantier',
+            sortDate: fin,
+            priority: 1,
+          });
+        }
+      }
+    });
+
+    // 5. Chantiers avec marge négative
+    (chantiers || []).forEach(ch => {
+      if (ch.statut === 'en_cours' && getChantierBilan) {
+        const bilan = getChantierBilan(ch.id);
+        if (bilan && bilan.margeBrute < 0) {
+          items.push({
+            id: `chantier-perte-${ch.id}`,
+            message: `Chantier "${ch.nom || 'Sans nom'}" en perte (marge: ${new Intl.NumberFormat('fr-FR', {style:'currency',currency:'EUR'}).format(bilan.margeBrute)})`,
+            date: 'Marge négative',
+            type: 'alert',
+            link: 'chantiers',
+            itemId: ch.id,
+            itemType: 'chantier',
+            sortDate: now,
+            priority: 1,
+          });
+        }
+      }
+    });
+
+    // 6. Assurance expirée (RC Pro / Décennale)
+    if (entreprise) {
+      const checkInsurance = (field, label) => {
+        const val = entreprise[field];
+        if (val) {
+          const exp = new Date(val);
+          const daysLeft = Math.floor((exp - now) / 86400000);
+          if (daysLeft < 0) {
+            items.push({
+              id: `insurance-expired-${field}`,
+              message: `Assurance ${label} expirée depuis ${Math.abs(daysLeft)} jour${Math.abs(daysLeft) > 1 ? 's' : ''} — à renouveler d'urgence`,
+              date: relDate(val),
+              type: 'alert',
+              link: 'settings',
+              sortDate: exp,
+              priority: 1,
+            });
+          } else if (daysLeft <= 30) {
+            items.push({
+              id: `insurance-expiring-${field}`,
+              message: `Assurance ${label} expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
+              date: `Dans ${daysLeft}j`,
+              type: 'warning',
+              link: 'settings',
+              sortDate: exp,
+              priority: 2,
+            });
+          }
+        }
+      };
+      checkInsurance('rcProExpiration', 'RC Pro');
+      checkInsurance('decennaleExpiration', 'Décennale');
+    }
+
+    // 7. Profil entreprise incomplet
+    if (entreprise) {
+      const required = ['nom', 'siret', 'adresse', 'tel', 'email'];
+      const missing = required.filter(f => !entreprise[f] || entreprise[f].trim?.() === '');
+      if (missing.length > 0) {
+        items.push({
+          id: 'profile-incomplete',
+          message: `Profil entreprise incomplet (${missing.length} champ${missing.length > 1 ? 's' : ''} manquant${missing.length > 1 ? 's' : ''}: ${missing.join(', ')})`,
+          date: '',
+          type: 'info',
+          link: 'settings',
+          sortDate: new Date(0),
+          priority: 4,
+        });
+      }
+    }
+
+    // 8. Chantier avec budget dépassé >90%
+    (chantiers || []).forEach(ch => {
+      if (ch.statut === 'en_cours' && ch.budget && ch.budget > 0 && getChantierBilan) {
+        const bilan = getChantierBilan(ch.id);
+        if (bilan) {
+          const pct = (bilan.totalDepenses / ch.budget) * 100;
+          if (pct >= 100) {
+            items.push({
+              id: `budget-depasse-${ch.id}`,
+              message: `Budget dépassé sur "${ch.nom || 'Sans nom'}" (${Math.round(pct)}% consommé)`,
+              date: 'Budget dépassé',
+              type: 'alert',
+              link: 'chantiers',
+              itemId: ch.id,
+              itemType: 'chantier',
+              sortDate: now,
+              priority: 1,
+            });
+          } else if (pct >= 90) {
+            items.push({
+              id: `budget-alerte-${ch.id}`,
+              message: `Budget critique sur "${ch.nom || 'Sans nom'}" (${Math.round(pct)}% consommé)`,
+              date: 'Alerte budget',
+              type: 'warning',
+              link: 'chantiers',
+              itemId: ch.id,
+              itemType: 'chantier',
+              sortDate: now,
+              priority: 2,
+            });
+          }
+        }
+      }
+    });
+
+    // Sort by priority (1=urgent) then date (newest first), limit to 20
+    items.sort((a, b) => (a.priority - b.priority) || (b.sortDate - a.sortDate));
+    return items.slice(0, 20).map(n => ({
+      ...n,
+      read: readNotifIds.includes(n.id),
+    }));
+  }, [devis, chantiers, clients, entreprise, getChantierBilan, readNotifIds]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -143,34 +368,46 @@ export default function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [showImport, setShowImport] = useState(false);
   const [importType, setImportType] = useState('clients');
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Settings state
+  // Settings state (entreprise declared earlier, before notifications useMemo)
   const [theme, setTheme] = useState('light');
   const [modeDiscret, setModeDiscret] = useState(false);
-  const [entreprise, setEntreprise] = useState({
-    nom: 'Martin Renovation', logo: '', couleur: '#f97316',
-    formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
-    siret: '', codeApe: '', rcs: '', tvaIntra: '', validiteDevis: 30, tvaDefaut: 10,
-    delaiPaiement: 30, acompteDefaut: 30, tauxFraisStructure: 15
-  });
 
   // CRUD wrappers with toasts (delegate to DataContext)
   const addClient = async (data) => { const c = await dataAddClient(data); showToast(`Client "${data.nom}" ajouté`, 'success'); return c; };
   const updateClient = async (id, data) => { await dataUpdateClient(id, data); showToast(`Client "${data.nom || 'mis à jour'}" modifié`, 'success'); };
+  const deleteClient = async (id) => { await dataDeleteClient(id); showToast('Client supprimé', 'success'); };
   const addDevis = async (data) => { const d = await dataAddDevis(data); showToast(`${data.type === 'facture' ? 'Facture' : 'Devis'} créé`, 'success'); return d; };
-  const updateDevis = async (id, data) => await dataUpdateDevis(id, data);
+  const updateDevis = async (id, data) => { await dataUpdateDevis(id, data); showToast('Document mis à jour', 'success'); };
   const deleteDevis = (id) => { dataDeleteDevis(id); showToast('Document supprimé', 'info'); };
   const addChantier = async (data) => { const c = await dataAddChantier(data); showToast(`Chantier "${data.nom}" créé`, 'success'); return c; };
-  const updateChantier = (id, data) => dataUpdateChantier(id, data);
+  const updateChantier = (id, data) => { dataUpdateChantier(id, data); showToast('Chantier mis à jour', 'success'); };
   const addAjustement = (data) => { const a = dataAddAjustement(data); showToast('Ajustement enregistré', 'success'); return a; };
   const deleteAjustement = (id) => { dataDeleteAjustement(id); showToast('Ajustement supprimé', 'info'); };
-  const addEchange = (data) => dataAddEchange(data);
+  const addEchange = (data) => { const e = dataAddEchange(data); showToast('Échange ajouté', 'success'); return e; };
   const addPaiement = (data) => { const p = dataAddPaiement(data); showToast(`Paiement de ${(data.amount || 0).toLocaleString('fr-FR')} EUR enregistré`, 'success'); return p; };
-  const addEvent = (data) => { const e = { id: `ev${Date.now()}`, ...data }; setEvents(prev => [...prev, e]); showToast('Événement ajouté', 'success'); return e; };
+  const addEmployee = async (data) => { const e = await dataAddEmployee(data); showToast(`Employé "${data.prenom || ''} ${data.nom || ''}" ajouté`, 'success'); return e; };
+  const updateEmployee = async (id, data) => { await dataUpdateEmployee(id, data); };
+  const deleteEmployee = async (id) => { await dataDeleteEmployee(id); showToast('Employé supprimé', 'success'); };
+  const addPointage = async (data) => { const p = await dataAddPointage(data); return p; };
+  const addCatalogueItem = async (data) => { const c = await dataAddCatalogueItem(data); showToast('Article ajouté au catalogue', 'success'); return c; };
+  const updateCatalogueItem = async (id, data) => { await dataUpdateCatalogueItem(id, data); };
+  const deleteCatalogueItem = async (id) => { await dataDeleteCatalogueItem(id); showToast('Article supprimé du catalogue', 'success'); };
+  const addEvent = async (data) => { const e = await dataAddPlanningEvent(data); showToast('Événement ajouté', 'success'); return e; };
+  const updateEvent = async (id, data) => { await dataUpdatePlanningEvent(id, data); };
+  const deleteEvent = async (id) => { await dataDeletePlanningEvent(id); showToast('Événement supprimé', 'info'); };
 
   // Manual sync handler for offline queue
   const handleManualSync = async () => {
     try {
+      // In demo mode, just clear the queue — no Supabase to sync to
+      if (isDemo) {
+        await clearAllMutations();
+        setPendingSync(0);
+        return;
+      }
+
       const results = await syncQueue({
         clients: { create: dataAddClient, update: dataUpdateClient, delete: dataDeleteClient },
         devis: { create: dataAddDevis, update: dataUpdateDevis, delete: dataDeleteDevis },
@@ -184,6 +421,9 @@ export default function App() {
       setPendingSync(count);
       if (results.success > 0) {
         showToast(`${results.success} modification${results.success > 1 ? 's' : ''} synchronisée${results.success > 1 ? 's' : ''}`, 'success');
+      }
+      if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
+        showToast('File d\'attente nettoyée', 'info');
       }
       if (results.failed > 0) {
         showToast(`${results.failed} erreur${results.failed > 1 ? 's' : ''} de synchronisation`, 'error');
@@ -205,7 +445,10 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
-  useEffect(() => { try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); } }, [page]);
+  useEffect(() => {
+    console.log('[NAV] page changed to:', page);
+    try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
+  }, [page]);
 
   // Auth state listener - persists session across page refreshes
   useEffect(() => {
@@ -283,7 +526,7 @@ export default function App() {
       ouvrages: 'catalogue', soustraitants: 'clients', commandes: 'chantiers',
       tresorerie: 'finances', 'ia-devis': 'devis', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
-      equipe: 'dashboard', admin: 'settings', rentabilite: 'settings',
+      admin: 'settings', rentabilite: 'settings',
       pricing: 'settings', billing: 'settings',
     };
     if (REDIRECTS[page]) setPage(REDIRECTS[page]);
@@ -335,8 +578,21 @@ export default function App() {
     setUser(null);
   };
   
-  const markNotifRead = (id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-  const markAllNotifsRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markNotifRead = (id) => {
+    setReadNotifIds(prev => {
+      const next = prev.includes(id) ? prev : [...prev, id];
+      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const markAllNotifsRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadNotifIds(prev => {
+      const next = [...new Set([...prev, ...allIds])];
+      try { localStorage.setItem('cp_read_notifs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   // Global search results
   const searchResults = searchQuery.length > 1 ? {
@@ -389,11 +645,35 @@ export default function App() {
         return;
       }
 
-      // Escape to close modals
+      // Cmd/Ctrl + M for memos
+      if ((e.metaKey || e.ctrlKey) && e.key === 'm' && !isInput) {
+        e.preventDefault();
+        setPage('memos');
+        return;
+      }
+
+      // ? key (without Cmd) or ⌘/ to show shortcuts help
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && !isInput) {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '/' && !isInput) {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
+      // Escape to close modals/overlays
       if (e.key === 'Escape') {
         setShowSearch(false);
         setShowQuickAdd(false);
         setShowNotifs(false);
+        setShowFABDevisWizard(false);
+        setShowFABQuickClient(false);
+        setShowFABQuickChantier(false);
+        setShowShortcuts(false);
+        setSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -408,6 +688,7 @@ export default function App() {
       chantiers: 'Chantiers',
       clients: 'Clients',
       planning: 'Planning',
+      memos: 'Mémos',
       catalogue: 'Catalogue',
       finances: 'Finances',
       settings: 'Paramètres',
@@ -422,6 +703,12 @@ export default function App() {
   // Network status listener for offline mode
   useEffect(() => {
     const updatePendingCount = async () => {
+      // In demo mode, clear any stale mutations and set count to 0
+      if (isDemo) {
+        await clearAllMutations();
+        setPendingSync(0);
+        return;
+      }
       const count = await getPendingCount();
       setPendingSync(count);
     };
@@ -444,74 +731,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Generate notifications from data
-  useEffect(() => {
-    try {
-      const notifs = [];
-      const now = new Date();
-
-      // Overdue invoices (factures unpaid > 30 days)
-      devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
-        const dateStr = typeof f.date === 'string' ? f.date : (f.date instanceof Date ? f.date.toISOString() : '');
-        const days = Math.floor((now - new Date(dateStr)) / 86400000);
-        if (days > 30 && !isNaN(days)) {
-          notifs.push({ id: `overdue-${safeStr(f.id)}`, message: `Facture ${safeStr(f.numero, '#')} impayée depuis ${days} jours`, date: `${days}j de retard`, read: false, type: 'urgent' });
-        }
-      });
-
-      // Stale devis (sent > 10 days without response)
-      devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
-        const dateStr = typeof d.date === 'string' ? d.date : (d.date instanceof Date ? d.date.toISOString() : '');
-        const days = Math.floor((now - new Date(dateStr)) / 86400000);
-        if (days > 10 && !isNaN(days)) {
-          notifs.push({ id: `stale-${safeStr(d.id)}`, message: `Devis ${safeStr(d.numero, '#')} sans réponse depuis ${days} jours`, date: 'À relancer', read: false, type: 'warning' });
-        }
-      });
-
-      // Expired insurance
-      if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
-        notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expirée', date: 'Action requise', read: false, type: 'urgent', link: 'settings' });
-      }
-      if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
-        notifs.push({ id: 'dec-expired', message: 'Votre assurance Décennale est expirée', date: 'Action requise', read: false, type: 'urgent', link: 'settings' });
-      }
-
-      // Incomplete profile
-      const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
-      const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
-      if (missingFields.length > 0) {
-        notifs.push({ id: 'profile-incomplete', message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`, date: 'Paramètres', read: false, type: 'info', link: 'settings' });
-      }
-
-      // Budget overage alerts
-      chantiers.filter(c => c.statut === 'en_cours' && c.budget).forEach(ch => {
-        const totalDepenses = depenses
-          .filter(d => d.chantierId === ch.id)
-          .reduce((sum, d) => sum + (parseFloat(d.montant) || 0), 0);
-        const budgetUsed = ch.budget > 0 ? (totalDepenses / ch.budget) * 100 : 0;
-        if (budgetUsed > 90) {
-          notifs.push({
-            id: `budget-${safeStr(ch.id)}`,
-            message: `Chantier "${safeStr(ch.nom)}" : ${Math.round(budgetUsed)}% du budget utilisé`,
-            date: budgetUsed > 100 ? 'Dépassement' : 'Attention',
-            read: false,
-            type: budgetUsed > 100 ? 'urgent' : 'warning',
-            link: 'chantiers',
-            itemType: 'chantier',
-            itemId: ch.id
-          });
-        }
-      });
-
-      // Preserve read status from previous notifications
-      setNotifications(prev => {
-        const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
-        return notifs.map(n => ({ ...n, message: safeStr(n.message), date: safeStr(n.date), read: readIds.has(n.id) }));
-      });
-    } catch (err) {
-      console.error('[Notifications useEffect] Error:', err);
-    }
-  }, [devis, chantiers, depenses, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
+  // Notifications are now computed via useMemo (see above) — no useEffect needed
 
   // Loading screen
   if (loading) return (
@@ -679,7 +899,8 @@ export default function App() {
   // Calculate stats for badges
   const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
   const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
-  const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
+  const todayEvents = planningEvents.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
+  const memosOverdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < new Date().toISOString().split('T')[0]).length;
 
   // Navigation items - full sidebar with all sections
   // Badges now include explicit context for clarity
@@ -713,6 +934,15 @@ export default function App() {
       badgeColor: '#3b82f6',
       badgeTitle: `${todayEvents} événement${todayEvents > 1 ? 's' : ''} aujourd'hui`
     },
+    {
+      id: 'memos',
+      icon: ClipboardList,
+      label: 'Mémos',
+      badge: memosOverdueCount,
+      badgeColor: '#ef4444',
+      badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} mémo${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
+    },
+    { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
@@ -742,7 +972,7 @@ export default function App() {
             <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'ChantierPro')}</h1>
+            <p className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'ChantierPro')}</p>
             <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
           </div>
           {/* Close button - mobile only */}
@@ -803,7 +1033,7 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-0.5">
+        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1.5">
           <div className="flex gap-1">
             <button
               onClick={() => setModeDiscret(!modeDiscret)}
@@ -833,7 +1063,7 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`lg:pl-64 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+      <div className={`lg:pl-64 min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
         <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
 
@@ -870,9 +1100,22 @@ export default function App() {
                 </span>
               )}
               {isOnline && pendingSync > 0 && (
-                <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 cursor-pointer ${isDark ? 'bg-blue-900 text-blue-300 hover:bg-blue-800' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  onClick={async () => {
+                    // Try sync first, then force-clear if still stuck
+                    await handleManualSync();
+                    const remaining = await getPendingCount();
+                    if (remaining > 0) {
+                      await clearAllMutations();
+                      setPendingSync(0);
+                      showToast('File de synchronisation purgée', 'info');
+                    }
+                  }}
+                  title="Cliquez pour synchroniser ou purger"
+                >
                   <Wifi size={12} className="animate-pulse" />
-                  <span className="hidden md:inline">Sync</span>
+                  <span className="hidden md:inline">{pendingSync} sync</span>
                 </span>
               )}
             </div>
@@ -992,7 +1235,8 @@ export default function App() {
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
-                      { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' }
+                      { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' },
+                      { label: 'Nouveau mémo', icon: ClipboardList, p: 'memos' }
                     ].map(item => (
                       <button
                         key={item.label}
@@ -1029,28 +1273,29 @@ export default function App() {
         <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
-              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} />}
-              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} />}
-              {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
-              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
-              {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} setPage={setPage} />}
-              {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} isDark={isDark} couleur={couleur} />}
+              {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
+              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} />}
+              {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} />}
+              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
+              {page === 'memos' && <MemosPage memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} chantiers={chantiers} clients={clients} setPage={setPage} couleur={couleur} isDark={isDark} />}
+              {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
+              {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
+              {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'commandes' && <FeatureGuard feature="commandes"><CommandesFournisseurs chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
-              {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
+              {page === 'tresorerie' && <FeatureGuard feature="tresorerie"><TresorerieModule devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} /></FeatureGuard>}
               {page === 'ia-devis' && <FeatureGuard feature="ia_devis"><IADevisAnalyse catalogue={catalogue} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'entretien' && <FeatureGuard feature="entretien"><CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
-              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} setPage={setPage} />}
+              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
               {page === 'checkout-success' && <CheckoutSuccess isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} />}
+              {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} modeDiscret={modeDiscret} couleur={couleur} setPage={setPage} />}
               {page === 'design-system' && <DesignSystemDemo />}
               {page === 'cgv' && <LegalPages page="cgv" isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'cgu' && <LegalPages page="cgu" isDark={isDark} couleur={couleur} setPage={setPage} />}
@@ -1167,6 +1412,7 @@ export default function App() {
           clients={clients}
           chantiers={chantiers}
           devis={devis}
+          memos={memos}
           onNewDevis={(type) => {
             setCreateMode(p => ({ ...p, devis: true }));
             setPage('devis');
@@ -1295,12 +1541,12 @@ export default function App() {
               <div className={`flex-shrink-0 px-5 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/80' : 'border-slate-200 bg-slate-50'}`}>
                 <button
                   onClick={() => {
-                    setNotifications([]);
+                    markAllNotifsRead();
                     setShowNotifs(false);
                   }}
                   className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
                 >
-                  Effacer toutes les notifications
+                  Tout marquer comme lu
                 </button>
               </div>
             )}
@@ -1374,6 +1620,18 @@ export default function App() {
         </Suspense>
       )}
 
+      {/* Keyboard Shortcuts Help Modal */}
+      {showShortcuts && (
+        <Suspense fallback={null}>
+          <ShortcutsHelp
+            isOpen={showShortcuts}
+            onClose={() => setShowShortcuts(false)}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        </Suspense>
+      )}
+
       {/* New Zustand-based Toast System */}
       <ToastContainer position="bottom-right" />
 
@@ -1384,6 +1642,10 @@ export default function App() {
       <OfflineIndicator
         pendingCount={pendingSync}
         onSync={handleManualSync}
+        onForceClear={async () => {
+          await clearAllMutations();
+          setPendingSync(0);
+        }}
         isDark={isDark}
       />
 

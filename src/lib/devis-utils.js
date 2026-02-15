@@ -21,13 +21,14 @@ export function roundEuro(value) {
 export function generateNumero(type, existingDocuments = []) {
   const prefix = type === 'facture' ? 'FAC' : 'DEV';
   const year = new Date().getFullYear();
+  const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
 
-  const existingNumbers = existingDocuments
-    .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
-    .map(d => parseInt(d.numero.split('-')[2]) || 0);
+  const maxSeq = existingDocuments
+    .filter(d => (d.type || 'devis') === type)
+    .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
+    .reduce((max, n) => Math.max(max, n), 0);
 
-  const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-  return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
+  return `${prefix}-${year}-${String(maxSeq + 1).padStart(5, '0')}`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2 } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
@@ -15,7 +15,34 @@ import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
 import { getDocumentEmailStatus } from '../services/CommunicationsService';
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
+// Valid status transitions — enforced on buttons and dropdown
+const VALID_TRANSITIONS = {
+  // Devis transitions
+  brouillon: ['envoye', 'refuse'],
+  envoye: ['vu', 'accepte', 'refuse'],
+  vu: ['accepte', 'refuse'],
+  accepte: ['acompte_facture', 'facture'],
+  acompte_facture: ['facture'],
+  facture: [],
+  refuse: ['brouillon'],
+};
+// Facture-specific transitions (keyed by 'facture:status')
+const FACTURE_TRANSITIONS = {
+  brouillon: ['envoye'],
+  envoye: ['payee'],
+  payee: [],
+};
+
+const CONDITIONS_PAIEMENT = {
+  'reception': 'À réception de facture',
+  '30_jours': '30 jours',
+  '30_jours_fdm': '30 jours fin de mois',
+  '45_jours_fdm': '45 jours fin de mois',
+  '60_jours': '60 jours',
+  'acompte_solde': '30% acompte, solde à réception',
+};
+
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -60,11 +87,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [signataireName, setSignataireName] = useState('');
+  const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('Mes modèles');
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -114,11 +146,26 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     tvaDefaut: entreprise?.tvaDefaut || 10,
     remise: 0,
     retenueGarantie: false, // Retenue de garantie 5% (BTP)
+    conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours',
     notes: ''
   });
 
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+
+  // Calcul pénalités de retard (Article L441-10 Code de commerce)
+  const calculatePenalites = (doc) => {
+    if (!doc || doc.type !== 'facture' || doc.statut === 'payee' || doc.facture_type === 'avoir') return null;
+    const delai = entreprise?.delaiPaiement || 30;
+    const echeance = doc.date_echeance
+      ? new Date(doc.date_echeance)
+      : new Date(new Date(doc.date).getTime() + delai * 86400000);
+    const joursRetard = Math.max(0, Math.floor((Date.now() - echeance) / 86400000));
+    if (joursRetard <= 0) return null;
+    const taux = entreprise?.tauxPenaliteRetard || 10; // 3x taux BCE (~3.5%)
+    const penalite = (doc.total_ttc || 0) * (taux / 100) * (joursRetard / 365);
+    return { joursRetard, echeance, taux, penalite: Math.round(penalite * 100) / 100, indemnite: 40, total: Math.round((penalite + 40) * 100) / 100 };
+  };
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
   useEffect(() => { if (createMode) { setMode('create'); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -138,13 +185,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   const filtered = getSortedDevis(devis.filter(d => {
+    // Filter out ghost devis: no numero AND orphan client (client doesn't exist) AND brouillon
+    if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+    // Filter out devis where client was deleted and devis was never sent (brouillon only)
+    if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
     if (filter === 'devis' && d.type !== 'devis') return false;
     if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
-    // Search by numero AND client name/entreprise
+    // Search by numero, client name/entreprise, chantier name, and objet
     if (debouncedSearch) {
       const client = clients.find(c => c.id === d.client_id);
-      const searchText = `${d.numero || ''} ${client?.nom || ''} ${client?.prenom || ''} ${client?.entreprise || ''}`.toLowerCase();
+      const chantier = chantiers.find(ch => ch.id === d.chantier_id);
+      const searchText = `${d.numero || ''} ${client?.nom || ''} ${client?.prenom || ''} ${client?.entreprise || ''} ${chantier?.nom || ''} ${d.objet || ''}`.toLowerCase();
       if (!searchText.includes(debouncedSearch.toLowerCase())) return false;
     }
     return true;
@@ -156,6 +208,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const qty = parseFloat(l.quantite || 0);
     const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
     return qty * pu;
+  };
+
+  // Helper: get TTC for a devis, recalculating from lignes if total_ttc is 0/missing
+  const getDevisTTC = (d) => {
+    if (d.total_ttc && d.total_ttc > 0) return d.total_ttc;
+    // Recalculate from lignes
+    const allLignes = d.sections?.length > 0
+      ? d.sections.flatMap(s => s.lignes || [])
+      : (d.lignes || []);
+    if (allLignes.length === 0) return 0;
+    const ht = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
+    const tvaRate = d.tvaRate || 20;
+    return ht * (1 + tvaRate / 100);
   };
 
   // Calcul des totaux avec multi-taux TVA et marge
@@ -242,16 +307,40 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const removeLigne = (sectionId, ligneId) => setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s) }));
 
-  // Génération numéro unique garanti
-  const generateNumero = (type) => {
-    const prefix = type === 'facture' ? 'FAC' : 'DEV';
+  const moveLigne = (sectionId, ligneIdx, direction) => {
+    setForm(p => ({
+      ...p,
+      sections: p.sections.map(s => {
+        if (s.id !== sectionId) return s;
+        const arr = [...s.lignes];
+        const target = ligneIdx + direction;
+        if (target < 0 || target >= arr.length) return s;
+        [arr[ligneIdx], arr[target]] = [arr[target], arr[ligneIdx]];
+        return { ...s, lignes: arr };
+      })
+    }));
+  };
+
+  // Génération numéro unique garanti (format: DEV-2026-00001 / FAC-2026-00001)
+  // Version synchrone (fallback local)
+  const generateNumeroLocal = (type) => {
+    const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
     const year = new Date().getFullYear();
-    // Trouver le dernier numéro pour ce type et cette année
-    const existingNumbers = devis
-      .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
-      .map(d => parseInt(d.numero.split('-')[2]) || 0);
-    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
+    const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
+    const maxSeq = devis
+      .filter(d => type === 'avoir'
+        ? d.facture_type === 'avoir'
+        : (d.type || 'devis') === type && d.facture_type !== 'avoir')
+      .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
+      .reduce((max, n) => Math.max(max, n), 0);
+    return `${prefix}-${year}-${String(maxSeq + 1).padStart(5, '0')}`;
+  };
+  // Version async qui vérifie aussi Supabase
+  const generateNumero = async (type) => {
+    if (generateNextNumero) {
+      try { return await generateNextNumero(type); } catch (e) { /* fallback */ }
+    }
+    return generateNumeroLocal(type);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,7 +353,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setIsSubmitting(true);
     try {
       const client = clients.find(c => c.id === form.clientId);
-      const numero = generateNumero(form.type);
+      const numero = await generateNumero(form.type);
       const docType = form.type;
 
       const newDevis = await onSubmit({
@@ -290,6 +379,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ttc_net: totals.ttcNet,
         marge: totals.marge,
         tauxMarge: totals.tauxMarge,
+        conditionsPaiement: form.conditionsPaiement,
         notes: form.notes
       });
 
@@ -345,7 +435,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     const newDoc = {
       id: generateId(),
-      numero: generateNumero('devis'),
+      numero: await generateNumero('devis'),
       type: 'devis',
       client_id: doc.client_id,
       client_nom: doc.client_nom,
@@ -359,6 +449,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       tvaDetails: doc.tvaDetails,
       tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
       remise: doc.remise || 0,
+      retenueGarantie: doc.retenueGarantie || false,
       total_ht: doc.total_ht,
       tva: doc.tva,
       total_ttc: doc.total_ttc,
@@ -442,7 +533,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const draw = (e) => { if (!isDrawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); ctx.stroke(); };
   const endDraw = () => setIsDrawing(false);
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
-  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSnackbar({ type: 'success', message: 'Devis signe et accepte !' }); };
+  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
 
   // New signature pad handler (react-signature-canvas)
   const handleSignatureSave = (signatureData) => {
@@ -479,7 +570,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
 
     // Generate numero
-    const numero = generateNumero('devis');
+    const numero = await generateNumero('devis');
 
     // Flatten all lines for total calculation and lignes array
     const allLignes = [];
@@ -494,6 +585,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
     });
 
+    // Build tvaParTaux from lignes for multi-rate TVA support
+    const tvaParTaux = {};
+    allLignes.forEach(l => {
+      const rate = l.tva !== undefined ? l.tva : (devisData.tvaDefaut || 20);
+      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
+      if (!tvaParTaux[rate]) tvaParTaux[rate] = { base: 0, montant: 0 };
+      tvaParTaux[rate].base += montant;
+      tvaParTaux[rate].montant += montant * (rate / 100);
+    });
+
     // Create the devis object
     const newDevis = {
       id: generateId(),
@@ -506,10 +607,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       validite: devisData.validite,
       sections: devisData.sections,
       lignes: allLignes,
-      tvaRate: devisData.tvaDefaut || 10,
+      tvaRate: devisData.tvaDefaut || 20,
+      tvaParTaux,
+      tvaDetails: tvaParTaux,
       remise: devisData.remise || 0,
       notes: devisData.notes,
       total_ht: devisData.total_ht,
+      tva: devisData.total_tva,
       total_tva: devisData.total_tva,
       total_ttc: devisData.total_ttc,
       cout_revient: devisData.cout_revient,
@@ -545,9 +649,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (addPaiement) {
       addPaiement({
         ...paymentData,
+        facture_id: selected?.id,
         documentId: selected?.id,
-        documentNumero: selected?.numero
+        documentNumero: selected?.numero,
+        document: selected?.numero,
       });
+    }
+    // Auto-update facture status to 'payee' if fully paid
+    if (selected?.type === 'facture' && selected.statut !== 'payee') {
+      const existingPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
+      const totalPaye = existingPaiements.reduce((s, p) => s + (p.montant || 0), 0) + (paymentData.amount || 0);
+      if (totalPaye >= (selected.total_ttc || 0)) {
+        onUpdate(selected.id, { statut: 'payee' });
+        setSelected(s => s ? { ...s, statut: 'payee' } : s);
+        setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée` });
+      }
     }
   };
 
@@ -559,11 +675,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const createAcompte = async () => {
     if (!selected || selected.statut !== 'accepte') return showToast('Le devis doit être accepté', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
-    const montantHT = selected.total_ht * (acomptePct / 100);
-    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
-    const tva = montantHT * (tvaRate / 100);
+    const ratio = acomptePct / 100;
+    const montantHT = selected.total_ht * ratio;
+    // Use stored multi-rate TVA proportionally, fallback to single rate
+    const tva = selected.tva ? selected.tva * ratio : montantHT * ((selected.tvaRate || entreprise?.tvaDefaut || 20) / 100);
     const ttc = montantHT + tva;
-    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
+    // Build proportional tvaParTaux for the acompte
+    const tvaParTaux = {};
+    const srcTva = selected.tvaParTaux || selected.tvaDetails;
+    if (srcTva && typeof srcTva === 'object') {
+      Object.entries(srcTva).forEach(([rate, info]) => {
+        tvaParTaux[rate] = { base: (info.base || 0) * ratio, montant: (info.montant || 0) * ratio };
+      });
+    }
+    const facture = {
+      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
+      devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
+      date: new Date().toISOString().split('T')[0], statut: 'envoye',
+      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaParTaux, tvaDetails: tvaParTaux,
+      lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT, tva: selected.tvaRate || entreprise?.tvaDefaut || 20 }],
+      total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
+    };
     await onSubmit(facture);
     onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
@@ -576,16 +710,94 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const acompte = getAcompteFacture(selected.id);
     const montantAcompteHT = acompte ? acompte.total_ht : 0;
     const montantSoldeHT = selected.total_ht - montantAcompteHT;
-    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
-    const tva = montantSoldeHT * (tvaRate / 100);
+    // Use stored multi-rate TVA, proportionally adjusted for solde
+    const acompteTva = acompte?.tva || 0;
+    const tva = (selected.tva || 0) - acompteTva;
     const ttc = montantSoldeHT + tva;
-    const lignes = [...(selected.lignes || [])];
+    // Copy lignes with their per-line TVA rates preserved
+    const lignes = (selected.lignes || []).map(l => ({ ...l, tva: l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 20) }));
     if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
-    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
+    // Build tvaParTaux for the solde
+    const tvaParTaux = {};
+    const srcTva = selected.tvaParTaux || selected.tvaDetails;
+    const acompteSrcTva = acompte?.tvaParTaux || acompte?.tvaDetails;
+    if (srcTva && typeof srcTva === 'object') {
+      Object.entries(srcTva).forEach(([rate, info]) => {
+        const acompteForRate = acompteSrcTva?.[rate]?.montant || 0;
+        tvaParTaux[rate] = { base: (info.base || 0) - (acompteSrcTva?.[rate]?.base || 0), montant: (info.montant || 0) - acompteForRate };
+      });
+    }
+    const facture = {
+      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale',
+      devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
+      date: new Date().toISOString().split('T')[0], statut: 'envoye',
+      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaParTaux, tvaDetails: tvaParTaux,
+      lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
+    };
     await onSubmit(facture);
     await onUpdate(selected.id, { statut: 'facture' });
     setSelected({ ...selected, statut: 'facture' });
     setSnackbar({ type: 'success', message: `Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
+  };
+
+  // Créer un avoir (note de crédit) pour une facture
+  const createAvoir = async (facture) => {
+    const confirmed = await confirm({
+      title: 'Créer un avoir ?',
+      message: `Un avoir annulant la facture ${facture.numero} (${formatMoney(facture.total_ttc)}) sera créé. Les montants seront inversés (négatifs).`
+    });
+    if (!confirmed) return;
+
+    const avoir = {
+      id: crypto.randomUUID(),
+      numero: await generateNumero('avoir'),
+      type: 'facture',
+      facture_type: 'avoir',
+      devis_source_id: facture.devis_source_id,
+      avoir_source_id: facture.id,
+      client_id: facture.client_id,
+      client_nom: facture.client_nom,
+      chantier_id: facture.chantier_id,
+      date: new Date().toISOString().split('T')[0],
+      statut: 'envoye',
+      tvaRate: facture.tvaRate,
+      lignes: (facture.lignes || []).map(l => ({
+        ...l,
+        id: generateId(),
+        prixUnitaire: -(Math.abs(l.prixUnitaire || 0)),
+        montant: -(Math.abs(l.montant || 0)),
+      })),
+      sections: facture.sections ? facture.sections.map(s => ({
+        ...s,
+        id: generateId(),
+        lignes: (s.lignes || []).map(l => ({
+          ...l,
+          id: generateId(),
+          prixUnitaire: -(Math.abs(l.prixUnitaire || 0)),
+          montant: -(Math.abs(l.montant || 0)),
+        })),
+      })) : undefined,
+      tvaParTaux: facture.tvaParTaux
+        ? Object.fromEntries(Object.entries(facture.tvaParTaux).map(([r, info]) => [r, { base: -(Math.abs(info.base || 0)), montant: -(Math.abs(info.montant || 0)) }]))
+        : {},
+      tvaDetails: facture.tvaParTaux
+        ? Object.fromEntries(Object.entries(facture.tvaParTaux).map(([r, info]) => [r, { base: -(Math.abs(info.base || 0)), montant: -(Math.abs(info.montant || 0)) }]))
+        : {},
+      total_ht: -(Math.abs(facture.total_ht || 0)),
+      tva: -(Math.abs(facture.tva || 0)),
+      total_ttc: -(Math.abs(facture.total_ttc || 0)),
+      notes: `Avoir sur facture ${facture.numero}`,
+      conditionsPaiement: facture.conditionsPaiement,
+    };
+
+    await onSubmit(avoir);
+    setSnackbar({
+      type: 'success',
+      message: `Avoir ${avoir.numero} créé`,
+      action: { label: 'Voir', onClick: () => { setSelected(avoir); setSnackbar(null); } }
+    });
   };
 
   // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
@@ -628,7 +840,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>${isFacture?'Facture':'Devis'} ${doc.numero}</title>
+  <title>${doc.facture_type === 'avoir' ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
@@ -689,7 +901,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       </div>
     </div>
     <div class="doc-type">
-      <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <h1>${doc.facture_type === 'avoir' ? 'AVOIR' : isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
@@ -702,7 +914,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="client-section">
     <div class="info-block">
       <h3>Client</h3>
-      <div class="name">${client?.prenom || ''} ${client?.nom || ''}</div>
+      <div class="name">${client ? `${client.prenom || ''} ${client.nom || ''}` : (doc.client_nom || 'Client supprimé')}</div>
       ${client?.entreprise ? `<div style="font-size:9pt;color:#64748b">${client.entreprise}</div>` : ''}
       <div style="font-size:9pt">${client?.adresse || ''}</div>
       <div style="font-size:9pt">${client?.code_postal || ''} ${client?.ville || ''}</div>
@@ -768,10 +980,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       </div>
       <div>
         <strong>Délai de paiement</strong><br>
-        ${entreprise?.delaiPaiement || 30} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
+        ${doc.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement] ? CONDITIONS_PAIEMENT[doc.conditionsPaiement] : `${entreprise?.delaiPaiement || 30} jours`} à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
         <strong>Pénalités de retard</strong><br>
-        Taux BCE + 10 points (soit ~13% annuel).<br>
-        Indemnité forfaitaire de recouvrement: 40 €
+        Taux annuel: ${entreprise?.tauxPenaliteRetard || 10}% (3 fois le taux directeur BCE).<br>
+        Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
       </div>
     </div>
   </div>
@@ -814,7 +1026,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement'+(doc.signataire ? ' par '+doc.signataire : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
   ` : ''}
@@ -855,7 +1067,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Print/Download PDF
   const printPDF = (doc) => {
     const content = downloadPDF(doc);
-    const filename = `${doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
+    const filename = `${doc.facture_type === 'avoir' ? 'Avoir' : doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
 
     if (isMobile()) {
       // Mobile: Download as HTML file that opens in browser for PDF conversion
@@ -904,29 +1116,86 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
-  const sendWhatsApp = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
-    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
-    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-  };
-  const sendEmail = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    window.location.href = `mailto:${client?.email || ''}?subject=${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}&body=Bonjour,%0A%0AVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.%0A%0ACordialement`;
-    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
-    if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+  // Batch export all filtered documents as PDFs
+  const batchExportPDF = (docs) => {
+    if (docs.length === 0) return;
+    if (docs.length > 20) {
+      showToast(`Trop de documents (${docs.length}). Filtrez pour réduire à 20 max.`, 'error');
+      return;
+    }
+    setActionLoading('batch');
+    docs.forEach((doc, i) => {
+      setTimeout(() => {
+        printPDF(doc);
+        if (i === docs.length - 1) {
+          setActionLoading(null);
+          showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''}`, 'success');
+        }
+      }, i * 500);
+    });
   };
 
-  // SMS via native protocol (opens default SMS app)
+  // Send helpers — update status FIRST, then open communication link in setTimeout
+  // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
+  const sendWhatsApp = (doc) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
+    if (!client?.telephone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
+    // 1. Update status
+    if (doc.statut === 'brouillon') {
+      onUpdate(doc.id, { statut: 'envoye' });
+      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    }
+    if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    // 2. Open link after state settles
+    const phone = (client.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+    setTimeout(() => {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
+    }, 100);
+    showToast('WhatsApp ouvert', 'success');
+  };
+
+  const sendEmail = (doc) => {
+    const client = clients.find(c => c.id === doc.client_id);
+    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
+    if (!client?.email) { showToast('Aucun email client renseigné', 'error'); return; }
+    // 1. Update status
+    if (doc.statut === 'brouillon') {
+      onUpdate(doc.id, { statut: 'envoye' });
+      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    }
+    if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    // 2. Open mailto in new window AFTER state settles (window.open instead of location.href to prevent navigation crash)
+    setTimeout(() => {
+      const subject = encodeURIComponent(`${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`);
+      const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.\n\nCordialement`);
+      window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_self');
+    }, 100);
+    showToast(`Email ouvert pour ${client.email}`, 'success');
+  };
+
+  // SMS via native protocol (mobile only)
   const sendSMS = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
+    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const phone = (client?.telephone || '').replace(/\s/g, '');
-    const message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
-    // Use sms: protocol - works on mobile and desktop with SMS apps
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
-    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
+    if (!phone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
+    // Desktop fallback
+    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      showToast('SMS disponible uniquement sur mobile', 'info');
+      return;
+    }
+    // 1. Update status
+    if (doc.statut === 'brouillon') {
+      onUpdate(doc.id, { statut: 'envoye' });
+      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    }
     if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `SMS ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
+    // 2. Open SMS after state settles
+    const message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
+    setTimeout(() => {
+      window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
+    }, 100);
   };
 
   // Mark document as viewed (for tracking)
@@ -952,6 +1221,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return getDaysSinceSent(doc) >= 7;
   };
 
+  // Devis expiry detection
+  const getExpiryDaysLeft = (doc) => {
+    if (doc.type !== 'devis' || ['accepte', 'refuse', 'facture', 'acompte_facture'].includes(doc.statut)) return null;
+    const expiryDate = new Date(doc.date);
+    expiryDate.setDate(expiryDate.getDate() + (doc.validite || 30));
+    return Math.ceil((expiryDate - Date.now()) / 86400000);
+  };
+  const isExpiringSoon = (doc) => { const d = getExpiryDaysLeft(doc); return d !== null && d <= 7 && d > 0; };
+  const isExpired = (doc) => { const d = getExpiryDaysLeft(doc); return d !== null && d <= 0; };
+
   const Snackbar = () => snackbar && (
     <div className="fixed bottom-6 left-1/2 z-50 animate-snackbar">
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-sm ${snackbar.type === 'success' ? 'bg-emerald-600/95' : snackbar.type === 'error' ? 'bg-red-600/95' : 'bg-slate-800/95'} text-white min-w-[280px] max-w-[90vw]`}>
@@ -972,6 +1251,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div className="bg-white rounded-2xl border p-6 text-center">
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
+        <input
+          type="text"
+          value={signataireName}
+          onChange={e => setSignataireName(e.target.value)}
+          placeholder="Nom du signataire"
+          className="w-64 mx-auto px-4 py-2 border rounded-lg text-center mb-4 block"
+        />
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
         <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
@@ -1100,31 +1386,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
           {/* Top row: back, title, client, actions */}
           <div className="flex items-start gap-3 mb-4">
-            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} aria-label="Retour à la liste">
               <ArrowLeft size={18} className={textMuted} />
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
-                  {selected.type === 'facture' ? 'Facture' : 'Devis'}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.facture_type === 'avoir' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') : selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
+                  {selected.facture_type === 'avoir' ? 'Avoir' : selected.type === 'facture' ? 'Facture' : 'Devis'}
                 </span>
                 {needsFollowUp(selected) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
               </div>
               <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h2>
-              <p className={`text-sm ${textMuted}`}>{client?.nom} {client?.prenom} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
+              <p className={`text-sm ${textMuted}`}>{client ? `${client.nom} ${client.prenom || ''}` : (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
 
             {/* Header actions - with labels for better accessibility */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={() => printPDF(selected)}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
+                onClick={() => { setActionLoading('pdf'); try { printPDF(selected); } finally { setTimeout(() => setActionLoading(null), 500); } }}
+                disabled={actionLoading === 'pdf'}
+                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 title="Télécharger le PDF"
                 aria-label="Télécharger le PDF"
               >
-                <Download size={18} className="flex-shrink-0" />
+                {actionLoading === 'pdf' ? <Loader2 size={18} className="animate-spin flex-shrink-0" /> : <Download size={18} className="flex-shrink-0" />}
                 <span className="hidden sm:inline text-sm font-medium">PDF</span>
               </button>
               <button
@@ -1140,6 +1427,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
                   className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                  aria-label="Plus d'actions"
                 >
                   <MoreVertical size={18} />
                 </button>
@@ -1147,14 +1435,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
                     <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                      <button onClick={() => { duplicateDocument(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                        <Copy size={16} /> Dupliquer
+                      <button onClick={async () => { setActionLoading('duplicate'); setShowActionsMenu(false); try { await duplicateDocument(selected); } finally { setActionLoading(null); } }} disabled={actionLoading === 'duplicate'} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        {actionLoading === 'duplicate' ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} Dupliquer
                       </button>
                       {selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
                         <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                           <Edit3 size={16} /> Créer un avenant
                         </button>
                       )}
+                      {selected.type === 'facture' && selected.facture_type !== 'avoir' && (
+                        <button onClick={() => { createAvoir(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <Receipt size={16} /> Créer un avoir
+                        </button>
+                      )}
+                      <button onClick={() => { setShowSaveTemplateModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <Star size={16} /> Sauvegarder comme modèle
+                      </button>
                       <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                         <Trash2 size={16} /> Supprimer
                       </button>
@@ -1198,26 +1494,41 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Action bar: Status + Primary CTA + Chantier + Communication */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Status dropdown */}
-            <select
-              value={selected.statut}
-              onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
-              className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border-2 outline-none ${
-                selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
-                : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
-                : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
-                : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-600' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
-                : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-600' : 'bg-red-100 text-red-700 border-red-300')
-                : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-600' : 'bg-amber-100 text-amber-700 border-amber-300')
-              }`}
-            >
-              <option value="brouillon">📝 Brouillon</option>
-              <option value="envoye">📤 Envoyé</option>
-              {isDevis && <option value="accepte">✅ Accepté</option>}
-              {isDevis && <option value="refuse">❌ Refusé</option>}
-              {isDevis && selected.statut === 'acompte_facture' && <option value="acompte_facture">💰 Acompte facturé</option>}
-              {isDevis && selected.statut === 'facture' && <option value="facture">🧾 Facturé</option>}
-              {selected.type === 'facture' && <option value="payee">✅ Payée</option>}
-            </select>
+            {(() => {
+              const STATUS_LABELS = {
+                brouillon: '📝 Brouillon',
+                envoye: '📤 Envoyé',
+                vu: '👁️ Vu',
+                accepte: '✅ Accepté',
+                refuse: '❌ Refusé',
+                acompte_facture: '💰 Acompte facturé',
+                facture: '🧾 Facturé',
+                payee: '✅ Payée',
+              };
+              const transitions = isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS;
+              const allowedNext = transitions[selected.statut] || [];
+              return (
+                <select
+                  value={selected.statut}
+                  onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+                  className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border-2 outline-none ${
+                    selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
+                    : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
+                    : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
+                    : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-600' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
+                    : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-600' : 'bg-red-100 text-red-700 border-red-300')
+                    : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-600' : 'bg-amber-100 text-amber-700 border-amber-300')
+                  }`}
+                >
+                  {/* Current status always shown */}
+                  <option value={selected.statut}>{STATUS_LABELS[selected.statut] || selected.statut}</option>
+                  {/* Only valid next transitions */}
+                  {allowedNext.map(s => (
+                    <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
+                  ))}
+                </select>
+              );
+            })()}
 
             {/* Quick Actions - Always available with improved accessibility */}
             {isDevis ? (
@@ -1236,33 +1547,55 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <Send size={16} /> <span>Envoyer</span>
                 </button>
 
-                {/* Signer - always available for devis */}
-                {selected.statut !== 'facture' && (
+                {/* Signer - only enabled when devis is envoyé/vu */}
+                {!['facture', 'accepte', 'acompte_facture'].includes(selected.statut) && (
                   <button
-                    onClick={() => setShowSignaturePad(true)}
+                    onClick={() => {
+                      if (!['envoye', 'vu'].includes(selected.statut)) {
+                        showToast('Envoyez d\'abord le devis au client', 'info');
+                        return;
+                      }
+                      setShowSignaturePad(true);
+                    }}
+                    disabled={!['envoye', 'vu'].includes(selected.statut)}
                     className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                      selected.statut === 'envoye'
+                      ['envoye', 'vu'].includes(selected.statut)
                         ? 'text-white hover:opacity-90 shadow-sm'
-                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        : 'opacity-50 cursor-not-allowed ' + (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400')
                     }`}
-                    style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
-                    title="Faire signer le devis par le client"
+                    style={['envoye', 'vu'].includes(selected.statut) ? { backgroundColor: couleur } : {}}
+                    title={['envoye', 'vu'].includes(selected.statut) ? 'Faire signer le devis par le client' : 'Envoyez d\'abord le devis'}
                     aria-label="Faire signer le devis"
                   >
                     <PenTool size={16} /> <span>Signer</span>
                   </button>
                 )}
 
-                {/* Facturer - always available for devis not yet fully invoiced */}
-                {selected.statut !== 'facture' && (
+                {/* Facturer - only enabled when devis is accepté/acompte_facturé, with confirmation */}
+                {!['facture', 'refuse'].includes(selected.statut) && (
                   <button
-                    onClick={() => canAcompte ? setShowAcompteModal(true) : createSolde()}
+                    onClick={async () => {
+                      if (!['accepte', 'acompte_facture'].includes(selected.statut)) {
+                        showToast('Le devis doit être signé avant de facturer', 'info');
+                        return;
+                      }
+                      const clientName = client ? `${client.nom || ''} ${client.prenom || ''}`.trim() : 'le client';
+                      const confirmed = await confirm({
+                        title: canAcompte ? 'Créer une facture d\'acompte ?' : 'Créer la facture ?',
+                        message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
+                      });
+                      if (!confirmed) return;
+                      canAcompte ? setShowAcompteModal(true) : createSolde();
+                    }}
+                    disabled={!['accepte', 'acompte_facture'].includes(selected.statut)}
                     className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                      selected.statut === 'accepte' || selected.statut === 'acompte_facture'
+                      ['accepte', 'acompte_facture'].includes(selected.statut)
                         ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
-                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        : 'opacity-50 cursor-not-allowed ' + (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400')
                     }`}
-                    title={selected.statut === 'acompte_facture' ? 'Créer la facture de solde' : 'Créer une facture'}
+                    title={['accepte', 'acompte_facture'].includes(selected.statut)
+                      ? (selected.statut === 'acompte_facture' ? 'Créer la facture de solde' : 'Créer une facture')
+                      : 'Le devis doit être signé'}
                     aria-label={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer ce devis'}
                   >
                     <Receipt size={16} /> <span>{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
@@ -1431,6 +1764,69 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
+        {/* Devis follow-up alert */}
+        {isDevis && needsFollowUp(selected) && (
+          <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">⏰</span>
+                <div>
+                  <p className={`font-medium text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                    Devis en attente · {getDaysSinceSent(selected)} jours
+                  </p>
+                  <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    Envoyé le {new Date(selected.date).toLocaleDateString('fr-FR')} · {formatMoney(selected.total_ttc)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const message = `Bonjour, avez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} ? N'hésitez pas si vous avez des questions. Cordialement`;
+                    setTimeout(() => {
+                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
+                    }, 100);
+                    if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance devis ${selected.numero}` });
+                  }}
+                  className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </button>
+                <button
+                  onClick={() => {
+                    const subject = `Relance devis ${selected.numero}`;
+                    const body = `Bonjour,\n\nAvez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} envoyé le ${new Date(selected.date).toLocaleDateString('fr-FR')} ?\n\nN'hésitez pas si vous avez des questions.\n\nCordialement`;
+                    setTimeout(() => {
+                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                    }, 100);
+                    if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance devis ${selected.numero}` });
+                  }}
+                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <Mail size={14} /> Email
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Devis expiry alert */}
+        {isDevis && (isExpiringSoon(selected) || isExpired(selected)) && (
+          <div className={`rounded-xl p-4 border ${isExpired(selected) ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-orange-900/30 border-orange-700' : 'bg-orange-50 border-orange-200')}`}>
+            <div className="flex items-center gap-3">
+              <span className="text-xl">{isExpired(selected) ? '❌' : '⏳'}</span>
+              <div>
+                <p className={`font-medium text-sm ${isExpired(selected) ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-orange-300' : 'text-orange-800')}`}>
+                  {isExpired(selected) ? 'Devis expiré' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
+                </p>
+                <p className={`text-xs ${isExpired(selected) ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-orange-400' : 'text-orange-600')}`}>
+                  Validité: {selected.validite || 30} jours · Émis le {new Date(selected.date).toLocaleDateString('fr-FR')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Unpaid invoice alert */}
         {showRelanceAlert && (
           <div className={`rounded-xl p-4 border ${isOverdue ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200')}`}>
@@ -1450,7 +1846,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <button
                   onClick={() => {
                     const message = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
+                    setTimeout(() => {
+                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
+                    }, 100);
                     if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
                   }}
                   className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
@@ -1461,7 +1859,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   onClick={() => {
                     const subject = `Relance facture ${selected.numero}`;
                     const body = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                    setTimeout(() => {
+                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                    }, 100);
                     if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
                   }}
                   className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
@@ -1472,6 +1872,39 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         )}
+
+        {/* Pénalités de retard */}
+        {selected.type === 'facture' && selected.statut !== 'payee' && (() => {
+          const pen = calculatePenalites(selected);
+          if (!pen) return null;
+          return (
+            <div className={`rounded-xl p-4 border ${isDark ? 'bg-orange-900/20 border-orange-700' : 'bg-orange-50 border-orange-200'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle size={16} className="text-orange-500" />
+                <span className={`font-medium text-sm ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
+                  Pénalités de retard · {pen.joursRetard} jour{pen.joursRetard > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="space-y-1.5 text-sm">
+                <div className={`flex justify-between ${textSecondary}`}>
+                  <span>Intérêts ({pen.taux}% annuel)</span>
+                  <span className="font-medium">{formatMoney(pen.penalite)}</span>
+                </div>
+                <div className={`flex justify-between ${textSecondary}`}>
+                  <span>Indemnité forfaitaire de recouvrement</span>
+                  <span className="font-medium">{formatMoney(pen.indemnite)}</span>
+                </div>
+                <div className={`flex justify-between pt-2 border-t font-bold ${isDark ? 'border-orange-700 text-orange-300' : 'border-orange-200 text-orange-800'}`}>
+                  <span>Total pénalités</span>
+                  <span>{formatMoney(pen.total)}</span>
+                </div>
+              </div>
+              <p className={`text-[10px] mt-2 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                Art. L441-10 C. com. — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
+              </p>
+            </div>
+          );
+        })()}
 
         {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
         <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
@@ -1508,7 +1941,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   )}
                   <div>
                     <p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p>
-                    <p className={`text-xs ${textMuted}`}>{entreprise?.adresse}</p>
+                    <p className={`text-xs ${textMuted} whitespace-pre-line`}>{entreprise?.adresse}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -1520,8 +1953,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Client info */}
               <div className={`mb-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                 <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
-                <p className={`font-semibold ${textPrimary}`}>{client?.nom} {client?.prenom}</p>
-                {client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}
+                <p className={`font-semibold ${client ? textPrimary : 'text-red-500'}`}>
+                  {client ? `${client.nom} ${client.prenom || ''}` : (selected.client_nom || 'Client supprimé')}
+                </p>
+                {client?.adresse && <p className={`text-sm ${textMuted} whitespace-pre-line`}>{client.adresse}</p>}
               </div>
 
               {/* Avenant banner */}
@@ -1543,28 +1978,52 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </div>
               )}
 
-              {/* Line items - scrollable on mobile */}
+              {/* Line items - scrollable on mobile, with section headers */}
               <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
-                <table className="w-full min-w-[400px] text-sm" aria-label="Lignes du devis">
-                  <thead>
-                    <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                      <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
-                      <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
-                      <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
-                      <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(selected.lignes || []).map((l, i) => (
-                      <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                        <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
-                        <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
-                        <td className={`text-right ${textSecondary}`}>{parseFloat(l.prixUnitaire || l.prix_unitaire || 0).toFixed(2)}€</td>
-                        <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{getLineTotal(l).toFixed(2)}€</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {(selected.sections && selected.sections.length > 0
+                  ? selected.sections
+                  : [{ titre: '', lignes: selected.lignes || [] }]
+                ).map((section, si) => (
+                  <div key={si}>
+                    {section.titre && (
+                      <h4 className={`font-semibold text-sm ${si > 0 ? 'mt-4 pt-3 border-t' : ''} pb-1 ${textPrimary} ${si > 0 ? (isDark ? 'border-slate-600' : 'border-slate-200') : ''}`}>
+                        {section.titre}
+                      </h4>
+                    )}
+                    <table className="w-full min-w-[400px] text-sm" aria-label={section.titre || 'Lignes du devis'}>
+                      {si === 0 && (
+                        <thead>
+                          <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                            <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
+                            <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
+                            <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                            <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
+                            {!modeDiscret && (selected.lignes || []).some(l => l.prixAchat > 0) && (
+                              <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Marge</th>
+                            )}
+                          </tr>
+                        </thead>
+                      )}
+                      <tbody>
+                        {(section.lignes || []).map((l, i) => (
+                          <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                            <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
+                            <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                            <td className={`text-right ${textSecondary}`}>{parseFloat(l.prixUnitaire || l.prix_unitaire || 0).toFixed(2)}€</td>
+                            <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{getLineTotal(l).toFixed(2)}€</td>
+                            {!modeDiscret && (selected.lignes || []).some(lg => lg.prixAchat > 0) && (() => {
+                              const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
+                              const pa = parseFloat(l.prixAchat || 0);
+                              const margePct = pu > 0 ? ((pu - pa) / pu * 100) : 0;
+                              const color = pa > 0 ? (margePct >= 30 ? 'text-emerald-600' : margePct >= 10 ? 'text-amber-600' : 'text-red-600') : textMuted;
+                              return <td className={`text-right text-xs ${color}`}>{pa > 0 ? `${margePct.toFixed(0)}%` : '—'}</td>;
+                            })()}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
               </div>
 
               {/* Totals */}
@@ -1574,14 +2033,91 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <span>HT</span>
                     <span>{formatMoney(selected.total_ht)}</span>
                   </div>
-                  <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                    <span>TVA {selected.tvaRate || 10}%</span>
-                    <span>{formatMoney(selected.tva)}</span>
-                  </div>
+                  {/* TVA breakdown by rate — no more hardcoded 10% */}
+                  {(() => {
+                    const tvaMap = selected.tvaParTaux || selected.tvaDetails;
+                    if (tvaMap && typeof tvaMap === 'object' && Object.keys(tvaMap).length > 0) {
+                      return Object.entries(tvaMap).map(([rate, info]) => (
+                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                          <span>TVA {rate}%</span>
+                          <span>{formatMoney(typeof info === 'object' ? info.montant : info)}</span>
+                        </div>
+                      ));
+                    }
+                    // Fallback: recalculate from lignes if tvaParTaux not stored
+                    const rates = {};
+                    (selected.lignes || []).forEach(l => {
+                      const rate = l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 10);
+                      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
+                      if (!rates[rate]) rates[rate] = 0;
+                      rates[rate] += montant * (rate / 100);
+                    });
+                    if (Object.keys(rates).length > 0) {
+                      return Object.entries(rates).map(([rate, montant]) => (
+                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                          <span>TVA {rate}%</span>
+                          <span>{formatMoney(montant)}</span>
+                        </div>
+                      ));
+                    }
+                    // Last resort: show total TVA with stored rate
+                    return (
+                      <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                        <span>TVA {selected.tvaRate || entreprise?.tvaDefaut || 20}%</span>
+                        <span>{formatMoney(selected.tva || selected.total_tva || 0)}</span>
+                      </div>
+                    );
+                  })()}
+                  {selected.remise > 0 && (
+                    <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                      <span>Remise {selected.remise}%</span>
+                      <span>-{formatMoney(selected.total_ht * selected.remise / (100 - selected.remise))}</span>
+                    </div>
+                  )}
                   <div className={`flex justify-between py-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}>
                     <span>TTC</span>
                     <span>{formatMoney(selected.total_ttc)}</span>
                   </div>
+                  {selected.retenueGarantie && (
+                    <>
+                      <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                        <span>Retenue garantie 5%</span>
+                        <span>-{formatMoney((selected.total_ht || 0) * 0.05)}</span>
+                      </div>
+                      <div className={`flex justify-between py-1 text-sm font-semibold ${textPrimary}`}>
+                        <span>Net à payer</span>
+                        <span>{formatMoney((selected.total_ttc || 0) - (selected.total_ht || 0) * 0.05)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Paiements partiels reçus */}
+                  {(() => {
+                    if (selected.type !== 'facture') return null;
+                    const linkedPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
+                    if (linkedPaiements.length === 0) return null;
+                    const totalPaye = linkedPaiements.reduce((s, p) => s + (p.montant || 0), 0);
+                    const resteAPayer = (selected.total_ttc || 0) - totalPaye;
+                    return (
+                      <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                        <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
+                        {linkedPaiements.map(p => (
+                          <div key={p.id} className={`flex justify-between text-sm py-1 ${textSecondary}`}>
+                            <span>{new Date(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
+                            <span className="font-medium text-emerald-600">{formatMoney(p.montant)}</span>
+                          </div>
+                        ))}
+                        <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''}>
+                            {resteAPayer <= 0 ? '✅ Soldé' : 'Reste à payer'}
+                          </span>
+                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''} style={resteAPayer > 0 ? {color: couleur} : {}}>
+                            {formatMoney(Math.max(0, resteAPayer))}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1590,9 +2126,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                   <div className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-emerald-500" />
-                    <span className="text-emerald-600 font-medium text-sm">Accepté par le client</span>
+                    <span className="text-emerald-600 font-medium text-sm">
+                      Accepté{selected.signataire ? ` par ${selected.signataire}` : ' par le client'}
+                    </span>
                     <span className={`text-xs ${textMuted}`}>· {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</span>
                   </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selected.notes && (
+                <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <p className={`text-xs font-medium mb-1 ${textMuted}`}>Notes</p>
+                  <p className={`text-sm whitespace-pre-wrap ${textSecondary}`}>{selected.notes}</p>
+                </div>
+              )}
+
+              {/* Conditions de paiement */}
+              {selected.conditionsPaiement && CONDITIONS_PAIEMENT[selected.conditionsPaiement] && (
+                <div className={`mt-4 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <p className={`text-xs font-medium mb-1 ${textMuted}`}>Conditions de paiement</p>
+                  <p className={`text-sm ${textSecondary}`}>{CONDITIONS_PAIEMENT[selected.conditionsPaiement]}</p>
                 </div>
               )}
             </TabsContent>
@@ -1690,10 +2244,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
                 </div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800"> Pour travaux supérieurs à 1500€ chez particulier, acompte max 30%</div>
+              {acomptePct > 50 ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-xs text-red-800 flex items-center gap-2">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  <span>Attention : un acompte de plus de 50% est très inhabituel et peut poser des problèmes juridiques.</span>
+                </div>
+              ) : acomptePct > 30 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-center gap-2">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  <span>Pour travaux &gt; 1 500 € chez un particulier, l'acompte est limité à 30% par la loi (art. L. 214-1 code conso).</span>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
+                  Acompte de {acomptePct}% · {formatMoney(selected.total_ttc * acomptePct / 100)}
+                </div>
+              )}
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><Check size={16} />Créer</button>
+                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors">
+                  {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
+                  Créer{acomptePct > 30 ? ' ⚠️' : ''}
+                </button>
               </div>
             </div>
           </div>
@@ -1737,8 +2308,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Récapitulatif financier */}
               <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
                 <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prévu</p>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} € HT`}</p>
-                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR')} € TTC</p>
+                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
+                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC</p>
               </div>
 
               {/* Formulaire */}
@@ -1765,7 +2336,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Info */}
               <p className={`text-xs ${textMuted} mt-4`}>
-                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} €`}) sera utilisé pour calculer la marge.
+                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}) sera utilisé pour calculer la marge.
               </p>
 
               {/* Actions */}
@@ -1821,6 +2392,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         )}
 
         <Snackbar />
+
+        {/* Signature Pad Modal — must be inside preview return for it to render */}
+        <SignaturePad
+          isOpen={showSignaturePad}
+          onClose={() => setShowSignaturePad(false)}
+          onSave={handleSignatureSave}
+          document={selected}
+          client={selected ? clients.find(c => c.id === selected.client_id) : null}
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+
+        {/* Payment Modal — also needed in preview mode */}
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          document={selected}
+          client={selected ? clients.find(c => c.id === selected.client_id) : null}
+          onPaymentSaved={(payment) => {
+            if (selected) {
+              const updatedMontantPaye = (selected.montant_paye || 0) + (payment.montant || 0);
+              onUpdate(selected.id, { montant_paye: updatedMontantPaye });
+              setSelected(s => ({ ...s, montant_paye: updatedMontantPaye }));
+            }
+          }}
+          isDark={isDark}
+          couleur={couleur}
+        />
       </div>
     );
   }
@@ -1978,9 +2578,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         </p>
                         <p className={`text-xs ${textMuted}`}>HT</p>
                       </div>
+                      <div className="flex flex-col gap-0.5">
+                        {idx > 0 && (
+                          <button onClick={() => moveLigne(section.id, idx, -1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Monter la ligne">
+                            <ChevronUp size={14} />
+                          </button>
+                        )}
+                        {idx < section.lignes.length - 1 && (
+                          <button onClick={() => moveLigne(section.id, idx, 1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Descendre la ligne">
+                            <ChevronDown size={14} />
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={() => removeLigne(section.id, l.id)}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
+                        aria-label="Supprimer la ligne"
                       >
                         <X size={18} />
                       </button>
@@ -1993,6 +2606,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <button
                           onClick={() => updateLigne(section.id, l.id, 'quantite', Math.max(0, (l.quantite || 0) - 1))}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                          aria-label="Diminuer la quantité"
                         >
                           <span className="text-lg font-bold">−</span>
                         </button>
@@ -2005,6 +2619,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <button
                           onClick={() => updateLigne(section.id, l.id, 'quantite', (l.quantite || 0) + 1)}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+                          aria-label="Augmenter la quantité"
                         >
                           <span className="text-lg font-bold">+</span>
                         </button>
@@ -2074,10 +2689,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           ))}
           
           {/* Options */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validité (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
-            <div className="col-span-2 sm:col-span-1">
+            <div>
+              <label className={`block text-sm mb-1 ${textPrimary}`}>Conditions de paiement</label>
+              <select value={form.conditionsPaiement} onChange={e => setForm(p => ({...p, conditionsPaiement: e.target.value}))} className={`w-full px-3 py-2.5 border rounded-xl ${inputBg}`}>
+                {Object.entries(CONDITIONS_PAIEMENT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+            <div>
               <label className={`block text-sm mb-1 ${textPrimary}`}>Retenue de garantie</label>
               <label className={`flex items-center gap-3 px-4 py-2.5 border rounded-xl cursor-pointer ${form.retenueGarantie ? (isDark ? 'border-amber-500 bg-amber-900/20' : 'border-amber-400 bg-amber-50') : inputBg}`}>
                 <input type="checkbox" checked={form.retenueGarantie} onChange={e => setForm(p => ({...p, retenueGarantie: e.target.checked}))} className="w-4 h-4 rounded" />
@@ -2175,6 +2796,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isOpen={showTemplateSelector}
           onClose={() => setShowTemplateSelector(false)}
           onSelectTemplate={handleTemplateSelect}
+          customTemplates={JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]')}
+          onDeleteTemplate={(id) => {
+            const t = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
+            localStorage.setItem('chantierPro_customTemplates', JSON.stringify(t.filter(x => x.id !== id)));
+            showToast('Modèle supprimé', 'success');
+          }}
           isDark={isDark}
           couleur={couleur}
         />
@@ -2238,14 +2865,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {/* Pipeline View */}
       {(() => {
-        // Calculate pipeline stats
-        const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
-        const devisEnvoye = devis.filter(d => d.type === 'devis' && d.statut === 'envoye');
-        const devisAccepte = devis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut));
-        const devisRefuse = devis.filter(d => d.type === 'devis' && d.statut === 'refuse');
+        // Exclude ghost devis (same filter as the list display)
+        const cleanDevis = devis.filter(d => {
+          if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+          if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
+          return true;
+        });
+        // Calculate pipeline stats from clean data
+        const devisBrouillon = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
+        const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'envoye');
+        const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut));
+        const devisRefuse = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'refuse');
 
-        const facturesEnAttente = devis.filter(d => d.type === 'facture' && d.statut !== 'payee');
-        const facturesPayees = devis.filter(d => d.type === 'facture' && d.statut === 'payee');
+        const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
+        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
         const facturesEnRetard = facturesEnAttente.filter(f => {
           const days = Math.floor((new Date() - new Date(f.date)) / 86400000);
           return days > 30;
@@ -2255,7 +2888,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         // Group documents by client for "Accès rapide"
         const clientsWithDocs = {};
-        devis.forEach(d => {
+        cleanDevis.forEach(d => {
           if (!d.client_id) return;
           if (!clientsWithDocs[d.client_id]) {
             const client = clients.find(c => c.id === d.client_id);
@@ -2280,37 +2913,47 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         return (
           <div className="space-y-3">
-            {/* Simplified Pipeline - Devis + Factures side by side */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* DEVIS */}
-              <div className={`${cardBg} rounded-xl border p-3`}>
-                <p className={`text-xs font-medium ${textMuted} mb-2`}>Devis</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setFilter('attente')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisEnvoye.length > 0 ? 'border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                    <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-600 dark:text-amber-400' : textMuted}`}>{devisEnvoye.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
-                  </button>
-                  <button onClick={() => setFilter('devis')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisAccepte.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                    <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{devisAccepte.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Signés</p>
-                  </button>
-                </div>
-              </div>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* CA encaissé */}
+              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>CA encaissé</p>
+                <p className={`text-lg sm:text-xl font-bold`} style={{color: couleur}}>
+                  {modeDiscret ? '·····' : formatMoney(montantPayees)}
+                </p>
+                <p className={`text-xs ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length > 1 ? 's' : ''} payée{facturesPayees.length > 1 ? 's' : ''}</p>
+              </button>
 
-              {/* FACTURES */}
-              <div className={`${cardBg} rounded-xl border p-3`}>
-                <p className={`text-xs font-medium ${textMuted} mb-2`}>Factures</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesEnAttente.length > 0 ? 'border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : textMuted}`}>{facturesEnAttente.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
-                  </button>
-                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesPayees.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                    <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{facturesPayees.length}</p>
-                    <p className={`text-[10px] ${textMuted}`}>Payées</p>
-                  </button>
-                </div>
-              </div>
+              {/* Devis en cours */}
+              <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>Devis en cours</p>
+                <p className={`text-lg sm:text-xl font-bold text-amber-600`}>
+                  {devisEnvoye.length + devisBrouillon.length}
+                </p>
+                <p className={`text-xs ${textMuted}`}>
+                  {modeDiscret ? '·····' : formatMoney(montantBrouillon + montantEnvoye)}
+                </p>
+              </button>
+
+              {/* Taux de conversion */}
+              <button onClick={() => setFilter('devis')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>Conversion</p>
+                <p className={`text-lg sm:text-xl font-bold ${tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {tauxConversion ? `${tauxConversion}%` : '—'}
+                </p>
+                <p className={`text-xs ${textMuted}`}>{devisAccepte.length} signé{devisAccepte.length > 1 ? 's' : ''} / {totalEnvoyes} envoyé{totalEnvoyes > 1 ? 's' : ''}</p>
+              </button>
+
+              {/* À encaisser */}
+              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-200') : ''}`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>À encaisser</p>
+                <p className={`text-lg sm:text-xl font-bold ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-indigo-600'}`}>
+                  {modeDiscret ? '·····' : formatMoney(montantAEncaisser)}
+                </p>
+                <p className={`text-xs ${facturesEnRetard.length > 0 ? (isDark ? 'text-red-400' : 'text-red-600') : textMuted}`}>
+                  {facturesEnAttente.length} en attente{facturesEnRetard.length > 0 ? ` · ${facturesEnRetard.length} en retard` : ''}
+                </p>
+              </button>
             </div>
 
             {/* Overdue alert - compact */}
@@ -2369,6 +3012,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div role="group" aria-label="Trier par">
           {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} aria-pressed={sortBy === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
         </div>
+        {filtered.length > 0 && (
+          <>
+            <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+            <button
+              onClick={() => batchExportPDF(filtered)}
+              disabled={actionLoading === 'batch'}
+              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+              aria-label="Exporter les documents filtrés en PDF"
+            >
+              {actionLoading === 'batch' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              <span className="hidden sm:inline">Exporter ({filtered.length})</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
+          </>
+        )}
       </div>
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -2456,7 +3114,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[70px]`}>
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[70px]`}>
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${d.type === 'facture' ? (isDark ? 'bg-purple-900/30' : 'bg-purple-100') : (isDark ? 'bg-blue-900/30' : 'bg-blue-100')}`}>
                   {d.type === 'facture' ? <Receipt size={20} className="text-purple-600" /> : <FileText size={20} className="text-blue-600" />}
@@ -2483,13 +3141,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {needsFollowUp(d) && (
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium animate-pulse ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>À relancer</span>
                     )}
+                    {isExpiringSoon(d) && (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>⏳ Expire dans {getExpiryDaysLeft(d)}j</span>
+                    )}
+                    {isExpired(d) && (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>❌ Expiré</span>
+                    )}
+                    {d.facture_type === 'avoir' && (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>
+                    )}
                     {(() => { const es = getDocumentEmailStatus(d.id); return es.sent > 0 ? (
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium inline-flex items-center gap-1 ${isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700'}`} title={`Envoyé ${es.sent} fois — Dernier: ${es.lastSent ? new Date(es.lastSent).toLocaleDateString('fr-FR') : ''}`}>
                         <Mail size={10} /> {es.sent}×
                       </span>
                     ) : null; })()}
                   </div>
-                  <p className={`text-sm ${textMuted}`}>{client?.nom} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                  <p className={`text-sm ${textMuted}`}>{client?.nom || d.client_nom || 'Client supprimé'} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
                 {/* Action buttons - simple icons for list view */}
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -2510,7 +3177,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <Eye size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
                   </button>
                 </div>
-                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
+                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${getDevisTTC(d) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={getDevisTTC(d) > 0 ? {color: couleur} : {}}>{formatMoney(getDevisTTC(d))}</p>
               </div>
             </div>
           );
@@ -2582,11 +3249,93 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         couleur={couleur}
       />
 
+      {/* Save as Template Modal */}
+      {showSaveTemplateModal && selected && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                  <Star size={20} style={{ color: couleur }} />
+                </div>
+                <div>
+                  <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
+                  <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <X size={20} className={textSecondary} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Nom du modèle</label>
+                <input
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  placeholder={selected.objet || selected.lignes?.[0]?.description || 'Mon modèle'}
+                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Catégorie</label>
+                <input
+                  value={templateCategory}
+                  onChange={e => setTemplateCategory(e.target.value)}
+                  placeholder="ex: Plomberie, Électricité, Rénovation..."
+                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
+                  const customTemplates = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
+                  customTemplates.push({
+                    id: generateId(),
+                    nom: templateName.trim(),
+                    category: templateCategory.trim() || 'Mes modèles',
+                    description: `Créé depuis ${selected.numero}`,
+                    date: new Date().toISOString(),
+                    lignes: (selected.lignes || []).map(l => ({
+                      description: l.description,
+                      quantite: l.quantite,
+                      unite: l.unite,
+                      prixUnitaire: Math.abs(l.prixUnitaire || 0),
+                      prixAchat: l.prixAchat || 0,
+                      tva: l.tva,
+                    })),
+                    tvaRate: selected.tvaRate,
+                    notes: selected.notes || '',
+                  });
+                  localStorage.setItem('chantierPro_customTemplates', JSON.stringify(customTemplates));
+                  setShowSaveTemplateModal(false);
+                  setTemplateName('');
+                  setTemplateCategory('Mes modèles');
+                  showToast(`Modèle "${templateName}" sauvegardé`, 'success');
+                }}
+                disabled={!templateName.trim()}
+                className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg"
+                style={{ background: couleur }}
+              >
+                <Star size={16} /> Sauvegarder le modèle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Template Selector Modal (legacy) */}
       <TemplateSelector
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
+        customTemplates={JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]')}
+        onDeleteTemplate={(id) => {
+          const t = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
+          localStorage.setItem('chantierPro_customTemplates', JSON.stringify(t.filter(x => x.id !== id)));
+          showToast('Modèle supprimé', 'success');
+        }}
         isDark={isDark}
         couleur={couleur}
       />
@@ -2608,12 +3357,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         isOpen={showDevisWizard}
         onClose={() => setShowDevisWizard(false)}
         onSubmit={async (devisData) => {
-          const numero = generateNumero(devisData.type);
+          const numero = await generateNumero(devisData.type);
           const newDevis = await onSubmit({ ...devisData, numero });
-          if (newDevis?.id) {
-            setSelected(newDevis);
-            setMode('preview');
+          if (!newDevis?.id) {
+            throw new Error('Le devis n\'a pas pu être créé. Vérifiez les données et réessayez.');
           }
+          setSelected(newDevis);
+          setMode('preview');
+          showToast(`${devisData.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`, 'success');
+          return newDevis;
         }}
         clients={clients}
         addClient={(data) => {
@@ -2659,7 +3411,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         isOpen={showDevisExpressModal}
         onClose={() => setShowDevisExpressModal(false)}
         onCreateDevis={async (devisData) => {
-          const numero = generateNumero(devisData.type);
+          const numero = await generateNumero(devisData.type);
           const newDevis = await onSubmit({ ...devisData, numero });
           if (newDevis?.id) {
             setSelected(newDevis);

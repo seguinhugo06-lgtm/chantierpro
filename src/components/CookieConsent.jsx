@@ -55,11 +55,14 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
   useEffect(() => {
     const existing = getCookieConsent();
     if (existing) {
-      setShowReopenButton(true);
+      // Consent already given — don't show banner or reopen button
+      // Users can manage cookies from Settings/footer link
+      setVisible(false);
+      setShowReopenButton(false);
       return;
     }
 
-    // Show banner after 1.5s delay
+    // Show banner after 1.5s delay for first-time visitors
     const timer = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(timer);
   }, []);
@@ -79,7 +82,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
 
     setVisible(false);
     setShowCustomize(false);
-    setShowReopenButton(true);
+    setShowReopenButton(false);
   }, []);
 
   const handleAcceptAll = useCallback(() => {

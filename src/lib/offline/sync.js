@@ -121,43 +121,92 @@ export const removeMutation = async (id) => {
  */
 export const syncQueue = async (handlers) => {
   const mutations = await getPendingMutations();
-  const results = { success: 0, failed: 0, errors: [] };
+  const results = { success: 0, failed: 0, cleared: 0, errors: [] };
 
   for (const mutation of mutations) {
     try {
       const handler = handlers[mutation.entity];
       if (!handler) {
-        console.warn(`Handler non trouve pour ${mutation.entity}`);
+        console.warn(`Handler non trouvé pour ${mutation.entity}, suppression`);
+        await removeMutation(mutation.id);
+        results.cleared++;
         continue;
       }
 
+      // Auto-clear stale mutations older than 7 days
+      if (Date.now() - (mutation.timestamp || 0) > 7 * 24 * 60 * 60 * 1000) {
+        console.warn(`Mutation ${mutation.id} trop ancienne (>7j), suppression`);
+        await removeMutation(mutation.id);
+        results.cleared++;
+        continue;
+      }
+
+      let result;
       switch (mutation.action) {
         case 'create':
-          await handler.create?.(mutation.data);
+          result = await handler.create?.(mutation.data);
           break;
         case 'update':
-          await handler.update?.(mutation.data.id, mutation.data);
+          result = await handler.update?.(mutation.data.id, mutation.data);
           break;
         case 'delete':
-          await handler.delete?.(mutation.data.id);
+          result = await handler.delete?.(mutation.data.id);
           break;
         default:
-          console.warn(`Action sync inconnue: ${mutation.action} pour ${mutation.entity}`);
-          results.failed++;
-          results.errors.push({ mutation, error: `Unknown action: ${mutation.action}` });
+          console.warn(`Action sync inconnue: ${mutation.action}`);
+          await removeMutation(mutation.id);
+          results.cleared++;
           continue;
+      }
+
+      // If handler silently refused (returned null/undefined), treat as cleared
+      if (result === null || result === undefined) {
+        console.warn(`Mutation ${mutation.id} rejetée par le handler (${mutation.entity}/${mutation.action}), suppression`);
+        await removeMutation(mutation.id);
+        results.cleared++;
+        continue;
       }
 
       await removeMutation(mutation.id);
       results.success++;
     } catch (error) {
       console.error(`Erreur sync mutation ${mutation.id}:`, error);
-      results.failed++;
-      results.errors.push({ mutation, error: error.message });
+      const errMsg = error?.message || '';
+      const errStatus = error?.status || error?.statusCode || 0;
+      // Permanent errors (table missing, RLS denied, bad schema) — remove, they'll never succeed
+      const isPermanent = [400, 401, 403, 404, 406, 409, 422].includes(errStatus)
+        || /not found|not acceptable|bad request|forbidden|unauthorized|does not exist|violates|row-level/i.test(errMsg);
+      if (isPermanent) {
+        console.warn(`Mutation ${mutation.id} erreur permanente, suppression:`, errMsg);
+        await removeMutation(mutation.id);
+        results.cleared++;
+      } else {
+        results.failed++;
+        results.errors.push({ mutation, error: errMsg });
+      }
     }
   }
 
   return results;
+};
+
+/**
+ * Supprime toutes les mutations en attente (purge)
+ * @returns {Promise<void>}
+ */
+export const clearAllMutations = async () => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+      const request = store.clear();
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    localStorage.setItem('cp_pending_mutations', '[]');
+  }
 };
 
 /**
@@ -209,6 +258,7 @@ export default {
   queueMutation,
   getPendingMutations,
   removeMutation,
+  clearAllMutations,
   syncQueue,
   getPendingCount,
   useNetworkStatus,

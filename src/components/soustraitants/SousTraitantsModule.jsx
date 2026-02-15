@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import { validateForm, hasErrors, required, email as emailValidator, phone as phoneValidator, siret as siretValidator, positiveNumber } from '../../lib/validation';
+import useConfirm from '../../hooks/useConfirm';
 
 // ---------- Constants ----------
 
@@ -141,6 +142,7 @@ function daysUntil(isoStr) {
 // ---------- Component ----------
 
 export default function SousTraitantsModule({ chantiers = [], isDark = false, couleur = '#f97316', setPage }) {
+  const { confirm, ConfirmDialog } = useConfirm();
   // Theme classes
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
@@ -307,15 +309,15 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     setEditId(null);
   }, [form, editId, sousTraitants, persist]);
 
-  const handleDelete = useCallback((stId) => {
-    if (!window.confirm('Supprimer ce sous-traitant ?')) return;
+  const handleDelete = useCallback(async (stId) => {
+    if (!await confirm('Supprimer ce sous-traitant ?')) return;
     const updated = sousTraitants.filter(st => st.id !== stId);
     persist(updated);
     if (selectedId === stId) {
       setSelectedId(null);
       setView('list');
     }
-  }, [sousTraitants, selectedId, persist]);
+  }, [sousTraitants, selectedId, persist, confirm]);
 
   const toggleChantier = useCallback((chantierId) => {
     setForm(prev => {
@@ -1343,6 +1345,8 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
           {search || filterCorps !== 'all' ? ` sur ${sousTraitants.filter(s => s.actif).length}` : ''}
         </p>
       )}
+
+      <ConfirmDialog />
     </div>
   );
 }

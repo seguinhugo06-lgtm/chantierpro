@@ -12,10 +12,10 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
   const linkStyle = { color: couleur };
 
   const pageConfig = {
-    cgv: { title: 'Conditions Generales de Vente', icon: FileText },
-    cgu: { title: "Conditions Generales d'Utilisation", icon: Scale },
-    confidentialite: { title: 'Politique de Confidentialite', icon: Lock },
-    'mentions-legales': { title: 'Mentions Legales', icon: Shield },
+    cgv: { title: 'Conditions Générales de Vente', icon: FileText },
+    cgu: { title: "Conditions Générales d'Utilisation", icon: Scale },
+    confidentialite: { title: 'Politique de Confidentialité', icon: Lock },
+    'mentions-legales': { title: 'Mentions Légales', icon: Shield },
   };
 
   const config = pageConfig[page] || pageConfig.cgv;
@@ -45,14 +45,14 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
   const renderCGV = () => (
     <>
-      <Section title="Article 1 - Editeur">
+      <Section title="Article 1 - Éditeur">
         <P>
-          Le site ChantierPro est edite par : <strong className={textPrimary}>[A REMPLIR - Raison sociale]</strong>
+          Le site ChantierPro est édité par : <strong className={textPrimary}>[A REMPLIR - Raison sociale]</strong>
         </P>
         <UL>
           <li>Forme juridique : [A REMPLIR]</li>
           <li>Capital social : [A REMPLIR] euros</li>
-          <li>Siege social : [A REMPLIR - Adresse complete]</li>
+          <li>Siège social : [A REMPLIR - Adresse complète]</li>
           <li>SIRET : [A REMPLIR]</li>
           <li>RCS : [A REMPLIR - Ville et numéro]</li>
           <li>Numéro de TVA intracommunautaire : [A REMPLIR]</li>
@@ -63,21 +63,21 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 2 - Objet">
         <P>
-          Les presentes Conditions Generales de Vente (CGV) ont pour objet de definir les droits et obligations
-          des parties dans le cadre de la vente des services proposes par ChantierPro, plateforme de gestion
-          de chantiers et d'activite pour les professionnels du batiment.
+          Les présentes Conditions Générales de Vente (CGV) ont pour objet de définir les droits et obligations
+          des parties dans le cadre de la vente des services proposés par ChantierPro, plateforme de gestion
+          de chantiers et d'activité pour les professionnels du bâtiment.
         </P>
         <P>
-          Toute souscription a un abonnement implique l'acceptation sans reserve des presentes CGV.
+          Toute souscription à un abonnement implique l'acceptation sans réserve des présentes CGV.
         </P>
       </Section>
 
       <Section title="Article 3 - Description des services">
         <P>
-          ChantierPro est une application web (SaaS) permettant aux professionnels du batiment de :
+          ChantierPro est une application web (SaaS) permettant aux professionnels du bâtiment de :
         </P>
         <UL>
-          <li>Gérer leurs chantiers, clients et equipes</li>
+          <li>Gérer leurs chantiers, clients et équipes</li>
           <li>Créer et envoyer des devis et factures</li>
           <li>Suivre le planning et les tâches</li>
           <li>Gérer les stocks et le catalogue d'articles</li>
@@ -102,121 +102,121 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
             </thead>
             <tbody>
               <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Decouverte</td>
+                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Découverte</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Gratuit</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Acces limite pour decouvrir la plateforme. 1 chantier actif, fonctionnalites de base.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Accès limité pour découvrir la plateforme. 1 chantier actif, fonctionnalités de base.</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Artisan</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>29 EUR / mois HT</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Ideal pour les artisans independants. Chantiers illimites, devis, factures, planning, stocks.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Idéal pour les artisans indépendants. Chantiers illimités, devis, factures, planning, stocks.</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Pro</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>99 EUR / mois HT</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec equipes. Toutes les fonctionnalites, gestion d'equipe, sous-traitants, tresorerie avancee.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Pour les entreprises avec équipes. Toutes les fonctionnalités, gestion d'équipe, sous-traitants, trésorerie avancée.</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Entreprise</td>
                 <td className={`px-4 py-3 ${textSecondary}`}>Sur devis</td>
-                <td className={`px-4 py-3 ${textSecondary}`}>Solution sur mesure pour les grandes entreprises. Support dedie, integrations personnalisees, formation.</td>
+                <td className={`px-4 py-3 ${textSecondary}`}>Solution sur mesure pour les grandes entreprises. Support dédié, intégrations personnalisées, formation.</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <P>Les prix sont indiques en euros hors taxes (HT). La TVA applicable sera ajoutee au moment de la facturation.</P>
+        <P>Les prix sont indiqués en euros hors taxes (HT). La TVA applicable sera ajoutée au moment de la facturation.</P>
       </Section>
 
-      <Section title="Article 5 - Modalites de paiement">
+      <Section title="Article 5 - Modalités de paiement">
         <P>
-          Le paiement des abonnements est effectue par carte bancaire via la plateforme securisee
-          <strong> Stripe</strong>. Les paiements sont preleves automatiquement chaque mois a la date
+          Le paiement des abonnements est effectué par carte bancaire via la plateforme sécurisée
+          <strong> Stripe</strong>. Les paiements sont prélevés automatiquement chaque mois à la date
           anniversaire de la souscription.
         </P>
         <UL>
-          <li>Les paiements sont securises par le protocole SSL/TLS</li>
-          <li>Stripe est certifie PCI DSS niveau 1</li>
-          <li>ChantierPro ne stocke aucune donnee de carte bancaire</li>
-          <li>Une facture est emise automatiquement a chaque paiement</li>
+          <li>Les paiements sont sécurisés par le protocole SSL/TLS</li>
+          <li>Stripe est certifié PCI DSS niveau 1</li>
+          <li>ChantierPro ne stocke aucune donnée de carte bancaire</li>
+          <li>Une facture est émise automatiquement à chaque paiement</li>
         </UL>
       </Section>
 
-      <Section title="Article 6 - Droit de retractation">
+      <Section title="Article 6 - Droit de rétractation">
         <P>
-          Conformement aux articles L.221-18 et suivants du Code de la consommation, l'utilisateur
-          dispose d'un delai de <strong className={textPrimary}>14 jours calendaires</strong> a compter de la
-          souscription pour exercer son droit de retractation, sans avoir a justifier de motifs ni a payer de penalites.
+          Conformément aux articles L.221-18 et suivants du Code de la consommation, l'utilisateur
+          dispose d'un délai de <strong className={textPrimary}>14 jours calendaires</strong> à compter de la
+          souscription pour exercer son droit de rétractation, sans avoir à justifier de motifs ni à payer de pénalités.
         </P>
         <P>
-          Pour exercer ce droit, l'utilisateur doit adresser sa demande par email a l'adresse :
+          Pour exercer ce droit, l'utilisateur doit adresser sa demande par email à l'adresse :
           <span style={linkStyle}> [A REMPLIR - email de contact]</span>.
         </P>
         <P>
-          Le remboursement sera effectue dans un delai de 14 jours suivant la reception de la demande,
-          en utilisant le meme moyen de paiement que celui utilise pour la transaction initiale.
+          Le remboursement sera effectué dans un délai de 14 jours suivant la réception de la demande,
+          en utilisant le même moyen de paiement que celui utilisé pour la transaction initiale.
         </P>
         <P>
-          Toutefois, si l'utilisateur a expressement demande le demarrage de l'execution du service avant
-          l'expiration du delai de retractation et a utilise le service, le montant correspondant au service
-          fourni jusqu'a la communication de sa decision de se retracter sera deduit du remboursement.
+          Toutefois, si l'utilisateur a expressément demandé le démarrage de l'exécution du service avant
+          l'expiration du délai de rétractation et a utilisé le service, le montant correspondant au service
+          fourni jusqu'à la communication de sa décision de se rétracter sera déduit du remboursement.
         </P>
       </Section>
 
-      <Section title="Article 7 - Duree et resiliation">
+      <Section title="Article 7 - Durée et résiliation">
         <P>
-          L'abonnement est souscrit pour une duree indeterminee, avec une facturation mensuelle.
+          L'abonnement est souscrit pour une durée indéterminée, avec une facturation mensuelle.
         </P>
         <UL>
-          <li>L'utilisateur peut resilier son abonnement a tout moment depuis son espace client ou par email</li>
-          <li>La resiliation prend effet a la fin de la periode de facturation en cours</li>
-          <li>L'acces aux fonctionnalites payantes est maintenu jusqu'a la fin de la periode payee</li>
-          <li>Les donnees de l'utilisateur sont conservees pendant 30 jours apres la resiliation, puis supprimees</li>
-          <li>L'utilisateur peut demander l'export de ses donnees avant la suppression</li>
+          <li>L'utilisateur peut résilier son abonnement à tout moment depuis son espace client ou par email</li>
+          <li>La résiliation prend effet à la fin de la période de facturation en cours</li>
+          <li>L'accès aux fonctionnalités payantes est maintenu jusqu'à la fin de la période payée</li>
+          <li>Les données de l'utilisateur sont conservées pendant 30 jours après la résiliation, puis supprimées</li>
+          <li>L'utilisateur peut demander l'export de ses données avant la suppression</li>
         </UL>
       </Section>
 
-      <Section title="Article 8 - Responsabilite">
+      <Section title="Article 8 - Responsabilité">
         <P>
-          ChantierPro s'engage a fournir un service de qualite et a assurer la disponibilite de la plateforme.
-          Toutefois, ChantierPro ne saurait etre tenu responsable :
+          ChantierPro s'engage à fournir un service de qualité et à assurer la disponibilité de la plateforme.
+          Toutefois, ChantierPro ne saurait être tenu responsable :
         </P>
         <UL>
-          <li>Des interruptions temporaires du service pour maintenance ou mise a jour</li>
-          <li>Des dommages resultant d'une mauvaise utilisation du service par l'utilisateur</li>
-          <li>Des pertes de donnees resultant d'une defaillance technique independante de sa volonte</li>
+          <li>Des interruptions temporaires du service pour maintenance ou mise à jour</li>
+          <li>Des dommages résultant d'une mauvaise utilisation du service par l'utilisateur</li>
+          <li>Des pertes de données résultant d'une défaillance technique indépendante de sa volonté</li>
           <li>De l'inexactitude des informations saisies par l'utilisateur</li>
-          <li>Des consequences fiscales ou juridiques liees a l'utilisation des documents generes (devis, factures)</li>
+          <li>Des conséquences fiscales ou juridiques liées à l'utilisation des documents générés (devis, factures)</li>
         </UL>
         <P>
-          La responsabilite de ChantierPro est limitee au montant des sommes effectivement versees par
-          l'utilisateur au cours des 12 derniers mois precedant le fait generateur de la responsabilite.
+          La responsabilité de ChantierPro est limitée au montant des sommes effectivement versées par
+          l'utilisateur au cours des 12 derniers mois précédant le fait générateur de la responsabilité.
         </P>
       </Section>
 
-      <Section title="Article 9 - Propriete intellectuelle">
+      <Section title="Article 9 - Propriété intellectuelle">
         <P>
-          L'ensemble des elements constituant la plateforme ChantierPro (logiciel, interface, textes, images,
-          base de donnees, algorithmes) sont proteges par le droit de la propriete intellectuelle et restent
-          la propriete exclusive de ChantierPro.
+          L'ensemble des éléments constituant la plateforme ChantierPro (logiciel, interface, textes, images,
+          base de données, algorithmes) sont protégés par le droit de la propriété intellectuelle et restent
+          la propriété exclusive de ChantierPro.
         </P>
         <P>
-          L'utilisateur conserve la propriete integrale de toutes les donnees qu'il saisit dans la plateforme
+          L'utilisateur conserve la propriété intégrale de toutes les données qu'il saisit dans la plateforme
           (informations clients, devis, factures, photos, etc.).
         </P>
       </Section>
 
       <Section title="Article 10 - Droit applicable et litiges">
         <P>
-          Les presentes CGV sont soumises au droit francais. En cas de litige, les parties s'engagent a
+          Les présentes CGV sont soumises au droit français. En cas de litige, les parties s'engagent à
           rechercher une solution amiable avant toute action judiciaire.
         </P>
         <P>
-          A defaut de resolution amiable dans un delai de 30 jours, le litige sera soumis aux tribunaux
-          competents du ressort du siege social de l'editeur.
+          À défaut de résolution amiable dans un délai de 30 jours, le litige sera soumis aux tribunaux
+          compétents du ressort du siège social de l'éditeur.
         </P>
         <P>
-          Conformement aux dispositions du Code de la consommation concernant le reglement amiable des
-          litiges, l'utilisateur peut recourir au service de mediation : [A REMPLIR - Nom et coordonnees du mediateur].
+          Conformément aux dispositions du Code de la consommation concernant le règlement amiable des
+          litiges, l'utilisateur peut recourir au service de médiation : [A REMPLIR - Nom et coordonnées du médiateur].
         </P>
       </Section>
     </>
@@ -226,148 +226,148 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Objet">
         <P>
-          Les presentes Conditions Generales d'Utilisation (CGU) ont pour objet de definir les modalites
+          Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités
           et conditions d'utilisation de la plateforme ChantierPro, ainsi que les droits et obligations
           des utilisateurs.
         </P>
         <P>
-          L'utilisation de la plateforme implique l'acceptation pleine et entiere des presentes CGU.
+          L'utilisation de la plateforme implique l'acceptation pleine et entière des présentes CGU.
         </P>
       </Section>
 
       <Section title="Article 2 - Acceptation des conditions">
         <P>
-          L'inscription sur ChantierPro vaut acceptation sans reserve des presentes CGU. L'utilisateur
-          reconnait en avoir pris connaissance et s'engage a les respecter.
+          L'inscription sur ChantierPro vaut acceptation sans réserve des présentes CGU. L'utilisateur
+          reconnaît en avoir pris connaissance et s'engage à les respecter.
         </P>
         <P>
-          ChantierPro se reserve le droit de modifier les presentes CGU a tout moment. Les utilisateurs
-          seront informes de toute modification par email ou notification dans l'application. La poursuite
-          de l'utilisation du service apres modification vaut acceptation des nouvelles conditions.
+          ChantierPro se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
+          seront informés de toute modification par email ou notification dans l'application. La poursuite
+          de l'utilisation du service après modification vaut acceptation des nouvelles conditions.
         </P>
       </Section>
 
-      <Section title="Article 3 - Creation de compte">
+      <Section title="Article 3 - Création de compte">
         <P>
-          Pour acceder aux services de ChantierPro, l'utilisateur doit creer un compte en fournissant :
+          Pour accéder aux services de ChantierPro, l'utilisateur doit créer un compte en fournissant :
         </P>
         <UL>
           <li>Une adresse email valide</li>
-          <li>Un mot de passe securise</li>
-          <li>Les informations relatives a son entreprise (raison sociale, SIRET, adresse)</li>
+          <li>Un mot de passe sécurisé</li>
+          <li>Les informations relatives à son entreprise (raison sociale, SIRET, adresse)</li>
         </UL>
         <P>
-          L'utilisateur garantit l'exactitude des informations fournies et s'engage a les maintenir a jour.
-          Il est responsable de la confidentialite de ses identifiants de connexion et de toute activite
-          realisee depuis son compte.
+          L'utilisateur garantit l'exactitude des informations fournies et s'engage à les maintenir à jour.
+          Il est responsable de la confidentialité de ses identifiants de connexion et de toute activité
+          réalisée depuis son compte.
         </P>
         <P>
-          Un seul compte par entreprise est autorise, sauf dans le cadre d'un plan Entreprise prevoyant
+          Un seul compte par entreprise est autorisé, sauf dans le cadre d'un plan Entreprise prévoyant
           des comptes multi-utilisateurs.
         </P>
       </Section>
 
       <Section title="Article 4 - Obligations de l'utilisateur">
-        <P>L'utilisateur s'engage a :</P>
+        <P>L'utilisateur s'engage à:</P>
         <UL>
-          <li>Utiliser la plateforme conformement a sa destination et aux lois en vigueur</li>
-          <li>Fournir des informations exactes et a jour</li>
-          <li>Ne pas porter atteinte a la securite ou au fonctionnement de la plateforme</li>
-          <li>Respecter les droits de propriete intellectuelle de ChantierPro et des tiers</li>
-          <li>Ne pas utiliser le service a des fins illicites ou frauduleuses</li>
-          <li>Sauvegarder regulierement ses donnees importantes</li>
-          <li>Signaler tout dysfonctionnement ou faille de securite constatee</li>
+          <li>Utiliser la plateforme conformément à sa destination et aux lois en vigueur</li>
+          <li>Fournir des informations exactes et à jour</li>
+          <li>Ne pas porter atteinte à la sécurité ou au fonctionnement de la plateforme</li>
+          <li>Respecter les droits de propriété intellectuelle de ChantierPro et des tiers</li>
+          <li>Ne pas utiliser le service à des fins illicites ou frauduleuses</li>
+          <li>Sauvegarder régulièrement ses données importantes</li>
+          <li>Signaler tout dysfonctionnement ou faille de sécurité constatée</li>
         </UL>
       </Section>
 
       <Section title="Article 5 - Usages interdits">
         <P>Il est strictement interdit de :</P>
         <UL>
-          <li>Tenter d'acceder de maniere non autorisee au systeme, aux serveurs ou aux reseaux de ChantierPro</li>
-          <li>Utiliser des robots, scrapers ou tout autre moyen automatise pour acceder au service</li>
+          <li>Tenter d'accéder de manière non autorisée au système, aux serveurs ou aux réseaux de ChantierPro</li>
+          <li>Utiliser des robots, scrapers ou tout autre moyen automatisé pour accéder au service</li>
           <li>Reproduire, copier, vendre ou exploiter tout ou partie du service sans autorisation</li>
           <li>Transmettre des virus, malwares ou tout code malveillant</li>
-          <li>Utiliser le service pour envoyer des communications non sollicitees (spam)</li>
-          <li>Usurper l'identite d'un tiers ou fournir de fausses informations</li>
-          <li>Contourner les mesures techniques de protection ou de limitation d'acces</li>
-          <li>Partager ses identifiants de connexion avec des personnes non autorisees</li>
+          <li>Utiliser le service pour envoyer des communications non sollicitées (spam)</li>
+          <li>Usurper l'identité d'un tiers ou fournir de fausses informations</li>
+          <li>Contourner les mesures techniques de protection ou de limitation d'accès</li>
+          <li>Partager ses identifiants de connexion avec des personnes non autorisées</li>
         </UL>
       </Section>
 
-      <Section title="Article 6 - Propriete intellectuelle">
+      <Section title="Article 6 - Propriété intellectuelle">
         <P>
           La plateforme ChantierPro, incluant sans s'y limiter son code source, son interface graphique,
-          ses textes, images, logos, bases de donnees et algorithmes, est protegee par les lois francaises
-          et internationales relatives a la propriete intellectuelle.
+          ses textes, images, logos, bases de données et algorithmes, est protégée par les lois françaises
+          et internationales relatives à la propriété intellectuelle.
         </P>
         <P>
-          L'abonnement confere a l'utilisateur un droit d'utilisation personnel, non exclusif et non
-          transferable de la plateforme, pour la duree de l'abonnement.
+          L'abonnement confère à l'utilisateur un droit d'utilisation personnel, non exclusif et non
+          transférable de la plateforme, pour la durée de l'abonnement.
         </P>
         <P>
-          Les donnees saisies par l'utilisateur (informations clients, devis, factures, photos, documents)
-          restent sa propriete exclusive. L'utilisateur accorde a ChantierPro une licence limitee pour
-          traiter ces donnees dans le cadre de la fourniture du service.
+          Les données saisies par l'utilisateur (informations clients, devis, factures, photos, documents)
+          restent sa propriété exclusive. L'utilisateur accorde à ChantierPro une licence limitée pour
+          traiter ces données dans le cadre de la fourniture du service.
         </P>
       </Section>
 
-      <Section title="Article 7 - Limitation de responsabilite">
+      <Section title="Article 7 - Limitation de responsabilité">
         <P>
-          ChantierPro fournit le service « en l'etat » et ne garantit pas l'absence d'erreurs,
+          ChantierPro fournit le service « en l'état » et ne garantit pas l'absence d'erreurs,
           d'interruptions ou de défauts.
         </P>
         <UL>
           <li>ChantierPro ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
           <li>Les documents générés (devis, factures) doivent être vérifiés par l'utilisateur avant envoi</li>
-          <li>ChantierPro ne se substitue pas a un expert-comptable ou a un conseiller juridique</li>
+          <li>ChantierPro ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
           <li>L'utilisateur est seul responsable de la conformité fiscale et réglementaire de ses documents</li>
         </UL>
         <P>
-          En tout etat de cause, la responsabilite totale de ChantierPro ne pourra exceder le montant
-          des sommes versees par l'utilisateur au cours des 12 derniers mois.
+          En tout état de cause, la responsabilité totale de ChantierPro ne pourra excéder le montant
+          des sommes versées par l'utilisateur au cours des 12 derniers mois.
         </P>
       </Section>
 
-      <Section title="Article 8 - Suspension et resiliation">
+      <Section title="Article 8 - Suspension et résiliation">
         <P>
-          ChantierPro se reserve le droit de suspendre ou de resilier l'acces d'un utilisateur en cas de :
+          ChantierPro se réserve le droit de suspendre ou de résilier l'accès d'un utilisateur en cas de :
         </P>
         <UL>
-          <li>Violation des presentes CGU</li>
+          <li>Violation des présentes CGU</li>
           <li>Utilisation frauduleuse ou abusive du service</li>
-          <li>Non-paiement de l'abonnement apres mise en demeure restee infructueuse</li>
-          <li>Comportement portant atteinte aux autres utilisateurs ou a la plateforme</li>
+          <li>Non-paiement de l'abonnement après mise en demeure restée infructueuse</li>
+          <li>Comportement portant atteinte aux autres utilisateurs ou à la plateforme</li>
         </UL>
         <P>
-          En cas de suspension pour motif grave, ChantierPro se reserve le droit de ne pas rembourser
-          la periode d'abonnement en cours.
+          En cas de suspension pour motif grave, ChantierPro se réserve le droit de ne pas rembourser
+          la période d'abonnement en cours.
         </P>
       </Section>
 
-      <Section title="Article 9 - Disponibilite du service">
+      <Section title="Article 9 - Disponibilité du service">
         <P>
-          ChantierPro s'efforce d'assurer une disponibilite optimale de la plateforme. Toutefois,
-          le service peut etre temporairement interrompu pour :
+          ChantierPro s'efforce d'assurer une disponibilité optimale de la plateforme. Toutefois,
+          le service peut être temporairement interrompu pour :
         </P>
         <UL>
-          <li>Maintenance planifiee (les utilisateurs seront prevenus a l'avance)</li>
-          <li>Mises a jour et ameliorations du service</li>
+          <li>Maintenance planifiée (les utilisateurs seront prévenus à l'avance)</li>
+          <li>Mises à jour et améliorations du service</li>
           <li>Cas de force majeure</li>
         </UL>
         <P>
-          ChantierPro s'engage a limiter au maximum la duree et la frequence de ces interruptions.
+          ChantierPro s'engage à limiter au maximum la durée et la fréquence de ces interruptions.
         </P>
       </Section>
 
       <Section title="Article 10 - Modifications des CGU">
         <P>
-          ChantierPro se reserve le droit de modifier les presentes CGU a tout moment. Les modifications
-          entreront en vigueur des leur publication sur la plateforme. Les utilisateurs seront informes
-          des modifications substantielles par email au moins 30 jours avant leur entree en vigueur.
+          ChantierPro se réserve le droit de modifier les présentes CGU à tout moment. Les modifications
+          entreront en vigueur dès leur publication sur la plateforme. Les utilisateurs seront informés
+          des modifications substantielles par email au moins 30 jours avant leur entrée en vigueur.
         </P>
         <P>
-          Si l'utilisateur n'accepte pas les nouvelles conditions, il peut resilier son abonnement avant
-          leur entree en vigueur.
+          Si l'utilisateur n'accepte pas les nouvelles conditions, il peut résilier son abonnement avant
+          leur entrée en vigueur.
         </P>
       </Section>
     </>
@@ -377,96 +377,96 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Responsable du traitement">
         <P>
-          Le responsable du traitement des donnees a caractere personnel collectees sur ChantierPro est :
+          Le responsable du traitement des données à caractère personnel collectées sur ChantierPro est :
         </P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
           <li>Adresse : [A REMPLIR]</li>
-          <li>Email du DPO / referent donnees : [A REMPLIR]</li>
+          <li>Email du DPO / référent données : [A REMPLIR]</li>
           <li>Téléphone : [A REMPLIR]</li>
         </UL>
       </Section>
 
-      <Section title="Article 2 - Donnees collectees">
+      <Section title="Article 2 - Données collectées">
         <P>
-          ChantierPro collecte et traite les donnees suivantes, conformement au Reglement General sur la
-          Protection des Donnees (RGPD - Reglement UE 2016/679) :
+          ChantierPro collecte et traite les données suivantes, conformément au Règlement Général sur la
+          Protection des Données (RGPD - Règlement UE 2016/679) :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 overflow-x-auto ${tableBorder}`}>
           <table className="w-full text-left text-sm" aria-label="Données personnelles collectées">
             <thead className={tableHeaderBg}>
               <tr>
-                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Categorie de donnees</th>
-                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Donnees collectees</th>
-                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Finalite</th>
-                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Base legale (RGPD)</th>
+                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Catégorie de données</th>
+                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Données collectées</th>
+                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Finalité</th>
+                <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Base légale (RGPD)</th>
               </tr>
             </thead>
             <tbody className={textSecondary}>
               <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Identite</td>
-                <td className="px-4 py-3">Nom, prenom, email, telephone</td>
+                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Identité</td>
+                <td className="px-4 py-3">Nom, prénom, email, téléphone</td>
                 <td className="px-4 py-3">Gestion du compte utilisateur</td>
-                <td className="px-4 py-3">Execution du contrat (Art. 6.1.b)</td>
+                <td className="px-4 py-3">Exécution du contrat (Art. 6.1.b)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Entreprise</td>
                 <td className="px-4 py-3">Raison sociale, SIRET, adresse, TVA, RCS, APE</td>
-                <td className="px-4 py-3">Generation des documents legaux (devis, factures)</td>
-                <td className="px-4 py-3">Execution du contrat (Art. 6.1.b)</td>
+                <td className="px-4 py-3">Génération des documents légaux (devis, factures)</td>
+                <td className="px-4 py-3">Exécution du contrat (Art. 6.1.b)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Clients</td>
-                <td className="px-4 py-3">Nom, adresse, email, telephone des clients de l'utilisateur</td>
+                <td className="px-4 py-3">Nom, adresse, email, téléphone des clients de l'utilisateur</td>
                 <td className="px-4 py-3">Gestion des chantiers et facturation</td>
-                <td className="px-4 py-3">Interet legitime (Art. 6.1.f)</td>
+                <td className="px-4 py-3">Intérêt légitime (Art. 6.1.f)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Chantiers</td>
                 <td className="px-4 py-3">Adresses, descriptions, budgets, planning, photos</td>
-                <td className="px-4 py-3">Suivi operationnel des projets</td>
-                <td className="px-4 py-3">Execution du contrat (Art. 6.1.b)</td>
+                <td className="px-4 py-3">Suivi opérationnel des projets</td>
+                <td className="px-4 py-3">Exécution du contrat (Art. 6.1.b)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
-                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Financieres</td>
-                <td className="px-4 py-3">Montants des devis, factures, depenses, tresorerie</td>
-                <td className="px-4 py-3">Gestion financiere et comptable</td>
-                <td className="px-4 py-3">Execution du contrat (Art. 6.1.b)</td>
+                <td className={`px-4 py-3 font-medium ${textPrimary}`}>Financières</td>
+                <td className="px-4 py-3">Montants des devis, factures, dépenses, trésorerie</td>
+                <td className="px-4 py-3">Gestion financière et comptable</td>
+                <td className="px-4 py-3">Exécution du contrat (Art. 6.1.b)</td>
               </tr>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Pointage</td>
-                <td className="px-4 py-3">Heures d'arrivee/depart, geolocalisation (si autorisee)</td>
+                <td className="px-4 py-3">Heures d'arrivée/départ, géolocalisation (si autorisée)</td>
                 <td className="px-4 py-3">Suivi des heures de travail</td>
                 <td className="px-4 py-3">Consentement (Art. 6.1.a)</td>
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Technique</td>
                 <td className="px-4 py-3">Adresse IP, navigateur, appareil, journaux de connexion</td>
-                <td className="px-4 py-3">Securite et amelioration du service</td>
-                <td className="px-4 py-3">Interet legitime (Art. 6.1.f)</td>
+                <td className="px-4 py-3">Sécurité et amélioration du service</td>
+                <td className="px-4 py-3">Intérêt légitime (Art. 6.1.f)</td>
               </tr>
             </tbody>
           </table>
         </div>
       </Section>
 
-      <Section title="Article 3 - Duree de conservation">
-        <P>Les donnees personnelles sont conservees selon les durees suivantes :</P>
+      <Section title="Article 3 - Durée de conservation">
+        <P>Les données personnelles sont conservées selon les durées suivantes :</P>
         <UL>
-          <li><strong className={textPrimary}>Donnees du compte :</strong> pendant toute la duree de l'abonnement, puis 30 jours apres resiliation</li>
-          <li><strong className={textPrimary}>Donnees de facturation :</strong> 10 ans conformement aux obligations legales comptables (Code de commerce, Art. L123-22)</li>
-          <li><strong className={textPrimary}>Donnees de connexion :</strong> 12 mois conformement a la legislation en vigueur</li>
-          <li><strong className={textPrimary}>Donnees de geolocalisation :</strong> 3 mois</li>
+          <li><strong className={textPrimary}>Données du compte :</strong> pendant toute la durée de l'abonnement, puis 30 jours après résiliation</li>
+          <li><strong className={textPrimary}>Données de facturation :</strong> 10 ans conformément aux obligations légales comptables (Code de commerce, Art. L123-22)</li>
+          <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
+          <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
           <li><strong className={textPrimary}>Cookies :</strong> 13 mois maximum</li>
         </UL>
         <P>
-          A l'expiration de ces delais, les donnees sont supprimees ou anonymisees de maniere irreversible.
+          À l'expiration de ces délais, les données sont supprimées ou anonymisées de manière irréversible.
         </P>
       </Section>
 
-      <Section title="Article 4 - Sous-traitants et transferts de donnees">
+      <Section title="Article 4 - Sous-traitants et transferts de données">
         <P>
-          ChantierPro fait appel aux sous-traitants suivants pour le traitement des donnees :
+          ChantierPro fait appel aux sous-traitants suivants pour le traitement des données :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 ${tableBorder}`}>
           <table className="w-full text-left text-sm" aria-label="Sous-traitants et transferts de données">
@@ -481,7 +481,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
             <tbody className={textSecondary}>
               <tr className={`border-b ${tableBorder}`}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Supabase</td>
-                <td className="px-4 py-3">Base de donnees, authentification, stockage fichiers</td>
+                <td className="px-4 py-3">Base de données, authentification, stockage fichiers</td>
                 <td className="px-4 py-3">UE (AWS eu-west)</td>
                 <td className="px-4 py-3">SOC 2 Type II, RGPD, chiffrement AES-256</td>
               </tr>
@@ -499,7 +499,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
               </tr>
               <tr>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Vercel</td>
-                <td className="px-4 py-3">Hebergement de l'application web</td>
+                <td className="px-4 py-3">Hébergement de l'application web</td>
                 <td className="px-4 py-3">Global (CDN) / US</td>
                 <td className="px-4 py-3">SOC 2, SCC, chiffrement en transit</td>
               </tr>
@@ -507,74 +507,74 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           </table>
         </div>
         <P>
-          Les transferts de donnees hors de l'Union Europeenne sont encadres par des Clauses Contractuelles
-          Types (SCC) approuvees par la Commission Europeenne, conformement au chapitre V du RGPD.
+          Les transferts de données hors de l'Union Européenne sont encadrés par des Clauses Contractuelles
+          Types (SCC) approuvées par la Commission Européenne, conformément au chapitre V du RGPD.
         </P>
       </Section>
 
       <Section title="Article 5 - Droits de l'utilisateur">
         <P>
-          Conformement au RGPD et a la loi Informatique et Libertes, l'utilisateur dispose des droits suivants :
+          Conformément au RGPD et à la loi Informatique et Libertés, l'utilisateur dispose des droits suivants :
         </P>
         <UL>
-          <li><strong className={textPrimary}>Droit d'acces (Art. 15 RGPD) :</strong> obtenir la confirmation que des donnees le concernant sont traitees et en obtenir une copie</li>
-          <li><strong className={textPrimary}>Droit de rectification (Art. 16 RGPD) :</strong> demander la correction de donnees inexactes ou incompletes</li>
-          <li><strong className={textPrimary}>Droit a l'effacement (Art. 17 RGPD) :</strong> demander la suppression de ses donnees personnelles (« droit a l'oubli »)</li>
-          <li><strong className={textPrimary}>Droit a la portabilite (Art. 20 RGPD) :</strong> recevoir ses donnees dans un format structure, couramment utilise et lisible par machine (JSON, CSV)</li>
-          <li><strong className={textPrimary}>Droit d'opposition (Art. 21 RGPD) :</strong> s'opposer au traitement de ses donnees pour des motifs legitimes</li>
-          <li><strong className={textPrimary}>Droit a la limitation (Art. 18 RGPD) :</strong> demander la limitation du traitement de ses donnees</li>
+          <li><strong className={textPrimary}>Droit d'accès (Art. 15 RGPD) :</strong> obtenir la confirmation que des données le concernant sont traitées et en obtenir une copie</li>
+          <li><strong className={textPrimary}>Droit de rectification (Art. 16 RGPD) :</strong> demander la correction de données inexactes ou incomplètes</li>
+          <li><strong className={textPrimary}>Droit à l'effacement (Art. 17 RGPD) :</strong> demander la suppression de ses données personnelles (« droit à l'oubli »)</li>
+          <li><strong className={textPrimary}>Droit à la portabilité (Art. 20 RGPD) :</strong> recevoir ses données dans un format structuré, couramment utilisé et lisible par machine (JSON, CSV)</li>
+          <li><strong className={textPrimary}>Droit d'opposition (Art. 21 RGPD) :</strong> s'opposer au traitement de ses données pour des motifs légitimes</li>
+          <li><strong className={textPrimary}>Droit à la limitation (Art. 18 RGPD) :</strong> demander la limitation du traitement de ses données</li>
         </UL>
         <P>
-          Pour exercer ces droits, l'utilisateur peut contacter le responsable du traitement a l'adresse :
+          Pour exercer ces droits, l'utilisateur peut contacter le responsable du traitement à l'adresse :
           <span style={linkStyle}> [A REMPLIR - email DPO]</span>.
-          Une reponse sera apportee dans un delai d'un mois a compter de la reception de la demande.
+          Une réponse sera apportée dans un délai d'un mois à compter de la réception de la demande.
         </P>
       </Section>
 
       <Section title="Article 6 - Cookies">
         <P>ChantierPro utilise les cookies suivants :</P>
         <UL>
-          <li><strong className={textPrimary}>Cookies essentiels :</strong> necessaires au fonctionnement de l'application (session, authentification, preferences). Base legale : interet legitime.</li>
-          <li><strong className={textPrimary}>Cookies de performance :</strong> mesure d'audience anonymisee pour ameliorer le service. Base legale : consentement.</li>
+          <li><strong className={textPrimary}>Cookies essentiels :</strong> nécessaires au fonctionnement de l'application (session, authentification, préférences). Base légale : intérêt légitime.</li>
+          <li><strong className={textPrimary}>Cookies de performance :</strong> mesure d'audience anonymisée pour améliorer le service. Base légale : consentement.</li>
         </UL>
         <P>
           ChantierPro n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
-          L'utilisateur peut gerer ses preferences de cookies depuis les parametres de l'application
+          L'utilisateur peut gérer ses préférences de cookies depuis les paramètres de l'application
           ou de son navigateur.
         </P>
       </Section>
 
-      <Section title="Article 7 - Securite des donnees">
-        <P>ChantierPro met en oeuvre les mesures de securite suivantes :</P>
+      <Section title="Article 7 - Sécurité des données">
+        <P>ChantierPro met en oeuvre les mesures de sécurité suivantes :</P>
         <UL>
-          <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> toutes les communications sont chiffrees en transit</li>
-          <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des donnees au niveau de la base de donnees - chaque utilisateur n'accede qu'a ses propres donnees</li>
-          <li><strong className={textPrimary}>Authentification JWT :</strong> tokens securises avec expiration automatique</li>
-          <li><strong className={textPrimary}>Chiffrement au repos :</strong> les donnees stockees sont chiffrees (AES-256)</li>
-          <li><strong className={textPrimary}>Sauvegardes automatiques :</strong> sauvegardes quotidiennes des bases de donnees</li>
-          <li><strong className={textPrimary}>Mises a jour regulieres :</strong> correctifs de securite appliques en continu</li>
+          <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> toutes les communications sont chiffrées en transit</li>
+          <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des données au niveau de la base de données - chaque utilisateur n'accède qu'à ses propres données</li>
+          <li><strong className={textPrimary}>Authentification JWT :</strong> tokens sécurisés avec expiration automatique</li>
+          <li><strong className={textPrimary}>Chiffrement au repos :</strong> les données stockées sont chiffrées (AES-256)</li>
+          <li><strong className={textPrimary}>Sauvegardes automatiques :</strong> sauvegardes quotidiennes des bases de données</li>
+          <li><strong className={textPrimary}>Mises à jour régulières :</strong> correctifs de sécurité appliqués en continu</li>
         </UL>
       </Section>
 
-      <Section title="Article 8 - Violation de donnees">
+      <Section title="Article 8 - Violation de données">
         <P>
-          En cas de violation de donnees a caractere personnel, ChantierPro s'engage a :
+          En cas de violation de données à caractère personnel, ChantierPro s'engage à:
         </P>
         <UL>
-          <li>Notifier la CNIL dans un delai de 72 heures conformement a l'article 33 du RGPD</li>
-          <li>Informer les utilisateurs concernes dans les meilleurs delais si la violation est susceptible d'engendrer un risque eleve pour leurs droits et libertes</li>
+          <li>Notifier la CNIL dans un délai de 72 heures conformément à l'article 33 du RGPD</li>
+          <li>Informer les utilisateurs concernés dans les meilleurs délais si la violation est susceptible d'engendrer un risque élevé pour leurs droits et libertés</li>
           <li>Documenter toute violation dans un registre interne</li>
         </UL>
       </Section>
 
-      <Section title="Article 9 - Contact et reclamations">
+      <Section title="Article 9 - Contact et réclamations">
         <P>
-          Pour toute question relative a la protection des donnees personnelles, l'utilisateur peut
+          Pour toute question relative à la protection des données personnelles, l'utilisateur peut
           contacter : <span style={linkStyle}>[A REMPLIR - email DPO]</span>.
         </P>
         <P>
-          Si l'utilisateur estime que ses droits ne sont pas respectes, il peut introduire une
-          reclamation aupres de la Commission Nationale de l'Informatique et des Libertes (CNIL) :
+          Si l'utilisateur estime que ses droits ne sont pas respectés, il peut introduire une
+          réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) :
         </P>
         <UL>
           <li>Site web : <span style={linkStyle}>www.cnil.fr</span></li>
@@ -587,13 +587,13 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
   const renderMentionsLegales = () => (
     <>
-      <Section title="1. Editeur du site">
-        <P>Le site ChantierPro est edite par :</P>
+      <Section title="1. Éditeur du site">
+        <P>Le site ChantierPro est édité par :</P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
           <li>Forme juridique : [A REMPLIR]</li>
           <li>Capital social : [A REMPLIR] euros</li>
-          <li>Siege social : [A REMPLIR - Adresse complete]</li>
+          <li>Siège social : [A REMPLIR - Adresse complète]</li>
           <li>SIRET : [A REMPLIR]</li>
           <li>RCS : [A REMPLIR - Ville et numéro]</li>
           <li>Numéro de TVA intracommunautaire : [A REMPLIR]</li>
@@ -604,100 +604,100 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="2. Directeur de la publication">
         <UL>
-          <li>Nom : <strong className={textPrimary}>[A REMPLIR - Nom et prenom]</strong></li>
-          <li>Qualite : [A REMPLIR - Gerant / President / etc.]</li>
+          <li>Nom : <strong className={textPrimary}>[A REMPLIR - Nom et prénom]</strong></li>
+          <li>Qualité : [A REMPLIR - Gérant / Président / etc.]</li>
           <li>Email : <span style={linkStyle}>[A REMPLIR]</span></li>
         </UL>
       </Section>
 
-      <Section title="3. Hebergement">
+      <Section title="3. Hébergement">
         <SubSection title="Application web">
           <UL>
-            <li>Hebergeur : <strong className={textPrimary}>Vercel Inc.</strong></li>
-            <li>Adresse : 440 N Barranca Ave #4133, Covina, CA 91723, Etats-Unis</li>
+            <li>Hébergeur : <strong className={textPrimary}>Vercel Inc.</strong></li>
+            <li>Adresse : 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis</li>
             <li>Site web : <span style={linkStyle}>vercel.com</span></li>
           </UL>
         </SubSection>
-        <SubSection title="Base de donnees et stockage">
+        <SubSection title="Base de données et stockage">
           <UL>
-            <li>Hebergeur : <strong className={textPrimary}>Supabase Inc.</strong></li>
+            <li>Hébergeur : <strong className={textPrimary}>Supabase Inc.</strong></li>
             <li>Adresse : 970 Toa Payoh North #07-04, Singapore 318992</li>
-            <li>Infrastructure : Amazon Web Services (AWS), region EU (eu-west)</li>
+            <li>Infrastructure : Amazon Web Services (AWS), région EU (eu-west)</li>
             <li>Site web : <span style={linkStyle}>supabase.com</span></li>
           </UL>
         </SubSection>
       </Section>
 
-      <Section title="4. Propriete intellectuelle">
+      <Section title="4. Propriété intellectuelle">
         <P>
-          L'ensemble du contenu du site ChantierPro (textes, images, graphismes, logo, icones,
-          logiciel, base de donnees) est protege par les lois francaises et internationales relatives
-          a la propriete intellectuelle.
+          L'ensemble du contenu du site ChantierPro (textes, images, graphismes, logo, icônes,
+          logiciel, base de données) est protégé par les lois françaises et internationales relatives
+          à la propriété intellectuelle.
         </P>
         <P>
-          Toute reproduction, representation, modification, publication, distribution ou retransmission,
-          totale ou partielle, du contenu de ce site, par quelque procede que ce soit, sans l'autorisation
-          ecrite prealable de l'editeur, est strictement interdite et constitue un delit de contrefacon
-          (articles L.335-2 et suivants du Code de la propriete intellectuelle).
+          Toute reproduction, représentation, modification, publication, distribution ou retransmission,
+          totale ou partielle, du contenu de ce site, par quelque procédé que ce soit, sans l'autorisation
+          écrite préalable de l'éditeur, est strictement interdite et constitue un délit de contrefaçon
+          (articles L.335-2 et suivants du Code de la propriété intellectuelle).
         </P>
       </Section>
 
-      <Section title="5. Donnees personnelles">
+      <Section title="5. Données personnelles">
         <P>
-          ChantierPro collecte et traite des donnees personnelles dans le respect du Reglement General
-          sur la Protection des Donnees (RGPD) et de la loi Informatique et Libertes du 6 janvier 1978 modifiee.
+          ChantierPro collecte et traite des données personnelles dans le respect du Règlement Général
+          sur la Protection des Données (RGPD) et de la loi Informatique et Libertés du 6 janvier 1978 modifiée.
         </P>
         <P>
-          Pour en savoir plus sur la collecte et le traitement des donnees, veuillez consulter notre{' '}
+          Pour en savoir plus sur la collecte et le traitement des données, veuillez consulter notre{' '}
           <button
             onClick={() => setPage('confidentialite')}
             className="underline font-medium hover:opacity-80 transition-opacity"
             style={linkStyle}
           >
-            Politique de Confidentialite
+            Politique de Confidentialité
           </button>.
         </P>
       </Section>
 
       <Section title="6. Cookies">
         <P>
-          Le site utilise des cookies necessaires a son bon fonctionnement. Pour plus d'informations,
+          Le site utilise des cookies nécessaires à son bon fonctionnement. Pour plus d'informations,
           consultez notre{' '}
           <button
             onClick={() => setPage('confidentialite')}
             className="underline font-medium hover:opacity-80 transition-opacity"
             style={linkStyle}
           >
-            Politique de Confidentialite
+            Politique de Confidentialité
           </button>.
         </P>
       </Section>
 
-      <Section title="7. Limitation de responsabilite">
+      <Section title="7. Limitation de responsabilité">
         <P>
-          L'editeur s'efforce de fournir sur le site des informations aussi precises que possible.
-          Toutefois, il ne pourra etre tenu responsable des omissions, des inexactitudes et des carences
-          dans la mise a jour, qu'elles soient de son fait ou du fait des tiers partenaires qui lui
+          L'éditeur s'efforce de fournir sur le site des informations aussi précises que possible.
+          Toutefois, il ne pourra être tenu responsable des omissions, des inexactitudes et des carences
+          dans la mise à jour, qu'elles soient de son fait ou du fait des tiers partenaires qui lui
           fournissent ces informations.
         </P>
         <P>
-          L'editeur ne saurait etre tenu responsable des dommages directs ou indirects causes au
-          materiel de l'utilisateur lors de l'acces au site, resultant soit de l'utilisation d'un
-          materiel ne repondant pas aux specifications, soit de l'apparition d'un bug ou d'une incompatibilite.
+          L'éditeur ne saurait être tenu responsable des dommages directs ou indirects causés au
+          matériel de l'utilisateur lors de l'accès au site, résultant soit de l'utilisation d'un
+          matériel ne répondant pas aux spécifications, soit de l'apparition d'un bug ou d'une incompatibilité.
         </P>
       </Section>
 
       <Section title="8. Droit applicable">
         <P>
-          Le present site et les presentes mentions legales sont soumis au droit francais. En cas de
-          litige et a defaut de resolution amiable, les tribunaux francais seront seuls competents.
+          Le présent site et les présentes mentions légales sont soumis au droit français. En cas de
+          litige et à défaut de résolution amiable, les tribunaux français seront seuls compétents.
         </P>
       </Section>
 
       <Section title="9. Contact">
         <P>
           Pour toute question ou demande d'information concernant le site, ou tout signalement de
-          contenu ou d'activites illicites, l'utilisateur peut contacter l'editeur a l'adresse
+          contenu ou d'activités illicites, l'utilisateur peut contacter l'éditeur à l'adresse
           email suivante : <span style={linkStyle}>[A REMPLIR]</span>.
         </P>
       </Section>
@@ -755,7 +755,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           {/* Last updated */}
           <div className={`mt-12 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
             <p className={`text-sm ${textSecondary}`}>
-              Derniere mise a jour : {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              Dernière mise à jour : {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
         </div>

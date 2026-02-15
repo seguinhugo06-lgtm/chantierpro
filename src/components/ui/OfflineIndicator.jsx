@@ -1,8 +1,14 @@
-import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Wifi, WifiOff, RefreshCw, Cloud, CheckCircle } from 'lucide-react';
 
 /**
  * OfflineIndicator - Shows network status and pending sync count
+ *
+ * States:
+ * - Offline: red banner with WifiOff icon
+ * - Syncing (pending online): soft gray banner with spinning RefreshCw
+ * - Success: brief green banner with CheckCircle "Tout est synchronisé ✓"
+ * - Hidden: online with nothing pending
  *
  * Props:
  * @param {number} pendingCount - Number of pending operations to sync
@@ -13,6 +19,7 @@ import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff } from 'lucide-react';
 export default function OfflineIndicator({
   pendingCount = 0,
   onSync,
+  onForceClear,
   isDark = false,
   position = 'bottom',
   className = ''
@@ -20,6 +27,9 @@ export default function OfflineIndicator({
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showBanner, setShowBanner] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const syncAttempts = useRef(0);
+  const prevPendingRef = useRef(pendingCount);
 
   // Listen for network changes
   useEffect(() => {
@@ -27,12 +37,14 @@ export default function OfflineIndicator({
       setIsOnline(true);
       // Show brief "back online" message
       setShowBanner(true);
-      setTimeout(() => setShowBanner(false), 3000);
+      setShowSuccess(true);
+      setTimeout(() => { setShowBanner(false); setShowSuccess(false); }, 3000);
     };
 
     const handleOffline = () => {
       setIsOnline(false);
       setShowBanner(true);
+      setShowSuccess(false);
     };
 
     window.addEventListener('online', handleOnline);
@@ -49,9 +61,20 @@ export default function OfflineIndicator({
     };
   }, []);
 
+  // Show success state when pending count drops to 0 after sync
+  useEffect(() => {
+    if (prevPendingRef.current > 0 && pendingCount === 0 && isOnline) {
+      setShowSuccess(true);
+      setShowBanner(true);
+      setTimeout(() => { setShowSuccess(false); setShowBanner(false); }, 3000);
+    }
+    prevPendingRef.current = pendingCount;
+  }, [pendingCount, isOnline]);
+
   const handleSync = async () => {
     if (!onSync || isSyncing) return;
 
+    syncAttempts.current++;
     setIsSyncing(true);
     try {
       await onSync();
@@ -62,7 +85,7 @@ export default function OfflineIndicator({
     }
   };
 
-  // Don't show if online and no pending items
+  // Don't show if online and no pending items and no banner
   if (isOnline && pendingCount === 0 && !showBanner) {
     return null;
   }
@@ -71,15 +94,18 @@ export default function OfflineIndicator({
     ? 'top-0 left-0 right-0'
     : 'bottom-0 left-0 right-0';
 
+  // Softer colors: gray for pending sync, red for offline, green for success
   const bgColor = !isOnline
     ? 'bg-red-500'
-    : pendingCount > 0
-      ? 'bg-amber-500'
-      : 'bg-emerald-500';
+    : showSuccess
+      ? 'bg-emerald-500'
+      : pendingCount > 0
+        ? 'bg-slate-600'
+        : 'bg-emerald-500';
 
   return (
     <div
-      className={`fixed ${positionClasses} z-40 px-4 py-2 ${bgColor} text-white text-sm ${className}`}
+      className={`fixed ${positionClasses} z-40 px-4 py-2 ${bgColor} text-white text-sm transition-colors duration-300 ${className}`}
       role="status"
       aria-live="polite"
     >
@@ -94,18 +120,24 @@ export default function OfflineIndicator({
               </span>
             )}
           </>
+        ) : showSuccess ? (
+          <>
+            <CheckCircle size={16} />
+            <span>Tout est synchronisé</span>
+          </>
         ) : pendingCount > 0 ? (
           <>
-            <CloudOff size={16} />
-            <span>{pendingCount} modification{pendingCount > 1 ? 's' : ''} non synchronisée{pendingCount > 1 ? 's' : ''}</span>
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? 'Sync...' : 'Synchroniser'}
-            </button>
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+            <span>Synchronisation{isSyncing ? '...' : ` — ${pendingCount} modification${pendingCount > 1 ? 's' : ''} en attente`}</span>
+            {!isSyncing && (
+              <button
+                onClick={handleSync}
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+              >
+                <RefreshCw size={12} />
+                Synchroniser
+              </button>
+            )}
           </>
         ) : (
           <>

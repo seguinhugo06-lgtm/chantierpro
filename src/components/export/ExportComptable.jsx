@@ -89,24 +89,77 @@ const mapFactureToEntries = (facture, client) => {
 const mapDepenseToEntries = (depense) => {
   const date = new Date(depense.date);
   const ref = depense.reference || `D-${date.getFullYear()}-${String(depense.id).slice(0, 4)}`;
-  return [
+  const montant = depense.montant || 0;
+  const tvaRate = depense.tva_rate != null ? depense.tva_rate / 100 : 0.2;
+  const montantHT = Math.round((montant / (1 + tvaRate)) * 100) / 100;
+  const montantTVA = Math.round((montant - montantHT) * 100) / 100;
+
+  const entries = [
     {
       date,
       ref,
       libelle: `${depense.categorie || 'Charge'} - ${depense.description || depense.fournisseur || ''}`,
-      debit: depense.montant || 0,
+      debit: montantHT,
       credit: 0,
       compte: '606000',
       journal: 'AC',
     },
+  ];
+
+  // Add TVA déductible entry if applicable
+  if (montantTVA > 0) {
+    entries.push({
+      date,
+      ref,
+      libelle: `TVA déductible - ${depense.fournisseur || depense.categorie || 'Achat'}`,
+      debit: montantTVA,
+      credit: 0,
+      compte: '445660',
+      journal: 'AC',
+    });
+  }
+
+  entries.push({
+    date,
+    ref,
+    libelle: `${depense.fournisseur || 'Fournisseur'}`,
+    debit: 0,
+    credit: montant,
+    compte: '401000',
+    journal: 'AC',
+  });
+
+  return entries;
+};
+
+/** Map a paiement (bank transaction) to Journal Banque entries */
+const mapPaiementToEntries = (paiement, facture, client) => {
+  const date = new Date(paiement.date || paiement.createdAt);
+  const ref = paiement.reference || `P-${date.getFullYear()}-${String(paiement.id).slice(0, 4)}`;
+  const montant = Number(paiement.amount || paiement.montant) || 0;
+  if (montant <= 0) return [];
+
+  const clientName = client?.nom || client?.entreprise || 'Client';
+  const factureNum = facture?.numero || '';
+
+  return [
     {
       date,
       ref,
-      libelle: `${depense.fournisseur || 'Fournisseur'}`,
+      libelle: `Encaissement ${factureNum ? `fact. ${factureNum}` : ''} - ${clientName}`.trim(),
+      debit: montant,
+      credit: 0,
+      compte: '512000',
+      journal: 'BQ',
+    },
+    {
+      date,
+      ref,
+      libelle: `Règlement client ${clientName}`,
       debit: 0,
-      credit: depense.montant || 0,
-      compte: '401000',
-      journal: 'AC',
+      credit: montant,
+      compte: '411000',
+      journal: 'BQ',
     },
   ];
 };
@@ -180,13 +233,15 @@ const generateFEC = (entries, entreprise) => {
     'Idevise',
   ].join('\t');
 
-  const journalLabels = { VE: 'Journal des Ventes', AC: "Journal des Achats" };
+  const journalLabels = { VE: 'Journal des Ventes', AC: "Journal des Achats", BQ: 'Journal de Banque' };
   const compteLabels = {
     '411000': 'Clients',
     '706000': 'Prestations de services',
     '445710': 'TVA collectée',
+    '445660': 'TVA déductible',
     '606000': 'Achats non stockés',
     '401000': 'Fournisseurs',
+    '512000': 'Banque',
   };
 
   const rows = entries.map((e, i) => {
@@ -264,6 +319,7 @@ export default function ExportComptable({
   depenses = [],
   chantiers = [],
   clients = [],
+  paiements = [],
   entreprise = {},
   isDark = false,
   couleur = '#f97316',
@@ -323,6 +379,15 @@ export default function ExportComptable({
     [depenses, dateFrom, dateTo]
   );
 
+  const filteredPaiements = useMemo(
+    () =>
+      paiements.filter((p) => {
+        const dt = new Date(p.date || p.createdAt);
+        return dt >= from && dt <= to;
+      }),
+    [paiements, dateFrom, dateTo]
+  );
+
   const clientsMap = useMemo(() => {
     const map = {};
     clients.forEach((c) => {
@@ -331,6 +396,12 @@ export default function ExportComptable({
     return map;
   }, [clients]);
 
+  const devisMap = useMemo(() => {
+    const map = {};
+    devis.forEach((d) => { map[d.id] = d; });
+    return map;
+  }, [devis]);
+
   // ─── Accounting entries ─────────────────────────────────────────────────
 
   const entries = useMemo(() => {
@@ -338,10 +409,15 @@ export default function ExportComptable({
       mapFactureToEntries(f, clientsMap[f.client_id])
     );
     const depenseEntries = filteredDepenses.flatMap((d) => mapDepenseToEntries(d));
-    const all = [...factureEntries, ...depenseEntries];
+    const paiementEntries = filteredPaiements.flatMap((p) => {
+      const facture = devisMap[p.devis_id] || devisMap[p.facture_id];
+      const client = facture ? clientsMap[facture.client_id] : null;
+      return mapPaiementToEntries(p, facture, client);
+    });
+    const all = [...factureEntries, ...depenseEntries, ...paiementEntries];
     all.sort((a, b) => a.date - b.date);
     return all;
-  }, [factures, filteredDepenses, clientsMap]);
+  }, [factures, filteredDepenses, filteredPaiements, clientsMap, devisMap]);
 
   // ─── Summaries ──────────────────────────────────────────────────────────
 
@@ -415,6 +491,8 @@ export default function ExportComptable({
 
   // ─── Stat cards data ───────────────────────────────────────────────────
 
+  const totalPaiements = filteredPaiements.reduce((s, p) => s + (Number(p.amount || p.montant) || 0), 0);
+
   const stats = [
     {
       label: 'Factures émises',
@@ -429,16 +507,22 @@ export default function ExportComptable({
       color: '#8b5cf6',
     },
     {
+      label: 'Paiements reçus',
+      value: filteredPaiements.length,
+      icon: Euro,
+      color: '#3b82f6',
+    },
+    {
       label: 'Total HT factures',
       value: fmtEUR.format(totalHTFactures),
       icon: Euro,
       color: '#10b981',
     },
     {
-      label: 'Total TTC factures',
-      value: fmtEUR.format(totalTTCFactures),
+      label: 'Total encaissé',
+      value: fmtEUR.format(totalPaiements),
       icon: Euro,
-      color: '#3b82f6',
+      color: '#0ea5e9',
     },
     {
       label: 'Total dépenses',
@@ -531,7 +615,7 @@ export default function ExportComptable({
         </div>
 
         {/* ── Summary cards ──────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {stats.map((s, i) => {
             const Icon = s.icon;
             return (
@@ -745,17 +829,13 @@ export default function ExportComptable({
                               className="inline-block px-2 py-0.5 rounded text-xs font-semibold"
                               style={{
                                 backgroundColor:
-                                  e.journal === 'VE'
-                                    ? `${couleur}20`
-                                    : isDark
-                                      ? '#4c1d95'
-                                      : '#ede9fe',
+                                  e.journal === 'VE' ? `${couleur}20`
+                                  : e.journal === 'BQ' ? (isDark ? '#1e3a5f' : '#dbeafe')
+                                  : isDark ? '#4c1d95' : '#ede9fe',
                                 color:
-                                  e.journal === 'VE'
-                                    ? couleur
-                                    : isDark
-                                      ? '#c4b5fd'
-                                      : '#7c3aed',
+                                  e.journal === 'VE' ? couleur
+                                  : e.journal === 'BQ' ? (isDark ? '#93c5fd' : '#2563eb')
+                                  : isDark ? '#c4b5fd' : '#7c3aed',
                               }}
                             >
                               {e.journal}

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
 import { DataProvider } from './context/DataContext'
-import { DEMO_DATA } from './lib/demo-data'
+import { DEMO_DATA, seedSecondaryDemoData } from './lib/demo-data'
 import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
 import './index.css'
@@ -36,6 +36,10 @@ const initialData = useDemoData ? DEMO_DATA : EMPTY_DATA
 // Log mode for debugging
 if (isDemo) {
   console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
+  // Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
+  if (useDemoData) {
+    seedSecondaryDemoData()
+  }
 } else {
   console.log('🔐 Production mode - data from Supabase')
 }

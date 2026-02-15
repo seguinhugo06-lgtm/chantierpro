@@ -768,7 +768,7 @@ function StatsCard({ isDark, couleur }) {
         <div>
           <h3 className={cn('text-base font-semibold', textPrimary)}>Statistiques</h3>
           <p className={cn('text-xs', textMuted)}>
-            Les donnees seront calculees a partir de votre historique
+            Les données seront calculées à partir de votre historique
           </p>
         </div>
       </div>
@@ -887,7 +887,7 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
             style={{ color: '#f59e0b' }}
           />
           <p className={cn('text-sm', isDark ? 'text-amber-300' : 'text-amber-800')}>
-            Les relances automatiques sont desactivees. Activez-les pour automatiser le suivi de vos devis et factures.
+            Les relances automatiques sont désactivées. Activez-les pour automatiser le suivi de vos devis et factures.
           </p>
         </div>
       )}

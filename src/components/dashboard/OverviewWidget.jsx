@@ -158,7 +158,7 @@ function StatCard({
       {/* Title */}
       <p className={cn(
         'text-xs font-medium mb-1',
-        isDark ? 'text-gray-400' : 'text-gray-500'
+        isDark ? 'text-gray-400' : 'text-gray-600'
       )}>
         {title}
       </p>
@@ -175,7 +175,7 @@ function StatCard({
           {mainLabel && (
             <span className={cn(
               'text-sm',
-              isDark ? 'text-gray-500' : 'text-gray-500'
+              isDark ? 'text-gray-500' : 'text-gray-600'
             )}>
               {mainLabel}
             </span>
@@ -215,7 +215,7 @@ function StatCard({
           {progress.label && (
             <p className={cn(
               'text-[10px] mt-1',
-              isDark ? 'text-gray-500' : 'text-gray-500'
+              isDark ? 'text-gray-500' : 'text-gray-600'
             )}>
               {progress.label}
             </p>
@@ -249,6 +249,13 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    // Exclude ghost devis (same filter as DevisPage) for consistent counts
+    const cleanDevis = devis.filter(d => {
+      if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+      if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
+      return true;
+    });
+
     // Chantiers
     const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours');
     const chantiersProspect = chantiers.filter(c => c.statut === 'prospect').length;
@@ -278,29 +285,38 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
       { value: chantiersTermines, color: '#10b981', label: 'Terminés' },
     ].filter(d => d.value > 0);
 
-    // Clients
+    // Clients — actifs = chantiers actifs (non terminé/archivé/abandonné) OU devis actifs
+    // Même logique que Clients.jsx pour cohérence
     const activeChantierClientIds = new Set(
-      chantiersEnCours.map(c => c.client_id)
+      chantiers.filter(ch => !['archive', 'abandonne', 'termine'].includes(ch.statut)).map(c => c.client_id || c.clientId)
     );
-    const clientsActifs = clients.filter(c => activeChantierClientIds.has(c.id)).length;
+    const activeDevisClientIds = new Set(
+      cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)).map(d => d.client_id)
+    );
+    const clientsActifs = clients.filter(c => activeChantierClientIds.has(c.id) || activeDevisClientIds.has(c.id)).length;
 
-    // CA par client (top client)
+    // CA par client (top client) — inclure devis acceptés + factures
     const clientRevenue = {};
-    devis.forEach(d => {
-      if (d.statut === 'accepte' || d.type === 'facture') {
+    cleanDevis.forEach(d => {
+      if (['accepte', 'acompte_facture', 'facture'].includes(d.statut) || d.type === 'facture') {
         clientRevenue[d.client_id] = (clientRevenue[d.client_id] || 0) + (d.total_ht || 0);
       }
     });
-    const topClientRevenue = Math.max(...Object.values(clientRevenue), 0);
+    // Find top client name
+    const topClientEntry = Object.entries(clientRevenue).sort((a, b) => b[1] - a[1])[0];
+    const topClientObj = topClientEntry ? clients.find(c => c.id === topClientEntry[0]) : null;
+    const topClientName = topClientObj ? (topClientObj.nom || topClientObj.entreprise || '—') : '—';
+    const topClientRevenue = topClientEntry ? topClientEntry[1] : 0;
 
-    // Devis
-    const devisOnly = devis.filter(d => d.type === 'devis');
-    const factures = devis.filter(d => d.type === 'facture');
+    // Devis (from cleaned data)
+    const devisOnly = cleanDevis.filter(d => d.type === 'devis');
+    const factures = cleanDevis.filter(d => d.type === 'facture');
 
-    const devisEnAttente = devisOnly.filter(d => ['envoye', 'vu'].includes(d.statut)).length;
+    // Potentiel = brouillon + envoyé + vu (tout ce qui n'est pas encore signé)
+    const devisEnAttente = devisOnly.filter(d => ['brouillon', 'envoye', 'vu'].includes(d.statut)).length;
     const montantEnAttente = devisOnly
-      .filter(d => ['envoye', 'vu'].includes(d.statut))
-      .reduce((sum, d) => sum + (d.total_ht || 0), 0);
+      .filter(d => ['brouillon', 'envoye', 'vu'].includes(d.statut))
+      .reduce((sum, d) => sum + (d.total_ttc || d.total_ht || 0), 0);
 
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;
 
@@ -377,6 +393,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
       totalClients: clients.length,
       clientsActifs,
       topClientRevenue,
+      topClientName,
       // Devis
       devisEnAttente,
       devisBrouillon,

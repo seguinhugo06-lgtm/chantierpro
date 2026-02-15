@@ -1,0 +1,1351 @@
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import {
+  Plus, Search, X, ChevronDown, ChevronRight, Calendar, Clock,
+  ClipboardList, Trash2, AlertCircle, CheckCircle2, Star,
+  Building2, Users, Tag, StickyNote, ChevronLeft, Filter,
+  ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square
+} from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
+import { useConfirm, useToast } from '../context/AppContext';
+import MemoCalendarView from './MemoCalendarView';
+
+// ── Catégories disponibles ──
+const CATEGORIES = [
+  { value: 'rappel', label: 'Rappel', color: '#3b82f6' },
+  { value: 'achat', label: 'Achat', color: '#f59e0b' },
+  { value: 'rdv', label: 'RDV', color: '#8b5cf6' },
+  { value: 'admin', label: 'Admin', color: '#6366f1' },
+  { value: 'idee', label: 'Idée', color: '#22c55e' },
+  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+];
+
+const PRIORITIES = [
+  { value: 'haute', label: 'Haute', color: '#ef4444', dot: '🔴' },
+  { value: 'moyenne', label: 'Moyenne', color: '#f59e0b', dot: '🟡' },
+  { value: 'basse', label: 'Basse', color: '#22c55e', dot: '🟢' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'recent', label: 'Plus récent' },
+  { value: 'oldest', label: 'Plus ancien' },
+  { value: 'priority', label: 'Priorité' },
+  { value: 'alpha', label: 'Alphabétique' },
+];
+
+const PRIORITY_ORDER = { haute: 0, moyenne: 1, basse: 2 };
+
+const RECURRENCE_OPTIONS = [
+  { value: '', label: 'Aucune' },
+  { value: 'daily', label: 'Tous les jours' },
+  { value: 'weekly', label: 'Toutes les semaines' },
+  { value: 'monthly', label: 'Tous les mois' },
+  { value: 'custom', label: 'Personnalisé' },
+];
+
+// ── Helpers ──
+const today = () => new Date().toISOString().split('T')[0];
+const formatDateFR = (d) => {
+  if (!d) return '';
+  const date = new Date(d + 'T00:00:00');
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+};
+const formatTimeFR = (t) => {
+  if (!t) return '';
+  return t.substring(0, 5); // "09:30:00" → "09:30"
+};
+const isOverdue = (m) => !m.is_done && m.due_date && m.due_date < today();
+const isToday = (m) => m.due_date === today();
+const isFuture = (m) => m.due_date && m.due_date > today();
+const isUndated = (m) => !m.due_date;
+
+const getNextOccurrence = (currentDate, recurrence) => {
+  if (!currentDate || !recurrence) return null;
+  const date = new Date(currentDate + 'T00:00:00');
+  const type = recurrence.type || recurrence;
+  const interval = recurrence.interval || 1;
+
+  switch (type) {
+    case 'daily':
+      date.setDate(date.getDate() + interval);
+      break;
+    case 'weekly':
+      date.setDate(date.getDate() + (7 * interval));
+      break;
+    case 'monthly':
+      date.setMonth(date.getMonth() + interval);
+      break;
+    case 'custom': {
+      const unit = recurrence.unit || 'day';
+      if (unit === 'day') date.setDate(date.getDate() + interval);
+      else if (unit === 'week') date.setDate(date.getDate() + (7 * interval));
+      else if (unit === 'month') date.setMonth(date.getMonth() + interval);
+      break;
+    }
+    default: return null;
+  }
+  return date.toISOString().split('T')[0];
+};
+
+// ════════════════════════════════════════════════════════
+// MemoItem — Single memo row with quick actions
+// ════════════════════════════════════════════════════════
+function MemoItem({
+  memo, onToggle, onSelect, isSelected, chantiers, clients, couleur, isDark,
+  onQuickDate, onQuickPriority, onQuickDelete, setPage,
+  selectionMode, isMultiSelected, onMultiSelect
+}) {
+  const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
+  const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
+  const priority = PRIORITIES.find(p => p.value === memo.priority);
+  const category = CATEGORIES.find(c => c.value === memo.category);
+  const subtasks = memo.subtasks || [];
+  const stDone = subtasks.filter(s => s.done).length;
+  const stTotal = subtasks.length;
+
+  const dateColor = isOverdue(memo)
+    ? 'text-red-500'
+    : isToday(memo)
+      ? 'text-amber-500'
+      : isDark ? 'text-slate-400' : 'text-slate-500';
+
+  return (
+    <div
+      className={`group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
+        isSelected
+          ? isDark ? 'bg-slate-700 ring-1 ring-slate-600' : 'bg-slate-100 ring-1 ring-slate-200'
+          : isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'
+      } ${memo.is_done ? 'opacity-60' : ''}`}
+      onClick={() => selectionMode ? onMultiSelect(memo.id) : onSelect(memo.id)}
+    >
+      {/* Checkbox or selection checkbox */}
+      {selectionMode ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); onMultiSelect(memo.id); }}
+          className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+            isMultiSelected
+              ? 'border-blue-500 bg-blue-500 text-white'
+              : isDark ? 'border-slate-500' : 'border-slate-300'
+          }`}
+        >
+          {isMultiSelected && <CheckCircle2 size={12} />}
+        </button>
+      ) : (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggle(memo.id); }}
+          className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+            memo.is_done
+              ? 'border-green-500 bg-green-500 text-white'
+              : isDark ? 'border-slate-500 hover:border-slate-400' : 'border-slate-300 hover:border-slate-400'
+          }`}
+          aria-label={memo.is_done ? 'Marquer comme non fait' : 'Marquer comme fait'}
+        >
+          {memo.is_done && <CheckCircle2 size={12} />}
+        </button>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm leading-snug ${memo.is_done ? 'line-through' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          {priority && <span className="mr-1.5" title={`Priorité ${priority.label}`}>{priority.dot}</span>}
+          {memo.recurrence && <span className="mr-1" title="Récurrent">🔄</span>}
+          {memo.text}
+        </p>
+        {/* Tags row */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          {memo.due_date && (
+            <span className={`inline-flex items-center gap-1 text-xs ${dateColor}`}>
+              <Calendar size={10} />
+              {formatDateFR(memo.due_date)}
+              {memo.due_time && <span>à {formatTimeFR(memo.due_time)}</span>}
+            </span>
+          )}
+          {category && (
+            <span
+              className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+              style={{ backgroundColor: category.color + '18', color: category.color }}
+            >
+              <Tag size={9} />
+              {category.label}
+            </span>
+          )}
+          {chantier && (
+            <span
+              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              onClick={(e) => { e.stopPropagation(); setPage?.('chantiers'); }}
+              title={chantier.nom}
+            >
+              <Building2 size={10} />
+              {chantier.nom}
+            </span>
+          )}
+          {client && (
+            <span
+              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              onClick={(e) => { e.stopPropagation(); setPage?.('clients'); }}
+              title={client.nom}
+            >
+              <Users size={10} />
+              {client.nom || ''}
+            </span>
+          )}
+          {stTotal > 0 && (
+            <span className={`inline-flex items-center gap-1 text-xs font-medium ${stDone === stTotal ? 'text-green-500' : 'text-amber-500'}`}>
+              <CheckSquare size={10} />
+              {stDone}/{stTotal}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Quick actions (hover) */}
+      {!selectionMode && (
+        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity">
+          <button
+            onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
+            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            title="Mettre à aujourd'hui"
+          >📅</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
+            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            title="Priorité haute"
+          >🔴</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
+            className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            title="Supprimer"
+          >🗑️</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// SubtaskList — Subtasks within detail panel
+// ════════════════════════════════════════════════════════
+function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
+  const [newText, setNewText] = useState('');
+  const tc = {
+    muted: isDark ? 'text-slate-400' : 'text-slate-500',
+    input: isDark ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-slate-900 border-slate-300',
+  };
+
+  const done = subtasks.filter(s => s.done).length;
+  const total = subtasks.length;
+  const progress = total > 0 ? (done / total) * 100 : 0;
+
+  const addSubtask = () => {
+    if (!newText.trim()) return;
+    const newSt = { id: `st_${Date.now()}_${Math.random().toString(36).slice(2,6)}`, text: newText.trim(), done: false };
+    onUpdate([...subtasks, newSt]);
+    setNewText('');
+  };
+
+  const toggleSubtask = (id) => {
+    onUpdate(subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s));
+  };
+
+  const deleteSubtask = (id) => {
+    onUpdate(subtasks.filter(s => s.id !== id));
+  };
+
+  // Sort: unchecked first, then checked
+  const sorted = [...subtasks].sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className={`text-xs font-medium ${tc.muted}`}>
+          Sous-tâches {total > 0 && <span className="font-normal">({done}/{total})</span>}
+        </label>
+      </div>
+
+      {/* Mini progress bar */}
+      {total > 0 && (
+        <div className={`h-1 rounded-full mb-2 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${progress}%`, backgroundColor: done === total ? '#22c55e' : couleur }}
+          />
+        </div>
+      )}
+
+      {/* Subtask list */}
+      <div className="space-y-1 mb-2">
+        {sorted.map(st => (
+          <div key={st.id} className="group flex items-center gap-2 py-1">
+            <button
+              onClick={() => toggleSubtask(st.id)}
+              className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                st.done
+                  ? 'border-green-500 bg-green-500 text-white'
+                  : isDark ? 'border-slate-500' : 'border-slate-300'
+              }`}
+            >
+              {st.done && <CheckCircle2 size={10} />}
+            </button>
+            <span className={`text-sm flex-1 ${st.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {st.text}
+            </span>
+            <button
+              onClick={() => deleteSubtask(st.id)}
+              className={`opacity-0 group-hover:opacity-100 p-0.5 rounded text-red-400 hover:text-red-500 transition-opacity`}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add subtask input */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtask(); } }}
+          placeholder="Ajouter une sous-tâche..."
+          className={`flex-1 px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 ${tc.input}`}
+          style={{ '--tw-ring-color': couleur }}
+        />
+        <button
+          onClick={addSubtask}
+          disabled={!newText.trim()}
+          className="px-2 py-1.5 rounded-lg text-xs text-white disabled:opacity-40"
+          style={{ backgroundColor: couleur }}
+        >
+          <Plus size={12} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// MemoDetail — Slide-in detail panel
+// ════════════════════════════════════════════════════════
+function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, couleur, isDark, addMemo }) {
+  const [text, setText] = useState(memo.text || '');
+  const [notes, setNotes] = useState(memo.notes || '');
+  const debouncedText = useDebounce(text, 500);
+  const debouncedNotes = useDebounce(notes, 500);
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
+  const isFirstRender = useRef(true);
+
+  // Sync local state when memo changes
+  useEffect(() => {
+    setText(memo.text || '');
+    setNotes(memo.notes || '');
+    isFirstRender.current = true;
+  }, [memo.id]);
+
+  // Auto-save text
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (debouncedText !== memo.text) {
+      onUpdate(memo.id, { text: debouncedText });
+    }
+  }, [debouncedText]);
+
+  // Auto-save notes
+  useEffect(() => {
+    if (debouncedNotes !== (memo.notes || '')) {
+      onUpdate(memo.id, { notes: debouncedNotes });
+    }
+  }, [debouncedNotes]);
+
+  const handleImmediateUpdate = (field, value) => {
+    onUpdate(memo.id, { [field]: value || null });
+  };
+
+  const handleSubtasksUpdate = (newSubtasks) => {
+    onUpdate(memo.id, { subtasks: newSubtasks });
+  };
+
+  const handleRecurrenceChange = (type) => {
+    if (!type) {
+      onUpdate(memo.id, { recurrence: null });
+    } else if (type === 'custom') {
+      onUpdate(memo.id, { recurrence: { type: 'custom', interval: 1, unit: 'day' } });
+    } else {
+      onUpdate(memo.id, { recurrence: { type } });
+    }
+  };
+
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Supprimer ce mémo ?',
+      message: `"${memo.text?.substring(0, 50)}${memo.text?.length > 50 ? '...' : ''}"`,
+      confirmText: 'Supprimer',
+      confirmColor: '#ef4444',
+    });
+    if (ok) {
+      onDelete(memo.id);
+      onClose();
+      showToast('Mémo supprimé', 'success');
+    }
+  };
+
+  const recType = memo.recurrence?.type || memo.recurrence || '';
+  const recInterval = memo.recurrence?.interval || 1;
+  const recUnit = memo.recurrence?.unit || 'day';
+
+  const tc = {
+    bg: isDark ? 'bg-slate-800' : 'bg-white',
+    text: isDark ? 'text-white' : 'text-slate-900',
+    muted: isDark ? 'text-slate-400' : 'text-slate-500',
+    border: isDark ? 'border-slate-700' : 'border-slate-200',
+    input: isDark ? 'bg-slate-700 text-white border-slate-600' : 'bg-white text-slate-900 border-slate-300',
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={onClose} />
+
+      {/* Panel */}
+      <div
+        className={`fixed top-0 right-0 h-full w-full md:max-w-md ${tc.bg} shadow-2xl z-50 flex flex-col animate-slide-in-right`}
+      >
+        {/* Header */}
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${tc.border}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <ChevronLeft size={20} className={tc.muted} />
+          </button>
+          <h2 className={`font-semibold ${tc.text}`}>Détail du mémo</h2>
+          <button
+            onClick={handleDelete}
+            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+            aria-label="Supprimer le mémo"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Text */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Texte</label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={3}
+              className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+              placeholder="Contenu du mémo..."
+            />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+              placeholder="Détails, liens, références..."
+            />
+          </div>
+
+          {/* Subtasks */}
+          <SubtaskList
+            subtasks={memo.subtasks || []}
+            onUpdate={handleSubtasksUpdate}
+            couleur={couleur}
+            isDark={isDark}
+          />
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Date</label>
+              <input
+                type="date"
+                value={memo.due_date || ''}
+                onChange={(e) => handleImmediateUpdate('due_date', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+                style={{ '--tw-ring-color': couleur }}
+              />
+            </div>
+            <div>
+              <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Heure</label>
+              <input
+                type="time"
+                value={memo.due_time || ''}
+                onChange={(e) => handleImmediateUpdate('due_time', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+                style={{ '--tw-ring-color': couleur }}
+              />
+            </div>
+          </div>
+
+          {/* Recurrence */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Récurrence</label>
+            <select
+              value={recType}
+              onChange={(e) => handleRecurrenceChange(e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              {RECURRENCE_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            {recType === 'custom' && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="number"
+                  min={1}
+                  value={recInterval}
+                  onChange={(e) => onUpdate(memo.id, { recurrence: { ...memo.recurrence, type: 'custom', interval: parseInt(e.target.value) || 1 } })}
+                  className={`w-20 px-2 py-1.5 rounded-lg border text-xs ${tc.input}`}
+                />
+                <select
+                  value={recUnit}
+                  onChange={(e) => onUpdate(memo.id, { recurrence: { ...memo.recurrence, type: 'custom', unit: e.target.value } })}
+                  className={`flex-1 px-2 py-1.5 rounded-lg border text-xs ${tc.input}`}
+                >
+                  <option value="day">jour(s)</option>
+                  <option value="week">semaine(s)</option>
+                  <option value="month">mois</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Priorité</label>
+            <select
+              value={memo.priority || ''}
+              onChange={(e) => handleImmediateUpdate('priority', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Aucune</option>
+              {PRIORITIES.map(p => (
+                <option key={p.value} value={p.value}>{p.dot} {p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Catégorie</label>
+            <select
+              value={memo.category || ''}
+              onChange={(e) => handleImmediateUpdate('category', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Aucune</option>
+              {CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Chantier link */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Chantier</label>
+            <select
+              value={memo.chantier_id || ''}
+              onChange={(e) => handleImmediateUpdate('chantier_id', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Aucun</option>
+              {chantiers.map(ch => (
+                <option key={ch.id} value={ch.id}>{ch.nom}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Client link */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Client</label>
+            <select
+              value={memo.client_id || ''}
+              onChange={(e) => handleImmediateUpdate('client_id', e.target.value)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Aucun</option>
+              {clients.map(cl => (
+                <option key={cl.id} value={cl.id}>{cl.nom} {cl.prenom || ''}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Meta info */}
+          <div className={`text-xs ${tc.muted} pt-2 border-t ${tc.border}`}>
+            <p>Créé le {memo.created_at ? new Date(memo.created_at).toLocaleDateString('fr-FR') : '—'}</p>
+            {memo.done_at && <p>Terminé le {new Date(memo.done_at).toLocaleDateString('fr-FR')}</p>}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// StatsBar — Mini statistics widget
+// ════════════════════════════════════════════════════════
+function StatsBar({ memos, isDark, couleur }) {
+  const stats = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+    weekStart.setHours(0, 0, 0, 0);
+
+    const completedThisWeek = memos.filter(m =>
+      m.is_done && m.done_at && new Date(m.done_at) >= weekStart
+    ).length;
+
+    const total = memos.length;
+    const completed = memos.filter(m => m.is_done).length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < today()).length;
+
+    // Streak: consecutive days with at least 1 completion
+    let streak = 0;
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    while (true) {
+      const dayStr = d.toISOString().split('T')[0];
+      const hasCompletion = memos.some(m =>
+        m.is_done && m.done_at && m.done_at.startsWith(dayStr)
+      );
+      if (!hasCompletion) break;
+      streak++;
+      d.setDate(d.getDate() - 1);
+    }
+
+    return { completedThisWeek, completionRate, overdueCount, streak };
+  }, [memos]);
+
+  const cards = [
+    { value: stats.completedThisWeek, label: 'Cette semaine', bg: isDark ? 'bg-orange-900/30' : 'bg-orange-50', color: 'text-orange-600' },
+    { value: `${stats.completionRate}%`, label: 'Complétion', bg: isDark ? 'bg-green-900/30' : 'bg-green-50', color: 'text-green-600' },
+    { value: stats.overdueCount, label: 'En retard', bg: isDark ? 'bg-red-900/30' : 'bg-red-50', color: 'text-red-600' },
+    { value: `${stats.streak} 🔥`, label: 'Série', bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', color: 'text-blue-600' },
+  ];
+
+  return (
+    <div className="grid grid-cols-4 gap-2 mb-4">
+      {cards.map((c, i) => (
+        <div key={i} className={`${c.bg} rounded-lg px-3 py-2 text-center`}>
+          <div className={`text-lg font-bold ${c.color}`}>{c.value}</div>
+          <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{c.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// BulkActionBar — Floating bar for multi-selection
+// ════════════════════════════════════════════════════════
+function BulkActionBar({ count, onDate, onCategory, onPriority, onComplete, onDelete, onCancel, isDark, couleur }) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+
+  return (
+    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-full px-6 py-3 flex items-center gap-3 shadow-xl z-40">
+      <span className="text-sm font-medium">{count} sélectionné{count > 1 ? 's' : ''}</span>
+      <div className="w-px h-5 bg-gray-600" />
+
+      {/* Date */}
+      <div className="relative">
+        <button onClick={() => setShowDatePicker(!showDatePicker)} className="text-sm hover:text-amber-300 transition-colors" title="Date">📅</button>
+        {showDatePicker && (
+          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
+            <button onClick={() => { onDate(today()); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Aujourd'hui</button>
+            <button onClick={() => { const d = new Date(); d.setDate(d.getDate()+1); onDate(d.toISOString().split('T')[0]); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">Demain</button>
+            <button onClick={() => { onDate(''); setShowDatePicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700 text-red-400">Retirer date</button>
+          </div>
+        )}
+      </div>
+
+      {/* Category */}
+      <div className="relative">
+        <button onClick={() => setShowCategoryPicker(!showCategoryPicker)} className="text-sm hover:text-purple-300 transition-colors" title="Catégorie">🏷️</button>
+        {showCategoryPicker && (
+          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
+            {CATEGORIES.map(c => (
+              <button key={c.value} onClick={() => { onCategory(c.value); setShowCategoryPicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">{c.label}</button>
+            ))}
+            <button onClick={() => { onCategory(''); setShowCategoryPicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700 text-red-400">Aucune</button>
+          </div>
+        )}
+      </div>
+
+      {/* Priority */}
+      <div className="relative">
+        <button onClick={() => setShowPriorityPicker(!showPriorityPicker)} className="text-sm hover:text-yellow-300 transition-colors" title="Priorité">⚡</button>
+        {showPriorityPicker && (
+          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-lg p-2 shadow-lg min-w-[120px]">
+            {PRIORITIES.map(p => (
+              <button key={p.value} onClick={() => { onPriority(p.value); setShowPriorityPicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700">{p.dot} {p.label}</button>
+            ))}
+            <button onClick={() => { onPriority(''); setShowPriorityPicker(false); }} className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-gray-700 text-red-400">Aucune</button>
+          </div>
+        )}
+      </div>
+
+      <button onClick={onComplete} className="text-sm hover:text-green-300 transition-colors" title="Terminer">✅</button>
+      <button onClick={onDelete} className="text-sm text-red-400 hover:text-red-300 transition-colors" title="Supprimer">🗑️</button>
+      <div className="w-px h-5 bg-gray-600" />
+      <button onClick={onCancel} className="text-sm hover:text-gray-300 transition-colors"><X size={14} /></button>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+// MemosPage — Main page component
+// ════════════════════════════════════════════════════════
+export default function MemosPage({
+  memos = [],
+  addMemo,
+  updateMemo,
+  deleteMemo,
+  toggleMemo,
+  chantiers = [],
+  clients = [],
+  setPage,
+  couleur = '#f97316',
+  isDark = false,
+}) {
+  const [activeTab, setActiveTab] = useState('inbox');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [selectedMemoId, setSelectedMemoId] = useState(null);
+  const [newMemoText, setNewMemoText] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({ done: true });
+  const [sortBy, setSortBy] = useState('recent');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const inputRef = useRef(null);
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
+
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Theme
+  const tc = {
+    bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
+    card: isDark ? 'bg-slate-800' : 'bg-white',
+    text: isDark ? 'text-white' : 'text-slate-900',
+    muted: isDark ? 'text-slate-400' : 'text-slate-500',
+    border: isDark ? 'border-slate-700' : 'border-slate-200',
+    input: isDark ? 'bg-slate-700 text-white placeholder-slate-400 border-slate-600' : 'bg-white text-slate-900 placeholder-slate-400 border-slate-300',
+  };
+
+  // ── Handle recurring memo completion ──
+  const handleToggle = useCallback((id) => {
+    const memo = memos.find(m => m.id === id);
+    if (memo && !memo.is_done && memo.recurrence) {
+      // Completing a recurring memo → create next occurrence
+      const nextDate = getNextOccurrence(memo.due_date || today(), memo.recurrence);
+      if (nextDate) {
+        addMemo({
+          text: memo.text,
+          notes: memo.notes,
+          priority: memo.priority,
+          due_date: nextDate,
+          due_time: memo.due_time,
+          category: memo.category,
+          chantier_id: memo.chantier_id,
+          client_id: memo.client_id,
+          recurrence: memo.recurrence,
+          subtasks: (memo.subtasks || []).map(s => ({ ...s, done: false })),
+        });
+        showToast('Prochaine occurrence créée', 'info');
+      }
+    }
+    toggleMemo(id);
+  }, [memos, toggleMemo, addMemo, showToast]);
+
+  // ── Quick capture ──
+  const handleQuickAdd = useCallback(async () => {
+    const trimmed = newMemoText.trim();
+    if (!trimmed) return;
+    await addMemo({ text: trimmed });
+    setNewMemoText('');
+    showToast('Mémo ajouté', 'success');
+    inputRef.current?.focus();
+  }, [newMemoText, addMemo, showToast]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleQuickAdd();
+    }
+  };
+
+  // ── Quick actions ──
+  const handleQuickDate = (id) => {
+    updateMemo(id, { due_date: today() });
+    showToast('Date mise à aujourd\'hui', 'success');
+  };
+
+  const handleQuickPriority = (id) => {
+    const memo = memos.find(m => m.id === id);
+    const newPriority = memo?.priority === 'haute' ? null : 'haute';
+    updateMemo(id, { priority: newPriority });
+  };
+
+  const handleQuickDelete = async (id) => {
+    const memo = memos.find(m => m.id === id);
+    const ok = await confirm({
+      title: 'Supprimer ce mémo ?',
+      message: `"${memo?.text?.substring(0, 50)}${memo?.text?.length > 50 ? '...' : ''}"`,
+      confirmText: 'Supprimer',
+      confirmColor: '#ef4444',
+    });
+    if (ok) {
+      deleteMemo(id);
+      showToast('Mémo supprimé', 'success');
+    }
+  };
+
+  // ── Multi-select ──
+  const toggleMultiSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDate = (date) => {
+    selectedIds.forEach(id => updateMemo(id, { due_date: date || null }));
+    showToast(`Date mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+  const handleBulkCategory = (cat) => {
+    selectedIds.forEach(id => updateMemo(id, { category: cat || null }));
+    showToast(`Catégorie mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+  const handleBulkPriority = (p) => {
+    selectedIds.forEach(id => updateMemo(id, { priority: p || null }));
+    showToast(`Priorité mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+  const handleBulkComplete = () => {
+    selectedIds.forEach(id => handleToggle(id));
+    showToast(`${selectedIds.size} mémo(s) terminé(s)`, 'success');
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+  const handleBulkDelete = async () => {
+    const ok = await confirm({
+      title: 'Supprimer les mémos ?',
+      message: `${selectedIds.size} mémo(s) seront supprimés.`,
+      confirmText: 'Supprimer',
+      confirmColor: '#ef4444',
+    });
+    if (ok) {
+      selectedIds.forEach(id => deleteMemo(id));
+      showToast(`${selectedIds.size} mémo(s) supprimé(s)`, 'success');
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    }
+  };
+
+  // ── Drag & drop for "Non triés" section ──
+  const handleDragStart = (e, memoId) => {
+    e.dataTransfer.setData('memoId', memoId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+  const handleDragLeave = () => setDragOverIndex(null);
+  const handleDrop = (e, targetMemoId) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    const sourceMemoId = e.dataTransfer.getData('memoId');
+    if (sourceMemoId === targetMemoId) return;
+
+    const undated = memos.filter(m => !m.is_done && !m.due_date);
+    const sourceIdx = undated.findIndex(m => m.id === sourceMemoId);
+    const targetIdx = undated.findIndex(m => m.id === targetMemoId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+
+    // Reorder
+    const reordered = [...undated];
+    const [moved] = reordered.splice(sourceIdx, 1);
+    reordered.splice(targetIdx, 0, moved);
+
+    // Update sort_order
+    reordered.forEach((m, i) => {
+      updateMemo(m.id, { sort_order: i, position: i });
+    });
+  };
+
+  // ── Filtering + search (enhanced: text, notes, client, chantier) ──
+  const filteredMemos = useMemo(() => {
+    let list = [...memos];
+
+    // Search filter
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
+      list = list.filter(m => {
+        const chantierName = m.chantier_id ? (chantiers.find(c => c.id === m.chantier_id)?.nom || '').toLowerCase() : '';
+        const clientName = m.client_id ? (clients.find(c => c.id === m.client_id)?.nom || '').toLowerCase() : '';
+        return (
+          (m.text || '').toLowerCase().includes(q) ||
+          (m.notes || '').toLowerCase().includes(q) ||
+          (m.category || '').toLowerCase().includes(q) ||
+          chantierName.includes(q) ||
+          clientName.includes(q)
+        );
+      });
+    }
+
+    // Category filter
+    if (filterCategory) {
+      list = list.filter(m => m.category === filterCategory);
+    }
+
+    // Priority filter
+    if (filterPriority) {
+      list = list.filter(m => m.priority === filterPriority);
+    }
+
+    return list;
+  }, [memos, debouncedSearch, filterCategory, filterPriority, chantiers, clients]);
+
+  // ── Sorting ──
+  const sortMemos = useCallback((list) => {
+    const sorted = [...list];
+    switch (sortBy) {
+      case 'oldest':
+        sorted.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        break;
+      case 'priority':
+        sorted.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
+        break;
+      case 'alpha':
+        sorted.sort((a, b) => (a.text || '').localeCompare(b.text || '', 'fr'));
+        break;
+      case 'recent':
+      default:
+        sorted.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+        break;
+    }
+    return sorted;
+  }, [sortBy]);
+
+  // ── Tab-specific views ──
+  const inboxSections = useMemo(() => {
+    const active = filteredMemos.filter(m => !m.is_done);
+    const done = filteredMemos.filter(m => m.is_done);
+
+    const overdue = sortMemos(active.filter(isOverdue));
+    const todayMemos = sortMemos(active.filter(isToday));
+    const future = sortMemos(active.filter(isFuture));
+    const undated = active.filter(isUndated).sort((a, b) => (a.sort_order || a.position || 0) - (b.sort_order || b.position || 0));
+
+    return { overdue, today: todayMemos, future, undated, done: sortMemos(done) };
+  }, [filteredMemos, sortMemos]);
+
+  const todayViewMemos = useMemo(() => {
+    return sortMemos(
+      filteredMemos.filter(m => !m.is_done && m.due_date && m.due_date <= today())
+    );
+  }, [filteredMemos, sortMemos]);
+
+  // Toggle section collapse
+  const toggleSection = (key) => {
+    setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const selectedMemo = memos.find(m => m.id === selectedMemoId);
+
+  // Stats
+  const activeCount = memos.filter(m => !m.is_done).length;
+  const overdueCount = memos.filter(isOverdue).length;
+
+  const tabs = [
+    { id: 'inbox', label: 'Inbox', count: activeCount },
+    { id: 'today', label: "Aujourd'hui" },
+    { id: 'calendar', label: 'Calendrier' },
+  ];
+
+  // Section renderer
+  const renderSection = (title, items, key, color, icon, draggable = false) => {
+    if (items.length === 0) return null;
+    const isCollapsed = collapsedSections[key];
+    const Icon = icon;
+
+    return (
+      <div key={key} className="mb-3">
+        <button
+          onClick={() => toggleSection(key)}
+          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide ${
+            isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
+          }`}
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+          {Icon && <Icon size={13} style={{ color }} />}
+          <span style={{ color }}>{title}</span>
+          <span className={`ml-auto text-xs font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {items.length}
+          </span>
+        </button>
+        {!isCollapsed && (
+          <div className="space-y-0.5 mt-1">
+            {items.map((m, idx) => (
+              <div
+                key={m.id}
+                draggable={draggable}
+                onDragStart={draggable ? (e) => handleDragStart(e, m.id) : undefined}
+                onDragOver={draggable ? (e) => handleDragOver(e, idx) : undefined}
+                onDragLeave={draggable ? handleDragLeave : undefined}
+                onDrop={draggable ? (e) => handleDrop(e, m.id) : undefined}
+              >
+                {draggable && dragOverIndex === idx && (
+                  <div className="h-0.5 bg-blue-500 rounded-full mx-3 my-0.5" />
+                )}
+                <div className={`flex items-start ${draggable ? 'gap-1' : ''}`}>
+                  {draggable && (
+                    <div className={`mt-3 cursor-grab flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
+                      <GripVertical size={14} />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <MemoItem
+                      memo={m}
+                      onToggle={handleToggle}
+                      onSelect={setSelectedMemoId}
+                      isSelected={selectedMemoId === m.id}
+                      chantiers={chantiers}
+                      clients={clients}
+                      couleur={couleur}
+                      isDark={isDark}
+                      onQuickDate={handleQuickDate}
+                      onQuickPriority={handleQuickPriority}
+                      onQuickDelete={handleQuickDelete}
+                      setPage={setPage}
+                      selectionMode={selectionMode}
+                      isMultiSelected={selectedIds.has(m.id)}
+                      onMultiSelect={toggleMultiSelect}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const hasActiveFilters = filterCategory || filterPriority;
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* CSS for slide-in animation */}
+      <style>{`
+        @keyframes slide-in-right {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slide-in-right 0.25s ease-out;
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className={`text-2xl font-bold ${tc.text}`}>Mémos</h1>
+        <p className={`text-sm mt-1 ${tc.muted}`}>
+          {activeCount > 0
+            ? `${activeCount} mémo${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''}${overdueCount > 0 ? ` · ${overdueCount} en retard` : ''}`
+            : 'Aucun mémo actif'}
+        </p>
+      </div>
+
+      {/* Stats bar */}
+      <StatsBar memos={memos} isDark={isDark} couleur={couleur} />
+
+      {/* Quick capture */}
+      <div className={`${tc.card} rounded-xl border ${tc.border} p-3 mb-4 flex items-center gap-3`}>
+        <div className="flex-shrink-0">
+          <Plus size={18} style={{ color: couleur }} />
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={newMemoText}
+          onChange={(e) => setNewMemoText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Nouveau mémo... (Entrée pour ajouter)"
+          className={`flex-1 bg-transparent border-none outline-none text-sm ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+        />
+        {newMemoText && (
+          <button
+            onClick={handleQuickAdd}
+            className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
+            style={{ backgroundColor: couleur }}
+          >
+            Ajouter
+          </button>
+        )}
+      </div>
+
+      {/* Tabs + search + filters */}
+      <div className={`${tc.card} rounded-xl border ${tc.border} overflow-hidden`}>
+        {/* Tab bar */}
+        <div className={`flex items-center gap-1 px-3 pt-3 pb-2 border-b ${tc.border}`}>
+          <div className="flex gap-1 flex-1">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'text-white'
+                    : isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                style={activeTab === tab.id ? { backgroundColor: couleur } : {}}
+              >
+                {tab.label}
+                {tab.count > 0 && activeTab !== tab.id && (
+                  <span className={`ml-1.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-1">
+            {/* Selection mode toggle */}
+            <button
+              onClick={() => { setSelectionMode(!selectionMode); setSelectedIds(new Set()); }}
+              className={`p-1.5 rounded-lg transition-colors ${
+                selectionMode
+                  ? 'text-white'
+                  : isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+              style={selectionMode ? { backgroundColor: couleur } : {}}
+              title="Mode sélection"
+            >
+              <CheckSquare size={15} />
+            </button>
+
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className={`text-xs px-2 py-1.5 rounded-lg border ${tc.input} cursor-pointer`}
+              title="Trier par"
+            >
+              {SORT_OPTIONS.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+
+            {/* Filter toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-1.5 rounded-lg transition-colors ${
+                hasActiveFilters
+                  ? 'text-white'
+                  : isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+              style={hasActiveFilters ? { backgroundColor: couleur } : {}}
+              title="Filtres"
+            >
+              <Filter size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Filters row */}
+        {showFilters && (
+          <div className={`flex flex-wrap items-center gap-2 px-3 py-2 border-b ${tc.border}`}>
+            <div className="relative flex-1 min-w-[180px]">
+              <Search size={14} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${tc.muted}`} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher (texte, notes, client, chantier)..."
+                className={`w-full pl-8 pr-8 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 ${tc.input}`}
+                style={{ '--tw-ring-color': couleur }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 ${tc.muted}`}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className={`px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Catégorie</option>
+              {CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className={`px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-2 ${tc.input}`}
+              style={{ '--tw-ring-color': couleur }}
+            >
+              <option value="">Priorité</option>
+              {PRIORITIES.map(p => (
+                <option key={p.value} value={p.value}>{p.dot} {p.label}</option>
+              ))}
+            </select>
+            {hasActiveFilters && (
+              <button
+                onClick={() => { setFilterCategory(''); setFilterPriority(''); setSearchQuery(''); }}
+                className="text-xs px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="p-3 min-h-[300px]">
+          {activeTab === 'inbox' && (
+            <>
+              {renderSection('En retard', inboxSections.overdue, 'overdue', '#ef4444', AlertCircle)}
+              {renderSection("Aujourd'hui", inboxSections.today, 'today', '#f59e0b', Clock)}
+              {renderSection('Prochainement', inboxSections.future, 'future', '#3b82f6', Calendar)}
+              {renderSection('Non triés', inboxSections.undated, 'undated', isDark ? '#94a3b8' : '#64748b', StickyNote, true)}
+              {renderSection('Terminés', inboxSections.done, 'done', '#22c55e', CheckCircle2)}
+
+              {filteredMemos.length === 0 && (
+                <div className={`text-center py-12 ${tc.muted}`}>
+                  <ClipboardList size={40} className="mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Aucun mémo</p>
+                  <p className="text-xs mt-1">Tapez ci-dessus pour créer votre premier mémo</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'today' && (
+            <>
+              {todayViewMemos.length > 0 ? (
+                <div className="space-y-0.5">
+                  {todayViewMemos.map(m => (
+                    <MemoItem
+                      key={m.id}
+                      memo={m}
+                      onToggle={handleToggle}
+                      onSelect={setSelectedMemoId}
+                      isSelected={selectedMemoId === m.id}
+                      chantiers={chantiers}
+                      clients={clients}
+                      couleur={couleur}
+                      isDark={isDark}
+                      onQuickDate={handleQuickDate}
+                      onQuickPriority={handleQuickPriority}
+                      onQuickDelete={handleQuickDelete}
+                      setPage={setPage}
+                      selectionMode={selectionMode}
+                      isMultiSelected={selectedIds.has(m.id)}
+                      onMultiSelect={toggleMultiSelect}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className={`text-center py-12 ${tc.muted}`}>
+                  <span className="text-4xl block mb-3">🎉</span>
+                  <p className="font-medium">Rien de prévu !</p>
+                  <p className="text-xs mt-1">Aucun mémo pour aujourd'hui</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'calendar' && (
+            <MemoCalendarView
+              memos={filteredMemos}
+              onSelectMemo={setSelectedMemoId}
+              selectedMemoId={selectedMemoId}
+              toggleMemo={handleToggle}
+              addMemo={addMemo}
+              chantiers={chantiers}
+              clients={clients}
+              couleur={couleur}
+              isDark={isDark}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Bulk action bar */}
+      {selectionMode && selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onDate={handleBulkDate}
+          onCategory={handleBulkCategory}
+          onPriority={handleBulkPriority}
+          onComplete={handleBulkComplete}
+          onDelete={handleBulkDelete}
+          onCancel={() => { setSelectionMode(false); setSelectedIds(new Set()); }}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {/* Detail panel */}
+      {selectedMemo && !selectionMode && (
+        <MemoDetail
+          memo={selectedMemo}
+          onUpdate={updateMemo}
+          onDelete={deleteMemo}
+          onClose={() => setSelectedMemoId(null)}
+          chantiers={chantiers}
+          clients={clients}
+          couleur={couleur}
+          isDark={isDark}
+          addMemo={addMemo}
+        />
+      )}
+    </div>
+  );
+}

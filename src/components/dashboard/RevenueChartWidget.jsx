@@ -262,10 +262,12 @@ export default function RevenueChartWidget({ setPage, isDark = false, className 
     const currentMonthData = months[months.length - 1];
     const previousMonthData = months[months.length - 2];
     const total6Months = months.reduce((sum, m) => sum + m.revenue, 0);
-    const average = total6Months / 6;
+    // Average only months with actual activity (exclude zero months)
+    const activeMonths = months.filter(m => m.revenue > 0);
+    const average = activeMonths.length > 0 ? total6Months / activeMonths.length : 0;
 
-    // Goal (estimation based on average + 10%)
-    const monthlyGoal = average * 1.1 || 10000;
+    // Goal (estimation based on average + 10%), plancher minimum 500€
+    const monthlyGoal = Math.max(average * 1.1, activeMonths.length > 0 ? 500 : 0) || 0;
 
     let trend = null;
     if (previousMonthData?.revenue > 0) {

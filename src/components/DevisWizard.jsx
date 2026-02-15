@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle } from 'lucide-react';
+import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
 import { generateId } from '../lib/utils';
+import useConfirm from '../hooks/useConfirm';
 
 // Draft localStorage key
 const DRAFT_KEY = 'chantierpro_devis_draft';
@@ -25,6 +27,7 @@ export default function DevisWizard({
   isDark = false,
   couleur = '#f97316'
 }) {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     type: 'devis',
@@ -217,12 +220,14 @@ export default function DevisWizard({
     }));
   };
 
-  const removeLigne = (id) => {
-    if (!window.confirm('Supprimer cette ligne ?')) return;
+  const removeLigne = async (id) => {
+    if (!await confirm('Supprimer cette ligne ?')) return;
     setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
   };
 
-  const handleSubmit = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     // Validate
     const newErrors = {};
     if (!form.clientId) {
@@ -231,12 +236,19 @@ export default function DevisWizard({
     if (form.lignes.length === 0) {
       newErrors.lignes = 'Ajoutez au moins un article';
     } else {
-      // Validate each line item
-      const invalidLines = form.lignes.filter(l =>
-        !l.description?.trim() || !(parseFloat(l.quantite) > 0) || !(parseFloat(l.prixUnitaire) > 0)
-      );
-      if (invalidLines.length > 0) {
-        newErrors.lignes = `${invalidLines.length} ligne(s) incomplète(s) : description, quantité et prix requis`;
+      // Validate each line item — build specific error messages
+      const lineErrors = [];
+      form.lignes.forEach((l, i) => {
+        const missing = [];
+        if (!l.description?.trim()) missing.push('la description');
+        if (!(parseFloat(l.quantite) > 0)) missing.push('la quantité');
+        if (!(parseFloat(l.prixUnitaire) > 0)) missing.push('le prix');
+        if (missing.length > 0) {
+          lineErrors.push(`Ligne ${i + 1} : ${missing.join(', ')} manquant${missing.length > 1 ? 's' : ''}`);
+        }
+      });
+      if (lineErrors.length > 0) {
+        newErrors.lignes = lineErrors.join(' · ');
       }
     }
 
@@ -248,11 +260,16 @@ export default function DevisWizard({
       return;
     }
 
-    // Transform lignes to expected format
+    // Transform lignes to expected format — ensure positive values
     const lignesFormatted = form.lignes.map(l => ({
       ...l,
-      montant: (l.quantite || 1) * (l.prixUnitaire || 0)
+      quantite: Math.max(1, Math.abs(l.quantite || 1)),
+      prixUnitaire: Math.abs(l.prixUnitaire || 0),
+      montant: Math.abs(l.quantite || 1) * Math.abs(l.prixUnitaire || 0)
     }));
+
+    // Round all monetary values to 2 decimals to prevent floating-point issues
+    const roundEuro = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
 
     const devisData = {
       type: form.type,
@@ -265,16 +282,24 @@ export default function DevisWizard({
       lignes: lignesFormatted,
       remise: form.remise,
       notes: form.notes,
-      total_ht: totals.htApresRemise,
-      tva: totals.tvaApresRemise,
-      total_ttc: totals.totalTTC
+      total_ht: roundEuro(totals.htApresRemise),
+      tva: roundEuro(totals.tvaApresRemise),
+      total_ttc: roundEuro(totals.totalTTC)
     };
 
-    // Clear draft on successful submit
-    clearDraft();
-
-    onSubmit?.(devisData);
-    onClose?.();
+    // Attempt save — do NOT close modal if save fails
+    setIsSubmitting(true);
+    try {
+      const result = await onSubmit?.(devisData);
+      // Only clear draft and close if save succeeded
+      clearDraft();
+      onClose?.();
+    } catch (error) {
+      console.error('❌ Erreur création devis:', error);
+      setErrors({ submit: `Erreur de sauvegarde : ${error.message || 'Erreur inconnue'}` });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectedClient = clients.find(c => c.id === form.clientId);
@@ -522,7 +547,11 @@ export default function DevisWizard({
                 </div>
                 <div className="text-left">
                   <p className={`font-medium ${textPrimary}`}>Ajouter depuis le catalogue</p>
-                  <p className={`text-xs ${textMuted}`}>{catalogue.length} articles disponibles</p>
+                  <p className={`text-xs ${catalogue.length === 0 ? 'text-amber-500 font-medium' : textMuted}`}>
+                    {catalogue.length === 0
+                      ? '⚠ Ajoutez des articles dans le Catalogue d\'abord'
+                      : `${catalogue.length} articles disponibles`}
+                  </p>
                 </div>
               </button>
 
@@ -556,7 +585,7 @@ export default function DevisWizard({
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                   <div className="flex justify-between items-center">
                     <span className={textSecondary}>Total HT</span>
-                    <span className={`text-xl font-bold ${textPrimary}`}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR</span>
+                    <span className={`text-xl font-bold ${textPrimary}`}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
                 </div>
               )}
@@ -580,7 +609,7 @@ export default function DevisWizard({
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                   <p className={`text-sm ${textMuted} mb-1`}>Client</p>
                   <p className={`font-medium ${textPrimary}`}>{selectedClient.nom} {selectedClient.prenom}</p>
-                  {selectedClient.adresse && <p className={`text-sm ${textSecondary}`}>{selectedClient.adresse}</p>}
+                  {selectedClient.adresse && <p className={`text-sm ${textSecondary} whitespace-pre-line`}>{selectedClient.adresse}</p>}
                 </div>
               )}
 
@@ -592,7 +621,7 @@ export default function DevisWizard({
                     <div key={ligne.id} className="flex justify-between">
                       <span className={`text-sm truncate ${textSecondary}`}>{ligne.description}</span>
                       <span className={`text-sm font-medium ${textPrimary}`}>
-                        {((ligne.quantite || 1) * (ligne.prixUnitaire || 0)).toLocaleString('fr-FR')} EUR
+                        {((ligne.quantite || 1) * (ligne.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                       </span>
                     </div>
                   ))}
@@ -649,39 +678,51 @@ export default function DevisWizard({
                 onClick={() => setShowDetails(!showDetails)}
                 className={`w-full p-3 rounded-xl border flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
               >
-                <span className={textSecondary}>Options avancees</span>
+                <span className={textSecondary}>Options avancées</span>
                 {showDetails ? <ChevronUp size={18} className={textMuted} /> : <ChevronDown size={18} className={textMuted} />}
               </button>
 
               {showDetails && (
                 <div className="space-y-3 animate-slide-up">
                   <div>
-                    <label className={`block text-sm mb-1 ${textMuted}`}>Date</label>
+                    <label htmlFor="devis-date" className={`block text-sm mb-1 ${textMuted}`}>Date</label>
                     <input
+                      id="devis-date"
                       type="date"
                       value={form.date}
                       onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                      aria-invalid={!!errors.date}
+                      aria-describedby={errors.date ? 'devis-date-error' : undefined}
                       className={`w-full px-4 py-2 border rounded-xl ${inputBg}`}
                     />
+                    <FormError id="devis-date-error" message={errors.date} />
                   </div>
                   <div>
-                    <label className={`block text-sm mb-1 ${textMuted}`}>Validite (jours)</label>
+                    <label htmlFor="devis-validite" className={`block text-sm mb-1 ${textMuted}`}>Validité (jours)</label>
                     <input
+                      id="devis-validite"
                       type="number"
                       value={form.validite}
                       onChange={e => setForm(p => ({ ...p, validite: parseInt(e.target.value) || 30 }))}
+                      aria-invalid={!!errors.validite}
+                      aria-describedby={errors.validite ? 'devis-validite-error' : undefined}
                       className={`w-full px-4 py-2 border rounded-xl ${inputBg}`}
                     />
+                    <FormError id="devis-validite-error" message={errors.validite} />
                   </div>
                   <div>
-                    <label className={`block text-sm mb-1 ${textMuted}`}>Notes</label>
+                    <label htmlFor="devis-notes" className={`block text-sm mb-1 ${textMuted}`}>Notes</label>
                     <textarea
+                      id="devis-notes"
                       value={form.notes}
                       onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                       rows={2}
                       placeholder="Conditions particulières..."
+                      aria-invalid={!!errors.notes}
+                      aria-describedby={errors.notes ? 'devis-notes-error' : undefined}
                       className={`w-full px-4 py-2 border rounded-xl resize-none ${inputBg}`}
                     />
+                    <FormError id="devis-notes-error" message={errors.notes} />
                   </div>
                 </div>
               )}
@@ -691,22 +732,22 @@ export default function DevisWizard({
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className={textSecondary}>Total HT</span>
-                    <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR</span>
+                    <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
                   {form.remise > 0 && (
                     <div className="flex justify-between text-red-500">
                       <span>Remise {form.remise}%</span>
-                      <span>-{totals.remiseAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR</span>
+                      <span>-{totals.remiseAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className={textSecondary}>TVA {form.tvaDefaut}%</span>
-                    <span className={textPrimary}>{totals.tvaApresRemise.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR</span>
+                    <span className={textPrimary}>{totals.tvaApresRemise.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
                   <div className={`flex justify-between pt-2 border-t ${isDark ? 'border-emerald-700' : 'border-emerald-200'}`}>
                     <span className={`font-bold ${textPrimary}`}>Total TTC</span>
                     <span className="text-xl font-bold" style={{ color: couleur }}>
-                      {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                      {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                     </span>
                   </div>
                   {/* Margin display - only show if cost data exists */}
@@ -718,7 +759,7 @@ export default function DevisWizard({
                         totals.margePercent >= 15 ? 'text-amber-600' :
                         'text-red-500'
                       }`}>
-                        {totals.marge.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} EUR
+                        {totals.marge.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                         <span className="ml-1 text-sm">
                           ({totals.margePercent.toFixed(1)}%)
                         </span>
@@ -743,16 +784,25 @@ export default function DevisWizard({
             </button>
           )}
 
+          {/* Error message */}
+          {errors.submit && (
+            <p className="text-red-500 text-sm flex-1">{errors.submit}</p>
+          )}
+
           <button
             onClick={step === 3 ? handleSubmit : () => setStep(step + 1)}
-            disabled={!canProceed}
+            disabled={!canProceed || isSubmitting}
             className="flex-1 px-4 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 min-h-[48px] disabled:opacity-50 hover:shadow-lg active:scale-[0.98] transition-all"
             style={{ backgroundColor: couleur }}
           >
             {step === 3 ? (
               <>
-                <Check size={18} />
-                Créer le {form.type}
+                {isSubmitting ? (
+                  <span className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                ) : (
+                  <Check size={18} />
+                )}
+                {isSubmitting ? 'Création...' : `Créer le ${form.type}`}
               </>
             ) : (
               <>
@@ -789,6 +839,9 @@ export default function DevisWizard({
         @keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-slide-up { animation: slide-up 0.3s ease-out; }
       `}</style>
+
+      {/* Confirm dialog (replaces window.confirm) */}
+      <ConfirmDialog />
     </div>
   );
 }
@@ -805,7 +858,9 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
     <div className={`p-4 rounded-xl border-2 transition-all hover:shadow-lg ${isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
       {/* Description */}
       <div className="flex items-start justify-between gap-2 mb-3">
+        <label htmlFor={`devis-ligne-desc-${index}`} className="sr-only">Description ligne {index + 1}</label>
         <input
+          id={`devis-ligne-desc-${index}`}
           type="text"
           value={ligne.description}
           onChange={e => onUpdate('description', e.target.value)}
@@ -829,10 +884,15 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
           >
             -
           </button>
+          <label htmlFor={`devis-ligne-qty-${index}`} className="sr-only">Quantité ligne {index + 1}</label>
           <input
+            id={`devis-ligne-qty-${index}`}
             type="number"
+            min="1"
+            step="1"
             value={ligne.quantite || 1}
-            onChange={e => onUpdate('quantite', parseFloat(e.target.value) || 1)}
+            onChange={e => onUpdate('quantite', Math.max(1, parseInt(e.target.value) || 1))}
+            onBlur={e => { if (parseFloat(e.target.value) < 1) onUpdate('quantite', 1); }}
             className={`w-14 px-2 py-1 border rounded-lg text-center text-sm ${inputBg}`}
           />
           <button
@@ -846,10 +906,15 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
         <span className={`text-sm ${textMuted}`}>x</span>
 
         <div className="relative flex-1">
+          <label htmlFor={`devis-ligne-price-${index}`} className="sr-only">Prix unitaire ligne {index + 1}</label>
           <input
+            id={`devis-ligne-price-${index}`}
             type="number"
+            min="0"
+            step="0.01"
             value={ligne.prixUnitaire || ''}
-            onChange={e => onUpdate('prixUnitaire', parseFloat(e.target.value) || 0)}
+            onChange={e => onUpdate('prixUnitaire', Math.max(0, parseFloat(e.target.value) || 0))}
+            onBlur={e => { if (parseFloat(e.target.value) < 0) onUpdate('prixUnitaire', 0); }}
             placeholder="Prix HT"
             className={`w-full pl-3 pr-10 py-1 border rounded-lg text-sm text-right ${inputBg}`}
           />
@@ -857,7 +922,7 @@ function LigneCard({ ligne, index, onUpdate, onRemove, isDark, couleur, tvaDefau
         </div>
 
         <span className="text-lg font-bold min-w-[80px] text-right" style={{ color: couleur }}>
-          {montant.toLocaleString('fr-FR')} EUR
+          {montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
         </span>
       </div>
 

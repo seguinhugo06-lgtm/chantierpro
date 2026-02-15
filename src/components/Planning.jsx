@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
-import { generateId } from '../lib/utils';
 
-export default function Planning({ events, setEvents, addEvent, chantiers, equipe, couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
+export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
   const { confirm } = useConfirm();
 
   // Theme classes
@@ -21,7 +20,20 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const [filterEmploye, setFilterEmploye] = useState('');
   const [filterType, setFilterType] = useState('');
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
-  const [form, setForm] = useState({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' });
+  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '' };
+  const [form, setForm] = useState(emptyForm);
+
+  // Escape key handler for form and modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showDetail) { setShowDetail(null); setEditMode(false); }
+        else if (showAdd || quickAdd) { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDetail, showAdd, quickAdd]);
 
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -50,12 +62,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const JOURS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', autre: 'Autre' };
-  const TYPE_ICONS = { chantier: Home, rdv: User, relance: Phone, urgence: Zap, autre: Calendar };
+  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', memo: 'Mémo', autre: 'Autre' };
+  const TYPE_ICONS = { chantier: Home, rdv: User, relance: Phone, urgence: Zap, memo: ClipboardList, autre: Calendar };
 
   // Couleurs cohérentes avec la légende - chantiers toujours bleus
   const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; return '#3b82f6'; };
-  const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', autre: '#8b5cf6' };
+  const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', memo: '#f59e0b', autre: '#8b5cf6' };
 
   // Helper pour obtenir la couleur d'un événement - TOUJOURS utiliser typeColors en priorité
   const getEventColor = (ev) => {
@@ -75,7 +87,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier',
     chantierId: ch.id, color: getChantierColor(ch), isChantier: true, description: ch.adresse || ''
   }));
-  const allEvents = [...events, ...getChantierEvents()];
+  const getMemoEvents = () => memos.filter(m => m.due_date && !m.is_done).map(m => ({
+    id: `memo_${m.id}`, title: m.text?.substring(0, 50) || 'Mémo', date: m.due_date,
+    time: m.due_time || '', type: 'memo', isMemo: true, description: m.notes || '',
+    color: '#f59e0b',
+  }));
+  const allEvents = [...events, ...getChantierEvents(), ...getMemoEvents()];
 
   const getEventsForDay = (day) => {
     if (!day) return [];
@@ -88,8 +105,16 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     });
   };
 
+  // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
+  const formatLocalDate = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const getEventsForDate = (dateObj) => {
-    const d = dateObj.toISOString().split('T')[0];
+    const d = formatLocalDate(dateObj);
     return getEventsForDay(d);
   };
 
@@ -102,8 +127,10 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
     if (!ev) return;
     if (ev.isChantier && updateChantier) {
       const duration = ev.dateEnd ? Math.ceil((new Date(ev.dateEnd) - new Date(ev.date)) / 86400000) : 0;
-      const newDateEnd = duration > 0 ? new Date(new Date(newDate).getTime() + duration * 86400000).toISOString().split('T')[0] : '';
+      const newDateEnd = duration > 0 ? formatLocalDate(new Date(new Date(newDate).getTime() + duration * 86400000)) : '';
       updateChantier(ev.chantierId, { date_debut: newDate, date_fin: newDateEnd });
+    } else if (updateEventProp) {
+      updateEventProp(eventId, { date: newDate });
     } else {
       setEvents(events.map(e => e.id === eventId ? { ...e, date: newDate } : e));
     }
@@ -111,28 +138,39 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
 
   const submit = () => {
     if (!form.title || !form.date) return;
-    addEvent({ ...form, id: generateId() });
+    addEvent({ ...form });
     setShowAdd(false);
     setQuickAdd(null);
-    setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' });
+    setForm(emptyForm);
   };
 
-  const deleteEvent = async (id) => {
+  const handleDeleteEvent = async (id) => {
     if (id.startsWith('ch_')) return;
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet événement ?' });
-    if (confirmed) { setEvents(events.filter(e => e.id !== id)); setShowDetail(null); }
+    if (confirmed) {
+      if (deleteEventProp) {
+        await deleteEventProp(id);
+      } else {
+        setEvents(events.filter(e => e.id !== id));
+      }
+      setShowDetail(null);
+    }
   };
 
-  const updateEvent = () => {
+  const handleUpdateEvent = () => {
     if (!showDetail || showDetail.isChantier) return;
-    setEvents(events.map(e => e.id === showDetail.id ? { ...e, ...form } : e));
+    if (updateEventProp) {
+      updateEventProp(showDetail.id, form);
+    } else {
+      setEvents(events.map(e => e.id === showDetail.id ? { ...e, ...form } : e));
+    }
     setShowDetail(null); setEditMode(false);
-    setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' });
+    setForm(emptyForm);
   };
 
   const startEdit = () => {
     setForm({ title: showDetail.title || '', date: showDetail.date || '', time: showDetail.time || '',
-      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', description: showDetail.description || '' });
+      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', description: showDetail.description || '' });
     setEditMode(true);
   };
 
@@ -146,7 +184,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   if (showAdd || quickAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm({ title: '', date: '', time: '', type: 'rdv', employeId: '', description: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
         <h2 className={`text-2xl font-bold ${textPrimary}`}>Nouvel événement</h2>
@@ -173,7 +211,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
           </div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+            {clients.length > 0 && (
+              <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+            )}
+          </div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Adresse, infos utiles..." /></div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
@@ -187,7 +230,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
   );
 
   // Today stats
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatLocalDate(new Date());
   const todayEvents = getEventsForDay(todayStr);
   const upcomingEvents = allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -234,9 +277,9 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
           </select>
         </div>
         <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => setViewMode('month')} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-          <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
-          <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+          <button onClick={() => { setViewMode('month'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
+          <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
+          <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
         </div>
       </div>
 
@@ -325,7 +368,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
             {weekDays.map((dayDate, i) => {
               const dayEvents = getEventsForDate(dayDate);
               const isToday = dayDate.toDateString() === new Date().toDateString();
-              const dateStr = dayDate.toISOString().split('T')[0];
+              const dateStr = formatLocalDate(dayDate);
               return (
                 <div key={i} className={`flex ${isToday ? (isDark ? 'bg-slate-700/30' : 'bg-blue-50/50') : ''}`}
                   onDragOver={e => e.preventDefault()}
@@ -368,7 +411,7 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
         ) : (
           // Day view with hourly slots
           (() => {
-            const dayStr = date.toISOString().split('T')[0];
+            const dayStr = formatLocalDate(date);
             const dayEvents = getEventsForDay(dayStr);
             const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h-20h
 
@@ -399,7 +442,11 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                           if (id) {
                             const ev = allEvents.find(evt => evt.id === id);
                             if (ev && !ev.isChantier) {
-                              setEvents(events.map(evt => evt.id === id ? { ...evt, date: dayStr, time: hourStr } : evt));
+                              if (updateEventProp) {
+                                updateEventProp(id, { date: dayStr, time: hourStr });
+                              } else {
+                                setEvents(events.map(evt => evt.id === id ? { ...evt, date: dayStr, time: hourStr } : evt));
+                              }
                             }
                           }
                         }}
@@ -521,9 +568,12 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
+                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
                     </div>
+                    {clients.length > 0 && (
+                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+                    )}
                     <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
                   </div>
                 ) : (
@@ -545,6 +595,15 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                           <span className={textPrimary}>{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span>
                         </div>
                       )}
+                      {showDetail.clientId && (() => {
+                        const client = clients.find(c => c.id === showDetail.clientId);
+                        return client ? (
+                          <div className="flex items-center gap-3">
+                            <Building2 size={16} className={textMuted} />
+                            <span className={textPrimary}>{client.nom} {client.prenom || ''}</span>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     {showDetail.description && (
                       <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -563,11 +622,11 @@ export default function Planning({ events, setEvents, addEvent, chantiers, equip
                 ) : editMode ? (
                   <>
                     <button onClick={() => setEditMode(false)} className={`flex-1 px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200'}`}>Annuler</button>
-                    <button onClick={updateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{ background: couleur }}>Enregistrer</button>
+                    <button onClick={handleUpdateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{ background: couleur }}>Enregistrer</button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => deleteEvent(showDetail.id)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`}>
+                    <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`}>
                       <Trash2 size={16} />
                     </button>
                     <button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>

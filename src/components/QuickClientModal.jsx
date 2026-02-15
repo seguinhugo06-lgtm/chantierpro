@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles } from 'lucide-react';
+import FormError from './ui/FormError';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
@@ -178,11 +179,12 @@ export default function QuickClientModal({
           <div className="space-y-3">
             {/* Nom field - required */}
             <div>
-              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label htmlFor="qc-nom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <User size={14} style={{ color: couleur }} />
                 Nom *
               </label>
               <input
+                id="qc-nom"
                 ref={inputRef}
                 type="text"
                 value={form.nom}
@@ -191,24 +193,23 @@ export default function QuickClientModal({
                   if (errors.nom) setErrors(p => ({ ...p, nom: null }));
                 }}
                 placeholder="Dupont"
+                aria-required="true"
+                aria-invalid={!!errors.nom}
+                aria-describedby={errors.nom ? 'qc-nom-error' : undefined}
                 className={`w-full px-4 py-3 border rounded-xl text-base transition-all focus:ring-2 focus:ring-offset-1 ${inputBg} ${errors.nom ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
                 style={{ '--tw-ring-color': errors.nom ? '#ef4444' : couleur }}
               />
-              {errors.nom && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  {errors.nom}
-                </p>
-              )}
+              <FormError id="qc-nom-error" message={errors.nom} />
             </div>
 
             {/* Prenom field */}
             <div>
-              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label htmlFor="qc-prenom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <User size={14} className={textMuted} />
-                Prenom
+                Prénom
               </label>
               <input
+                id="qc-prenom"
                 type="text"
                 value={form.prenom}
                 onChange={e => setForm(p => ({ ...p, prenom: e.target.value }))}
@@ -219,11 +220,12 @@ export default function QuickClientModal({
 
             {/* Telephone field */}
             <div>
-              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label htmlFor="qc-telephone" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <Phone size={14} style={{ color: couleur }} />
                 Téléphone
               </label>
               <input
+                id="qc-telephone"
                 type="tel"
                 value={form.telephone}
                 onChange={e => {
@@ -231,14 +233,11 @@ export default function QuickClientModal({
                   if (errors.telephone) setErrors(p => ({ ...p, telephone: null }));
                 }}
                 placeholder="06 12 34 56 78"
+                aria-invalid={!!errors.telephone}
+                aria-describedby={errors.telephone ? 'qc-telephone-error' : undefined}
                 className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.telephone ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
               />
-              {errors.telephone && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle size={14} />
-                  {errors.telephone}
-                </p>
-              )}
+              <FormError id="qc-telephone-error" message={errors.telephone} />
             </div>
           </div>
 
@@ -271,11 +270,12 @@ export default function QuickClientModal({
                 >
                   <div className="px-4 pb-4 pt-3 space-y-3">
                     <div>
-                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                      <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                         <Mail size={14} className={textMuted} />
                         Email
                       </label>
                       <input
+                        id="qc-email"
                         type="email"
                         value={form.email}
                         onChange={e => {
@@ -283,22 +283,20 @@ export default function QuickClientModal({
                           if (errors.email) setErrors(p => ({ ...p, email: null }));
                         }}
                         placeholder="marie.dupont@email.fr"
+                        aria-invalid={!!errors.email}
+                        aria-describedby={errors.email ? 'qc-email-error' : undefined}
                         className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
                       />
-                      {errors.email && (
-                        <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                          <AlertCircle size={14} />
-                          {errors.email}
-                        </p>
-                      )}
+                      <FormError id="qc-email-error" message={errors.email} />
                     </div>
 
                     <div>
-                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                      <label htmlFor="qc-entreprise" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                         <Building2 size={14} className={textMuted} />
                         Entreprise
                       </label>
                       <input
+                        id="qc-entreprise"
                         type="text"
                         value={form.entreprise}
                         onChange={e => setForm(p => ({ ...p, entreprise: e.target.value }))}
@@ -308,11 +306,12 @@ export default function QuickClientModal({
                     </div>
 
                     <div>
-                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                      <label htmlFor="qc-adresse" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                         <MapPin size={14} className={textMuted} />
                         Adresse
                       </label>
                       <textarea
+                        id="qc-adresse"
                         value={form.adresse}
                         onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))}
                         placeholder="12 rue des Lilas, 75011 Paris"

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
 import { toast } from '../../stores/toastStore';
+import useConfirm from '../../hooks/useConfirm';
 
 const STORAGE_KEY = 'cp_ouvrages';
 
@@ -465,6 +466,7 @@ function TypeBadge({ type, isDark }) {
 // Main Component
 // ============================================================
 export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvragesProp, setOuvrages: setOuvragesProp, isDark, couleur }) {
+  const { confirm, ConfirmDialog } = useConfirm();
   // ---------- Theme classes ----------
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
@@ -548,13 +550,13 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
     setOuvrages([...ouvrages, duplicate]);
   }, [ouvrages, setOuvrages]);
 
-  const handleDelete = useCallback((id) => {
+  const handleDelete = useCallback(async (id) => {
     const ouvrage = ouvrages.find(o => o.id === id);
     if (!ouvrage) return;
-    if (window.confirm(`Supprimer l'ouvrage "${ouvrage.designation}" ?`)) {
+    if (await confirm(`Supprimer l'ouvrage "${ouvrage.designation}" ?`)) {
       setOuvrages(ouvrages.filter(o => o.id !== id));
     }
-  }, [ouvrages, setOuvrages]);
+  }, [ouvrages, setOuvrages, confirm]);
 
   const handleSave = useCallback(() => {
     if (!editingOuvrage) return;
@@ -1576,6 +1578,8 @@ export default function BibliothequeOuvrages({ catalogue = [], ouvrages: ouvrage
           </div>
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   );
 }

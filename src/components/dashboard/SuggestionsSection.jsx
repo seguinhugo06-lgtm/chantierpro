@@ -184,7 +184,7 @@ function SuggestionItem({
                 'p-1.5 rounded-md transition-all flex-shrink-0 group',
                 isDark
                   ? 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/20'
-                  : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50',
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50',
                 isPostponing && 'animate-pulse'
               )}
             >
@@ -209,7 +209,7 @@ function SuggestionItem({
                 'p-1 rounded-md transition-colors flex-shrink-0',
                 isDark
                   ? 'text-gray-500 hover:text-gray-300 hover:bg-slate-700'
-                  : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100',
+                  : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100',
                 isDismissing && 'opacity-50 cursor-not-allowed'
               )}
             >
@@ -237,7 +237,7 @@ function SuggestionItem({
           <span className="font-medium truncate">{clientName || chantierName}</span>
           {daysSince !== undefined && (
             <>
-              <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>•</span>
+              <span className={isDark ? 'text-gray-500' : 'text-gray-600'}>•</span>
               <span className={cn(
                 daysSince > 14 ? (isDark ? 'text-amber-400' : 'text-amber-600') : ''
               )}>
@@ -407,11 +407,11 @@ function MoreActionsIndicator({ count, onClick, isDark = false }) {
         'w-8 h-8 rounded-full flex items-center justify-center',
         isDark ? 'bg-slate-700' : 'bg-gray-100'
       )}>
-        <MoreHorizontal size={16} className={isDark ? 'text-gray-400' : 'text-gray-500'} />
+        <MoreHorizontal size={16} className={isDark ? 'text-gray-400' : 'text-gray-600'} />
       </div>
       <span className={cn(
         'text-xs font-medium text-center px-2',
-        isDark ? 'text-gray-400' : 'text-gray-500'
+        isDark ? 'text-gray-400' : 'text-gray-600'
       )}>
         +{count} autre{count > 1 ? 's' : ''}
       </span>
@@ -640,7 +640,7 @@ export default function SuggestionsSection({
               À faire aujourd'hui
             </h2>
             {totalCount > 0 && (
-              <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
+              <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-600')}>
                 {totalCount} action{totalCount > 1 ? 's' : ''} en attente
               </p>
             )}
@@ -661,7 +661,7 @@ export default function SuggestionsSection({
                     ? 'hover:bg-slate-700 text-gray-300'
                     : 'hover:bg-gray-100 text-gray-600'
                   : 'opacity-30 cursor-not-allowed',
-                isDark ? 'text-gray-500' : 'text-gray-500'
+                isDark ? 'text-gray-500' : 'text-gray-600'
               )}
             >
               <ChevronLeft size={18} />
@@ -677,7 +677,7 @@ export default function SuggestionsSection({
                     ? 'hover:bg-slate-700 text-gray-300'
                     : 'hover:bg-gray-100 text-gray-600'
                   : 'opacity-30 cursor-not-allowed',
-                isDark ? 'text-gray-500' : 'text-gray-500'
+                isDark ? 'text-gray-500' : 'text-gray-600'
               )}
             >
               <ChevronRight size={18} />

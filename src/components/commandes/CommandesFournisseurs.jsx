@@ -21,6 +21,7 @@ import {
   ChevronDown, Eye, Printer, Download
 } from 'lucide-react';
 import { generateId } from '../../lib/utils';
+import useConfirm from '../../hooks/useConfirm';
 
 const STORAGE_KEY = 'cp_commandes_fournisseurs';
 
@@ -109,6 +110,7 @@ export default function CommandesFournisseurs({
   couleur = '#f97316',
   setPage,
 }) {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [commandes, setCommandes] = useState([]);
   const [view, setView] = useState('list');
   const [activeTab, setActiveTab] = useState('tous');
@@ -269,8 +271,8 @@ export default function CommandesFournisseurs({
   };
 
   // Delete
-  const handleDelete = (id) => {
-    if (!window.confirm('Supprimer cette commande ?')) return;
+  const handleDelete = async (id) => {
+    if (!await confirm('Supprimer cette commande ?')) return;
     saveCommandes(commandes.filter(c => c.id !== id));
     if (view === 'detail') {
       setView('list');
@@ -1304,6 +1306,7 @@ export default function CommandesFournisseurs({
         {view === 'detail' && renderDetail()}
       </div>
       <CatalogueModal />
+      <ConfirmDialog />
     </div>
   );
 }

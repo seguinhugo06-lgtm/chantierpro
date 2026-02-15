@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2 } from 'lucide-react';
+
+const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -49,7 +51,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
   return Math.round(normalizedProgress);
 };
 
-export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage }) {
+export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const isOnline = useOnlineStatus();
@@ -79,6 +81,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [budgetForm, setBudgetForm] = useState({ budget_estime: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, status, margin
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
+  const [filterClient, setFilterClient] = useState(''); // Filter by client_id
+  const [searchQuery, setSearchQuery] = useState(''); // Text search
+  const [viewMode, setViewMode] = useState('list'); // list or map
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
   const [showTaskGenerator, setShowTaskGenerator] = useState(false); // Task generator modal
@@ -127,7 +132,25 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
   const addTache = (phase = 'second-oeuvre') => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
-  const toggleTache = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { taches: ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t) }); };
+  const [animatedTaskId, setAnimatedTaskId] = useState(null);
+  const [counterPulse, setCounterPulse] = useState(false);
+  const toggleTache = (id) => {
+    const ch = chantiers.find(c => c.id === view);
+    if (!ch) return;
+    const updatedTaches = ch.taches.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    updateChantier(view, { taches: updatedTaches });
+    // Trigger checkbox animation
+    setAnimatedTaskId(id);
+    setTimeout(() => setAnimatedTaskId(null), 400);
+    // Trigger counter pulse
+    setCounterPulse(true);
+    setTimeout(() => setCounterPulse(false), 400);
+    // Milestone toast: all tasks done
+    const allDone = updatedTaches.length > 0 && updatedTaches.every(t => t.done);
+    if (allDone) {
+      setTimeout(() => showToast('Toutes les tâches terminées !', 'success'), 300);
+    }
+  };
   const addDepenseToChantier = () => {
     if (!newDepense.description || !newDepense.montant) return;
     const qty = parseInt(newDepense.quantite) || 1;
@@ -154,7 +177,36 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet ajustement ?' });
     if (confirmed) deleteAjustement(id);
   };
-  
+
+  // Handle chantier edit from modal (defined here so both detail and list views can use it)
+  const handleEditChantier = (formData) => {
+    if (!formData.id) return;
+
+    const clientIdValue = formData.clientId || formData.client_id || '';
+    updateChantier(formData.id, {
+      nom: formData.nom,
+      client_id: clientIdValue,
+      clientId: clientIdValue,
+      adresse: formData.adresse,
+      ville: formData.ville,
+      codePostal: formData.codePostal,
+      code_postal: formData.codePostal,
+      dateDebut: formData.dateDebut || formData.date_debut || null,
+      date_debut: formData.date_debut || formData.dateDebut || null,
+      dateFin: formData.dateFin || formData.date_fin || null,
+      date_fin: formData.date_fin || formData.dateFin || null,
+      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
+      budget_estime: formData.budget_estime || formData.budgetPrevu || 0,
+      budget_materiaux: formData.budget_materiaux || 0,
+      heures_estimees: formData.heures_estimees || 0,
+      notes: formData.notes,
+      description: formData.description
+    });
+
+    setEditingChantier(null);
+    showToast('Chantier modifié avec succès', 'success');
+  };
+
   // Vue détail chantier
   if (view) {
     const ch = chantiers.find(c => c.id === view);
@@ -211,6 +263,56 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <Edit3 size={18} className={textMuted} />
           </button>
           <button
+            onClick={() => {
+              const clone = {
+                nom: `${ch.nom} (copie)`,
+                client_id: ch.client_id,
+                clientId: ch.client_id,
+                adresse: ch.adresse,
+                ville: ch.ville,
+                codePostal: ch.codePostal,
+                dateDebut: new Date().toISOString().split('T')[0],
+                date_debut: new Date().toISOString().split('T')[0],
+                dateFin: '',
+                date_fin: '',
+                budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0,
+                budget_estime: ch.budget_estime || ch.budgetPrevu || 0,
+                budget_materiaux: ch.budget_materiaux || 0,
+                heures_estimees: ch.heures_estimees || 0,
+                description: ch.description || '',
+                notes: ch.notes || '',
+                taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })),
+                photos: [],
+                documents: [],
+                messages: [],
+                statut: 'prospect'
+              };
+              const newCh = addChantier(clone);
+              showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
+              if (newCh?.id) setView(newCh.id);
+            }}
+            className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
+            title="Dupliquer le chantier"
+          >
+            <Copy size={18} className={textMuted} />
+          </button>
+          {ch.statut !== 'archive' && (
+            <button
+              onClick={async () => {
+                const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` });
+                if (confirmed) {
+                  updateChantier(ch.id, { statut: 'archive' });
+                  showToast('Chantier archivé', 'success');
+                  setView(null);
+                }
+              }}
+              className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
+              title="Archiver le chantier"
+            >
+              <Archive size={18} className={textMuted} />
+            </button>
+          )}
+          <button
             onClick={() => setShowTaskGenerator(true)}
             className="px-3 py-2 rounded-xl min-h-[44px] flex items-center gap-2 text-white text-sm font-medium transition-all hover:opacity-90"
             style={{ background: couleur }}
@@ -241,6 +343,63 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             ))}
           </select>
         </div>
+
+        {/* Auto-suggestion: mark as terminé when all tasks done */}
+        {ch.statut !== 'termine' && tasksTotal > 0 && tasksDone === tasksTotal && (
+          <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border-2 ${isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex items-center gap-3">
+              <CheckSquare size={20} className="text-emerald-500" />
+              <div>
+                <p className={`font-medium text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Toutes les tâches sont terminées !</p>
+                <p className={`text-xs ${textMuted}`}>Marquer ce chantier comme terminé ?</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                updateChantier(ch.id, { statut: 'termine' });
+                showToast('Chantier marqué comme terminé', 'success');
+              }}
+              className="px-4 py-2 text-sm font-medium text-white rounded-xl whitespace-nowrap min-h-[40px] hover:shadow-lg transition-all bg-emerald-500 hover:bg-emerald-600"
+            >
+              Terminer
+            </button>
+          </div>
+        )}
+
+        {/* Deadline alert */}
+        {ch.statut !== 'termine' && ch.statut !== 'abandonne' && ch.date_fin && (() => {
+          const dateFin = new Date(ch.date_fin);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          dateFin.setHours(0, 0, 0, 0);
+          const daysLeft = Math.ceil((dateFin - today) / (1000 * 60 * 60 * 24));
+          if (daysLeft > 14) return null;
+          const isOverdue = daysLeft < 0;
+          const isUrgent = daysLeft <= 3 && daysLeft >= 0;
+          const isWarning = daysLeft > 3 && daysLeft <= 14;
+          const colors = isOverdue
+            ? (isDark ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700')
+            : isUrgent
+              ? (isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700')
+              : (isDark ? 'bg-blue-900/20 border-blue-700 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700');
+          return (
+            <div className={`flex items-center gap-3 p-4 rounded-xl border-2 ${colors}`}>
+              <AlertTriangle size={20} className={isOverdue ? 'text-red-500' : isUrgent ? 'text-amber-500' : 'text-blue-500'} />
+              <div className="flex-1">
+                <p className="font-medium text-sm">
+                  {isOverdue
+                    ? `Échéance dépassée de ${Math.abs(daysLeft)} jour${Math.abs(daysLeft) > 1 ? 's' : ''}`
+                    : daysLeft === 0
+                      ? 'Échéance aujourd\'hui !'
+                      : `${daysLeft} jour${daysLeft > 1 ? 's' : ''} avant l'échéance`}
+                </p>
+                <p className={`text-xs ${textMuted}`}>
+                  Date de fin prévue : {dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* === SECTION: CLIENT & ADRESSE === */}
         <div className={`${cardBg} rounded-xl border p-4`}>
@@ -333,7 +492,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const getFilteredTasks = (tasks) => {
             if (taskFilter === 'pending') return tasks.filter(t => !t.done);
             if (taskFilter === 'critical') return tasks.filter(t => t.critical && !t.done);
-            return tasks.filter(t => !t.done); // 'all' shows pending by phase
+            return tasks; // 'all' shows all tasks (done + pending)
           };
 
           // Toggle phase collapse
@@ -391,7 +550,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className={`font-semibold text-lg ${textPrimary}`}>{tasksDone}/{tasksTotal} tâches</p>
+                  <p className={`font-semibold text-lg ${textPrimary} transition-transform ${counterPulse ? 'scale-110' : ''}`} style={{ transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>{tasksDone}/{tasksTotal} tâches</p>
                   <p className={`text-sm ${textMuted}`}>
                     {tasksTotal === 0 ? 'Aucune tâche' :
                      tasksDone === tasksTotal ? '✅ Chantier terminé !' :
@@ -525,10 +684,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                                   type="checkbox"
                                   checked={t.done}
                                   onChange={() => toggleTache(t.id)}
-                                  className={`w-5 h-5 rounded border-2 cursor-pointer flex-shrink-0 ${
+                                  className={`w-5 h-5 rounded border-2 cursor-pointer flex-shrink-0 transition-transform ${
                                     t.critical ? 'border-red-500 text-red-500' : ''
-                                  }`}
-                                  style={!t.critical ? { borderColor: phase.color, accentColor: phase.color } : {}}
+                                  } ${animatedTaskId === t.id ? 'scale-125' : ''}`}
+                                  style={{
+                                    ...((!t.critical) ? { borderColor: phase.color, accentColor: phase.color } : {}),
+                                    transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                  }}
                                 />
                                 {/* Task text - click to edit */}
                                 <span
@@ -1023,7 +1185,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             { key: 'situations', label: 'Situations', icon: Receipt },
             { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'photos', label: 'Photos', icon: Camera },
+            { key: 'documents', label: 'Documents', icon: Paperclip },
             { key: 'notes', label: 'Notes', icon: StickyNote },
+            { key: 'memos', label: 'Mémos', icon: ClipboardList },
             { key: 'messages', label: 'Messages', icon: MessageSquare }
           ].map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
@@ -1165,10 +1329,218 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
+        {activeTab === 'documents' && (
+          <div className={`${cardBg} rounded-2xl border p-5`}>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Paperclip size={18} style={{ color: couleur }} /> Documents</h3>
+            <p className={`text-sm ${textMuted} mb-4`}>Plans, permis, attestations, contrats... Stockez tous vos documents liés au chantier.</p>
+
+            {/* Document categories */}
+            {(() => {
+              const docs = ch.documents || [];
+              const categories = ['Plan', 'Permis', 'Attestation', 'Contrat', 'Autre'];
+              return (
+                <>
+                  {docs.length === 0 ? (
+                    <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <FolderOpen size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                      <p className={textMuted}>Aucun document</p>
+                      <p className={`text-xs ${textMuted} mt-1`}>Ajoutez vos plans, permis et attestations</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mb-4">
+                      {docs.map(doc => (
+                        <div key={doc.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                            <FileText size={18} style={{ color: couleur }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${textPrimary}`}>{doc.nom}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{doc.categorie}</span>
+                              <span className={`text-xs ${textMuted}`}>{new Date(doc.date).toLocaleDateString('fr-FR')}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {doc.data && (
+                              <a href={doc.data} download={doc.nom} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Télécharger">
+                                <Download size={16} className={textMuted} />
+                              </a>
+                            )}
+                            <button onClick={() => updateChantier(ch.id, { documents: docs.filter(d => d.id !== doc.id) })} className={`p-2 rounded-lg text-red-400 hover:text-red-600 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`} title="Supprimer">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add document form */}
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex flex-wrap gap-2 items-end">
+                      <div className="flex-1 min-w-[150px]">
+                        <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Nom du document</label>
+                        <input
+                          id="doc-name-input"
+                          type="text"
+                          placeholder="Ex: Plan RDC, Permis de construire..."
+                          className={`w-full px-3 py-2 border rounded-xl text-sm ${inputBg}`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Catégorie</label>
+                        <select id="doc-cat-select" className={`px-3 py-2 border rounded-xl text-sm ${inputBg}`}>
+                          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Fichier</label>
+                        <input
+                          id="doc-file-input"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                          className={`text-sm ${textMuted} file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:cursor-pointer`}
+                          style={{ colorScheme: isDark ? 'dark' : 'light' }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          const nameInput = document.getElementById('doc-name-input');
+                          const catSelect = document.getElementById('doc-cat-select');
+                          const fileInput = document.getElementById('doc-file-input');
+                          const nom = nameInput?.value?.trim();
+                          if (!nom) { showToast('Nom du document requis', 'error'); return; }
+                          const file = fileInput?.files?.[0];
+                          const addDoc = (data) => {
+                            updateChantier(ch.id, {
+                              documents: [...(ch.documents || []), {
+                                id: generateId(),
+                                nom,
+                                categorie: catSelect?.value || 'Autre',
+                                date: new Date().toISOString(),
+                                data: data || null,
+                                fileName: file?.name || null,
+                                fileSize: file?.size || null
+                              }]
+                            });
+                            nameInput.value = '';
+                            if (fileInput) fileInput.value = '';
+                            showToast('Document ajouté', 'success');
+                          };
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) { showToast('Fichier trop volumineux (5 Mo max)', 'error'); return; }
+                            const reader = new FileReader();
+                            reader.onload = () => addDoc(reader.result);
+                            reader.readAsDataURL(file);
+                          } else {
+                            addDoc(null);
+                          }
+                        }}
+                        className="px-4 py-2 text-white rounded-xl text-sm flex items-center gap-2 min-h-[40px]"
+                        style={{ background: couleur }}
+                      >
+                        <Plus size={14} /> Ajouter
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+
         {activeTab === 'notes' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><StickyNote size={18} /> Notes</h3>
             <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Contraintes d'accès, contacts sur site, détails importants..." />
+          </div>
+        )}
+
+        {activeTab === 'memos' && (
+          <div className={`${cardBg} rounded-2xl border p-5`}>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} style={{ color: couleur }} /> Mémos</h3>
+            {(() => {
+              const chantierMemos = memos.filter(m => m.chantier_id === ch.id);
+              const activeMemos = chantierMemos.filter(m => !m.is_done);
+              const doneMemos = chantierMemos.filter(m => m.is_done);
+              return (
+                <div className="space-y-3">
+                  {/* Quick add */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id={`memo-chantier-${ch.id}`}
+                      placeholder="Nouveau mémo pour ce chantier..."
+                      className={`flex-1 px-3 py-2 border rounded-xl text-sm ${inputBg}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.target.value.trim()) {
+                          addMemo?.({ text: e.target.value.trim(), chantier_id: ch.id, client_id: ch.client_id || null });
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        const input = document.getElementById(`memo-chantier-${ch.id}`);
+                        if (input?.value.trim()) {
+                          addMemo?.({ text: input.value.trim(), chantier_id: ch.id, client_id: ch.client_id || null });
+                          input.value = '';
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl text-white text-sm font-medium"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+
+                  {/* Active memos */}
+                  {activeMemos.length > 0 && (
+                    <div className="space-y-1">
+                      {activeMemos.map(m => (
+                        <div key={m.id} className={`flex items-start gap-2.5 px-3 py-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <button
+                            onClick={() => toggleMemo?.(m.id)}
+                            className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 ${isDark ? 'border-slate-500' : 'border-slate-300'}`}
+                            aria-label="Marquer comme fait"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${textPrimary}`}>{m.text}</p>
+                            {m.due_date && (
+                              <span className={`text-xs ${m.due_date < new Date().toISOString().split('T')[0] ? 'text-red-500' : textMuted}`}>
+                                {new Date(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Done memos */}
+                  {doneMemos.length > 0 && (
+                    <details className={`text-sm ${textMuted}`}>
+                      <summary className="cursor-pointer py-1 font-medium">Terminés ({doneMemos.length})</summary>
+                      <div className="space-y-1 mt-1">
+                        {doneMemos.map(m => (
+                          <div key={m.id} className="flex items-center gap-2.5 px-3 py-1.5 opacity-60">
+                            <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+                            <span className="line-through text-sm">{m.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
+                  {chantierMemos.length === 0 && (
+                    <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <ClipboardList size={28} className={`mx-auto mb-2 ${textMuted}`} />
+                      <p className={textMuted}>Aucun mémo pour ce chantier</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1733,6 +2105,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         isDark={isDark}
         couleur={couleur}
       />
+
+      {/* Edit Chantier Modal — must be inside detail view for immediate update */}
+      <QuickChantierModal
+        isOpen={!!editingChantier}
+        onClose={() => setEditingChantier(null)}
+        onSubmit={handleEditChantier}
+        clients={clients}
+        devis={devis}
+        isDark={isDark}
+        couleur={couleur}
+        editChantier={editingChantier}
+      />
       </div>
     );
   }
@@ -1740,52 +2124,52 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Handle chantier creation from modal
   const handleCreateChantier = (formData) => {
     const clientIdValue = formData.clientId || formData.client_id || '';
+    const budgetValue = formData.budget_estime || formData.budgetPrevu || 0;
     const newChantier = addChantier({
       ...formData,
       client_id: clientIdValue,
       clientId: clientIdValue,
       dateDebut: formData.dateDebut || formData.date_debut || new Date().toISOString().split('T')[0],
       date_debut: formData.date_debut || formData.dateDebut || new Date().toISOString().split('T')[0],
-      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
+      dateFin: formData.dateFin || formData.date_fin || null,
+      date_fin: formData.date_fin || formData.dateFin || null,
+      budgetPrevu: budgetValue,
+      budget_estime: budgetValue,
+      budget_materiaux: formData.budget_materiaux || 0,
+      heures_estimees: formData.heures_estimees || 0,
       statut: 'prospect'
     });
     setShow(false);
+    showToast(`Chantier "${formData.nom}" créé`, 'success');
     if (newChantier?.id) setView(newChantier.id);
-  };
-
-  // Handle chantier edit from modal
-  const handleEditChantier = (formData) => {
-    if (!formData.id) return;
-
-    const clientIdValue = formData.clientId || formData.client_id || '';
-    updateChantier(formData.id, {
-      nom: formData.nom,
-      client_id: clientIdValue,
-      clientId: clientIdValue,
-      adresse: formData.adresse,
-      ville: formData.ville,
-      codePostal: formData.codePostal,
-      dateDebut: formData.dateDebut || formData.date_debut,
-      date_debut: formData.date_debut || formData.dateDebut,
-      dateFin: formData.dateFin || formData.date_fin,
-      budgetPrevu: formData.budgetPrevu || formData.budget_estime || 0,
-      budget_estime: formData.budget_estime || formData.budgetPrevu || 0,
-      budget_materiaux: formData.budget_materiaux,
-      heures_estimees: formData.heures_estimees,
-      notes: formData.notes,
-      description: formData.description
-    });
-
-    setEditingChantier(null);
-    showToast('Chantier modifié avec succès', 'success');
   };
 
   // Filtering and sorting logic
   const getFilteredAndSortedChantiers = () => {
-    // First filter by status
+    // First filter by status — exclude archived unless viewing archives
     let filtered = [...chantiers];
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(c => c.statut === filterStatus);
+    if (filterStatus === 'archive') {
+      filtered = filtered.filter(c => c.statut === 'archive');
+    } else {
+      filtered = filtered.filter(c => c.statut !== 'archive');
+      if (filterStatus !== 'all') {
+        filtered = filtered.filter(c => c.statut === filterStatus);
+      }
+    }
+    // Filter by client
+    if (filterClient) {
+      filtered = filtered.filter(c => c.client_id === filterClient);
+    }
+    // Text search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(c => {
+        const client = clients.find(cl => cl.id === c.client_id);
+        return (c.nom || '').toLowerCase().includes(q)
+          || (c.adresse || '').toLowerCase().includes(q)
+          || (c.ville || '').toLowerCase().includes(q)
+          || (client?.nom || '').toLowerCase().includes(q);
+      });
     }
 
     // Then sort
@@ -1799,16 +2183,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         return filtered.sort((a, b) => (getChantierBilan(b.id)?.tauxMarge || 0) - (getChantierBilan(a.id)?.tauxMarge || 0));
       case 'recent':
       default:
-        return filtered.sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
+        return filtered.sort((a, b) => new Date(b.createdAt || b.date_debut || 0) - new Date(a.createdAt || a.date_debut || 0));
     }
   };
 
   // Stats for filter tabs
+  const archivedCount = chantiers.filter(c => c.statut === 'archive').length;
   const statusCounts = {
-    all: chantiers.length,
+    all: chantiers.filter(c => c.statut !== 'archive').length,
     en_cours: chantiers.filter(c => c.statut === 'en_cours').length,
     prospect: chantiers.filter(c => c.statut === 'prospect').length,
     termine: chantiers.filter(c => c.statut === 'termine').length,
+    archive: archivedCount,
   };
 
   // Liste
@@ -1826,12 +2212,53 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers ({chantiers.length})</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
         </div>
-        <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
-          <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* List/Map toggle */}
+          <div className={`flex rounded-xl border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              style={viewMode === 'list' ? { background: couleur } : {}}
+              title="Vue liste"
+            >
+              <List size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              style={viewMode === 'map' ? { background: couleur } : {}}
+              title="Vue carte"
+            >
+              <Map size={16} />
+            </button>
+          </div>
+          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+          </button>
+        </div>
       </div>
+
+      {/* Search bar */}
+      {chantiers.length > 3 && (
+        <div className="relative">
+          <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Rechercher un chantier, client, adresse..."
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${inputBg} focus:ring-2 focus:ring-offset-0`}
+            style={{ '--tw-ring-color': `${couleur}40` }}
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+              <X size={14} className={textMuted} />
+            </button>
+          )}
+        </div>
+      )}
 
       {chantiers.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -1895,6 +2322,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         <>
           {/* En Cours Card - Simplified: Progression, Équipe, Tasks only */}
           {(() => {
+            // Only show hero card when viewing all or en_cours filter
+            if (filterStatus !== 'all' && filterStatus !== 'en_cours') return null;
             const activeChantiers = chantiers.filter(c => c.statut === 'en_cours');
             if (activeChantiers.length === 0) return null;
 
@@ -1950,8 +2379,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </div>
 
                 {/* Name + Client */}
-                <h3 className={`font-bold text-lg ${textPrimary}`}>{current.nom}</h3>
-                <p className={`text-sm ${textMuted} mb-3`}>{client?.nom || 'Sans client'}</p>
+                <h3 className={`font-bold text-lg ${textPrimary}`} title={current.nom}>{current.nom}</h3>
+                <p className={`text-sm ${textMuted} mb-3`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</p>
 
                 {/* Progress Bar */}
                 <div className={`mb-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -2031,6 +2460,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 { key: 'en_cours', label: 'En cours', color: '#f97316' },
                 { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
                 { key: 'termine', label: 'Terminés', color: '#22c55e' },
+                ...(archivedCount > 0 ? [{ key: 'archive', label: 'Archivés', color: '#6b7280' }] : []),
               ].map(tab => (
                 <button
                   key={tab.key}
@@ -2052,28 +2482,72 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               ))}
             </div>
 
-            {/* Titre section + Tri */}
-            <div className="flex items-center justify-between">
+            {/* Client filter + Titre section + Tri */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tous les chantiers</span>
-                <span className={`text-[10px] ${textMuted}`}>— {chantiers.length} projet{chantiers.length > 1 ? 's' : ''}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : 'Chantiers terminés'}</span>
+                <span className={`text-[10px] ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
               </div>
-              {/* Sorting dropdown */}
-              {chantiers.length > 1 && (
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-                >
-                  <option value="recent">Plus récent</option>
-                  <option value="name">Nom A-Z</option>
-                  <option value="status">Par statut</option>
-                  <option value="margin">Par marge</option>
-                </select>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Client filter */}
+                {clients.length > 1 && (
+                  <select
+                    value={filterClient}
+                    onChange={(e) => setFilterClient(e.target.value)}
+                    className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                  >
+                    <option value="">Tous les clients</option>
+                    {clients.map(c => (
+                      <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>
+                    ))}
+                  </select>
+                )}
+                {/* Sorting dropdown */}
+                {chantiers.length > 1 && (
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                  >
+                    <option value="recent">Plus récent</option>
+                    <option value="name">Nom A-Z</option>
+                    <option value="status">Par statut</option>
+                    <option value="margin">Par marge</option>
+                  </select>
+                )}
+              </div>
             </div>
           </div>
+          {/* Map View */}
+          {viewMode === 'map' && (
+            <Suspense fallback={<div className={`h-[400px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
+              <ChantierMap
+                chantiers={getFilteredAndSortedChantiers()}
+                clients={clients}
+                onSelectChantier={(id) => setView(id)}
+                isDark={isDark}
+                couleur={couleur}
+                formatMoney={formatMoney}
+                modeDiscret={modeDiscret}
+              />
+            </Suspense>
+          )}
+
+          {/* List View */}
+          {viewMode === 'list' && <>
+          {getFilteredAndSortedChantiers().length === 0 && (
+            <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
+              <Search size={32} className={`mx-auto mb-3 ${textMuted}`} />
+              <p className={`font-medium ${textPrimary}`}>{searchQuery ? 'Aucun résultat' : filterStatus === 'termine' ? 'Aucun chantier terminé' : filterStatus === 'archive' ? 'Aucun chantier archivé' : 'Aucun chantier trouvé'}</p>
+              <p className={`text-sm ${textMuted} mt-1`}>{searchQuery ? `Aucun chantier ne correspond à "${searchQuery}"` : 'Les chantiers de cette catégorie apparaîtront ici'}</p>
+              {(searchQuery || filterClient) && (
+                <button onClick={() => { setSearchQuery(''); setFilterClient(''); }} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: couleur }}>
+                  Réinitialiser les filtres
+                </button>
+              )}
+            </div>
+          )}
           <div className="grid gap-3 sm:gap-4">
           {getFilteredAndSortedChantiers().map(ch => {
             const client = clients.find(c => c.id === ch.client_id);
@@ -2084,11 +2558,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const revenuTotalList = bilan.revenuPrevu + (bilan.adjRevenus || 0);
             const budgetDepleted = revenuTotalList > 0 && bilan.totalDepenses > revenuTotalList * 0.9;
             const hasAlert = bilan.tauxMarge < 0 || budgetDepleted;
-            const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : 'Prospect';
+            const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'archive' ? 'Archivé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
               ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
               : ch.statut === 'termine'
               ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+              : ch.statut === 'archive'
+              ? (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600')
               : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700');
 
             // Task counts
@@ -2103,8 +2579,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0 flex-1">
-                    <h3 className={`font-semibold truncate ${textPrimary}`}>{ch.nom}</h3>
-                    <p className={`text-xs ${textMuted} truncate`}>{client?.nom || 'Sans client'}</p>
+                    <h3 className={`font-semibold truncate ${textPrimary}`} title={ch.nom}>{ch.nom}</h3>
+                    <p className={`text-xs ${textMuted} truncate`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
                     {statusLabel}
@@ -2127,10 +2603,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Stats row */}
                 <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
                   <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-1.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200')) : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={bilan.tauxMarge < 0 ? 'Marge négative — le chantier génère une perte' : budgetDepleted ? `Budget consommé à ${revenuTotalList > 0 ? ((bilan.totalDepenses / revenuTotalList) * 100).toFixed(0) : 0}%` : `Marge : ${formatPct(bilan.tauxMarge)}`}>
-                      <span className={`text-sm font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
-                      {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'} animate-pulse`} />}
-                    </div>
+                    {budgetPrevu > 0 ? (
+                      <div className={`flex items-center gap-1.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200')) : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={bilan.tauxMarge < 0 ? 'Marge négative — le chantier génère une perte' : budgetDepleted ? `Budget consommé à ${revenuTotalList > 0 ? ((bilan.totalDepenses / revenuTotalList) * 100).toFixed(0) : 0}%` : `Marge : ${formatPct(bilan.tauxMarge)}`}>
+                        <span className={`text-sm font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
+                        {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'} animate-pulse`} />}
+                      </div>
+                    ) : (
+                      <span className={`text-xs ${textMuted}`}>Budget non défini</span>
+                    )}
                     {/* Task indicator */}
                     {allTasks.length > 0 && (
                       <div className="flex items-center gap-1.5">
@@ -2143,10 +2623,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                   <span className={`text-sm font-bold whitespace-nowrap tabular-nums ${textPrimary}`}>{budgetPrevu > 0 ? formatMoney(budgetPrevu) : ''}</span>
                 </div>
+
+                {/* Unarchive button for archived chantiers */}
+                {ch.statut === 'archive' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'termine' }); showToast('Chantier restauré', 'success'); }}
+                    className={`w-full mt-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <Archive size={14} /> Restaurer
+                  </button>
+                )}
               </div>
             );
           })}
           </div>
+          </>}
         </>
       )}
 

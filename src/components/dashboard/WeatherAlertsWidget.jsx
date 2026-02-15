@@ -350,7 +350,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xl">⛈️</span>
-          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Alertes Météo</h3>
+          <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Alertes Météo</h2>
           {alerts.length > 0 && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
               isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-800'

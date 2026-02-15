@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, FileText, Droplets, Zap, Layers, Brush, Ruler, LayoutGrid, Thermometer, Home, Mountain, ArrowLeft, Check, TrendingUp } from 'lucide-react';
+import { X, ChevronRight, FileText, Droplets, Zap, Layers, Brush, Ruler, LayoutGrid, Thermometer, Home, Mountain, ArrowLeft, Check, TrendingUp, Star, Trash2 } from 'lucide-react';
 import { TEMPLATES_METIER, getMetiers, prepareTemplateLines } from '../lib/templates/devis-templates';
 
 /**
@@ -24,6 +24,8 @@ export default function TemplateSelector({
   isOpen,
   onClose,
   onSelectTemplate,
+  customTemplates = [],
+  onDeleteTemplate,
   isDark,
   couleur
 }) {
@@ -106,7 +108,56 @@ export default function TemplateSelector({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
           {!selectedMetier ? (
-            // Liste des metiers
+            <div>
+              {/* Mes modèles personnalisés */}
+              {customTemplates.length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Star size={16} style={{ color: couleur }} />
+                    <p className={`text-sm font-semibold ${textPrimary}`}>Mes modèles</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                      {customTemplates.length}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {customTemplates.map(t => (
+                      <div
+                        key={t.id}
+                        className={`p-3 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
+                        onClick={() => {
+                          onSelectTemplate({
+                            template: t,
+                            lignes: (t.lignes || []).map(l => ({ ...l, id: Math.random().toString(36).slice(2) }))
+                          });
+                          onClose();
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium ${textPrimary}`}>{t.nom}</p>
+                          <p className={`text-xs ${textMuted}`}>{t.category} · {(t.lignes || []).length} lignes</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-sm font-medium" style={{ color: couleur }}>
+                            ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                          </span>
+                          {onDeleteTemplate && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
+                              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    <p className={`text-xs font-medium ${textMuted} mb-3`}>Modèles par métier</p>
+                  </div>
+                </div>
+              )}
+              {/* Liste des metiers */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {metiers.map(metier => {
                 const IconComponent = ICON_MAP[metier.icon] || FileText;
@@ -132,6 +183,7 @@ export default function TemplateSelector({
                   </button>
                 );
               })}
+            </div>
             </div>
           ) : (
             // Liste des templates du metier

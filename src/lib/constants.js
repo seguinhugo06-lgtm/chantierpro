@@ -48,21 +48,24 @@ export const CHANTIER_STATUS = {
   PROSPECT: 'prospect',
   EN_COURS: 'en_cours',
   TERMINE: 'termine',
-  ABANDONNE: 'abandonne'
+  ABANDONNE: 'abandonne',
+  ARCHIVE: 'archive'
 };
 
 export const CHANTIER_STATUS_LABELS = {
   [CHANTIER_STATUS.PROSPECT]: 'Prospect',
   [CHANTIER_STATUS.EN_COURS]: 'En cours',
   [CHANTIER_STATUS.TERMINE]: 'Terminé',
-  [CHANTIER_STATUS.ABANDONNE]: 'Abandonné'
+  [CHANTIER_STATUS.ABANDONNE]: 'Abandonné',
+  [CHANTIER_STATUS.ARCHIVE]: 'Archivé'
 };
 
 export const CHANTIER_STATUS_COLORS = {
   [CHANTIER_STATUS.PROSPECT]: { bg: 'bg-blue-100', text: 'text-blue-600', dot: 'bg-blue-500' },
   [CHANTIER_STATUS.EN_COURS]: { bg: 'bg-emerald-100', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   [CHANTIER_STATUS.TERMINE]: { bg: 'bg-slate-100', text: 'text-slate-600', dot: 'bg-slate-400' },
-  [CHANTIER_STATUS.ABANDONNE]: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-400' }
+  [CHANTIER_STATUS.ABANDONNE]: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-400' },
+  [CHANTIER_STATUS.ARCHIVE]: { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' }
 };
 
 // Valid status transitions
@@ -70,7 +73,8 @@ export const CHANTIER_STATUS_TRANSITIONS = {
   [CHANTIER_STATUS.PROSPECT]: [CHANTIER_STATUS.EN_COURS, CHANTIER_STATUS.ABANDONNE],
   [CHANTIER_STATUS.EN_COURS]: [CHANTIER_STATUS.TERMINE, CHANTIER_STATUS.ABANDONNE, CHANTIER_STATUS.PROSPECT],
   [CHANTIER_STATUS.TERMINE]: [CHANTIER_STATUS.EN_COURS], // Can reopen
-  [CHANTIER_STATUS.ABANDONNE]: [CHANTIER_STATUS.PROSPECT, CHANTIER_STATUS.EN_COURS] // Can reactivate
+  [CHANTIER_STATUS.ABANDONNE]: [CHANTIER_STATUS.PROSPECT, CHANTIER_STATUS.EN_COURS], // Can reactivate
+  [CHANTIER_STATUS.ARCHIVE]: [CHANTIER_STATUS.TERMINE, CHANTIER_STATUS.PROSPECT] // Can restore
 };
 
 // Helper to check if a status transition is valid

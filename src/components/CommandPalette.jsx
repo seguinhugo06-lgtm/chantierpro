@@ -77,6 +77,7 @@ export default function CommandPalette({
   clients = [],
   chantiers = [],
   devis = [],
+  memos = [],
   // Actions
   onNewDevis,
   onNewClient,
@@ -112,6 +113,7 @@ export default function CommandPalette({
     { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
     { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
     { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
+    { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('memos'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
     { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
@@ -125,6 +127,7 @@ export default function CommandPalette({
     { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
     { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire sous-traitants', icon: Users, action: () => { setPage('clients'); onClose(); } },
     { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda planning semaine mois jour', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
+    { id: 'nav-memos', label: 'Mémos', keywords: 'mémos notes rappels tâches todo inbox', icon: ClipboardList, action: () => { setPage('memos'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
@@ -152,6 +155,12 @@ export default function CommandPalette({
     includeScore: true,
   }), [devis, clients]);
 
+  const fuseMemos = useMemo(() => new Fuse(memos, {
+    keys: ['text', 'notes', 'category'],
+    threshold: 0.4,
+    includeScore: true,
+  }), [memos]);
+
   const fuseActions = useMemo(() => new Fuse([...quickActions, ...navigationItems], {
     keys: ['label', 'keywords'],
     threshold: 0.4,
@@ -177,20 +186,22 @@ export default function CommandPalette({
 
   // Search results with fuzzy matching
   const searchResults = useMemo(() => {
-    if (debouncedQuery.length < 2) return { actions: [], clients: [], chantiers: [], devis: [] };
+    if (debouncedQuery.length < 2) return { actions: [], clients: [], chantiers: [], devis: [], memos: [] };
 
     const actionResults = fuseActions.search(debouncedQuery).slice(0, 5);
     const clientResults = fuseClients.search(debouncedQuery).slice(0, 5);
     const chantierResults = fuseChantiers.search(debouncedQuery).slice(0, 5);
     const devisResults = fuseDevis.search(debouncedQuery).slice(0, 5);
+    const memoResults = fuseMemos.search(debouncedQuery).slice(0, 5);
 
     return {
       actions: actionResults.map(r => r.item),
       clients: clientResults.map(r => r.item),
       chantiers: chantierResults.map(r => r.item),
       devis: devisResults.map(r => r.item),
+      memos: memoResults.map(r => r.item),
     };
-  }, [debouncedQuery, fuseActions, fuseClients, fuseChantiers, fuseDevis]);
+  }, [debouncedQuery, fuseActions, fuseClients, fuseChantiers, fuseDevis, fuseMemos]);
 
   // Build flat list of all items
   const allItems = useMemo(() => {
@@ -292,6 +303,21 @@ export default function CommandPalette({
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }
           });
         });
+      }
+
+      if (searchResults.memos.length > 0) {
+        items.push({ type: 'header', label: 'Mémos' });
+        searchResults.memos.forEach(m => items.push({
+          type: 'result',
+          id: `memo-${m.id}`,
+          entityType: 'memo',
+          entityId: m.id,
+          label: m.text?.substring(0, 60) || 'Mémo sans texte',
+          sublabel: m.category || (m.due_date ? `📅 ${new Date(m.due_date).toLocaleDateString('fr-FR')}` : ''),
+          icon: ClipboardList,
+          color: '#f59e0b',
+          action: () => { setPage('memos'); onClose(); }
+        }));
       }
 
       // No results message handled separately
@@ -535,6 +561,10 @@ export default function CommandPalette({
                 <span className={`flex items-center gap-1 ${textMuted}`}>
                   <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>esc</kbd>
                   <span className="ml-1">fermer</span>
+                </span>
+                <span className={`flex items-center gap-1 ${textMuted}`}>
+                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>?</kbd>
+                  <span className="ml-1">raccourcis</span>
                 </span>
               </div>
               <div className="flex items-center gap-1.5">

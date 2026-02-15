@@ -21,14 +21,14 @@ import {
 const CHECKLIST_ITEMS = [
   {
     id: 'siret',
-    label: 'SIRET renseigne',
+    label: 'SIRET renseigné',
     check: (e) => !!e.siret?.trim(),
     tab: 'identite',
     icon: Building2,
   },
   {
     id: 'tvaIntra',
-    label: 'Numero TVA intracommunautaire',
+    label: 'Numéro TVA intracommunautaire',
     check: (e) => !!e.tvaIntra?.trim(),
     tab: 'legal',
     icon: Receipt,
@@ -42,14 +42,14 @@ const CHECKLIST_ITEMS = [
   },
   {
     id: 'iban',
-    label: 'Coordonnees bancaires',
+    label: 'Coordonnées bancaires',
     check: (e) => !!e.iban?.trim(),
     tab: 'banque',
     icon: CreditCard,
   },
   {
     id: 'adresse',
-    label: 'Adresse complete',
+    label: 'Adresse complète',
     check: (e) => !!e.adresse?.trim(),
     tab: 'identite',
     icon: MapPin,
@@ -63,7 +63,7 @@ const CHECKLIST_ITEMS = [
   },
   {
     id: 'facturx',
-    label: 'Factur-X active',
+    label: 'Factur-X activé',
     check: () => true, // Always true - built into ChantierPro
     tab: null,
     icon: Shield,
@@ -112,7 +112,7 @@ function CircularProgress({ score, size = 120, strokeWidth = 10, couleur, isDark
 
 /**
  * Facture2026Tab - Compliance readiness tab for the September 2026
- * French electronic invoicing mandate (facturation electronique).
+ * French electronic invoicing mandate (facturation électronique).
  *
  * Displays compliance score, checklist, Factur-X info, and archive details.
  */
@@ -159,12 +159,12 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
           </div>
           <div className="flex-1 min-w-0">
             <h2 className={`text-lg font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-              Facturation electronique obligatoire le 1er septembre 2026
+              Facturation électronique obligatoire le 1er septembre 2026
             </h2>
             <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isReady
-                ? 'Vous etes pret avec ChantierPro \u2713'
-                : 'Actions requises pour etre conforme'}
+                ? 'Vous êtes prêt avec ChantierPro \u2713'
+                : 'Actions requises pour être conforme'}
             </p>
           </div>
         </div>
@@ -176,10 +176,10 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         <div className={`${cardBg} rounded-2xl border p-5 flex flex-col items-center justify-center`}>
           <CircularProgress score={score} isDark={isDark} couleur={couleur} />
           <p className={`mt-3 text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-            Score Conformite 2026
+            Score Conformité 2026
           </p>
           <p className={`text-xs mt-1 ${textMuted}`}>
-            {results.filter((r) => r.passed).length}/{results.length} criteres valides
+            {results.filter((r) => r.passed).length}/{results.length} critères validés
           </p>
         </div>
 
@@ -211,7 +211,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                       <XCircle className="w-3.5 h-3.5" />
-                      A completer
+                      À compléter
                     </span>
                   )}
                   {item.tab && !item.passed && (
@@ -219,13 +219,15 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                       className="text-xs flex items-center gap-1 hover:underline"
                       style={{ color: couleur }}
                       onClick={() => {
-                        // Navigate to the relevant settings tab via DOM event
-                        const event = new CustomEvent('navigate-settings-tab', { detail: item.tab });
+                        // Navigate to the relevant settings tab and scroll to the field
+                        const event = new CustomEvent('navigate-settings-tab', {
+                          detail: { tab: item.tab, fieldId: item.id }
+                        });
                         window.dispatchEvent(event);
                       }}
-                      title={`Aller a l'onglet ${item.tab}`}
+                      title={`Aller à l'onglet ${item.tab}`}
                     >
-                      Completer
+                      Compléter
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   )}
@@ -244,14 +246,14 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         </h3>
         <div className="space-y-3">
           <p className={`text-sm leading-relaxed ${textSecondary}`}>
-            Factur-X est le standard franco-allemand de facturation electronique base sur la norme
-            europeenne EN 16931. Il combine un PDF lisible avec un fichier XML structure, permettant
-            le traitement automatise par les plateformes de dematerialisation partenaires (PDP).
+            Factur-X est le standard franco-allemand de facturation électronique basé sur la norme
+            européenne EN 16931. Il combine un PDF lisible avec un fichier XML structuré, permettant
+            le traitement automatisé par les plateformes de dématérialisation partenaires (PDP).
           </p>
           <div className={`flex flex-wrap gap-4 mt-3 text-sm ${textSecondary}`}>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
               <CheckCircle className="w-4 h-4 text-emerald-500" />
-              <span>ChantierPro genere automatiquement vos factures au format Factur-X</span>
+              <span>ChantierPro génère automatiquement vos factures au format Factur-X</span>
             </div>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
               <Info className="w-4 h-4" style={{ color: couleur }} />
@@ -279,12 +281,12 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
       <div className={`${cardBg} rounded-2xl border p-5`}>
         <h3 className={`font-semibold mb-4 flex items-center gap-2 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
           <Lock className="w-5 h-5" style={{ color: couleur }} />
-          Archivage legal (10 ans)
+          Archivage légal (10 ans)
         </h3>
         <div className="space-y-3">
           <p className={`text-sm leading-relaxed ${textSecondary}`}>
-            La legislation francaise impose un archivage des factures pendant 10 ans (article L123-22
-            du Code de commerce). ChantierPro assure la conservation et l'integrite de vos documents.
+            La législation française impose un archivage des factures pendant 10 ans (article L123-22
+            du Code de commerce). ChantierPro assure la conservation et l'intégrité de vos documents.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
@@ -294,7 +296,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                   Archivage automatique
                 </p>
                 <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Vos factures sont archivees et horodatees automatiquement
+                  Vos factures sont archivées et horodatées automatiquement
                 </p>
               </div>
             </div>
@@ -302,10 +304,10 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
               <Lock className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
               <div>
                 <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                  Verification SHA-256
+                  Vérification SHA-256
                 </p>
                 <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Chaque document est scelle par un hash SHA-256 garantissant son integrite
+                  Chaque document est scellé par un hash SHA-256 garantissant son intégrité
                 </p>
               </div>
             </div>
@@ -316,7 +318,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
                   Piste d'audit fiable
                 </p>
                 <p className={`text-xs mt-0.5 ${textMuted}`}>
-                  Tracabilite complete des modifications et acces aux documents
+                  Traçabilité complète des modifications et accès aux documents
                 </p>
               </div>
             </div>

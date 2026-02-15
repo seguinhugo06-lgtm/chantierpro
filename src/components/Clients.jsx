@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useFormValidation, clientSchema } from '../lib/validation';
+import FormError from './ui/FormError';
 
-export default function Clients({ clients, setClients, updateClient, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
+export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const { errors, validateAll, clearErrors } = useFormValidation(clientSchema);
+
+  // Format money with modeDiscret support
+  const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -29,6 +33,19 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   const [filterCategorie, setFilterCategorie] = useState('');
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+
+  // Escape key to close modals/views
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); }
+        else if (viewId) { setViewId(null); }
+        else if (showQuickModal) { setShowQuickModal(false); }
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [show, viewId, showQuickModal]);
 
   const filtered = clients.filter(c => {
     const matchSearch = !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase());
@@ -51,7 +68,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
 
   const clientStatsMap = useMemo(() => {
     const map = new Map();
-    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
+    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
     (devis || []).forEach(d => {
       const cid = d.client_id;
       if (!cid) return;
@@ -59,21 +76,33 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       const s = map.get(cid);
       if (d.type === 'devis') s.devis++;
       if (d.type === 'facture') s.factures++;
-      if (d.statut === 'payee') s.ca += d.total_ttc || 0;
+      // CA = devis signés (accepte) + factures — reflète le CA engagé
+      // Pour les devis, ne compter que accepte (pas facture/acompte_facture car la facture les couvre)
+      if (d.type === 'devis' && d.statut === 'accepte') {
+        s.ca += d.total_ttc || 0;
+      }
+      // Pour les factures, compter toujours (elles remplacent le devis dans le CA)
+      if (d.type === 'facture') {
+        s.ca += d.total_ttc || 0;
+      }
+      // Devis actifs = envoyés ou acceptés (pas encore facturés/refusés)
+      if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
     });
     (chantiers || []).forEach(ch => {
-      const cid = ch.client_id;
+      const cid = ch.client_id || ch.clientId;
       if (!cid) return;
       if (!map.has(cid)) map.set(cid, { ...empty });
       const s = map.get(cid);
       s.chantiers++;
       if (ch.statut === 'en_cours') s.chantiersEnCours++;
+      // Chantiers actifs = tout sauf archivé/abandonné/terminé
+      if (ch.statut !== 'archive' && ch.statut !== 'abandonne' && ch.statut !== 'termine') s.chantiersActifs++;
     });
     return map;
   }, [devis, chantiers]);
 
   const getClientStats = (id) => {
-    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0 };
+    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
   };
 
   const submit = async () => {
@@ -102,11 +131,13 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       }
     } catch (error) {
       console.error('Error saving client:', error);
-      // Still close the form but show error was handled
+      showToast('Erreur lors de la sauvegarde du client', 'error');
+      return; // Don't close form on error so user can retry
     }
     setShow(false);
     setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
     clearErrors();
+    showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
     // Return to detail view if we were editing
     if (wasEditing) {
       setViewId(wasEditing);
@@ -124,9 +155,23 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
-  const deleteClient = async (id) => {
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce client ?' });
-    if (confirmed) setClients(clients.filter(c => c.id !== id));
+  const handleDeleteClient = async (id) => {
+    const client = clients.find(c => c.id === id);
+    const stats = getClientStats(id);
+    const hasData = stats.chantiers > 0 || stats.devis > 0 || stats.factures > 0;
+    const message = hasData
+      ? `Supprimer ${client?.nom || 'ce client'} ? Ce client a ${stats.chantiers} chantier(s) et ${stats.devis + stats.factures} document(s) associés. Cette action est irréversible.`
+      : `Supprimer ${client?.nom || 'ce client'} ? Cette action est irréversible.`;
+    const confirmed = await confirm({ title: 'Supprimer le client', message });
+    if (confirmed) {
+      if (deleteClientProp) {
+        await deleteClientProp(id);
+      } else {
+        setClients(clients.filter(c => c.id !== id));
+      }
+      setViewId(null);
+      showToast('Client supprimé', 'success');
+    }
   };
 
   // Quick client creation handler
@@ -164,9 +209,14 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               {client.categorie && <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}><Tag size={10} />{client.categorie}</span>}
             </div>
           </div>
-          <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
-            <Edit3 size={14} /><span>Modifier</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
+              <Edit3 size={14} /><span>Modifier</span>
+            </button>
+            <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer ce client">
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Actions rapides */}
@@ -217,7 +267,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             <div className="col-span-2">
               <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><MapPin size={14} /> Adresse</p>
               {client.adresse ? (
-                <p className={`font-medium ${textPrimary}`}>{client.adresse}</p>
+                <p className={`font-medium ${textPrimary} whitespace-pre-line`}>{client.adresse}</p>
               ) : (
                 <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
                   + Ajouter une adresse
@@ -254,7 +304,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
           </div>
           <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
-            <p className={`text-lg sm:text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{stats.ca.toLocaleString('fr-FR')}€</p>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{formatMoney(stats.ca)}</p>
             <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
           </div>
         </div>
@@ -266,7 +316,8 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
             ['chantiers', <Home size={14} />, 'Chantiers'],
             ['documents', <FileText size={14} />, 'Documents'],
             ['echanges', <MessageSquare size={14} />, 'Échanges'],
-            ['photos', <Camera size={14} />, 'Photos']
+            ['photos', <Camera size={14} />, 'Photos'],
+            ['memos', <ClipboardList size={14} />, 'Mémos']
           ].map(([k, icon, label]) => (
             <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2.5 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[44px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
               {icon} {label}
@@ -326,7 +377,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                         <p className={`text-sm font-medium truncate ${textPrimary}`}>{item.label}</p>
                         <p className={`text-xs ${textMuted}`}>
                           {item.date ? new Date(item.date).toLocaleDateString('fr-FR') : '—'}
-                          {item.montant ? ` • ${item.montant.toLocaleString('fr-FR')} €` : ''}
+                          {item.montant ? ` • ${formatMoney(item.montant)}` : ''}
                         </p>
                       </div>
                       <span className={`text-xs font-medium ${statusColor(item.statut)}`}>{statusLabel(item.statut)}</span>
@@ -441,7 +492,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                           </div>
                           <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                         </div>
-                        <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
+                        <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
                         <ChevronRight size={18} className={textMuted} />
                       </div>
                     );
@@ -514,10 +565,97 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                           <span className={`text-xs ${textMuted}`}>{new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         {e.objet && <p className={`text-sm ${textSecondary} mt-1`}>{e.objet}</p>}
-                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{e.montant.toLocaleString('fr-FR')}€</p>}
+                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{formatMoney(e.montant)}</p>}
                       </div>
                     </div>
                   ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {activeTab === 'memos' && (
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
+            {(() => {
+              const clientMemos = memos.filter(m => m.client_id === client.id);
+              const activeMemos = clientMemos.filter(m => !m.is_done);
+              const doneMemos = clientMemos.filter(m => m.is_done);
+              return (
+                <div className="space-y-3">
+                  {/* Quick add */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id={`memo-client-${client.id}`}
+                      placeholder="Nouveau mémo pour ce client..."
+                      className={`flex-1 px-3 py-2 border rounded-xl text-sm ${inputBg}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.target.value.trim()) {
+                          addMemo?.({ text: e.target.value.trim(), client_id: client.id });
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        const input = document.getElementById(`memo-client-${client.id}`);
+                        if (input?.value.trim()) {
+                          addMemo?.({ text: input.value.trim(), client_id: client.id });
+                          input.value = '';
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl text-white text-sm font-medium"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+
+                  {/* Active memos */}
+                  {activeMemos.length > 0 && (
+                    <div className="space-y-1">
+                      {activeMemos.map(m => (
+                        <div key={m.id} className={`flex items-start gap-2.5 px-3 py-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                          <button
+                            onClick={() => toggleMemo?.(m.id)}
+                            className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 ${isDark ? 'border-slate-500' : 'border-slate-300'}`}
+                            aria-label="Marquer comme fait"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${textPrimary}`}>{m.text}</p>
+                            {m.due_date && (
+                              <span className={`text-xs ${m.due_date < new Date().toISOString().split('T')[0] ? 'text-red-500' : textMuted}`}>
+                                {new Date(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Done memos */}
+                  {doneMemos.length > 0 && (
+                    <details className={`text-sm ${textMuted}`}>
+                      <summary className="cursor-pointer py-1 font-medium">Terminés ({doneMemos.length})</summary>
+                      <div className="space-y-1 mt-1">
+                        {doneMemos.map(m => (
+                          <div key={m.id} className="flex items-center gap-2.5 px-3 py-1.5 opacity-60">
+                            <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+                            <span className="line-through text-sm">{m.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
+                  {clientMemos.length === 0 && (
+                    <div className="text-center py-8">
+                      <ClipboardList size={28} className={`mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                      <p className={textMuted}>Aucun mémo pour ce client</p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -597,14 +735,14 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} />{errors.nom && <p className="text-red-500 text-xs mt-1">{errors.nom}</p>}</div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} />{errors.telephone && <p className="text-red-500 text-xs mt-1">{errors.telephone}</p>}</div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} />{errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}</div>
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}><option value="">— Sélectionner —</option><option value="Particulier">Particulier</option><option value="Professionnel">Professionnel</option><option value="Syndic">Syndic</option><option value="Architecte">Architecte</option><option value="Promoteur">Promoteur</option><option value="Collectivité">Collectivité</option></select></div>
-          <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
-          <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
+          <div><label htmlFor="client-nom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input id="client-nom" aria-required="true" aria-invalid={!!errors.nom} aria-describedby={errors.nom ? 'client-nom-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /><FormError id="client-nom-error" message={errors.nom} /></div>
+          <div><label htmlFor="client-prenom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input id="client-prenom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
+          <div><label htmlFor="client-entreprise" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input id="client-entreprise" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
+          <div><label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input id="client-telephone" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /><FormError id="client-telephone-error" message={errors.telephone} /></div>
+          <div><label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} /><FormError id="client-email-error" message={errors.email} /></div>
+          <div><label htmlFor="client-categorie" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label><select id="client-categorie" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}><option value="">— Sélectionner —</option><option value="Particulier">Particulier</option><option value="Professionnel">Professionnel</option><option value="Syndic">Syndic</option><option value="Architecte">Architecte</option><option value="Promoteur">Promoteur</option><option value="Collectivité">Collectivité</option></select></div>
+          <div className="sm:col-span-2"><label htmlFor="client-adresse" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea id="client-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
+          <div className="sm:col-span-2"><label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea id="client-notes" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
@@ -630,6 +768,58 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         couleur={couleur}
       />
 
+      {/* KPI Cards */}
+      {clients.length > 0 && (() => {
+        const totalCA = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
+        const clientsActifs = Array.from(clientStatsMap.values()).filter(v => v.chantiersActifs > 0 || v.devisActifs > 0).length;
+        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && d.statut === 'envoye').length;
+        let topClient = null;
+        let topCA = 0;
+        clientStatsMap.forEach((v, cid) => {
+          if (v.ca > topCA) { topCA = v.ca; topClient = clients.find(c => c.id === cid); }
+        });
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                  <Users size={16} style={{ color: couleur }} />
+                </div>
+              </div>
+              <p className={`text-lg sm:text-xl font-bold ${textPrimary}`}>{clientsActifs}</p>
+              <p className={`text-xs ${textMuted}`}>Clients actifs</p>
+            </div>
+            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10">
+                  <Euro size={16} className="text-emerald-500" />
+                </div>
+              </div>
+              <p className={`text-lg sm:text-xl font-bold text-emerald-500`}>{formatMoney(totalCA)}</p>
+              <p className={`text-xs ${textMuted}`}>CA total</p>
+            </div>
+            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10">
+                  <Briefcase size={16} className="text-purple-500" />
+                </div>
+              </div>
+              <p className={`text-lg sm:text-xl font-bold text-purple-500 truncate`}>{modeDiscret ? '·····' : (topClient?.nom || '—')}</p>
+              <p className={`text-xs ${textMuted}`}>Top client</p>
+            </div>
+            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/10">
+                  <Send size={16} className="text-blue-500" />
+                </div>
+              </div>
+              <p className={`text-lg sm:text-xl font-bold text-blue-500`}>{devisEnAttente}</p>
+              <p className={`text-xs ${textMuted}`}>Devis en attente</p>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-3">
           {setPage && (
@@ -645,6 +835,15 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
         </div>
         <div className="flex items-center gap-2">
+          {onImportClients && (
+            <button
+              onClick={onImportClients}
+              className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+              title="Importer des clients (CSV)"
+            >
+              <Upload size={16} /><span className="hidden sm:inline">Importer</span>
+            </button>
+          )}
           <button
             onClick={() => setShowQuickModal(true)}
             className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all"
@@ -803,7 +1002,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                         </span>
                       )}
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" aria-label="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center opacity-60 hover:opacity-100 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" aria-label="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center sm:opacity-60 sm:hover:opacity-100 sm:group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
                       <Edit3 size={18} />
                     </button>
                   </div>
@@ -834,7 +1033,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                   {c.adresse && (
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <MapPin size={14} className={textMuted} />
-                      <span className={`text-sm ${textSecondary} flex-1 truncate`}>{c.adresse}</span>
+                      <span className={`text-sm ${textSecondary} flex-1 truncate whitespace-pre-line`}>{c.adresse}</span>
                       <button onClick={() => openGPS(c.adresse)} aria-label="Ouvrir dans Google Maps" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
                         <ExternalLink size={18} className="text-purple-500" />
                       </button>
@@ -858,7 +1057,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                       <FileText size={14} className={s.factures > 0 ? 'text-purple-500' : ''} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : 'Aucun CA pour ce client'}>{s.ca > 0 ? `${s.ca.toLocaleString('fr-FR')}€` : '—'}</span>
+                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 && !modeDiscret ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : ''}>{formatMoney(s.ca)}</span>
                 </div>
               </div>
             );

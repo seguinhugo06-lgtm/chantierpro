@@ -202,7 +202,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
         logo: ent.logo
       }));
     }
-    showToast(`Entreprise "${ent.nom}" activee`);
+    showToast(`Entreprise "${ent.nom}" activée`);
   }, [activeId, entreprises, persistAndSet, setEntreprise, showToast]);
 
   // -- Open add form --
@@ -655,7 +655,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
           <div>
             <h3 className={`font-semibold text-lg ${textPrimary}`}>Mes entreprises</h3>
             <p className={`text-sm ${textMuted}`}>
-              {entreprises.length} entreprise{entreprises.length > 1 ? 's' : ''} enregistree{entreprises.length > 1 ? 's' : ''}
+              {entreprises.length} entreprise{entreprises.length > 1 ? 's' : ''} enregistrée{entreprises.length > 1 ? 's' : ''}
               {' '}&middot; Maximum {MAX_ENTREPRISES}
             </p>
           </div>

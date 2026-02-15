@@ -9,7 +9,8 @@ const envDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 const hasSupabaseConfig = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // Demo mode: enabled if no Supabase config OR explicitly requested via URL/env
-export const isDemo = !hasSupabaseConfig || envDemoMode || (isDevelopment && urlHasDemoParam);
+// ?demo=true works in all environments to allow testing demo data on production builds
+export const isDemo = !hasSupabaseConfig || envDemoMode || urlHasDemoParam;
 
 
 // Demo user for auto-login in demo mode
@@ -19,9 +20,9 @@ const DEMO_USER = {
   user_metadata: { nom: 'Utilisateur Démo' }
 };
 
-// Log warning in production if someone tries to use demo param
-if (!isDevelopment && urlHasDemoParam && !envDemoMode) {
-  console.warn('Demo mode via URL is disabled in production for security reasons.');
+// Log demo mode activation
+if (urlHasDemoParam) {
+  console.log('🎭 Demo mode activated via URL parameter');
 }
 
 // En mode demo, on utilise des URLs factices pour éviter les erreurs 401

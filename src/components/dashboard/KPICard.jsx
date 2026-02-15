@@ -68,7 +68,7 @@ function CardPeriodSelector({ value, onChange, isDark }) {
                   : 'bg-white text-gray-900 shadow-sm'
                 : isDark
                   ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-600 hover:text-gray-700'
             )}
           >
             {period.label}
@@ -269,7 +269,7 @@ function MiniDonut({ data, size = 48, thickness = 6, tooltip }) {
 
       {/* Center percentage */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+        <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">
           {percentage}%
         </span>
       </div>
@@ -339,7 +339,7 @@ function TrendBadge({ value, label, inverted = false, isDark = false, size = 'de
         <span className={cn(
           'inline-flex items-center gap-1 rounded-full font-semibold',
           size === 'large' ? 'px-3 py-1.5 text-sm' : 'px-2 py-1 text-xs',
-          isDark ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-500'
+          isDark ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-600'
         )}>
           <Minus className={size === 'large' ? 'w-4 h-4' : 'w-3 h-3'} />
           —
@@ -396,7 +396,7 @@ function TrendBadge({ value, label, inverted = false, isDark = false, size = 'de
       {label && (
         <span className={cn(
           'text-[10px]',
-          isDark ? 'text-gray-400' : 'text-gray-500'
+          isDark ? 'text-gray-400' : 'text-gray-600'
         )}>
           {label}
         </span>
@@ -424,21 +424,21 @@ function DetailItem({ icon: Icon, label, value, highlight, isDark, onClick, subL
     >
       {Icon && (
         <Icon size={12} className={cn(
-          isDark ? 'text-gray-400' : 'text-gray-500',
+          isDark ? 'text-gray-400' : 'text-gray-600',
           onClick && 'group-hover:text-blue-500 transition-colors'
         )} />
       )}
       <div className="flex flex-col min-w-0 flex-1">
         <span className={cn(
           'text-xs truncate',
-          isDark ? 'text-gray-400' : 'text-gray-500'
+          isDark ? 'text-gray-400' : 'text-gray-600'
         )}>
           {label}
         </span>
         {subLabel && (
           <span className={cn(
             'text-[10px] truncate',
-            isDark ? 'text-gray-600' : 'text-gray-500'
+            isDark ? 'text-gray-600' : 'text-gray-600'
           )}>
             {subLabel}
           </span>
@@ -468,7 +468,7 @@ function DetailItem({ icon: Icon, label, value, highlight, isDark, onClick, subL
         {onClick && (
           <ChevronRight size={12} className={cn(
             'opacity-0 group-hover:opacity-100 transition-opacity',
-            isDark ? 'text-gray-400' : 'text-gray-500'
+            isDark ? 'text-gray-400' : 'text-gray-600'
           )} />
         )}
       </div>
@@ -640,7 +640,7 @@ const KPICard = React.forwardRef(
                 {subValue && (
                   <p className={cn(
                     'text-[11px] mt-0.5',
-                    isDark ? 'text-gray-400' : 'text-gray-500'
+                    isDark ? 'text-gray-400' : 'text-gray-600'
                   )}>
                     {subValue}
                   </p>
@@ -714,7 +714,7 @@ const KPICard = React.forwardRef(
                     </span>
                   </div>
                   {progress.label && (
-                    <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                    <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-600')}>
                       {progress.label}
                     </p>
                   )}
@@ -762,7 +762,7 @@ const KPICard = React.forwardRef(
           )}>
             <span className={cn(
               'text-sm font-medium transition-colors',
-              isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-900'
+              isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-900'
             )}>
               {footerLabel}
             </span>
@@ -779,7 +779,7 @@ const KPICard = React.forwardRef(
                 size={16}
                 className={cn(
                   'transition-all duration-300 group-hover:translate-x-0.5',
-                  isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-700'
+                  isDark ? 'text-gray-400 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-700'
                 )}
               />
             </div>
@@ -883,7 +883,7 @@ export function MiniKPICard({
         <div className="flex items-center gap-1">
           <p className={cn(
             'text-xs font-semibold uppercase tracking-wide truncate',
-            isDark ? 'text-gray-400' : 'text-gray-500'
+            isDark ? 'text-gray-400' : 'text-gray-600'
           )}>
             {label}
           </p>
@@ -906,7 +906,7 @@ export function MiniKPICard({
                 'text-sm font-medium flex items-center gap-0.5',
                 trend > 0 && (isDark ? 'text-emerald-400' : 'text-emerald-600'),
                 trend < 0 && (isDark ? 'text-red-400' : 'text-red-600'),
-                trend === 0 && 'text-gray-500'
+                trend === 0 && 'text-gray-600'
               )}
             >
               {trend > 0 ? <ArrowUpRight size={14} /> : trend < 0 ? <ArrowDownRight size={14} /> : null}

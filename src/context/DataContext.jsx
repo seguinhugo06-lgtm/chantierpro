@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
-import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
+import { loadAllData, saveItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
 import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
@@ -15,8 +15,16 @@ import { toast } from '../stores/toastStore';
 
 const DataContext = createContext(null);
 
-/** Queue a mutation for offline sync and notify user if actually offline */
+/** Validate that a string looks like a UUID (v4 format) */
+const isValidUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+/** Filter out records with non-UUID IDs (ghost demo data that leaked into Supabase) */
+const sanitizeRecords = (arr) => arr.filter(item => isValidUUID(item.id));
+
+/** Queue a mutation for offline sync and notify user if actually offline.
+ *  Skip queueing in demo mode (no Supabase to sync to). */
 const queueOffline = async (action, entity, data) => {
+  if (isDemo) return; // Demo mode: data is in localStorage, no sync needed
   await queueMutation(action, entity, data);
   if (!navigator.onLine) {
     toast.info('Sauvegardé hors-ligne', 'Synchronisation automatique au retour du réseau');
@@ -68,9 +76,22 @@ function saveDemoData(data) {
   }
 }
 
+// Demo seed catalogue — articles BTP de base pour les nouveaux utilisateurs
+const DEMO_SEED_CATALOGUE = [
+  { id: crypto.randomUUID(), reference: 'CAR-001', designation: 'Carrelage sol intérieur 60x60', description: 'Fourniture et pose carrelage grès cérame', unite: 'm²', categorie: 'Carrelage', prixUnitaire: 65, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'PEI-001', designation: 'Peinture murale acrylique', description: 'Fourniture et application 2 couches', unite: 'm²', categorie: 'Peinture', prixUnitaire: 28, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'PLO-001', designation: 'Installation robinet mitigeur', description: 'Fourniture et pose mitigeur cuisine/salle de bain', unite: 'u', categorie: 'Plomberie', prixUnitaire: 180, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'ELE-001', designation: 'Pose prise électrique', description: 'Fourniture et pose prise 16A encastrée', unite: 'u', categorie: 'Électricité', prixUnitaire: 85, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'MEN-001', designation: 'Pose de cloison placo BA13', description: 'Fourniture et pose cloison sur ossature métallique', unite: 'm²', categorie: 'Menuiserie / Placo', prixUnitaire: 55, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'MAÇ-001', designation: 'Enduit façade extérieure', description: 'Préparation et application enduit monocouche', unite: 'm²', categorie: 'Maçonnerie', prixUnitaire: 45, tva: 20 },
+];
+
 export function DataProvider({ children, initialData = {} }) {
   // User ID from Supabase auth
   const [userId, setUserId] = useState(null);
+
+  // Queue for saves attempted before userId was available (race condition fix)
+  const pendingSavesRef = useRef([]);
 
   // Core data - use lazy initialization to load from localStorage in demo mode
   const [clients, setClients] = useState(() => {
@@ -143,9 +164,30 @@ export function DataProvider({ children, initialData = {} }) {
     }
     return initialData.echanges ?? [];
   });
+  const [planningEvents, setPlanningEvents] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.planningEvents ?? initialData.planningEvents ?? [];
+    }
+    return initialData.planningEvents ?? [];
+  });
+  const [ouvrages, setOuvrages] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.ouvrages ?? initialData.ouvrages ?? [];
+    }
+    return initialData.ouvrages ?? [];
+  });
+  const [memos, setMemos] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.memos ?? initialData.memos ?? [];
+    }
+    return initialData.memos ?? [];
+  });
 
-  // Loading state
-  const [dataLoading, setDataLoading] = useState(false);
+  // Loading state — for real users, start as loading until Supabase data arrives
+  const [dataLoading, setDataLoading] = useState(!isDemo);
   const [dataLoaded, setDataLoaded] = useState(() => isDemo && !!loadDemoData()); // Already loaded if demo data exists
 
   // Loading states (legacy)
@@ -157,6 +199,13 @@ export function DataProvider({ children, initialData = {} }) {
 
   // Ref to track if initial load is done (to avoid saving empty data on first render)
   const initialLoadDone = useRef(isDemo && !!loadDemoData());
+
+  // Seed demo catalogue if empty (so DevisWizard has articles to show)
+  useEffect(() => {
+    if (isDemo && catalogue.length === 0) {
+      setCatalogue(DEMO_SEED_CATALOGUE);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save to localStorage when data changes (demo mode only)
   useEffect(() => {
@@ -181,12 +230,14 @@ export function DataProvider({ children, initialData = {} }) {
         catalogue,
         paiements,
         echanges,
+        ouvrages,
+        memos,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -219,6 +270,7 @@ export function DataProvider({ children, initialData = {} }) {
         setEquipe([]);
         setPointages([]);
         setCatalogue([]);
+        setMemos([]);
         setDataLoaded(false);
       }
     });
@@ -226,9 +278,30 @@ export function DataProvider({ children, initialData = {} }) {
     return () => subscription?.unsubscribe();
   }, []);
 
+  // Flush pending saves once userId becomes available (race condition fix)
+  useEffect(() => {
+    if (!userId || isDemo || pendingSavesRef.current.length === 0) return;
+
+    const pending = [...pendingSavesRef.current];
+    pendingSavesRef.current = [];
+    logger.debug(`🔄 Flushing ${pending.length} pending saves now that userId is available`);
+
+    pending.forEach(async ({ table, item }) => {
+      try {
+        await saveItem(table, item, userId);
+        logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
+      } catch (error) {
+        console.error(`❌ Failed to flush pending save for ${table}:`, error);
+        await queueOffline('create', table, item);
+      }
+    });
+  }, [userId]);
+
   // Load data from Supabase when userId is available
   useEffect(() => {
-    if (isDemo || !userId || dataLoaded) return;
+    if (isDemo) { setDataLoading(false); return; }
+    if (!userId) return; // Still waiting for auth — keep dataLoading true
+    if (dataLoaded) { setDataLoading(false); return; } // Already loaded
 
     const loadData = async () => {
       setDataLoading(true);
@@ -236,15 +309,24 @@ export function DataProvider({ children, initialData = {} }) {
         logger.debug('📥 Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
-          // Deduplicate by ID to prevent duplicates from sync issues
+          // Deduplicate by ID and sanitize to remove ghost records with non-UUID IDs
           const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
-          setClients(dedup(data.clients));
-          setChantiers(dedup(data.chantiers));
-          setDevis(dedup(data.devis));
-          setDepenses(dedup(data.depenses));
-          setEquipe(dedup(data.equipe));
-          setPointages(dedup(data.pointages));
-          setCatalogue(dedup(data.catalogue));
+          const clean = (arr) => sanitizeRecords(dedup(arr));
+          setClients(clean(data.clients));
+          setChantiers(clean(data.chantiers));
+          setDevis(clean(data.devis));
+          setDepenses(clean(data.depenses));
+          setEquipe(clean(data.equipe));
+          setPointages(clean(data.pointages));
+          setCatalogue(clean(data.catalogue));
+          if (data.planningEvents) setPlanningEvents(clean(data.planningEvents));
+          if (data.paiements) setPaiements(clean(data.paiements));
+          if (data.echanges) setEchanges(clean(data.echanges));
+          if (data.ajustements) setAjustements(clean(data.ajustements));
+          // Ouvrages loaded into state
+          if (data.ouvrages) setOuvrages(clean(data.ouvrages));
+          // Memos loaded into state
+          if (data.memos) setMemos(clean(data.memos));
           setDataLoaded(true);
           logger.debug('✅ Data loaded from Supabase:', {
             clients: data.clients.length,
@@ -274,19 +356,25 @@ export function DataProvider({ children, initialData = {} }) {
     // Optimistic update (prevent duplicates)
     setClients(prev => prev.some(c => c.id === newClient.id) ? prev : [...prev, newClient]);
 
-    // Save to Supabase and wait for response
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('clients', newClient, userId);
-        if (saved) {
-          // Update with the saved version (has correct timestamps, etc.)
-          setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
-          return saved;
+    // Save to Supabase
+    if (!isDemo) {
+      if (userId) {
+        try {
+          logger.debug('💾 addClient: saving to Supabase, userId=', userId, 'clientId=', newClient.id);
+          const saved = await saveItem('clients', newClient, userId);
+          if (saved) {
+            setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
+            logger.debug('✅ addClient: saved successfully');
+            return saved;
+          }
+        } catch (error) {
+          console.error('❌ addClient: Supabase save failed:', error.message);
+          toast.error('Erreur de sauvegarde', error.message);
+          await queueOffline('create', 'clients', newClient);
         }
-      } catch (error) {
-        console.error('Error saving client to Supabase:', error);
-        // Queue for offline sync instead of rollback
-        await queueOffline('create', 'clients', newClient);
+      } else {
+        pendingSavesRef.current.push({ table: 'clients', item: newClient });
+        logger.debug('⏳ addClient: queued (userId not yet available)');
       }
     }
 
@@ -298,15 +386,22 @@ export function DataProvider({ children, initialData = {} }) {
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
 
-    if (!isDemo && userId) {
-      try {
+    if (!isDemo) {
+      if (userId) {
+        try {
+          const current = clients.find(c => c.id === id);
+          if (current) {
+            await saveItem('clients', { ...current, ...data }, userId);
+          }
+        } catch (error) {
+          console.error('Error updating client in Supabase:', error);
+          await queueOffline('update', 'clients', { id, ...data });
+        }
+      } else {
         const current = clients.find(c => c.id === id);
         if (current) {
-          await saveItem('clients', { ...current, ...data }, userId);
+          pendingSavesRef.current.push({ table: 'clients', item: { ...current, ...data } });
         }
-      } catch (error) {
-        console.error('Error updating client in Supabase:', error);
-        await queueOffline('update', 'clients', { id, ...data });
       }
     }
   }, [userId, clients]);
@@ -330,6 +425,22 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {
+    // Prevent ghost devis: reject documents without required fields
+    if (!data.numero || !data.client_id) {
+      console.error('addDevis: rejected ghost devis (missing numero or client_id):', { numero: data.numero, client_id: data.client_id });
+      return null;
+    }
+    // Validate client_id is a proper UUID to prevent ghost data (demo IDs like 'c1')
+    if (!isDemo && data.client_id && !isValidUUID(data.client_id)) {
+      console.error('addDevis: invalid client_id (non-UUID):', data.client_id);
+      return null;
+    }
+    // Prevent duplicate numeros — check both local + Supabase
+    if (devis.some(d => d.numero === data.numero)) {
+      console.warn('addDevis: duplicate numero detected, regenerating:', data.numero);
+      data.numero = await getNextNumero(data.type || 'devis', userId, devis);
+    }
+
     const newDevis = {
       id: crypto.randomUUID(),
       statut: DEVIS_STATUS.BROUILLON,
@@ -340,36 +451,56 @@ export function DataProvider({ children, initialData = {} }) {
 
     setDevis(prev => prev.some(d => d.id === newDevis.id) ? prev : [...prev, newDevis]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('devis', newDevis, userId);
-        if (saved) {
-          setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
-          return saved;
+    if (!isDemo) {
+      if (userId) {
+        try {
+          logger.debug('💾 addDevis: saving to Supabase, userId=', userId, 'numero=', newDevis.numero);
+          const saved = await saveItem('devis', newDevis, userId);
+          if (saved) {
+            setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
+            logger.debug('✅ addDevis: saved successfully');
+            return saved;
+          }
+        } catch (error) {
+          console.error('❌ addDevis: Supabase save failed:', error.message);
+          toast.error('Erreur sauvegarde devis', error.message);
+          await queueOffline('create', 'devis', newDevis);
         }
-      } catch (error) {
-        console.error('Error saving devis to Supabase:', error);
-        await queueOffline('create', 'devis', newDevis);
+      } else {
+        pendingSavesRef.current.push({ table: 'devis', item: newDevis });
+        logger.debug('⏳ addDevis: queued (userId not yet available)');
       }
     }
 
     return newDevis;
-  }, [userId]);
+  }, [userId, devis]);
 
   const updateDevis = useCallback(async (id, data) => {
     setDevis(prev => prev.map(d =>
       d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
     ));
 
-    if (!isDemo && userId) {
-      try {
+    if (!isDemo) {
+      if (userId) {
+        try {
+          const current = devis.find(d => d.id === id);
+          if (current) {
+            logger.debug('💾 updateDevis: saving to Supabase, statut=', data.statut || current.statut);
+            await saveItem('devis', { ...current, ...data }, userId);
+            logger.debug('✅ updateDevis: saved successfully');
+          }
+        } catch (error) {
+          console.error('❌ updateDevis: Supabase save failed:', error.message);
+          toast.error('Erreur mise à jour', error.message);
+          await queueOffline('update', 'devis', { id, ...data });
+        }
+      } else {
+        // Queue the full merged item for pending save
         const current = devis.find(d => d.id === id);
         if (current) {
-          await saveItem('devis', { ...current, ...data }, userId);
+          pendingSavesRef.current.push({ table: 'devis', item: { ...current, ...data } });
+          logger.debug('⏳ Devis update queued for pending save');
         }
-      } catch (error) {
-        console.error('Error updating devis in Supabase:', error);
-        await queueOffline('update', 'devis', { id, ...data });
       }
     }
   }, [userId, devis]);
@@ -413,16 +544,21 @@ export function DataProvider({ children, initialData = {} }) {
 
     setChantiers(prev => prev.some(c => c.id === newChantier.id) ? prev : [...prev, newChantier]);
 
-    if (!isDemo && userId) {
-      try {
-        const saved = await saveItem('chantiers', newChantier, userId);
-        if (saved) {
-          setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
-          return saved;
+    if (!isDemo) {
+      if (userId) {
+        try {
+          const saved = await saveItem('chantiers', newChantier, userId);
+          if (saved) {
+            setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
+            return saved;
+          }
+        } catch (error) {
+          console.error('Error saving chantier to Supabase:', error);
+          await queueOffline('create', 'chantiers', newChantier);
         }
-      } catch (error) {
-        console.error('Error saving chantier to Supabase:', error);
-        await queueOffline('create', 'chantiers', newChantier);
+      } else {
+        pendingSavesRef.current.push({ table: 'chantiers', item: newChantier });
+        logger.debug('⏳ Chantier queued for pending save');
       }
     }
 
@@ -434,15 +570,25 @@ export function DataProvider({ children, initialData = {} }) {
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
 
-    if (!isDemo && userId) {
-      try {
+    if (!isDemo) {
+      if (userId) {
+        try {
+          const current = chantiers.find(c => c.id === id);
+          if (current) {
+            logger.debug('💾 updateChantier: saving, taches count=', (data.taches || current.taches || []).length);
+            await saveItem('chantiers', { ...current, ...data }, userId);
+            logger.debug('✅ updateChantier: saved successfully');
+          }
+        } catch (error) {
+          console.error('❌ updateChantier: Supabase save failed:', error.message);
+          toast.error('Erreur sauvegarde chantier', error.message);
+          await queueOffline('update', 'chantiers', { id, ...data });
+        }
+      } else {
         const current = chantiers.find(c => c.id === id);
         if (current) {
-          await saveItem('chantiers', { ...current, ...data }, userId);
+          pendingSavesRef.current.push({ table: 'chantiers', item: { ...current, ...data } });
         }
-      } catch (error) {
-        console.error('Error updating chantier in Supabase:', error);
-        await queueOffline('update', 'chantiers', { id, ...data });
       }
     }
   }, [userId, chantiers]);
@@ -588,19 +734,41 @@ export function DataProvider({ children, initialData = {} }) {
   }, [pointages]);
 
   // ============ AJUSTEMENT OPERATIONS ============
-  const addAjustement = useCallback((data) => {
+  const addAjustement = useCallback(async (data) => {
     const newAjustement = {
       id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
     setAjustements(prev => [...prev, newAjustement]);
-    return newAjustement;
-  }, []);
 
-  const deleteAjustement = useCallback((id) => {
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('ajustements', newAjustement, userId);
+        if (saved) {
+          setAjustements(prev => prev.map(a => a.id === newAjustement.id ? saved : a));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving ajustement to Supabase:', error);
+        await queueOffline('create', 'ajustements', newAjustement);
+      }
+    }
+    return newAjustement;
+  }, [userId]);
+
+  const deleteAjustement = useCallback(async (id) => {
     setAjustements(prev => prev.filter(a => a.id !== id));
-  }, []);
+
+    if (!isDemo && userId) {
+      try {
+        await deleteItem('ajustements', id, userId);
+      } catch (error) {
+        console.error('Error deleting ajustement from Supabase:', error);
+        await queueOffline('delete', 'ajustements', { id });
+      }
+    }
+  }, [userId]);
 
   const getAjustementsByChantier = useCallback((chantierId) => {
     return ajustements.filter(a => a.chantierId === chantierId);
@@ -729,30 +897,252 @@ export function DataProvider({ children, initialData = {} }) {
   }, []);
 
   // ============ PAIEMENT OPERATIONS ============
-  const addPaiement = useCallback((data) => {
+  const addPaiement = useCallback(async (data) => {
     const newPaiement = {
       id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString()
     };
     setPaiements(prev => [...prev, newPaiement]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('paiements', newPaiement, userId);
+        if (saved) {
+          setPaiements(prev => prev.map(p => p.id === newPaiement.id ? saved : p));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving paiement to Supabase:', error);
+        await queueOffline('create', 'paiements', newPaiement);
+      }
+    }
     return newPaiement;
-  }, []);
+  }, [userId]);
 
   const getPaiementsByDevis = useCallback((devisId) => {
     return paiements.filter(p => p.devisId === devisId || p.invoiceId === devisId);
   }, [paiements]);
 
   // ============ ECHANGE OPERATIONS ============
-  const addEchange = useCallback((data) => {
+  const addEchange = useCallback(async (data) => {
     const newEchange = {
       id: crypto.randomUUID(),
       ...data,
       date: new Date().toISOString()
     };
     setEchanges(prev => [...prev, newEchange]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('echanges', newEchange, userId);
+        if (saved) {
+          setEchanges(prev => prev.map(e => e.id === newEchange.id ? saved : e));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving echange to Supabase:', error);
+        await queueOffline('create', 'echanges', newEchange);
+      }
+    }
     return newEchange;
-  }, []);
+  }, [userId]);
+
+  // ============ PLANNING EVENT OPERATIONS ============
+  const addPlanningEvent = useCallback(async (data) => {
+    const newEvent = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    setPlanningEvents(prev => prev.some(e => e.id === newEvent.id) ? prev : [...prev, newEvent]);
+
+    if (!isDemo && userId) {
+      try {
+        await saveItem('planning_events', newEvent, userId);
+      } catch (error) {
+        console.error('Error saving planning event to Supabase:', error);
+        await queueOffline('create', 'planning_events', newEvent);
+      }
+    }
+    return newEvent;
+  }, [userId]);
+
+  const updatePlanningEvent = useCallback(async (id, data) => {
+    const updated = { id, ...data };
+    setPlanningEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
+
+    if (!isDemo && userId) {
+      try {
+        await saveItem('planning_events', updated, userId);
+      } catch (error) {
+        console.error('Error updating planning event:', error);
+        await queueOffline('update', 'planning_events', updated);
+      }
+    }
+  }, [userId]);
+
+  const deletePlanningEvent = useCallback(async (id) => {
+    setPlanningEvents(prev => prev.filter(e => e.id !== id));
+
+    if (!isDemo && userId) {
+      try {
+        await deleteItem('planning_events', id, userId);
+      } catch (error) {
+        console.error('Error deleting planning event:', error);
+        await queueOffline('delete', 'planning_events', { id });
+      }
+    }
+  }, [userId]);
+
+  // ============ OUVRAGE OPERATIONS ============
+  const addOuvrage = useCallback(async (data) => {
+    const newOuvrage = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: new Date().toISOString()
+    };
+    setOuvrages(prev => [...prev, newOuvrage]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('ouvrages', newOuvrage, userId);
+        if (saved) {
+          setOuvrages(prev => prev.map(o => o.id === newOuvrage.id ? saved : o));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving ouvrage to Supabase:', error);
+        await queueOffline('create', 'ouvrages', newOuvrage);
+      }
+    }
+    return newOuvrage;
+  }, [userId]);
+
+  const updateOuvrage = useCallback(async (id, data) => {
+    setOuvrages(prev => prev.map(o =>
+      o.id === id ? { ...o, ...data, updatedAt: new Date().toISOString() } : o
+    ));
+
+    if (!isDemo && userId) {
+      try {
+        const current = ouvrages.find(o => o.id === id);
+        if (current) {
+          await saveItem('ouvrages', { ...current, ...data }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating ouvrage in Supabase:', error);
+        await queueOffline('update', 'ouvrages', { id, ...data });
+      }
+    }
+  }, [userId, ouvrages]);
+
+  const deleteOuvrage = useCallback(async (id) => {
+    setOuvrages(prev => prev.filter(o => o.id !== id));
+
+    if (!isDemo && userId) {
+      try {
+        await deleteItem('ouvrages', id, userId);
+      } catch (error) {
+        console.error('Error deleting ouvrage from Supabase:', error);
+        await queueOffline('delete', 'ouvrages', { id });
+      }
+    }
+  }, [userId]);
+
+  // ============ MEMO OPERATIONS ============
+  const addMemo = useCallback(async (data) => {
+    const newMemo = {
+      id: crypto.randomUUID(),
+      text: data.text || '',
+      notes: data.notes || null,
+      priority: data.priority || null,
+      due_date: data.due_date || null,
+      due_time: data.due_time || null,
+      category: data.category || null,
+      chantier_id: data.chantier_id || null,
+      client_id: data.client_id || null,
+      is_done: false,
+      done_at: null,
+      position: 0,
+      subtasks: data.subtasks || [],
+      recurrence: data.recurrence || null,
+      sort_order: data.sort_order || 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    // Bump all existing positions +1
+    setMemos(prev => [newMemo, ...prev.map(m => ({ ...m, position: (m.position || 0) + 1 }))]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('memos', newMemo, userId);
+        if (saved) {
+          setMemos(prev => prev.map(m => m.id === newMemo.id ? saved : m));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving memo to Supabase:', error);
+        await queueOffline('create', 'memos', newMemo);
+      }
+    }
+    return newMemo;
+  }, [userId]);
+
+  const updateMemo = useCallback(async (id, updates) => {
+    setMemos(prev => prev.map(m =>
+      m.id === id ? { ...m, ...updates, updated_at: new Date().toISOString() } : m
+    ));
+
+    if (!isDemo && userId) {
+      try {
+        const current = memos.find(m => m.id === id);
+        if (current) {
+          await saveItem('memos', { ...current, ...updates }, userId);
+        }
+      } catch (error) {
+        console.error('Error updating memo in Supabase:', error);
+        await queueOffline('update', 'memos', { id, ...updates });
+      }
+    }
+  }, [userId, memos]);
+
+  const deleteMemo = useCallback(async (id) => {
+    setMemos(prev => prev.filter(m => m.id !== id));
+
+    if (!isDemo && userId) {
+      try {
+        await deleteItem('memos', id, userId);
+      } catch (error) {
+        console.error('Error deleting memo from Supabase:', error);
+        await queueOffline('delete', 'memos', { id });
+      }
+    }
+  }, [userId]);
+
+  const toggleMemo = useCallback(async (id) => {
+    const memo = memos.find(m => m.id === id);
+    if (!memo) return;
+
+    const updates = {
+      is_done: !memo.is_done,
+      done_at: !memo.is_done ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
+
+    setMemos(prev => prev.map(m =>
+      m.id === id ? { ...m, ...updates } : m
+    ));
+
+    if (!isDemo && userId) {
+      try {
+        await saveItem('memos', { ...memo, ...updates }, userId);
+      } catch (error) {
+        console.error('Error toggling memo in Supabase:', error);
+        await queueOffline('update', 'memos', { id, ...updates });
+      }
+    }
+  }, [userId, memos]);
 
   // ============ CALCULATED VALUES ============
   const getChantierBilan = useCallback((chantierId) => {
@@ -767,6 +1157,11 @@ export function DataProvider({ children, initialData = {} }) {
       ajustements
     });
   }, [chantiers, devis, depenses, pointages, ajustements, equipe]);
+
+  // Helper to get next unique numero for devis/facture
+  const generateNextNumero = useCallback(async (type) => {
+    return getNextNumero(type, userId, devis);
+  }, [userId, devis]);
 
   // ============ CONTEXT VALUE ============
   const value = useMemo(() => ({
@@ -810,6 +1205,7 @@ export function DataProvider({ children, initialData = {} }) {
     getDevis,
     getDevisByClient,
     getDevisByChantier,
+    generateNextNumero,
 
     // Chantier operations
     addChantier,
@@ -852,13 +1248,35 @@ export function DataProvider({ children, initialData = {} }) {
     // Echange operations
     addEchange,
 
+    // Ouvrage operations
+    ouvrages,
+    setOuvrages,
+    addOuvrage,
+    updateOuvrage,
+    deleteOuvrage,
+
+    // Planning event operations
+    planningEvents,
+    setPlanningEvents,
+    addPlanningEvent,
+    updatePlanningEvent,
+    deletePlanningEvent,
+
+    // Memo operations
+    memos,
+    setMemos,
+    addMemo,
+    updateMemo,
+    deleteMemo,
+    toggleMemo,
+
     // Calculated values
     getChantierBilan
   }), [
     clients, devis, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, loading, dataLoading,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading,
     addClient, updateClient, deleteClient, getClient,
-    addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier,
+    addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
     addChantier, updateChantier, deleteChantier, getChantier,
     addDepense, updateDepense, deleteDepense, getDepensesByChantier,
     addPointage, updatePointage, deletePointage, getPointagesByChantier,
@@ -867,6 +1285,9 @@ export function DataProvider({ children, initialData = {} }) {
     addCatalogueItem, updateCatalogueItem, deleteCatalogueItem, deductStock,
     addPaiement, getPaiementsByDevis,
     addEchange,
+    addOuvrage, updateOuvrage, deleteOuvrage,
+    addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
+    addMemo, updateMemo, deleteMemo, toggleMemo,
     getChantierBilan
   ]);
 

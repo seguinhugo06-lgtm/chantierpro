@@ -27,7 +27,7 @@ import MultiEntreprise from './settings/MultiEntreprise';
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage }) {
+export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
 
   // Theme classes
@@ -42,15 +42,45 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
+  const [showProfileDetail, setShowProfileDetail] = useState(false);
 
   // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
   useEffect(() => {
     const handleTabNav = (e) => {
-      if (e.detail?.tab) setTab(e.detail.tab);
+      const data = e.detail;
+      // Support both string (legacy) and object { tab, fieldId } formats
+      const tabValue = typeof data === 'string' ? data : data?.tab;
+      const fieldId = typeof data === 'object' ? data?.fieldId : null;
+      if (tabValue) {
+        setTab(tabValue);
+        // After tab switch, scroll to and focus the relevant field
+        if (fieldId) {
+          setTimeout(() => {
+            const el = document.getElementById(`settings-field-${fieldId}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.focus();
+            }
+          }, 150);
+        }
+      }
     };
     window.addEventListener('navigate-settings-tab', handleTabNav);
     return () => window.removeEventListener('navigate-settings-tab', handleTabNav);
   }, []);
+
+  // Escape key handler for modals
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        if (showSetupWizard) { setShowSetupWizard(false); return; }
+        if (showExportModal) { setShowExportModal(false); return; }
+        if (showProfileDetail) { setShowProfileDetail(false); return; }
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showSetupWizard, showExportModal, showProfileDetail]);
 
   // Comptabilite state
   const [comptaSubTab, setComptaSubTab] = useState('integrations');
@@ -77,22 +107,47 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }, 800);
   }, [setEntreprise, showToast]);
   
-  const handleLogoUpload = (e) => { 
-    const file = e.target.files?.[0]; 
-    if (!file) return; 
-    const reader = new FileReader(); 
-    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result })); 
-    reader.readAsDataURL(file); 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) {
+      showToast('Logo trop volumineux (500 Ko max)', 'error');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result }));
+    reader.readAsDataURL(file);
   };
+
+  // Helper to mask sensitive data in modeDiscret
+  const maskValue = (value) => modeDiscret ? '····················' : value;
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
   // Calcul score complétude
+  const PROFILE_FIELDS = [
+    { key: 'nom', label: 'Nom de l\'entreprise', required: true, tab: 'identite' },
+    { key: 'adresse', label: 'Adresse', required: true, tab: 'identite' },
+    { key: 'siret', label: 'N° SIRET', required: true, tab: 'legal' },
+    { key: 'tel', label: 'Téléphone', required: true, tab: 'identite' },
+    { key: 'email', label: 'Email', required: true, tab: 'identite' },
+    { key: 'formeJuridique', label: 'Forme juridique', required: false, tab: 'legal' },
+    { key: 'codeApe', label: 'Code APE', required: false, tab: 'legal' },
+    { key: 'rcsVille', label: 'Ville RCS', required: false, tab: 'legal' },
+    { key: 'rcsNumero', label: 'N° RCS', required: false, tab: 'legal' },
+    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', required: false, tab: 'legal' },
+    { key: 'rcProAssureur', label: 'Assureur RC Pro', required: false, tab: 'assurances' },
+    { key: 'rcProNumero', label: 'N° Police RC Pro', required: false, tab: 'assurances' },
+    { key: 'decennaleAssureur', label: 'Assureur Décennale', required: false, tab: 'assurances' },
+    { key: 'decennaleNumero', label: 'N° Police Décennale', required: false, tab: 'assurances' },
+  ];
+  const missingFields = PROFILE_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
+  const missingRequired = missingFields.filter(f => f.required);
+  const missingRecommended = missingFields.filter(f => !f.required);
   const getCompletude = () => {
-    const required = ['nom', 'adresse', 'siret', 'tel', 'email'];
-    const recommended = ['formeJuridique', 'codeApe', 'rcsVille', 'rcsNumero', 'tvaIntra', 'rcProAssureur', 'rcProNumero', 'decennaleAssureur', 'decennaleNumero'];
-    const filled = [...required, ...recommended].filter(k => entreprise[k] && String(entreprise[k]).trim() !== '');
-    return Math.round((filled.length / (required.length + recommended.length)) * 100);
+    const filled = PROFILE_FIELDS.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
+    return Math.round((filled.length / PROFILE_FIELDS.length) * 100);
   };
   const completude = getCompletude();
 
@@ -289,14 +344,74 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           >
             📊 Export comptable
           </button>
-          <div className={`flex items-center gap-4 px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm`}>
-            <div className="text-right">
-              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
-              <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
-            </div>
-            <div className={`w-32 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
-            </div>
+          <div className="relative">
+            <button
+              onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md hover:border-opacity-80' : ''}`}
+              style={completude < 100 ? { borderColor: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' } : undefined}
+              title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
+            >
+              <div className="text-right">
+                <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
+                <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
+              </div>
+              <div className={`w-32 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
+              </div>
+              {completude < 100 && <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>▼</span>}
+            </button>
+
+            {/* Dropdown showing missing fields */}
+            {showProfileDetail && completude < 100 && (
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
+                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
+                  </div>
+
+                  {missingRequired.length > 0 && (
+                    <div>
+                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Obligatoires
+                      </p>
+                      <div className="space-y-1">
+                        {missingRequired.map(f => (
+                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <span>{f.label}</span>
+                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {missingRecommended.length > 0 && (
+                    <div>
+                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> Recommandés
+                      </p>
+                      <div className="space-y-1">
+                        {missingRecommended.map(f => (
+                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <span>{f.label}</span>
+                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}
+                    className="w-full mt-1 px-4 py-2.5 text-white rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: couleur }}
+                  >
+                    🪄 Compléter avec l'assistant
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -446,7 +561,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
+                <textarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
               </div>
               <div>
@@ -478,7 +593,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
                 )}
@@ -499,7 +614,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ville du greffe</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
+                <select id="settings-field-rcs" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   {VILLES_RCS.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
@@ -529,7 +644,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
+              <input id="settings-field-tvaIntra" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
                 <p className="text-xs text-green-600 mt-1">“ Format valide</p>
@@ -608,7 +723,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
+                <input id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
@@ -670,11 +785,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
+              <input id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
             </div>
           </div>
         </div>
@@ -1477,7 +1592,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
           </div>
           <div className="text-xs text-slate-500 space-y-0.5 border-t pt-3 mt-3">
-            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
+            {entreprise.siret && <p>SIRET: {maskValue(entreprise.siret)} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
             {getRCSComplet() && <p>{getRCSComplet()}</p>}
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
