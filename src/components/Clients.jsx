@@ -1102,88 +1102,112 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             </div>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
+            const status = getClientStatus(c.id);
+            const statusColor = CLIENT_STATUS_COLORS[status];
+            const statusLabel = CLIENT_STATUS_LABELS[status];
+            const typeColor = CLIENT_TYPE_COLORS[c.categorie];
+            const avatarBg = typeColor?.color || couleur;
+            const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200 cursor-pointer group flex flex-col h-full`} onClick={() => setViewId(c.id)}>
-                {/* Header with gradient */}
-                <div className="p-4 sm:p-5 relative" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`}}>
-                  <div className="flex gap-3 sm:gap-4">
-                    <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-lg flex-shrink-0" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
-                      {c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?')}
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full`} onClick={() => setViewId(c.id)}>
+                {/* Header */}
+                <div className="p-4 relative">
+                  <div className="flex gap-3">
+                    {/* Avatar circle */}
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${avatarBg}, ${avatarBg}cc)` }}>
+                      {initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-bold text-base sm:text-lg ${textPrimary}`}>{c.nom} {c.prenom}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}>{c.nom} {c.prenom}</h3>
+                      </div>
                       {c.entreprise && (
-                        <p className={`text-sm ${textMuted} truncate flex items-center gap-1`}>
-                          <Building2 size={12} /> {c.entreprise}
+                        <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
+                          <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {c.categorie && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-0.5 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                          <Tag size={10} /> {c.categorie}
+                      {/* Badges row */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {/* Status badge */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
+                          {statusLabel}
                         </span>
-                      )}
+                        {/* Type badge */}
+                        {c.categorie && typeColor && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
+                            {c.categorie}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" aria-label="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[44px] min-h-[44px] flex items-center justify-center sm:opacity-60 sm:hover:opacity-100 sm:group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
-                      <Edit3 size={18} />
+                    {/* Edit button */}
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier" aria-label="Modifier ce client" className={`p-2 rounded-lg transition-all absolute top-2 right-2 opacity-0 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200' : 'bg-white/90 hover:bg-slate-100 text-slate-500 shadow-sm'}`}>
+                      <Edit3 size={14} />
                     </button>
                   </div>
                 </div>
 
-                {/* Contact info */}
-                <div className={`px-4 sm:px-5 py-3 space-y-2 border-t flex-grow ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                  {c.telephone && (
+                {/* Contact + Actions */}
+                <div className={`px-4 py-2.5 border-t flex-grow ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+                  {c.telephone ? (
                     <div className="flex items-center gap-2">
-                      <Smartphone size={14} className={textMuted} />
+                      <Smartphone size={13} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
-                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler le client" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
-                          <Phone size={18} className="text-blue-500" />
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
+                          <Phone size={15} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="Contacter par WhatsApp" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
-                          <MessageCircle size={18} className="text-green-500" />
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
+                          <MessageCircle size={15} className="text-green-500" />
                         </button>
                       </div>
                     </div>
+                  ) : (
+                    <p className={`text-xs ${textMuted} italic`}>Pas de téléphone</p>
                   )}
                   {c.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail size={14} className={textMuted} />
-                      <span className={`text-sm ${textSecondary} truncate`}>{c.email}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Mail size={13} className={textMuted} />
+                      <span className={`text-xs ${textMuted} truncate`}>{c.email}</span>
                     </div>
-                  )}
-                  {c.adresse && (
-                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <MapPin size={14} className={textMuted} />
-                      <span className={`text-sm ${textSecondary} flex-1 truncate whitespace-pre-line`}>{c.adresse}</span>
-                      <button onClick={() => openGPS(c.adresse)} aria-label="Ouvrir dans Google Maps" className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
-                        <ExternalLink size={18} className="text-purple-500" />
-                      </button>
-                    </div>
-                  )}
-                  {!c.telephone && !c.email && !c.adresse && (
-                    <p className={`text-sm ${textMuted} italic`}>Aucune info de contact</p>
                   )}
                 </div>
 
                 {/* Stats footer */}
-                <div className={`px-4 sm:px-5 py-3 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
-                  <div className="flex gap-4">
-                    <span className={`flex items-center gap-1.5 text-sm ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={14} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> <span className="font-medium">{s.chantiers}</span>
+                <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <div className="flex gap-3">
+                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
                     </span>
-                    <span className={`flex items-center gap-1.5 text-sm ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={14} className={s.devis > 0 ? 'text-blue-500' : ''} /> <span className="font-medium">{s.devis}</span>
+                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
                     </span>
-                    <span className={`flex items-center gap-1.5 text-sm ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
-                      <FileText size={14} className={s.factures > 0 ? 'text-purple-500' : ''} /> <span className="font-medium">{s.factures}</span>
+                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
+                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
                     </span>
                   </div>
-                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 && !modeDiscret ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : ''}>{formatMoney(s.ca)}</span>
+                  <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Vue Liste - placeholder, will be implemented in step 5 */
+        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+          {getSortedClients().map((c, idx) => {
+            const s = getClientStats(c.id);
+            return (
+              <div key={c.id} className={`p-3 flex items-center gap-3 cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${idx > 0 ? `border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}` : ''}`} onClick={() => setViewId(c.id)}>
+                <span className={`text-sm font-medium ${textPrimary} flex-1`}>{c.nom} {c.prenom}</span>
+                <span className={`text-xs ${textMuted}`}>{formatMoney(s.ca)}</span>
+                <ChevronRight size={14} className={textMuted} />
               </div>
             );
           })}
