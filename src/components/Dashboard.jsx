@@ -48,6 +48,10 @@ import {
   ShieldCheck,
   MessageCircle,
   ClipboardList,
+  Mic,
+  ArrowRight,
+  Banknote,
+  ChevronRight,
 } from 'lucide-react';
 
 // Dashboard components
@@ -106,6 +110,9 @@ import UsageAlerts from './subscription/UsageAlerts';
 
 // AI Chat
 import ChatInterface from './ai/ChatInterface';
+
+// Devis Express
+import DevisExpressModal from './DevisExpressModal';
 
 // ============ CONSTANTS ============
 
@@ -507,6 +514,7 @@ export default function Dashboard({
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showDevisExpress, setShowDevisExpress] = useState(false);
 
   // Widget configuration - persisted in localStorage
   // Default widgets — show only essential ones by default to reduce dashboard density
@@ -882,6 +890,24 @@ export default function Dashboard({
     return activities.sort((a, b) => b.date - a.date).slice(0, 4);
   }, [stats, safeClients, safeChantiers]);
 
+  // ============ ACTIONS DU JOUR (unified priority list) ============
+
+  const staleDevis = useMemo(() => {
+    return safeDevis.filter(d => {
+      if (d.type !== 'devis' || !['envoye', 'vu'].includes(d.statut)) return false;
+      if ((d.total_ttc || d.total_ht || 0) <= 1) return false;
+      return daysSince(d.date) >= 7;
+    }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
+  }, [safeDevis]);
+
+  const todayMemos = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return (memos || [])
+      .filter(m => !m.is_done && m.due_date && m.due_date <= todayStr)
+      .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))
+      .slice(0, 5);
+  }, [memos]);
+
   // ============ HANDLERS ============
 
   const handleOpenRelance = useCallback(
@@ -1022,48 +1048,246 @@ export default function Dashboard({
 
   return (
     <div className={isDark ? 'bg-slate-900' : 'bg-slate-100'}>
-      {/* Hero Section */}
+      {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
         userName={entreprise?.nom?.split(' ')[0] || 'Artisan'}
         activeChantiers={stats.chantiersActifs}
-        urgentAction={urgentAction}
         isDark={isDark}
+        couleur={couleur}
         onChantiersClick={() => setPage?.('chantiers')}
       />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto">
-        {/* Quick Shortcuts */}
-        <section className="px-4 sm:px-6 pb-6">
-          <div className="flex flex-wrap gap-2">
+
+        {/* ========== URGENT ACTION BANNER ========== */}
+        {urgentAction && (
+          <section className="px-4 sm:px-6 pb-3">
+            <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-500/20' : 'bg-red-100'}`}>
+                    {urgentAction.type === 'payment_late' ? <Banknote size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-800'}`}>{urgentAction.title}</p>
+                    <p className={`text-xs mt-0.5 ${isDark ? 'text-red-400/80' : 'text-red-700'}`}>{urgentAction.description}</p>
+                  </div>
+                  <button
+                    onClick={urgentAction.ctaAction}
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
+                  >
+                    {urgentAction.ctaLabel}
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ========== HERO DUO — Devis IA + Devis Express ========== */}
+        <section className="px-4 sm:px-6 pb-3">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Devis IA */}
+            <button
+              onClick={() => setShowAIChat(true)}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+            >
+              <div className="relative z-10">
+                <MessageCircle size={26} className="mb-2 text-white/90" />
+                <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
+                <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">Décrivez vos travaux</p>
+              </div>
+              <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10" />
+            </button>
+
+            {/* Devis Express */}
+            <button
+              onClick={() => setShowDevisExpress(true)}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)' }}
+            >
+              <div className="relative z-10">
+                <Zap size={26} className="mb-2 text-white/90" />
+                <p className="font-bold text-sm sm:text-base leading-tight">Devis Express</p>
+                <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">3 clics, c'est chiffré</p>
+              </div>
+              <FileText size={44} className="absolute -top-1 -right-1 text-white/10" />
+            </button>
+          </div>
+        </section>
+
+        {/* ========== MINI KPI DUO — À encaisser + Ce mois ========== */}
+        <section className="px-4 sm:px-6 pb-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* À encaisser */}
+            <button
+              onClick={() => setEncaisserModalOpen(true)}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet size={15} className="text-orange-500" />
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
+              </div>
+              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {formatMoney(stats.enAttente, modeDiscret)}
+              </p>
+              {stats.facturesOverdue?.length > 0 && (
+                <p className="text-[11px] text-red-500 font-medium mt-0.5">
+                  ⚠️ {stats.facturesOverdue.length} en retard
+                </p>
+              )}
+            </button>
+
+            {/* Ce mois */}
+            <button
+              onClick={() => setCeMoisModalOpen(true)}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp size={15} className="text-emerald-500" />
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
+              </div>
+              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {formatMoney(stats.thisMonthCA, modeDiscret)}
+              </p>
+              {stats.tendance != null && (
+                <p className={`text-[11px] font-medium mt-0.5 ${stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {stats.tendance >= 0 ? '↑' : '↓'} {Math.abs(stats.tendance)}% vs mois dernier
+                </p>
+              )}
+            </button>
+          </div>
+        </section>
+
+        {/* ========== ACTIONS DU JOUR — Unified priority list ========== */}
+        {(() => {
+          const actions = [];
+
+          // Devis à relancer
+          staleDevis.slice(0, 4).forEach(d => {
+            const client = safeClients.find(c => c.id === d.client_id);
+            const days = daysSince(d.date);
+            actions.push({
+              id: `devis-${d.id}`,
+              priority: days > 14 ? 1 : 2,
+              color: days > 14 ? 'red' : 'amber',
+              title: `Relancer ${d.numero || 'devis'}`,
+              subtitle: `${client?.nom || 'Client'} · ${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j`,
+              action: () => handleOpenRelance(d),
+              actionLabel: 'Relancer',
+            });
+          });
+
+          // Suggestions IA
+          suggestions.slice(0, 3).forEach(s => {
+            actions.push({
+              id: `sug-${s.id}`,
+              priority: s.priority === 'high' ? 1 : 2,
+              color: s.priority === 'high' ? 'red' : 'amber',
+              title: s.title,
+              subtitle: s.description?.slice(0, 60) || '',
+              action: () => handleSuggestionAction(s),
+              actionLabel: s.ctaLabel || 'Voir',
+            });
+          });
+
+          // Mémos du jour
+          todayMemos.slice(0, 3).forEach(m => {
+            const isOverdue = m.due_date < new Date().toISOString().split('T')[0];
+            actions.push({
+              id: `memo-${m.id}`,
+              priority: isOverdue ? 2 : 3,
+              color: isOverdue ? 'amber' : 'blue',
+              title: m.text,
+              subtitle: isOverdue ? 'En retard' : 'Aujourd\'hui',
+              action: () => setPage?.('memos'),
+              actionLabel: 'Voir',
+            });
+          });
+
+          const sorted = actions.sort((a, b) => a.priority - b.priority).slice(0, 5);
+          if (sorted.length === 0) return null;
+
+          const colorClasses = {
+            red: isDark ? 'bg-red-500' : 'bg-red-500',
+            amber: isDark ? 'bg-amber-500' : 'bg-amber-500',
+            blue: isDark ? 'bg-blue-500' : 'bg-blue-500',
+          };
+
+          return (
+            <section className="px-4 sm:px-6 pb-4">
+              <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList size={16} style={{ color: couleur }} />
+                    <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Actions du jour
+                    </h2>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                      {sorted.length}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {sorted.map(item => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                    >
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {item.title}
+                        </p>
+                        <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {item.subtitle}
+                        </p>
+                      </div>
+                      <button
+                        onClick={item.action}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                        style={{ backgroundColor: couleur }}
+                      >
+                        {item.actionLabel}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
+        <section className="px-4 sm:px-6 pb-4">
+          <div className="flex gap-2">
             {[
-              { icon: FileText, label: '+ Devis', action: () => { setCreateMode?.((p) => ({ ...p, devis: true })); setPage?.('devis'); } },
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
               { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
-              { icon: Receipt, label: '+ Facture', action: () => { setCreateMode?.((p) => ({ ...p, devis: true, type: 'facture' })); setPage?.('devis'); } },
               { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('memos') },
-            ].map((shortcut) => (
+              { icon: Settings, label: 'Paramètres', action: () => setPage?.('settings') },
+            ].map((s) => (
               <button
-                key={shortcut.label}
-                onClick={shortcut.action}
-                className={`
-                  flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all
-                  border hover:shadow-md hover:-translate-y-0.5
-                  ${isDark
-                    ? 'bg-slate-800 border-slate-700 text-white hover:border-slate-600'
-                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-                  }
-                `}
+                key={s.label}
+                onClick={s.action}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all border ${
+                  isDark
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
               >
-                <shortcut.icon size={16} style={{ color: couleur }} />
-                {shortcut.label}
+                <s.icon size={18} style={{ color: couleur }} />
+                <span className="leading-none">{s.label}</span>
               </button>
             ))}
           </div>
         </section>
 
-        {/* Onboarding Checklist — first steps guide */}
-        <section className="px-4 sm:px-6 pb-6">
+        {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
+        <section className="px-4 sm:px-6 pb-4">
           <OnboardingChecklist
             clients={clients}
             chantiers={chantiers}
@@ -1074,346 +1298,6 @@ export default function Dashboard({
             isDark={isDark}
           />
         </section>
-
-        {/* AI Assistant Section */}
-        <section className="px-4 sm:px-6 pb-6">
-          {!showAIChat ? (
-            <button
-              onClick={() => setShowAIChat(true)}
-              className={`w-full group p-5 rounded-2xl border-2 border-dashed transition-all hover:shadow-lg hover:-translate-y-0.5 ${
-                isDark
-                  ? 'border-slate-600 hover:border-orange-500/50 bg-slate-800/50'
-                  : 'border-slate-300 hover:border-orange-400 bg-white/50'
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: `${couleur}15` }}
-                >
-                  <MessageCircle size={24} style={{ color: couleur }} />
-                </div>
-                <div className="text-left flex-1 min-w-0">
-                  <h3 className={`font-semibold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Assistant IA — Créez un devis en parlant
-                  </h3>
-                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Décrivez les travaux par texte, voix ou photo. L'IA génère votre devis en quelques secondes.
-                  </p>
-                </div>
-                <Sparkles size={20} className={`shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'} group-hover:text-orange-500 transition-colors`} />
-              </div>
-            </button>
-          ) : (
-            <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <ChatInterface
-                isDark={isDark}
-                couleur={couleur}
-                onCreateDevis={handleAICreateDevis}
-                onClose={() => setShowAIChat(false)}
-                clients={clients}
-                entreprise={entreprise}
-                compact
-              />
-            </div>
-          )}
-        </section>
-
-        {/* Devis à relancer */}
-        {(() => {
-          const staleDevis = safeDevis.filter(d => {
-            if (d.type !== 'devis' || !['envoye', 'vu'].includes(d.statut)) return false;
-            if ((d.total_ttc || d.total_ht || 0) <= 1) return false; // Exclure devis à 0€/0,01€
-            return daysSince(d.date) >= 7;
-          }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
-
-          if (staleDevis.length === 0) return null;
-
-          return (
-            <section className="px-4 sm:px-6 pb-6">
-              <div className={`rounded-2xl border p-5 ${isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className={`p-2 rounded-xl ${isDark ? 'bg-amber-500/10' : 'bg-amber-100'}`}>
-                    <Clock size={18} className="text-amber-500" />
-                  </div>
-                  <div>
-                    <h2 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Devis à relancer
-                    </h2>
-                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {staleDevis.length} devis envoyé{staleDevis.length > 1 ? 's' : ''} depuis plus de 7 jours sans réponse
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {staleDevis.slice(0, 3).map((d) => {
-                    const client = safeClients.find(c => c.id === d.client_id);
-                    const days = daysSince(d.date);
-                    return (
-                      <div
-                        key={d.id}
-                        className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-white'}`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            {d.numero || 'Devis'} — {client?.nom || 'Client'}
-                          </p>
-                          <p className={`text-xs ${days > 14 ? 'text-red-500 font-medium' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Envoyé il y a {days} jours • {formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleOpenRelance(d)}
-                          className="flex-shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
-                          style={{ backgroundColor: couleur }}
-                        >
-                          Relancer
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                {staleDevis.length > 3 && (
-                  <button
-                    onClick={() => setPage?.('devis')}
-                    className={`mt-3 text-sm font-medium ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:text-amber-700'}`}
-                  >
-                    Voir les {staleDevis.length} devis →
-                  </button>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* Mémos du jour */}
-        <section className="px-4 sm:px-6 pb-6">
-          <DashboardMemos memos={memos} toggleMemo={toggleMemo} setPage={setPage} couleur={couleur} isDark={isDark} />
-        </section>
-
-        {/* KPI Section - Enhanced with more info */}
-        <section className="px-4 sm:px-6 pb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* À ENCAISSER - Most important for cash flow */}
-            <KPICard
-              icon={Wallet}
-              label="À ENCAISSER"
-              value={formatMoney(stats.enAttente, modeDiscret)}
-              comparison={stats.facturesOverdue?.length > 0
-                ? `⚠️ ${stats.facturesOverdue.length} facture${stats.facturesOverdue.length > 1 ? 's' : ''} en retard`
-                : `${stats.facturesEnAttente?.length || 0} facture${(stats.facturesEnAttente?.length || 0) > 1 ? 's' : ''} en attente`
-              }
-              color={stats.facturesOverdue?.length > 0 ? 'orange' : 'green'}
-              isDark={isDark}
-              onClick={() => setEncaisserModalOpen(true)}
-              donutData={stats.enAttente > 0 ? [
-                { value: stats.encaisse || 1, color: '#10b981' },
-                { value: stats.enAttente, color: stats.facturesOverdue?.length > 0 ? '#f59e0b' : '#10b981' },
-              ] : undefined}
-              donutTooltip={`${Math.round((stats.encaisse / (stats.encaisse + stats.enAttente || 1)) * 100)}% encaissé sur ${formatMoney(stats.encaisse + stats.enAttente)} facturé`}
-              details={(() => {
-                const details = [];
-
-                // Si facture en attente, afficher la première avec nom client + ancienneté
-                if (stats.facturesEnAttente?.length > 0) {
-                  const firstFacture = stats.facturesEnAttente[0];
-                  const client = safeClients.find(c => c.id === firstFacture?.client_id);
-                  const days = daysSince(firstFacture?.date);
-                  details.push({
-                    icon: Receipt,
-                    label: client?.nom || 'Client',
-                    subLabel: `${firstFacture?.numero || 'Facture'} • ${days}j`,
-                    value: formatMoney(firstFacture?.total_ttc, modeDiscret),
-                    highlight: days > 30,
-                    onClick: () => {
-                      setSelectedDevis?.(firstFacture);
-                      setPage?.('devis');
-                    },
-                    badge: days > 30 ? { type: 'warning', label: 'En retard' } : undefined,
-                  });
-                }
-
-                // Déjà encaissé
-                details.push({
-                  icon: CheckCircle,
-                  label: 'Déjà encaissé',
-                  value: formatMoney(stats.encaisse, modeDiscret),
-                });
-
-                // En retard si applicable
-                if (stats.montantOverdue > 0) {
-                  details.push({
-                    icon: AlertTriangle,
-                    label: `En retard (+30j) • ${stats.facturesOverdue?.length} fact.`,
-                    value: formatMoney(stats.montantOverdue, modeDiscret),
-                    highlight: true,
-                  });
-                }
-
-                return details;
-              })()}
-            />
-
-            {/* CE MOIS - Monthly performance with period selector */}
-            <KPICard
-              icon={TrendingUp}
-              label={(() => {
-                if (kpiPeriod === 'month') {
-                  const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(new Date());
-                  return `FACTURÉ EN ${monthName.toUpperCase()}`;
-                }
-                return kpiPeriod === 'year' ? 'CETTE ANNÉE' : '5 ANS';
-              })()}
-              value={formatMoney(
-                kpiPeriod === 'month'
-                  ? stats.thisMonthCA
-                  : kpiPeriod === 'year'
-                    ? (() => {
-                        const now = new Date();
-                        return safeDevis
-                          .filter(d => {
-                            const dd = new Date(d.date);
-                            return dd.getFullYear() === now.getFullYear() &&
-                                   (d.type === 'facture' || d.statut === 'accepte');
-                          })
-                          .reduce((s, d) => s + (d.total_ht || 0), 0);
-                      })()
-                    : (() => {
-                        const now = new Date();
-                        return safeDevis
-                          .filter(d => {
-                            const dd = new Date(d.date);
-                            return dd.getFullYear() >= now.getFullYear() - 4 &&
-                                   (d.type === 'facture' || d.statut === 'accepte');
-                          })
-                          .reduce((s, d) => s + (d.total_ht || 0), 0);
-                      })(),
-                modeDiscret
-              )}
-              subValue={stats.isEarlyMonth && kpiPeriod === 'month'
-                ? `Début de mois • Objectif: ${formatMoney(stats.objectifMensuel, modeDiscret)}`
-                : stats.projectionMensuelle && kpiPeriod === 'month'
-                  ? `Projection: ${formatMoney(stats.projectionMensuelle, modeDiscret)}/mois`
-                  : undefined
-              }
-              trend={stats.isEarlyMonth && kpiPeriod === 'month' ? null : stats.tendance}
-              trendLabel={kpiPeriod === 'month' ? stats.tendanceLabel : kpiPeriod === 'year' ? 'vs an dernier' : 'sur 5 ans'}
-              color={stats.tendance === null ? 'blue' : stats.tendance >= 0 ? 'green' : 'red'}
-              isDark={isDark}
-              onClick={() => setCeMoisModalOpen(true)}
-              showPeriodSelector={true}
-              period={kpiPeriod}
-              onPeriodChange={setKpiPeriod}
-              sparklineData={(() => {
-                const now = new Date();
-                if (kpiPeriod === 'month') {
-                  // Last 6 months
-                  return Array.from({ length: 6 }, (_, i) => {
-                    const monthOffset = 5 - i;
-                    const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-                    const monthCA = safeDevis
-                      .filter(d => {
-                        const dd = new Date(d.date);
-                        return dd.getMonth() === targetMonth.getMonth() &&
-                               dd.getFullYear() === targetMonth.getFullYear() &&
-                               (d.type === 'facture' || d.statut === 'accepte');
-                      })
-                      .reduce((s, d) => s + (d.total_ht || 0), 0);
-                    return { value: monthCA };
-                  });
-                } else if (kpiPeriod === 'year') {
-                  // Last 12 months
-                  return Array.from({ length: 12 }, (_, i) => {
-                    const monthOffset = 11 - i;
-                    const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-                    const monthCA = safeDevis
-                      .filter(d => {
-                        const dd = new Date(d.date);
-                        return dd.getMonth() === targetMonth.getMonth() &&
-                               dd.getFullYear() === targetMonth.getFullYear() &&
-                               (d.type === 'facture' || d.statut === 'accepte');
-                      })
-                      .reduce((s, d) => s + (d.total_ht || 0), 0);
-                    return { value: monthCA };
-                  });
-                } else {
-                  // Last 5 years
-                  return Array.from({ length: 5 }, (_, i) => {
-                    const yearOffset = 4 - i;
-                    const targetYear = now.getFullYear() - yearOffset;
-                    const yearCA = safeDevis
-                      .filter(d => {
-                        const dd = new Date(d.date);
-                        return dd.getFullYear() === targetYear &&
-                               (d.type === 'facture' || d.statut === 'accepte');
-                      })
-                      .reduce((s, d) => s + (d.total_ht || 0), 0);
-                    return { value: yearCA };
-                  });
-                }
-              })()}
-              details={(() => {
-                const details = [];
-
-                // Objectif mensuel avec progression (seulement si objectif > 0 et pas en début de mois pour la jauge)
-                if (kpiPeriod === 'month' && stats.objectifMensuel > 0) {
-                  const progressLabel = stats.isEarlyMonth
-                    ? `Objectif: ${formatMoney(stats.objectifMensuel, modeDiscret)}`
-                    : `${Math.round(stats.progressionObjectif)}% de l'objectif`;
-                  details.push({
-                    icon: Target,
-                    label: progressLabel,
-                    value: stats.isEarlyMonth ? '—' : `${Math.round(stats.progressionObjectif)}%`,
-                    highlight: !stats.isEarlyMonth && stats.progressionObjectif < 50,
-                  });
-                } else {
-                  // Marge brute si pas d'objectif
-                  details.push({
-                    icon: Target,
-                    label: 'Marge brute',
-                    value: `${Math.round(stats.tauxMarge)}%`,
-                    highlight: stats.tauxMarge < 20,
-                  });
-                }
-
-                // Devis en attente
-                details.push({
-                  icon: FileText,
-                  label: 'Devis en attente',
-                  value: `${stats.devisEnAttente} (${formatMoney(stats.montantDevisEnAttente, modeDiscret)})`,
-                  // Badge "Gros deal" si montant > 10 000€
-                  badge: stats.montantDevisEnAttente > 10000 ? { type: 'highlight', label: '💎 Gros deal' } : undefined,
-                  onClick: stats.devisEnAttente > 0 ? () => setPage?.('devis') : undefined,
-                });
-
-                // Taux conversion
-                details.push({
-                  icon: Zap,
-                  label: 'Taux conversion',
-                  value: `${Math.round(stats.tauxConversion)}%`,
-                });
-
-                return details;
-              })()}
-            />
-          </div>
-        </section>
-
-        {/* Suggestions Section */}
-        {suggestions.length > 0 && (
-          <section className="px-4 sm:px-6 pb-8">
-            <SuggestionsSection
-              suggestions={suggestions.map((s) => ({
-                ...s,
-                ctaAction: () => handleSuggestionAction(s),
-              }))}
-              isDark={isDark}
-              setPage={setPage}
-              onOpenRelance={handleSuggestionRelance}
-              onOpenMarginAnalysis={handleOpenMarginAnalysis}
-            />
-          </section>
-        )}
 
         {/* Dashboard Customization Button */}
         <section className="px-4 sm:px-6 pb-4 flex items-center justify-end">
@@ -1803,6 +1687,46 @@ export default function Dashboard({
           setPage?.('chantiers');
         }}
       />
+
+      {/* ========== DEVIS EXPRESS MODAL ========== */}
+      <DevisExpressModal
+        isOpen={showDevisExpress}
+        onClose={() => setShowDevisExpress(false)}
+        onCreateDevis={async (devisData) => {
+          const newDevis = await addDevis?.({
+            ...devisData,
+            type: 'devis',
+            statut: 'brouillon',
+            date: new Date().toISOString().split('T')[0],
+          });
+          if (newDevis?.id) {
+            setShowDevisExpress(false);
+            setSelectedDevis?.(newDevis);
+            setPage?.('devis');
+          }
+        }}
+        clients={clients}
+        isDark={isDark}
+        couleur={couleur}
+      />
+
+      {/* ========== DEVIS IA CHAT MODAL ========== */}
+      {showAIChat && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAIChat(false)} />
+          <div className="relative w-full sm:max-w-2xl h-[85vh] sm:h-[80vh] sm:max-h-[700px] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl">
+            <ChatInterface
+              isDark={isDark}
+              couleur={couleur}
+              onCreateDevis={handleAICreateDevis}
+              onClose={() => setShowAIChat(false)}
+              clients={clients}
+              entreprise={entreprise}
+              compact={false}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Margin Analysis Modal */}
       <MarginAnalysisModal

@@ -57,6 +57,13 @@ export default function OnboardingChecklist({
     localStorage.getItem('chantierpro_onboarding_checklist_dismissed') === 'true'
   );
 
+  // Track first time checklist was seen (for 14-day auto-dismiss)
+  useEffect(() => {
+    if (!localStorage.getItem('chantierpro_onboarding_first_seen')) {
+      localStorage.setItem('chantierpro_onboarding_first_seen', Date.now().toString());
+    }
+  }, []);
+
   const data = useMemo(() => ({ clients, chantiers, devis, memos, couleur }), [clients, chantiers, devis, memos, couleur]);
 
   const completedSteps = useMemo(() => STEPS.filter(s => s.check(data)), [data]);
@@ -75,8 +82,10 @@ export default function OnboardingChecklist({
     }
   }, [allDone, dismissed]);
 
-  // Don't show if dismissed or all done
-  if (dismissed) return null;
+  // Don't show if dismissed, all done, or 14 days elapsed
+  const firstSeen = parseInt(localStorage.getItem('chantierpro_onboarding_first_seen') || '0');
+  const daysSinceFirstSeen = firstSeen ? (Date.now() - firstSeen) / (1000 * 60 * 60 * 24) : 0;
+  if (dismissed || daysSinceFirstSeen > 14) return null;
 
   const handleDismiss = () => {
     setDismissed(true);
