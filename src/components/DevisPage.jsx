@@ -103,6 +103,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
+  const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -1200,38 +1201,39 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const sendWhatsApp = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.telephone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
-    // 1. Update status
-    if (doc.statut === 'brouillon') {
+    if (!client?.telephone) { showToast('Aucun telephone client renseigne', 'error'); return; }
+    const wasBrouillon = doc.statut === 'brouillon';
+    if (wasBrouillon) {
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
     if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    // 2. Open link after state settles
     const phone = (client.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
     setTimeout(() => {
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
     }, 100);
-    showToast('WhatsApp ouvert', 'success');
+    // Show post-send confirmation modal
+    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc });
   };
 
   const sendEmail = (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.email) { showToast('Aucun email client renseigné', 'error'); return; }
-    // 1. Update status
-    if (doc.statut === 'brouillon') {
+    if (!client?.email) { showToast('Aucun email client renseigne', 'error'); return; }
+    const wasBrouillon = doc.statut === 'brouillon';
+    if (wasBrouillon) {
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
     if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    // 2. Open mailto in new window AFTER state settles (window.open instead of location.href to prevent navigation crash)
     setTimeout(() => {
       const subject = encodeURIComponent(`${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`);
       const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.\n\nCordialement`);
       window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_self');
     }, 100);
-    showToast(`Email ouvert pour ${client.email}`, 'success');
+    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
   };
 
   // SMS via native protocol (mobile only)
@@ -1239,23 +1241,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const client = clients.find(c => c.id === doc.client_id);
     if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const phone = (client?.telephone || '').replace(/\s/g, '');
-    if (!phone) { showToast('Aucun téléphone client renseigné', 'error'); return; }
-    // Desktop fallback
+    if (!phone) { showToast('Aucun telephone client renseigne', 'error'); return; }
     if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
       showToast('SMS disponible uniquement sur mobile', 'info');
       return;
     }
-    // 1. Update status
     if (doc.statut === 'brouillon') {
       onUpdate(doc.id, { statut: 'envoye' });
       setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
     }
     if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `SMS ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    // 2. Open SMS after state settles
     const message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
     setTimeout(() => {
       window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
     }, 100);
+    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc });
   };
 
   // Mark document as viewed (for tracking)
@@ -2529,6 +2530,84 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         />
 
         {/* Signature Link Modal */}
+        {/* Post-send confirmation modal */}
+        {showSendConfirmation && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSendConfirmation(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+              {/* Success icon */}
+              <div className="flex justify-center mb-4">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+                  <CheckCircle size={28} style={{ color: couleur }} />
+                </div>
+              </div>
+              <h3 className={`text-lg font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {showSendConfirmation.doc?.type === 'facture' ? 'Facture' : 'Devis'} envoy{showSendConfirmation.doc?.type === 'facture' ? 'e' : 'e'} !
+              </h3>
+              <p className={`text-sm text-center mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                via {showSendConfirmation.canal}
+              </p>
+
+              {/* Summary */}
+              <div className={`rounded-xl p-4 mb-4 space-y-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className="flex justify-between text-sm">
+                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Client</span>
+                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.clientName}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Montant</span>
+                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatMoney(showSendConfirmation.montant)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Canal</span>
+                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.canal}</span>
+                </div>
+              </div>
+
+              {/* Copy signature link */}
+              {showSendConfirmation.doc?.signature_token && (
+                <button
+                  onClick={() => {
+                    const url = buildSignatureUrl(showSendConfirmation.doc.signature_token);
+                    navigator.clipboard.writeText(url);
+                    showToast('Lien de signature copie !', 'success');
+                  }}
+                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-3 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                >
+                  <Link2 size={16} /> Copier le lien de signature
+                </button>
+              )}
+
+              {/* Send via other channel */}
+              <div className="flex gap-2 mb-3">
+                {showSendConfirmation.canal !== 'WhatsApp' && (
+                  <button
+                    onClick={() => { sendWhatsApp(showSendConfirmation.doc); }}
+                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </button>
+                )}
+                {showSendConfirmation.canal !== 'Email' && (
+                  <button
+                    onClick={() => { sendEmail(showSendConfirmation.doc); }}
+                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Mail size={14} /> Email
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowSendConfirmation(null)}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ backgroundColor: couleur }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+
         {showSignatureLinkModal && signatureLinkUrl && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSignatureLinkModal(false)}>
             <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
