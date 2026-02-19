@@ -1808,26 +1808,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 </>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {canAcompte && (
-                <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <CreditCard size={16} className="text-purple-500" />
-                    <span className={`font-medium text-sm ${textPrimary}`}>Acompte 30%</span>
-                  </div>
-                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc * 0.3)}</p>
-                </button>
-              )}
-              {canFacturer && (
-                <button onClick={createSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Receipt size={16} className="text-emerald-500" />
-                    <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
-                  </div>
-                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
-                </button>
-              )}
-            </div>
+            {(canAcompte || canFacturer) ? (
+              <div className="grid grid-cols-2 gap-2">
+                {canAcompte && (
+                  <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <CreditCard size={16} className="text-purple-500" />
+                      <span className={`font-medium text-sm ${textPrimary}`}>Acompte 30%</span>
+                    </div>
+                    <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc * 0.3)}</p>
+                  </button>
+                )}
+                {canFacturer && (
+                  <button onClick={createSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Receipt size={16} className="text-emerald-500" />
+                      <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
+                    </div>
+                    <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className={`text-xs ${textMuted} mt-1`}>
+                {selected.statut === 'brouillon' ? 'Envoyez le devis au client pour pouvoir le facturer ensuite.'
+                  : selected.statut === 'envoye' || selected.statut === 'vu' ? 'Le client doit d\'abord accepter le devis avant facturation.'
+                  : 'Facturation non disponible pour ce statut.'}
+              </p>
+            )}
           </div>
         )}
 

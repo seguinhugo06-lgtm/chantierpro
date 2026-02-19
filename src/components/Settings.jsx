@@ -95,14 +95,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     };
   });
 
-  // Debounced save notification
+  // Debounced save notification with visible indicator
   const saveTimeoutRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
   const updateEntreprise = useCallback((updater) => {
     setEntreprise(updater);
+    setSaveStatus('saving');
     // Debounce the toast to avoid spam
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('saved');
       showToast('Modifications enregistrées', 'success');
+      // Reset indicator after 3s
+      setTimeout(() => setSaveStatus(null), 3000);
     }, 800);
   }, [setEntreprise, showToast]);
   
@@ -334,6 +339,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </button>
           )}
           <h1 className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
+          {/* Auto-save status indicator */}
+          {saveStatus && (
+            <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
+              saveStatus === 'saving'
+                ? isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
+                : isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+            }`}>
+              {saveStatus === 'saving' ? (
+                <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Enregistrement...</>
+              ) : (
+                <><CheckCircle size={12} /> Enregistré</>
+              )}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <button

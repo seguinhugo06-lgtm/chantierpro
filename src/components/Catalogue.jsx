@@ -1117,9 +1117,34 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               </div>
               <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>{search || catFilter !== 'Tous' ? 'Aucun article trouvé' : 'Créez votre catalogue'}</h2>
               <p className={`text-sm ${textMuted} mb-4`}>{search || catFilter !== 'Tous' ? 'Modifiez vos filtres ou ajoutez un nouvel article.' : 'Centralisez vos matériaux, tarifs et stocks.'}</p>
-              <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto" style={{ background: couleur }}><Plus size={18} /> Ajouter un article</button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all" style={{ background: couleur }}>
+                  <Sparkles size={18} /> Importer depuis le Référentiel BTP
+                </button>
+                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                  <Plus size={18} /> Ajouter manuellement
+                </button>
+              </div>
             </div>
           ) : (
+            <>
+            {/* CTA Référentiel BTP when catalogue has few items */}
+            {catalogue.length > 0 && catalogue.length < 5 && !search && catFilter === 'Tous' && (
+              <div className={`mb-4 p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-3 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
+                    <Sparkles size={20} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`text-sm font-semibold ${textPrimary}`}>Enrichissez votre catalogue</p>
+                    <p className={`text-xs ${textMuted}`}>Importez des articles depuis le référentiel BTP pour gagner du temps</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
+                  <Sparkles size={14} /> Référentiel BTP
+                </button>
+              </div>
+            )}
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1188,6 +1213,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 </table>
               </div>
             </div>
+            </>
           )}
         </>
       )}
