@@ -442,37 +442,64 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         })()}
 
         {/* === SECTION: CLIENT & ADRESSE === */}
+        {/* === ZONE CLIENT / ADRESSE + GPS (above the fold) === */}
         <div className={`${cardBg} rounded-xl border p-4`}>
+          {/* Mobile: GPS en premier (above-the-fold) */}
+          {(ch.adresse || ch.ville) && (
+            <div className="sm:hidden mb-4">
+              <button
+                onClick={() => {
+                  const address = encodeURIComponent(`${ch.adresse || ''} ${ch.codePostal || ''} ${ch.ville || ''}`);
+                  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                  const isAndroid = /Android/.test(navigator.userAgent);
+                  if (isIOS) window.open(`maps://maps.apple.com/?q=${address}`, '_blank');
+                  else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
+                  else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                }}
+                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-white font-semibold text-base min-h-[56px] transition-all hover:opacity-90 active:scale-[0.98] shadow-lg"
+                style={{ background: `linear-gradient(135deg, #f97316, #ea580c)` }}
+              >
+                <MapPin size={22} />
+                Ouvrir GPS
+              </button>
+              <p className={`text-xs ${textMuted} text-center mt-2`}>
+                {ch.adresse}{ch.codePostal ? `, ${ch.codePostal}` : ''}{ch.ville ? ` ${ch.ville}` : ''}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Infos Client */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
                 <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Client</span>
               </div>
               {client ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <p className={`font-semibold ${textPrimary}`}>{client.nom} {client.prenom || ''}</p>
-                  {client.telephone && (
-                    <a href={`tel:${client.telephone}`} className={`flex items-center gap-2 text-sm ${textSecondary} hover:opacity-80`}>
-                      <Phone size={16} className="text-purple-500" />
-                      {client.telephone}
-                    </a>
-                  )}
-                  {client.email && (
-                    <a href={`mailto:${client.email}`} className={`flex items-center gap-2 text-sm ${textSecondary} hover:opacity-80 truncate`}>
-                      <span className="text-blue-500">@</span>
-                      {client.email}
-                    </a>
-                  )}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {client.telephone && (
+                      <a href={`tel:${client.telephone}`} className={`flex items-center gap-1.5 text-sm ${textSecondary} hover:opacity-80 min-h-[36px] px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                        <Phone size={14} className="text-purple-500" />
+                        {client.telephone}
+                      </a>
+                    )}
+                    {client.email && (
+                      <a href={`mailto:${client.email}`} className={`flex items-center gap-1.5 text-sm ${textSecondary} hover:opacity-80 truncate max-w-[200px]`}>
+                        <span className="text-blue-500">@</span>
+                        {client.email}
+                      </a>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <p className={`text-sm ${textMuted}`}>Aucun client associé</p>
               )}
             </div>
 
-            {/* Adresse avec GPS */}
-            <div className="space-y-3">
+            {/* Adresse + gros bouton GPS (desktop) */}
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
                 <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Adresse du chantier</span>
@@ -484,25 +511,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     {ch.codePostal && `, ${ch.codePostal}`}
                     {ch.ville && ` ${ch.ville}`}
                   </p>
+                  {/* GPS button - desktop only (mobile has it above) */}
                   <button
                     onClick={() => {
                       const address = encodeURIComponent(`${ch.adresse || ''} ${ch.codePostal || ''} ${ch.ville || ''}`);
-                      // Try native maps first (iOS/Android), fallback to Google Maps
                       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                       const isAndroid = /Android/.test(navigator.userAgent);
-                      if (isIOS) {
-                        window.open(`maps://maps.apple.com/?q=${address}`, '_blank');
-                      } else if (isAndroid) {
-                        window.open(`geo:0,0?q=${address}`, '_blank');
-                      } else {
-                        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
-                      }
+                      if (isIOS) window.open(`maps://maps.apple.com/?q=${address}`, '_blank');
+                      else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
+                      else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] transition-all hover:opacity-90 active:scale-[0.98]"
-                    style={{ background: couleur }}
+                    className="hidden sm:flex w-full items-center justify-center gap-3 py-4 rounded-xl text-white font-semibold min-h-[52px] transition-all hover:opacity-90 active:scale-[0.98] shadow-md"
+                    style={{ background: `linear-gradient(135deg, #f97316, #ea580c)` }}
                   >
-                    <MapPin size={18} />
-                    Ouvrir dans GPS
+                    <MapPin size={20} />
+                    Ouvrir GPS
                   </button>
                 </div>
               ) : (
