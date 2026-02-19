@@ -102,6 +102,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
+  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -1594,216 +1595,198 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             )}
           </div>
 
-          {/* Action bar: Status + Primary CTA + Chantier + Communication */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Status dropdown */}
-            {(() => {
-              const STATUS_LABELS = {
-                brouillon: '📝 Brouillon',
-                envoye: '📤 Envoyé',
-                vu: '👁️ Vu',
-                accepte: '✅ Accepté',
-                refuse: '❌ Refusé',
-                acompte_facture: '💰 Acompte facturé',
-                facture: '🧾 Facturé',
-                payee: '✅ Payée',
-              };
-              const transitions = isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS;
-              const allowedNext = transitions[selected.statut] || [];
-              return (
-                <select
-                  value={selected.statut}
-                  onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
-                  className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border-2 outline-none ${
-                    selected.statut === 'accepte' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
-                    : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
-                    : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
-                    : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-600' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
-                    : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-600' : 'bg-red-100 text-red-700 border-red-300')
-                    : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-600' : 'bg-amber-100 text-amber-700 border-amber-300')
-                  }`}
-                >
-                  {/* Current status always shown */}
-                  <option value={selected.statut}>{STATUS_LABELS[selected.statut] || selected.statut}</option>
-                  {/* Only valid next transitions */}
-                  {allowedNext.map(s => (
-                    <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>
-                  ))}
-                </select>
-              );
-            })()}
-
-            {/* Quick Actions - Always available with improved accessibility */}
-            {isDevis ? (
-              <>
-                {/* Envoyer - always available */}
-                <button
-                  onClick={() => sendEmail(selected)}
-                  className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                    selected.statut === 'brouillon'
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm'
-                      : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                  title="Envoyer au client par email"
-                  aria-label="Envoyer le devis au client"
-                >
-                  <Send size={16} /> <span>Envoyer</span>
-                </button>
-
-                {/* Signer - only enabled when devis is envoyé/vu */}
-                {!['facture', 'accepte', 'acompte_facture'].includes(selected.statut) && (
-                  <button
-                    onClick={() => {
-                      if (!['envoye', 'vu'].includes(selected.statut)) {
-                        showToast('Envoyez d\'abord le devis au client', 'info');
-                        return;
-                      }
-                      setShowSignaturePad(true);
-                    }}
-                    disabled={!['envoye', 'vu'].includes(selected.statut)}
-                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                      ['envoye', 'vu'].includes(selected.statut)
-                        ? 'text-white hover:opacity-90 shadow-sm'
-                        : 'opacity-50 cursor-not-allowed ' + (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400')
-                    }`}
-                    style={['envoye', 'vu'].includes(selected.statut) ? { backgroundColor: couleur } : {}}
-                    title={['envoye', 'vu'].includes(selected.statut) ? 'Faire signer le devis par le client' : 'Envoyez d\'abord le devis'}
-                    aria-label="Faire signer le devis"
+          {/* Action bar: Primary CTA + secondary actions */}
+          <div className="flex flex-col gap-3">
+            {/* Row 1: Primary CTA + Status badge */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Status dropdown - compact */}
+              {(() => {
+                const statusColors = DEVIS_STATUS_COLORS[selected.statut] || {};
+                const transitions = isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS;
+                const allowedNext = transitions[selected.statut] || [];
+                return (
+                  <select
+                    value={selected.statut}
+                    onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border outline-none ${isDark ? `${statusColors.darkBg || 'bg-slate-700'} ${statusColors.darkText || 'text-slate-300'} border-slate-600` : `${statusColors.bg || 'bg-slate-100'} ${statusColors.text || 'text-slate-600'} border-slate-200`}`}
                   >
-                    <PenTool size={16} /> <span>Signer</span>
-                  </button>
-                )}
+                    <option value={selected.statut}>{DEVIS_STATUS_LABELS[selected.statut] || selected.statut}</option>
+                    {allowedNext.map(s => (
+                      <option key={s} value={s}>{DEVIS_STATUS_LABELS[s] || s}</option>
+                    ))}
+                  </select>
+                );
+              })()}
 
-                {/* Lien de signature - generate & share signing link */}
-                {'facture' !== selected.statut && (
+              {/* Primary CTA - single orange/green action */}
+              {isDevis ? (
+                <>
+                  {selected.statut === 'brouillon' && (
+                    <div className="relative flex items-center">
+                      <button
+                        onClick={() => sendEmail(selected)}
+                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
+                        style={{ backgroundColor: couleur }}
+                      >
+                        <Send size={16} /> Envoyer
+                      </button>
+                      {/* Channel dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowChannelDropdown(!showChannelDropdown)}
+                          className="ml-1 px-2 py-2.5 min-h-[44px] rounded-xl text-white transition-all hover:opacity-90"
+                          style={{ backgroundColor: couleur }}
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                        {showChannelDropdown && (
+                          <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowChannelDropdown(false)} />
+                          <div className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                            <button onClick={() => { sendWhatsApp(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                              <span className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
+                              WhatsApp
+                            </button>
+                            <button onClick={() => { sendSMS(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                              <span className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
+                              SMS
+                            </button>
+                            <button onClick={() => { sendEmail(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                              <span className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><Mail size={14} /></span>
+                              Email
+                            </button>
+                          </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {['envoye', 'vu'].includes(selected.statut) && (
+                    <button
+                      onClick={() => setShowSignaturePad(true)}
+                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      <PenTool size={16} /> Faire signer
+                    </button>
+                  )}
+
+                  {selected.statut === 'accepte' && (
+                    <button
+                      onClick={async () => {
+                        const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
+                        const confirmed = await confirm({
+                          title: canAcompte ? "Cr\u00e9er une facture d'acompte ?" : 'Cr\u00e9er la facture ?',
+                          message: `Une facture de ${formatMoney(selected.total_ttc)} sera cr\u00e9\u00e9e pour ${clientName}. Cette action est irr\u00e9versible.`
+                        });
+                        if (!confirmed) return;
+                        canAcompte ? setShowAcompteModal(true) : createSolde();
+                      }}
+                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
+                    >
+                      <Receipt size={16} /> Facturer
+                    </button>
+                  )}
+
+                  {selected.statut === 'acompte_facture' && (
+                    <button
+                      onClick={createSolde}
+                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
+                    >
+                      <Receipt size={16} /> Facturer solde ({formatMoney(resteAFacturer)})
+                    </button>
+                  )}
+
+                  {selected.statut === 'facture' && (
+                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-violet-900/50 text-violet-400' : 'bg-violet-100 text-violet-700'}`}>
+                      <CheckCircle size={14} className="inline mr-1" /> Factur\u00e9
+                    </span>
+                  )}
+
+                  {selected.statut === 'refuse' && (
+                    <button
+                      onClick={() => { /* duplicate logic */ }}
+                      className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                    >
+                      <Copy size={16} /> Dupliquer
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  {selected.statut !== 'payee' ? (
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-lg bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 shadow-md"
+                    >
+                      <QrCode size={16} /> Encaisser
+                    </button>
+                  ) : (
+                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                      <CheckCircle size={14} className="inline mr-1" /> Pay\u00e9e
+                    </span>
+                  )}
+                </>
+              )}
+
+              <div className="flex-1" />
+
+              {/* Secondary actions */}
+              <div className="flex items-center gap-1.5">
+                {/* Vue client - preview signature page */}
+                {isDevis && !['facture', 'refuse'].includes(selected.statut) && (
                   <button
                     onClick={async () => {
                       try {
                         const token = await getOrGenerateSignatureToken(selected);
                         if (token) {
-                          const url = buildSignatureUrl(token);
-                          setSignatureLinkUrl(url);
-                          setShowSignatureLinkModal(true);
+                          window.open(buildSignatureUrl(token), '_blank');
                         } else {
-                          showToast('Impossible de générer le lien de signature', 'error');
+                          showToast('Impossible de g\u00e9n\u00e9rer le lien', 'error');
                         }
                       } catch (e) {
-                        showToast('Erreur lors de la génération du lien', 'error');
+                        showToast('Erreur', 'error');
                       }
                     }}
-                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                      selected.statut === 'envoye'
-                        ? 'text-white hover:opacity-90 shadow-sm'
-                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
-                    style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
-                    title="Générer un lien de signature client"
+                    className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                    title="Voir comme le client"
                   >
-                    <Link2 size={16} /> <span className="hidden sm:inline">Lien signature</span>
+                    <Eye size={16} /> <span className="hidden sm:inline">Vue client</span>
                   </button>
                 )}
 
-                {/* Facturer - only enabled when devis is accepté/acompte_facturé, with confirmation */}
-                {!['facture', 'refuse'].includes(selected.statut) && (
-                  <button
-                    onClick={async () => {
-                      if (!['accepte', 'acompte_facture'].includes(selected.statut)) {
-                        showToast('Le devis doit être signé avant de facturer', 'info');
-                        return;
-                      }
-                      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-                      const confirmed = await confirm({
-                        title: canAcompte ? 'Créer une facture d\'acompte ?' : 'Créer la facture ?',
-                        message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
-                      });
-                      if (!confirmed) return;
-                      canAcompte ? setShowAcompteModal(true) : createSolde();
-                    }}
-                    disabled={!['accepte', 'acompte_facture'].includes(selected.statut)}
-                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
-                      ['accepte', 'acompte_facture'].includes(selected.statut)
-                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
-                        : 'opacity-50 cursor-not-allowed ' + (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-100 text-slate-400')
-                    }`}
-                    title={['accepte', 'acompte_facture'].includes(selected.statut)
-                      ? (selected.statut === 'acompte_facture' ? 'Créer la facture de solde' : 'Créer une facture')
-                      : 'Le devis doit être signé'}
-                    aria-label={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer ce devis'}
-                  >
-                    <Receipt size={16} /> <span>{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
+                {/* Chantier link */}
+                {isDevis && (hasChantier && linkedChantier ? (
+                  <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                    <Building2 size={14} /> <span className="hidden sm:inline truncate max-w-[80px]">{linkedChantier.nom}</span>
                   </button>
-                )}
-
-                {/* Terminal status badge */}
-                {selected.statut === 'facture' && (
-                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
-                    <CheckCircle size={14} className="inline mr-1" /> Facturé
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                {/* Facture: Encaisser always available */}
-                {selected.statut !== 'payee' && (
-                  <button
-                    onClick={() => setShowPaymentModal(true)}
-                    className="px-4 py-2 min-h-[44px] text-white rounded-xl text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium bg-emerald-500 hover:bg-emerald-600 shadow-sm"
-                  >
-                    <QrCode size={16} /> Encaisser
+                ) : canCreateChantier && (
+                  <button onClick={openChantierModal} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                    <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
                   </button>
+                ))}
+
+                {/* Communication - compact icons for non-brouillon (brouillon uses dropdown) */}
+                {selected.statut !== 'brouillon' && (
+                  <>
+                    <button
+                      onClick={() => sendWhatsApp(selected)}
+                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-green-400' : 'bg-slate-100 hover:bg-slate-200 text-green-600'}`}
+                      title="WhatsApp"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                    <button
+                      onClick={() => sendEmail(selected)}
+                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-blue-400' : 'bg-slate-100 hover:bg-slate-200 text-blue-600'}`}
+                      title="Email"
+                    >
+                      <Mail size={16} />
+                    </button>
+                  </>
                 )}
-                {selected.statut === 'payee' && (
-                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                    <CheckCircle size={14} className="inline mr-1" /> Payée
-                  </span>
-                )}
-              </>
-            )}
-
-            {/* Chantier link - always show for devis */}
-            {isDevis && (hasChantier && linkedChantier ? (
-              <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                <Building2 size={14} /> <span className="truncate max-w-[100px]">{linkedChantier.nom}</span>
-              </button>
-            ) : canCreateChantier && (
-              <button onClick={openChantierModal} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
-              </button>
-            ))}
-
-            <div className="flex-1" />
-
-            {/* Communication buttons - with labels on larger screens for better accessibility */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => sendWhatsApp(selected)}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-green-500 hover:bg-green-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
-                title="Envoyer par WhatsApp"
-                aria-label="Envoyer par WhatsApp"
-              >
-                <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] flex-shrink-0" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                <span className="hidden sm:inline text-sm font-medium">WhatsApp</span>
-              </button>
-              <button
-                onClick={() => sendSMS(selected)}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
-                title="Envoyer par SMS"
-                aria-label="Envoyer par SMS"
-              >
-                <MessageCircle size={18} className="flex-shrink-0" />
-                <span className="hidden sm:inline text-sm font-medium">SMS</span>
-              </button>
-              <button
-                onClick={() => sendEmail(selected)}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors"
-                title="Envoyer par email"
-                aria-label="Envoyer par email"
-              >
-                <Mail size={18} className="flex-shrink-0" />
-                <span className="hidden sm:inline text-sm font-medium">Email</span>
-              </button>
+              </div>
             </div>
           </div>
         </div>
