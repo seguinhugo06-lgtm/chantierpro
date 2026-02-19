@@ -27,6 +27,7 @@ export default function DevisExpressModal({
   const [notes, setNotes] = useState('');
   const [remise, setRemise] = useState(0);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [modeleQtys, setModeleQtys] = useState({}); // { modeleId: qty } for step 2 preview
 
   // Theme classes
   const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
@@ -50,6 +51,7 @@ export default function DevisExpressModal({
     setNotes('');
     setRemise(0);
     setShowTemplateSelector(false);
+    setModeleQtys({});
     onClose();
   };
 
@@ -176,6 +178,17 @@ export default function DevisExpressModal({
     handleClose();
   };
 
+  // Step 2 running total based on modeleQtys
+  const step2Total = useMemo(() => {
+    if (!modeles.length) return 0;
+    return Object.entries(modeleQtys).reduce((sum, [modeleId, qty]) => {
+      if (qty <= 0) return sum;
+      const modele = modeles.find(m => m.id === modeleId);
+      if (!modele) return sum;
+      return sum + calculateModeleTotal(modele) * qty;
+    }, 0);
+  }, [modeleQtys, modeles]);
+
   // Get métiers
   const metiers = useMemo(() => getMetiersWithModeles(), []);
 
@@ -205,8 +218,8 @@ export default function DevisExpressModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className={`${bgMain} rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl`}>
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 sm:p-4">
+      <div className={`${bgMain} rounded-t-3xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl`}>
         {/* Header */}
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
@@ -299,7 +312,7 @@ export default function DevisExpressModal({
             </div>
           )}
 
-          {/* Step 2: Modèles */}
+          {/* Step 2: Modeles with qty selector */}
           {step === 2 && (
             <div className="space-y-4">
               {/* Search */}
@@ -307,8 +320,8 @@ export default function DevisExpressModal({
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} size={18} />
                 <input
                   type="text"
-                  placeholder="Rechercher un modèle..."
-                  aria-label="Rechercher un modèle"
+                  placeholder="Rechercher un modele..."
+                  aria-label="Rechercher un modele"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
@@ -316,44 +329,75 @@ export default function DevisExpressModal({
                 />
               </div>
 
-              {/* Modèles list */}
+              {/* Modeles list with qty controls */}
               <div className="space-y-3">
                 {filteredModeles.map(modele => {
                   const total = calculateModeleTotal(modele);
                   const marge = calculateModeleMarge(modele);
+                  const qty = modeleQtys[modele.id] || 0;
                   return (
-                    <button
+                    <div
                       key={modele.id}
-                      onClick={() => handleSelectModele(modele)}
-                      className={`w-full p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-left transition-all`}
+                      className={`p-4 rounded-xl border transition-all ${qty > 0 ? `ring-2 ${isDark ? 'bg-slate-800/80' : 'bg-white'}` : `${bgCard}`} ${borderColor}`}
+                      style={qty > 0 ? { '--tw-ring-color': couleur, ringColor: couleur } : {}}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                      <div className="flex items-start gap-3" onClick={() => { if (qty === 0) handleSelectModele(modele); }}>
+                        <div className="flex-1 cursor-pointer">
                           <p className={`font-semibold ${textPrimary}`}>{modele.nom}</p>
                           <p className={`text-sm ${textMuted} mt-1`}>{modele.description}</p>
-                          <div className="flex items-center gap-4 mt-3">
+                          <div className="flex items-center gap-4 mt-2">
                             <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textMuted}`}>
                               {modele.lignes.length} lignes
                             </span>
-                            <span className={`text-xs ${textMuted}`}>
-                              {modele.prixMin.toLocaleString('fr-FR')} - {modele.prixMax.toLocaleString('fr-FR')} € HT
+                            <span className={`text-xs flex items-center gap-1 ${marge >= 40 ? 'text-green-500' : marge >= 25 ? 'text-yellow-500' : 'text-red-500'}`}>
+                              <TrendingUp size={12} />
+                              {marge}%
                             </span>
                           </div>
                         </div>
-                        <div className="text-right ml-4">
+                        <div className="flex flex-col items-end gap-2">
                           <p className="font-bold text-lg" style={{ color: couleur }}>
-                            ~{total.toLocaleString('fr-FR')} €
+                            ~{total.toLocaleString('fr-FR')} EUR
                           </p>
-                          <p className={`text-xs flex items-center gap-1 justify-end ${marge >= 40 ? 'text-green-500' : marge >= 25 ? 'text-yellow-500' : 'text-red-500'}`}>
-                            <TrendingUp size={12} />
-                            {marge}% marge
-                          </p>
+                          {/* Qty controls */}
+                          <div className="flex items-center gap-1">
+                            {qty > 0 && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setModeleQtys(p => ({ ...p, [modele.id]: Math.max(0, qty - 1) })); }}
+                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                              >
+                                <Minus size={16} />
+                              </button>
+                            )}
+                            {qty > 0 && (
+                              <span className={`w-8 text-center font-bold ${textPrimary}`}>{qty}</span>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setModeleQtys(p => ({ ...p, [modele.id]: qty + 1 })); if (qty === 0) handleSelectModele(modele); }}
+                              className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white transition-colors"
+                              style={{ backgroundColor: couleur }}
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
+
+              {/* Sticky running total */}
+              {step2Total > 0 && (
+                <div className={`sticky bottom-0 -mx-4 -mb-4 px-4 py-3 border-t ${borderColor} ${isDark ? 'bg-slate-900/95' : 'bg-white/95'} backdrop-blur-sm`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium ${textSecondary}`}>Total estime HT</span>
+                    <span className="text-xl font-bold" style={{ color: couleur }}>
+                      ~{step2Total.toLocaleString('fr-FR')} EUR
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -410,43 +454,63 @@ export default function DevisExpressModal({
                   </button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {lignes.map((ligne, index) => (
-                    <div key={ligne.id} className={`p-3 rounded-xl border ${borderColor} ${bgCard}`}>
-                      <div className="flex gap-2">
+                    <div key={ligne.id} className={`p-4 rounded-xl border ${borderColor} ${bgCard}`}>
+                      {/* Description - full width */}
+                      <div className="flex items-start gap-2 mb-3">
                         <input
                           type="text"
                           value={ligne.description}
                           onChange={(e) => updateLigne(index, 'description', e.target.value)}
                           placeholder="Description"
-                          className={`flex-1 px-3 py-2 rounded-lg border text-sm ${inputBg} ${textPrimary}`}
+                          className={`flex-1 px-3 py-2.5 rounded-lg border text-sm ${inputBg} ${textPrimary}`}
                         />
-                        <input
-                          type="number"
-                          value={ligne.quantite}
-                          onChange={(e) => updateLigne(index, 'quantite', parseFloat(e.target.value) || 0)}
-                          className={`w-20 px-3 py-2 rounded-lg border text-sm text-center ${inputBg} ${textPrimary}`}
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className={`flex items-center px-2 text-sm ${textMuted}`}>{ligne.unite}</span>
-                        <input
-                          type="number"
-                          value={ligne.prixUnitaire}
-                          onChange={(e) => updateLigne(index, 'prixUnitaire', parseFloat(e.target.value) || 0)}
-                          className={`w-24 px-3 py-2 rounded-lg border text-sm text-right ${inputBg} ${textPrimary}`}
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className={`flex items-center font-medium min-w-[80px] justify-end ${textPrimary}`}>
-                          {(ligne.total || 0).toLocaleString('fr-FR')} €
-                        </span>
                         <button
                           onClick={() => removeLigne(index)}
-                          className={`p-2 rounded-lg ${isDark ? 'hover:bg-red-900/40 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}
+                          className={`p-2.5 rounded-lg shrink-0 ${isDark ? 'hover:bg-red-900/40 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`}
                         >
                           <Trash2 size={16} />
                         </button>
+                      </div>
+                      {/* Qty + Price + Total - stacked on mobile */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        {/* Qty with +/- buttons */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => updateLigne(index, 'quantite', Math.max(0, (ligne.quantite || 1) - 1))}
+                            className={`min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                          >
+                            <Minus size={18} />
+                          </button>
+                          <div className={`min-w-[50px] text-center font-bold text-base ${textPrimary}`}>
+                            {ligne.quantite} <span className={`text-xs font-normal ${textMuted}`}>{ligne.unite}</span>
+                          </div>
+                          <button
+                            onClick={() => updateLigne(index, 'quantite', (ligne.quantite || 0) + 1)}
+                            className="min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center font-bold text-white transition-colors"
+                            style={{ backgroundColor: couleur }}
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </div>
+                        {/* Price */}
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className={`text-xs ${textMuted} shrink-0`}>Prix :</span>
+                          <input
+                            type="number"
+                            value={ligne.prixUnitaire}
+                            onChange={(e) => updateLigne(index, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                            className={`flex-1 min-w-0 px-3 py-2.5 rounded-lg border text-sm text-right ${inputBg} ${textPrimary}`}
+                            min="0"
+                            step="0.01"
+                          />
+                          <span className={`text-xs ${textMuted}`}>EUR</span>
+                        </div>
+                        {/* Line total */}
+                        <div className={`text-right font-bold min-w-[90px] ${textPrimary}`}>
+                          {(ligne.total || 0).toLocaleString('fr-FR')} EUR
+                        </div>
                       </div>
                     </div>
                   ))}
