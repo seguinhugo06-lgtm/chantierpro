@@ -1536,34 +1536,62 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
 
-          {/* Workflow progress - compact inline */}
-          <div className="flex items-center gap-1 mb-4">
-            {statusSteps.map((step, idx) => {
-              const { isActive, isPast } = getStepState(step);
-              const isRefused = selected.statut === 'refuse';
-              const isLast = idx === statusSteps.length - 1;
-              return (
-                <React.Fragment key={step.id}>
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                        isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
-                        isActive ? 'text-white' :
-                        isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
-                        (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
-                      }`}
-                      style={isActive ? { backgroundColor: couleur } : {}}
-                    >
-                      {isPast ? '✓' : idx + 1}
+          {/* Workflow progress - enhanced stepper */}
+          <div className="mb-4">
+            <div className="flex items-start gap-0">
+              {statusSteps.map((step, idx) => {
+                const { isActive, isPast } = getStepState(step);
+                const isRefused = selected.statut === 'refuse';
+                const isLast = idx === statusSteps.length - 1;
+
+                // Calculate time elapsed for active step
+                const getTimeElapsed = () => {
+                  if (!isActive || !selected.date) return null;
+                  const days = Math.floor((Date.now() - new Date(selected.updated_at || selected.date).getTime()) / 86400000);
+                  if (days === 0) return "aujourd'hui";
+                  if (days === 1) return 'hier';
+                  return `il y a ${days}j`;
+                };
+                const timeElapsed = getTimeElapsed();
+
+                return (
+                  <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center gap-1 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
+                          isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
+                          isActive ? 'text-white shadow-md' :
+                          isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
+                          (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
+                        }`}
+                        style={isActive ? { backgroundColor: couleur, boxShadow: `0 2px 8px ${couleur}40` } : {}}
+                      >
+                        {isPast ? '✓' : idx + 1}
+                      </div>
+                      <span className={`text-[11px] font-medium text-center leading-tight ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
+                        {step.label}
+                      </span>
+                      {timeElapsed && (
+                        <span className="text-[10px] font-medium" style={{ color: couleur }}>
+                          {timeElapsed}
+                        </span>
+                      )}
                     </div>
-                    <span className={`text-xs font-medium hidden sm:inline ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
-                      {step.label}
-                    </span>
-                  </div>
-                  {!isLast && <div className={`w-4 sm:w-8 h-0.5 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />}
-                </React.Fragment>
-              );
-            })}
+                    {!isLast && (
+                      <div className={`flex-1 h-0.5 mt-4 min-w-3 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            {/* Next action guide banner */}
+            {nextAction && !nextAction.text.startsWith('✓') && (
+              <div className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-medium ${isDark ? 'bg-slate-800/80' : 'bg-slate-50'}`}>
+                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: couleur }} />
+                <span className={textMuted}>Prochaine étape :</span>
+                <span className={nextAction.color}>{nextAction.text.replace('→ ', '')}</span>
+              </div>
+            )}
           </div>
 
           {/* Action bar: Status + Primary CTA + Chantier + Communication */}
