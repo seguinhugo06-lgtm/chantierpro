@@ -93,6 +93,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [showCompletedTasks, setShowCompletedTasks] = useState(false); // Show/hide completed tasks
   const [editingTask, setEditingTask] = useState(null); // Task being edited
   const [taskFilter, setTaskFilter] = useState('all'); // all, pending, critical
+  const [fabOpen, setFabOpen] = useState(false); // FAB chantier flottant
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -816,37 +817,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           );
         })()}
 
-        {/* === SECTION: ACTIONS RAPIDES === */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setShowAddMO(true)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
-          >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
-              <Clock size={18} style={{ color: couleur }} />
-            </div>
-            <span className={`text-sm font-medium ${textPrimary}`}>Pointer</span>
-          </button>
-          <button
-            onClick={() => setShowQuickMateriau(true)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
-          >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-900/30' : 'bg-red-100'}`}>
-              <Coins size={18} className="text-red-500" />
-            </div>
-            <span className={`text-sm font-medium ${textPrimary}`}>Dépense</span>
-          </button>
-          <button
-            onClick={() => document.getElementById(`photo-quick-${ch.id}`)?.click()}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all min-h-[48px] ${isDark ? 'bg-slate-800 hover:bg-slate-700 border border-slate-700' : 'bg-white hover:bg-slate-50 border border-slate-200'}`}
-          >
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-              <Camera size={18} className="text-blue-500" />
-            </div>
-            <span className={`text-sm font-medium ${textPrimary}`}>Photo</span>
-            <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
-          </button>
-        </div>
+        {/* Quick actions remplacées par le FAB flottant (voir bas de page) */}
+        <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
 
         {/* Alertes */}
         {(margeNegative || budgetDepasse || margeFaible) && (
@@ -2017,6 +1989,67 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         isDark={isDark}
         couleur={couleur}
       />
+
+      {/* === FAB FLOTTANT CONTEXTUEL CHANTIER === */}
+      {fabOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+        {/* Sub-buttons */}
+        {fabOpen && (
+          <>
+            <button
+              onClick={() => { setFabOpen(false); setShowAddMO(true); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-2.5 rounded-full text-white shadow-lg transition-all hover:shadow-xl"
+              style={{ background: couleur, animationDelay: '0ms' }}
+            >
+              <Clock size={18} />
+              <span className="font-medium text-sm whitespace-nowrap">Pointer</span>
+            </button>
+            <button
+              onClick={() => { setFabOpen(false); setShowQuickMateriau(true); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-2.5 rounded-full text-white shadow-lg transition-all hover:shadow-xl bg-red-500"
+              style={{ animationDelay: '50ms' }}
+            >
+              <Coins size={18} />
+              <span className="font-medium text-sm whitespace-nowrap">Dépense</span>
+            </button>
+            <button
+              onClick={() => { setFabOpen(false); document.getElementById(`photo-quick-${ch.id}`)?.click(); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-2.5 rounded-full text-white shadow-lg transition-all hover:shadow-xl bg-blue-500"
+              style={{ animationDelay: '100ms' }}
+            >
+              <Camera size={18} />
+              <span className="font-medium text-sm whitespace-nowrap">Photo</span>
+            </button>
+            <button
+              onClick={() => { setFabOpen(false); setActiveTab('notes'); }}
+              className="flex items-center gap-2 pl-4 pr-5 py-2.5 rounded-full text-white shadow-lg transition-all hover:shadow-xl bg-purple-500"
+              style={{ animationDelay: '150ms' }}
+            >
+              <StickyNote size={18} />
+              <span className="font-medium text-sm whitespace-nowrap">Mémo</span>
+            </button>
+          </>
+        )}
+
+        {/* Main FAB button */}
+        <button
+          onClick={() => setFabOpen(!fabOpen)}
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:shadow-xl hover:brightness-110 ${fabOpen ? 'rotate-45' : ''}`}
+          style={{ background: couleur }}
+          aria-label={fabOpen ? 'Fermer' : 'Actions rapides'}
+        >
+          {fabOpen ? (
+            <X size={24} className="text-white" />
+          ) : (
+            <Plus size={28} className="text-white" />
+          )}
+        </button>
+      </div>
 
       {/* Edit Chantier Modal — must be inside detail view for immediate update */}
       <QuickChantierModal
