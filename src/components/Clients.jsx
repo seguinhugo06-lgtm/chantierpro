@@ -350,6 +350,66 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           </div>
         </div>
 
+        {/* Contextual Alert Banner */}
+        {(() => {
+          // Priority-based contextual alert
+          const pendingDevis = clientDevis.filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu'));
+          const oldestPending = pendingDevis.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
+          const daysSinceSent = oldestPending ? Math.floor((Date.now() - new Date(oldestPending.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && d.statut === 'accepte');
+          const terminatedNoInvoice = clientChantiers.filter(ch => ch.statut === 'termine' && !clientDevis.some(d => d.type === 'facture' && d.chantier_id === ch.id));
+          const lastActivityDate = Math.max(
+            ...clientDevis.map(d => new Date(d.created_at || 0).getTime()),
+            ...clientChantiers.map(ch => new Date(ch.created_at || 0).getTime()),
+            0
+          );
+          const monthsSinceActivity = lastActivityDate > 0 ? Math.floor((Date.now() - lastActivityDate) / (1000 * 60 * 60 * 24 * 30)) : 999;
+
+          let alert = null;
+          if (oldestPending && daysSinceSent > 7) {
+            alert = { icon: Clock, color: '#f59e0b', bgLight: 'bg-amber-50', bgDark: 'bg-amber-900/20', textLight: 'text-amber-800', textDark: 'text-amber-200', message: `Devis en attente depuis ${daysSinceSent} jours`, action: 'Relancer', onAction: () => { if (setPage) { setSelectedDevis?.(oldestPending); setPage('devis'); } } };
+          } else if (acceptedNotInvoiced.length > 0) {
+            alert = { icon: Zap, color: '#10b981', bgLight: 'bg-emerald-50', bgDark: 'bg-emerald-900/20', textLight: 'text-emerald-800', textDark: 'text-emerald-200', message: `${acceptedNotInvoiced.length} devis accepté(s) à facturer`, action: 'Facturer', onAction: () => { if (setPage) { setSelectedDevis?.(acceptedNotInvoiced[0]); setPage('devis'); } } };
+          } else if (terminatedNoInvoice.length > 0) {
+            alert = { icon: AlertTriangle, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: `Chantier terminé, facture en attente`, action: 'Voir', onAction: () => { if (setPage && setSelectedChantier) { setSelectedChantier(terminatedNoInvoice[0].id); setPage('chantiers'); } } };
+          } else if (monthsSinceActivity > 6 && stats.chantiers > 0) {
+            alert = { icon: Info, color: '#6b7280', bgLight: 'bg-slate-50', bgDark: 'bg-slate-700/50', textLight: 'text-slate-700', textDark: 'text-slate-300', message: `Aucune activité depuis ${monthsSinceActivity} mois`, action: 'Nouveau devis', onAction: () => { if (setPage) { setPage('devis'); setCreateMode?.(true); } } };
+          }
+
+          if (!alert) return null;
+          const AlertIcon = alert.icon;
+          return (
+            <div className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? alert.bgDark : alert.bgLight}`}>
+              <AlertIcon size={18} style={{ color: alert.color }} className="flex-shrink-0" />
+              <p className={`text-sm flex-1 ${isDark ? alert.textDark : alert.textLight}`}>{alert.message}</p>
+              <button
+                onClick={alert.onAction}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:shadow-md min-h-[32px]"
+                style={{ background: alert.color }}
+              >
+                {alert.action}
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* Quick Actions */}
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => { if (setPage) { setPage('devis'); setCreateMode?.(true); } }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white min-h-[40px] hover:shadow-md transition-all"
+            style={{ background: couleur }}
+          >
+            <FileText size={14} /> Nouveau devis
+          </button>
+          <button
+            onClick={() => { if (setPage) { setPage('chantiers'); setCreateMode?.(true); } }}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium min-h-[40px] border transition-all hover:shadow-sm ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+          >
+            <Home size={14} /> Nouveau chantier
+          </button>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
           <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
