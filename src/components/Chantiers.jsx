@@ -66,7 +66,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
   const [editingChantier, setEditingChantier] = useState(null); // Chantier being edited
-  const [activeTab, setActiveTab] = useState('finances');
+  const [activeTab, setActiveTab] = useState('photos');
     const [newTache, setNewTache] = useState('');
   const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
   const [showAjustement, setShowAjustement] = useState(null);
@@ -94,6 +94,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [editingTask, setEditingTask] = useState(null); // Task being edited
   const [taskFilter, setTaskFilter] = useState('all'); // all, pending, critical
   const [fabOpen, setFabOpen] = useState(false); // FAB chantier flottant
+  const [showMoreTabs, setShowMoreTabs] = useState(false); // Dropdown "Plus" onglets
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -1009,24 +1010,69 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
           <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
         </div>
-        {/* Onglets */}
-        <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {[
+        {/* Onglets — 5 max + Plus dropdown */}
+        {(() => {
+          const photoCount = (ch.photos || []).length;
+          const msgCount = (ch.messages || []).filter(m => !m.read).length;
+          const mainTabs = [
+            { key: 'photos', label: 'Photos', icon: Camera, badge: photoCount > 0 ? photoCount : null },
             { key: 'finances', label: 'Finances', icon: Wallet },
             { key: 'situations', label: 'Situations', icon: Receipt },
-            { key: 'rapports', label: 'Rapports', icon: FileText },
-            { key: 'photos', label: 'Photos', icon: Camera },
-            { key: 'documents', label: 'Documents', icon: Paperclip },
+            { key: 'messages', label: 'Messages', icon: MessageSquare, badge: msgCount > 0 ? msgCount : null },
+          ];
+          const moreTabs = [
             { key: 'notes', label: 'Notes', icon: StickyNote },
+            { key: 'documents', label: 'Documents', icon: Paperclip },
+            { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'memos', label: 'Mémos', icon: ClipboardList },
-            { key: 'messages', label: 'Messages', icon: MessageSquare }
-          ].map(({ key, label, icon: Icon }) => (
-            <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-medium min-h-[44px] transition-colors ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
-              <Icon size={16} />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
+          ];
+          const isMoreTabActive = moreTabs.some(t => t.key === activeTab);
+
+          return (
+            <div className="relative">
+              <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                {mainTabs.map(({ key, label, icon: Icon, badge }) => (
+                  <button key={key} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
+                    <Icon size={15} />
+                    <span className="hidden sm:inline">{label}</span>
+                    {badge && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium min-w-[18px] text-center ${activeTab === key ? 'bg-white/25' : 'text-white'}`} style={activeTab !== key ? { background: couleur } : {}}>
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {/* Plus button */}
+                <button
+                  onClick={() => setShowMoreTabs(!showMoreTabs)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors ${isMoreTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                  style={isMoreTabActive ? { background: couleur } : {}}
+                >
+                  <MoreHorizontal size={15} />
+                  <span className="hidden sm:inline">Plus</span>
+                </button>
+              </div>
+              {/* Dropdown */}
+              {showMoreTabs && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMoreTabs(false)} />
+                  <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+                    {moreTabs.map(({ key, label, icon: Icon }) => (
+                      <button
+                        key={key}
+                        onClick={() => { setActiveTab(key); setShowMoreTabs(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${activeTab === key ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''} ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <Icon size={15} className={textMuted} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {activeTab === 'finances' && (
           <div className="space-y-4">
