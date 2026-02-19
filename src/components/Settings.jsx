@@ -472,8 +472,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
           ['_sep1', ''],
+          // Documents & Facturation
+          ['documents', '📄 Documents'],
+          ['_sep2', ''],
           // Gestion
           ['comptabilite', '🧮 Comptabilité'],
+          ['rentabilite', '📊 Rentabilité'],
+          ['donnees', '💾 Données'],
         ].filter(([k]) => k).map(([k, v]) => (
           k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
@@ -803,7 +808,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* DOCUMENTS — removed, content moved to comptabilite */}
-      {false && tab === 'documents' && (
+      {tab === 'documents' && (
         <div className="space-y-4 sm:space-y-6">
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Paramètres par défaut des devis</h3>
@@ -902,8 +907,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* RENTABILITÉ — removed */}
-      {false && tab === 'rentabilite' && (
+      {/* RENTABILITÉ */}
+      {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
           <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
@@ -1271,7 +1276,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* Données Import/Export Tab — removed */}
-      {false && tab === 'donnees' && (
+      {tab === 'donnees' && (
         <div className="space-y-6">
           {/* Export Global */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
