@@ -63,10 +63,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   // Core state
+  const [viewMode, setViewMode] = useState('employes'); // 'employes' | 'sous_traitants'
+  const isSousTraitants = viewMode === 'sous_traitants';
   const [tab, setTab] = useState('overview');
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' });
   const [sortBy, setSortBy] = useState('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -489,12 +491,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     }
     const data = {
       ...form,
-      tauxHoraire: parseFloat(form.tauxHoraire) || 45,
+      type: isSousTraitants ? 'sous_traitant' : 'employe',
+      tauxHoraire: parseFloat(form.tauxHoraire) || (isSousTraitants ? 0 : 45),
       coutHoraireCharge: parseFloat(form.coutHoraireCharge) || parseFloat(form.tauxHoraire) * 0.6 || 28,
       competences: form.competences || '',
       certifications: form.certifications || '',
       dateEmbauche: form.dateEmbauche || '',
       notes: form.notes || '',
+      siret: form.siret || '',
+      decennale_assureur: form.decennale_assureur || '',
+      decennale_numero: form.decennale_numero || '',
+      decennale_expiration: form.decennale_expiration || '',
+      urssaf_date: form.urssaf_date || '',
+      tarif_type: form.tarif_type || 'horaire',
+      tarif_forfait: form.tarif_forfait ? parseFloat(form.tarif_forfait) : null,
     };
     if (editId) {
       if (updateEmployeeProp) {
@@ -502,19 +512,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       } else {
         setEquipe(equipe.map(e => e.id === editId ? { id: editId, ...data } : e));
       }
-      showToast('Employé modifié', 'success');
+      showToast(isSousTraitants ? 'Sous-traitant modifié' : 'Employé modifié', 'success');
     } else {
       if (addEmployeeProp) {
         await addEmployeeProp(data);
       } else {
         setEquipe([...equipe, { id: generateId(), ...data }]);
       }
-      showToast('Employé ajouté', 'success');
+      showToast(isSousTraitants ? 'Sous-traitant ajouté' : 'Employé ajouté', 'success');
     }
     setShowAdd(false);
     setEditId(null);
     clearFormErrors();
-    setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' });
+    setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' });
   };
 
   const startEdit = (emp) => {
@@ -531,20 +541,30 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       competences: emp.competences || '',
       certifications: emp.certifications || '',
       notes: emp.notes || '',
+      siret: emp.siret || '',
+      decennale_assureur: emp.decennale_assureur || '',
+      decennale_numero: emp.decennale_numero || '',
+      decennale_expiration: emp.decennale_expiration || '',
+      urssaf_date: emp.urssaf_date || '',
+      tarif_type: emp.tarif_type || 'horaire',
+      tarif_forfait: emp.tarif_forfait?.toString() || '',
     });
     setEditId(emp.id);
+    if (emp.type === 'sous_traitant') setViewMode('sous_traitants');
     setShowAdd(true);
   };
 
   const deleteEmploye = async (id) => {
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet employé ?' });
+    const emp = equipe.find(e => e.id === id);
+    const isST = emp?.type === 'sous_traitant';
+    const confirmed = await confirm({ title: 'Supprimer', message: `Supprimer ${isST ? 'ce sous-traitant' : 'cet employé'} ?` });
     if (confirmed) {
       if (deleteEmployeeProp) {
         await deleteEmployeeProp(id);
       } else {
         setEquipe(equipe.filter(e => e.id !== id));
       }
-      showToast('Employé supprimé', 'success');
+      showToast(isST ? 'Sous-traitant supprimé' : 'Employé supprimé', 'success');
     }
   };
 
@@ -882,9 +902,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     return { monthHours, totalHours, avgDaily: Math.round(avgDaily * 10) / 10, chantiersWorked, daysSinceHire, totalPointages: empPointages.length, approvedConges: approvedConges.length, pendingConges: empConges.filter(c => c.status === 'pending').length };
   }, [pointages, equipe, conges]);
 
+  // Filter by view mode (employes vs sous-traitants)
+  const employesList = useMemo(() => equipe.filter(e => e.type !== 'sous_traitant'), [equipe]);
+  const sousTraitantsList = useMemo(() => equipe.filter(e => e.type === 'sous_traitant'), [equipe]);
+  const currentList = isSousTraitants ? sousTraitantsList : employesList;
+
   // Filtered and sorted employees
   const getFilteredEquipe = useMemo(() => {
-    let filtered = [...equipe];
+    let filtered = [...currentList];
 
     // Search filter
     if (searchQuery.trim()) {
@@ -919,21 +944,21 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           return 0;
       }
     });
-  }, [equipe, searchQuery, filterRole, sortBy, activeEmployeesToday]);
+  }, [currentList, searchQuery, filterRole, sortBy, activeEmployeesToday]);
 
   // Get unique roles for filter
   const uniqueRoles = useMemo(() => {
-    return [...new Set(equipe.map(e => e.role).filter(Boolean))];
-  }, [equipe]);
+    return [...new Set(currentList.map(e => e.role).filter(Boolean))];
+  }, [currentList]);
 
   // Employee add/edit form
   if (showAdd) return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '', dateEmbauche: '', competences: '', certifications: '', notes: '', siret: '', decennale_assureur: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '', tarif_type: 'horaire', tarif_forfait: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employé</h2>
+        <h2 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : isSousTraitants ? 'Nouveau sous-traitant' : 'Nouvel employé'}</h2>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1033,19 +1058,73 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         </div>
 
+        {/* Sous-traitant specific fields */}
+        {isSousTraitants && (
+          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Shield size={16} style={{ color: '#7c3aed' }} /> Informations légales</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.siret} onChange={e => setForm(p => ({...p, siret: e.target.value}))} placeholder="123 456 789 00012" />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assureur décennale</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.decennale_assureur} onChange={e => setForm(p => ({...p, decennale_assureur: e.target.value}))} placeholder="AXA, MAAF, Allianz..." />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° police décennale</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.decennale_numero} onChange={e => setForm(p => ({...p, decennale_numero: e.target.value}))} placeholder="POL-2024-XXXXX" />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Expiration décennale</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.decennale_expiration} onChange={e => setForm(p => ({...p, decennale_expiration: e.target.value}))} />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Dernière vérification URSSAF</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.urssaf_date} onChange={e => setForm(p => ({...p, urssaf_date: e.target.value}))} />
+                <p className={`text-xs ${textMuted} mt-1`}>Date de vérification de vigilance</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} style={{ color: couleur }} /> Tarification</h4>
+          {isSousTraitants && (
+            <div className="flex gap-2 mb-4">
+              {['horaire', 'forfait'].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setForm(p => ({...p, tarif_type: t}))}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    form.tarif_type === t ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  }`}
+                  style={form.tarif_type === t ? { background: '#7c3aed' } : {}}
+                >
+                  {t === 'horaire' ? 'Taux horaire' : 'Forfait'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux facturation (EUR/h)</label>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{isSousTraitants ? 'Taux horaire (EUR/h)' : 'Taux facturation (EUR/h)'}</label>
               <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" />
-              <p className={`text-xs ${textMuted} mt-1`}>Prix facture au client</p>
+              <p className={`text-xs ${textMuted} mt-1`}>{isSousTraitants ? 'Tarif horaire du sous-traitant' : 'Prix facturé au client'}</p>
             </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Coût horaire chargé (EUR/h) *</label>
-              <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
-              <p className={`text-xs ${textMuted} mt-1`}>Salaire brut + charges (~45%)</p>
-            </div>
+            {isSousTraitants && form.tarif_type === 'forfait' ? (
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Montant forfait (EUR)</label>
+                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tarif_forfait} onChange={e => setForm(p => ({...p, tarif_forfait: e.target.value}))} placeholder="5000" />
+                <p className={`text-xs ${textMuted} mt-1`}>Montant forfaitaire pour la mission</p>
+              </div>
+            ) : (
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Coût horaire chargé (EUR/h) *</label>
+                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
+                <p className={`text-xs ${textMuted} mt-1`}>{isSousTraitants ? 'Coût réel pour votre entreprise' : 'Salaire brut + charges (~45%)'}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1172,7 +1251,28 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{isSousTraitants ? 'Sous-traitants' : 'Équipe & Heures'}</h1>
+          {!isSousTraitants && <span className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium" style={{ background: `${couleur}20`, color: couleur }}>{employesList.length} membre{employesList.length > 1 ? 's' : ''}</span>}
+        </div>
+
+        {/* Toggle Équipe / Sous-traitants */}
+        <div className={`flex p-1 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+          <button
+            onClick={() => { setViewMode('employes'); setTab('overview'); }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${!isSousTraitants ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+            style={!isSousTraitants ? { background: couleur } : {}}
+          >
+            <Users size={16} /> Équipe
+            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${!isSousTraitants ? 'bg-white/20 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{employesList.length}</span>
+          </button>
+          <button
+            onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${isSousTraitants ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+            style={isSousTraitants ? { background: '#7c3aed' } : {}}
+          >
+            <UserCheck size={16} /> Sous-traitants
+            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${isSousTraitants ? 'bg-white/20 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>{sousTraitantsList.length}</span>
+          </button>
         </div>
       </div>
 
@@ -1181,9 +1281,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
             <Users size={40} className="text-white" />
           </div>
-          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Gérez votre équipe</h2>
+          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>{isSousTraitants ? 'Gérez vos sous-traitants' : 'Gérez votre équipe'}</h2>
           <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-            Ajoutez vos employés, suivez leurs heures et calculez la rentabilité de vos chantiers.
+            {isSousTraitants ? 'Ajoutez vos sous-traitants, vérifiez leur conformité et suivez les coûts.' : 'Ajoutez vos employés, suivez leurs heures et calculez la rentabilité de vos chantiers.'}
           </p>
         </div>
 
@@ -1263,7 +1363,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{isSousTraitants ? 'Sous-traitants' : 'Équipe & Heures'}</h1>
           {/* Online indicator */}
           <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
             isOnline
@@ -1275,17 +1375,44 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </span>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
-          </button>
-          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: couleur}}>
-            <Plus size={16} /> <span className="hidden sm:inline">Employé</span>
+          {/* Équipe / Sous-traitants toggle */}
+          <div className={`flex rounded-xl overflow-hidden border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <button
+              onClick={() => { setViewMode('employes'); setTab('overview'); }}
+              className={`px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all ${
+                !isSousTraitants ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              style={!isSousTraitants ? { background: couleur } : {}}
+            >
+              <Users size={14} />
+              <span className="hidden sm:inline">Équipe</span>
+              {employesList.length > 0 && <span className={`text-xs px-1.5 rounded-full ${!isSousTraitants ? 'bg-white/20' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>{employesList.length}</span>}
+            </button>
+            <button
+              onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }}
+              className={`px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all ${
+                isSousTraitants ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              style={isSousTraitants ? { background: '#7c3aed' } : {}}
+            >
+              <UserCheck size={14} />
+              <span className="hidden sm:inline">Sous-traitants</span>
+              {sousTraitantsList.length > 0 && <span className={`text-xs px-1.5 rounded-full ${isSousTraitants ? 'bg-white/20' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>{sousTraitantsList.length}</span>}
+            </button>
+          </div>
+          {!isSousTraitants && (
+            <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
+            </button>
+          )}
+          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: isSousTraitants ? '#7c3aed' : couleur}}>
+            <Plus size={16} /> <span className="hidden sm:inline">{isSousTraitants ? 'Sous-traitant' : 'Employé'}</span>
           </button>
         </div>
       </div>
 
-      {/* Visual Stats Dashboard */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Visual Stats Dashboard — only for employes mode */}
+      {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Week Hero Card with Navigation */}
         <motion.div
           className="col-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden shadow-lg"
@@ -1412,6 +1539,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         </motion.div>
       </div>
+      )}
 
       {/* Active Timer Banner */}
       <AnimatePresence>
@@ -1473,7 +1601,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
       {/* Quick Team Overview - Who's working where today */}
       <AnimatePresence>
-        {activeEmployeesToday.length > 0 && (
+        {!isSousTraitants && activeEmployeesToday.length > 0 && (
           <motion.div
             className={`${cardBg} rounded-2xl border p-4 sm:p-5`}
             initial={{ opacity: 0, height: 0 }}
@@ -1541,7 +1669,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       </AnimatePresence>
 
       {/* Pending validations alert */}
-      {pointagesEnAttente.length > 0 && (
+      {!isSousTraitants && pointagesEnAttente.length > 0 && (
         <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
           <div className="flex items-center gap-3">
             <AlertCircle size={20} className="text-amber-500" />
@@ -1559,8 +1687,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       {/* Enhanced Tab Navigation */}
       <div className={`p-1.5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         <div className="flex gap-1 overflow-x-auto">
-          {[
-            { key: 'overview', label: 'Équipe', icon: Users, count: equipe.length },
+          {(isSousTraitants ? [
+            { key: 'overview', label: 'Sous-traitants', icon: UserCheck, count: sousTraitantsList.length },
+            { key: 'couts', label: 'Coûts', icon: Euro },
+          ] : [
+            { key: 'overview', label: 'Équipe', icon: Users, count: employesList.length },
             { key: 'planning', label: 'Planning', icon: CalendarDays },
             { key: 'pointage', label: 'Pointage', icon: Timer },
             { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
@@ -1569,7 +1700,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             { key: 'competences', label: 'Compétences', icon: Award },
             { key: 'productivite', label: 'Productivité', icon: BarChart3 },
             { key: 'historique', label: 'Export', icon: FileSpreadsheet }
-          ].map(({ key, label, icon: Icon, count, alert, badge }) => (
+          ]).map(({ key, label, icon: Icon, count, alert, badge }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -1627,8 +1758,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher un employé..."
-                  aria-label="Rechercher un employé"
+                  placeholder={isSousTraitants ? "Rechercher un sous-traitant..." : "Rechercher un employé..."}
+                  aria-label={isSousTraitants ? "Rechercher un sous-traitant" : "Rechercher un employé"}
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
               </div>
@@ -1723,7 +1854,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {/* Results count */}
             <div className="flex items-center justify-between px-1">
               <span className={`text-sm ${textMuted}`}>
-                {getFilteredEquipe.length} employé{getFilteredEquipe.length > 1 ? 's' : ''}
+                {getFilteredEquipe.length} {isSousTraitants ? 'sous-traitant' : 'employé'}{getFilteredEquipe.length > 1 ? 's' : ''}
                 {searchQuery && ` pour "${searchQuery}"`}
                 {filterRole && ` • ${filterRole}`}
               </span>
@@ -1745,8 +1876,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 animate={{ opacity: 1 }}
               >
                 <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
-                <p className={`font-medium ${textPrimary}`}>Aucun employé trouvé</p>
-                <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres criteres</p>
+                <p className={`font-medium ${textPrimary}`}>{isSousTraitants ? 'Aucun sous-traitant trouvé' : 'Aucun employé trouvé'}</p>
+                <p className={`text-sm ${textMuted} mt-1`}>{isSousTraitants ? 'Ajoutez votre premier sous-traitant' : 'Essayez avec d\'autres criteres'}</p>
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1785,7 +1916,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Action buttons - ALWAYS VISIBLE on mobile */}
                         <div className="absolute top-3 right-3 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           {/* Quick timer button */}
-                          {!chrono.running && (
+                          {!isSousTraitants && !chrono.running && (
                             <button
                               onClick={() => quickStartTimer(e.id)}
                               className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-emerald-900/70 hover:bg-emerald-800 text-emerald-300' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}`}
@@ -1837,7 +1968,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           </div>
                           <div className="min-w-0">
                             <h3 className={`font-bold text-lg ${textPrimary}`}>{e.prenom ? `${e.prenom} ${e.nom}` : e.nom}</h3>
-                            <p className={`text-sm ${textMuted}`}>{e.role || 'Employé'}</p>
+                            <p className={`text-sm ${textMuted}`}>{e.role || (isSousTraitants ? 'Sous-traitant' : 'Employé')}</p>
                           </div>
                           <Eye size={14} className={`${textMuted} opacity-0 group-hover:opacity-100 transition-opacity ml-auto`} />
                         </button>
@@ -1921,39 +2052,75 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         )}
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Facturé</p>
-                            <p className={`text-xl font-bold ${textPrimary}`}>
-                              {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
-                            </p>
-                          </div>
-                          <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
-                            <p className="text-xl font-bold text-red-500">
-                              {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
-                            </p>
-                          </div>
-                          <div className="p-3 rounded-xl text-center" style={{ background: `${couleur}15` }}>
-                            <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
-                            <p className="text-xl font-bold" style={{ color: couleur }}>
-                              {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
-                            </p>
-                          </div>
-                        </div>
+                        {isSousTraitants ? (
+                          <>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Tarif</p>
+                                <p className="text-xl font-bold text-purple-500">
+                                  {modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')}€` : `${e.tauxHoraire || '?'}€/h`}
+                                </p>
+                              </div>
+                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                                <p className={`text-xs font-medium ${textMuted} mb-1`}>SIRET</p>
+                                <p className={`text-sm font-medium ${e.siret ? textPrimary : textMuted}`}>
+                                  {e.siret ? (e.siret.length > 10 ? '...' + e.siret.slice(-5) : e.siret) : 'Non renseigné'}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Compliance badges */}
+                            <div className="flex flex-wrap gap-1.5 mt-3">
+                              {e.decennale_expiration ? (
+                                new Date(e.decennale_expiration) < new Date()
+                                  ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Décennale expirée</span>
+                                  : new Date(e.decennale_expiration) < new Date(Date.now() + 30 * 24 * 3600 * 1000)
+                                    ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Décennale expire bientôt</span>
+                                    : <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Décennale OK</span>
+                              ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>Décennale ?</span>}
+                              {e.urssaf_date ? (
+                                (Date.now() - new Date(e.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000
+                                  ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">URSSAF &gt;6 mois</span>
+                                  : <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">URSSAF OK</span>
+                              ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>URSSAF ?</span>}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Facturé</p>
+                                <p className={`text-xl font-bold ${textPrimary}`}>
+                                  {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
+                                </p>
+                              </div>
+                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
+                                <p className="text-xl font-bold text-red-500">
+                                  {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
+                                </p>
+                              </div>
+                              <div className="p-3 rounded-xl text-center" style={{ background: `${couleur}15` }}>
+                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
+                                <p className="text-xl font-bold" style={{ color: couleur }}>
+                                  {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
+                                </p>
+                              </div>
+                            </div>
 
-                        {/* Margin indicator */}
-                        {!modeDiscret && (
-                          <div className={`mt-3 flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/50'}`}>
-                            <span className={`text-xs ${textMuted}`}>Marge/heure:</span>
-                            <span className={`text-sm font-bold ${margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {margin > 0 ? '+' : ''}{margin}€
-                            </span>
-                          </div>
+                            {/* Margin indicator */}
+                            {!modeDiscret && (
+                              <div className={`mt-3 flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/50'}`}>
+                                <span className={`text-xs ${textMuted}`}>Marge/heure:</span>
+                                <span className={`text-sm font-bold ${margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {margin > 0 ? '+' : ''}{margin}€
+                                </span>
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {/* Mobile quick pointage: one-tap start on active chantiers */}
-                        {!chrono.running && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                        {!isSousTraitants && !chrono.running && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
                           <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>Pointage rapide</p>
                             <div className="flex flex-wrap gap-1.5">
@@ -3653,6 +3820,114 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* ============ COÛTS SOUS-TRAITANTS TAB ============ */}
+      <AnimatePresence mode="wait">
+        {tab === 'couts' && isSousTraitants && (
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Sous-traitants</p>
+                <p className="text-2xl font-bold" style={{ color: '#7c3aed' }}>{sousTraitantsList.length}</p>
+                <p className={`text-xs ${textMuted} mt-1`}>actifs</p>
+              </div>
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Coût moyen/h</p>
+                <p className="text-2xl font-bold text-amber-500">
+                  {sousTraitantsList.length > 0
+                    ? (sousTraitantsList.reduce((s, st) => s + (parseFloat(st.tauxHoraire) || 0), 0) / sousTraitantsList.length).toFixed(0)
+                    : '0'
+                  } €
+                </p>
+                <p className={`text-xs ${textMuted} mt-1`}>taux horaire</p>
+              </div>
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Décennales</p>
+                <p className="text-2xl font-bold text-emerald-500">
+                  {sousTraitantsList.filter(st => st.decennale_expiration && new Date(st.decennale_expiration) > new Date()).length}
+                  <span className={`text-sm font-normal ${textMuted}`}> / {sousTraitantsList.length}</span>
+                </p>
+                <p className={`text-xs ${textMuted} mt-1`}>à jour</p>
+              </div>
+              <div className={`${cardBg} rounded-2xl border p-4`}>
+                <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Vigilance URSSAF</p>
+                <p className="text-2xl font-bold text-blue-500">
+                  {sousTraitantsList.filter(st => {
+                    if (!st.urssaf_date) return false;
+                    const sixMonths = 180 * 24 * 3600 * 1000;
+                    return (Date.now() - new Date(st.urssaf_date).getTime()) < sixMonths;
+                  }).length}
+                  <span className={`text-sm font-normal ${textMuted}`}> / {sousTraitantsList.length}</span>
+                </p>
+                <p className={`text-xs ${textMuted} mt-1`}>vérifiés &lt;6 mois</p>
+              </div>
+            </div>
+
+            {/* Detailed table */}
+            <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+              <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <h3 className={`font-semibold ${textPrimary}`}>Détail des coûts par sous-traitant</h3>
+              </div>
+              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                {sousTraitantsList.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <UserCheck size={40} className={`mx-auto mb-3 ${textMuted} opacity-40`} />
+                    <p className={`font-medium ${textPrimary}`}>Aucun sous-traitant</p>
+                    <p className={`text-sm ${textMuted} mt-1`}>Ajoutez votre premier sous-traitant pour suivre les coûts</p>
+                  </div>
+                ) : sousTraitantsList.map(st => {
+                  const expiring = st.decennale_expiration && new Date(st.decennale_expiration) < new Date(Date.now() + 30 * 24 * 3600 * 1000);
+                  const expired = st.decennale_expiration && new Date(st.decennale_expiration) < new Date();
+                  const urssafOld = st.urssaf_date && (Date.now() - new Date(st.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000;
+                  return (
+                    <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors`}>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-sm">
+                          {st.nom?.[0]}{st.prenom?.[0] || ''}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`font-medium truncate ${textPrimary}`}>{st.prenom ? `${st.prenom} ${st.nom}` : st.nom}</p>
+                          <p className={`text-xs ${textMuted} truncate`}>{st.role || 'Sous-traitant'} {st.siret ? `• SIRET: ${st.siret}` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-purple-900/30 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                          {st.tarif_type === 'forfait' && st.tarif_forfait ? `${parseFloat(st.tarif_forfait).toLocaleString('fr-FR')} € forfait` : `${st.tauxHoraire || '?'} €/h`}
+                        </span>
+                        {expired ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Décennale expirée</span>
+                        ) : expiring ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Décennale expire bientôt</span>
+                        ) : st.decennale_expiration ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Décennale OK</span>
+                        ) : null}
+                        {urssafOld ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">URSSAF &gt;6 mois</span>
+                        ) : st.urssaf_date ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">URSSAF OK</span>
+                        ) : null}
+                      </div>
+                      <button
+                        onClick={() => startEdit(st)}
+                        className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence mode="wait">

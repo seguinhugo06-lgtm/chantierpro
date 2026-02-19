@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useToast } from '../context/AppContext';
 import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield } from 'lucide-react';
 import { auth } from '../supabaseClient';
-import AdminHelp from './admin-help/AdminHelp';
+// import AdminHelp from './admin-help/AdminHelp'; // removed for simplification
 import {
   INTEGRATION_TYPES,
   SYNC_STATUS,
@@ -18,11 +18,10 @@ import {
   syncToIndy
 } from '../lib/integrations/accounting';
 
-// Sprint 1 - New tabs
-import Facture2026Tab from './settings/Facture2026Tab';
-import RelanceConfigTab from './settings/RelanceConfigTab';
-// Sprint 5 - Multi-entreprise
-import MultiEntreprise from './settings/MultiEntreprise';
+// Removed tabs — commented out to reduce bundle
+// import Facture2026Tab from './settings/Facture2026Tab';
+// import RelanceConfigTab from './settings/RelanceConfigTab';
+// import MultiEntreprise from './settings/MultiEntreprise';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
@@ -454,19 +453,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
           ['banque', '🏦 Banque'],
           ['_sep1', ''],
-          // Documents
-          ['documents', '📄 Documents'],
-          ['facture2026', '🧾 Facture 2026'],
-          ['relances', '🔔 Relances'],
-          ['_sep2', ''],
           // Gestion
-          ['rentabilite', '📊 Rentabilité'],
           ['comptabilite', '🧮 Comptabilité'],
-          ['administratif', '📋 Administratif'],
-          ['_sep3', ''],
-          // Système
-          ['donnees', '💾 Données'],
-          ['multi', '🏗️ Multi-entreprise']
         ].filter(([k]) => k).map(([k, v]) => (
           k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
@@ -795,8 +783,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* DOCUMENTS */}
-      {tab === 'documents' && (
+      {/* DOCUMENTS — removed, content moved to comptabilite */}
+      {false && tab === 'documents' && (
         <div className="space-y-4 sm:space-y-6">
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Paramètres par défaut des devis</h3>
@@ -876,8 +864,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* FACTURE 2026 */}
-      {tab === 'facture2026' && (
+      {/* FACTURE 2026 — removed */}
+      {false && tab === 'facture2026' && (
         <Facture2026Tab
           entreprise={entreprise}
           isDark={isDark}
@@ -885,8 +873,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* RELANCES */}
-      {tab === 'relances' && (
+      {/* RELANCES — removed */}
+      {false && tab === 'relances' && (
         <RelanceConfigTab
           entreprise={entreprise}
           updateEntreprise={updateEntreprise}
@@ -895,8 +883,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* RENTABILITÉ */}
-      {tab === 'rentabilite' && (
+      {/* RENTABILITÉ — removed */}
+      {false && tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
           <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
@@ -1263,8 +1251,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Données Import/Export Tab */}
-      {tab === 'donnees' && (
+      {/* Données Import/Export Tab — removed */}
+      {false && tab === 'donnees' && (
         <div className="space-y-6">
           {/* Export Global */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
@@ -1541,8 +1529,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Multi-entreprise Tab */}
-      {tab === 'multi' && (
+      {/* Multi-entreprise Tab — removed */}
+      {false && tab === 'multi' && (
         <MultiEntreprise
           entreprise={entreprise}
           setEntreprise={setEntreprise}
@@ -1551,8 +1539,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* Administratif Tab (merged from AdminHelp) */}
-      {tab === 'administratif' && (
+      {/* Administratif Tab — removed */}
+      {false && tab === 'administratif' && (
         <AdminHelp
           chantiers={chantiers}
           clients={clients}

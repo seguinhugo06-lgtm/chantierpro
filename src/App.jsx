@@ -966,7 +966,6 @@ export default function App() {
       badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} mémo${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
-    { id: 'soustraitants', icon: UserCheck, label: 'Sous-traitants' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }

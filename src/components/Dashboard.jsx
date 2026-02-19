@@ -1602,6 +1602,58 @@ export default function Dashboard({
               );
             })()}
 
+            {/* Sous-traitant Alerts */}
+            {(() => {
+              const sousTraitants = equipe?.filter(e => e.type === 'sous_traitant') || [];
+              if (sousTraitants.length === 0) return null;
+              const now = new Date();
+              const sixMonths = 180 * 24 * 3600 * 1000;
+              const alerts = [];
+              sousTraitants.forEach(st => {
+                if (st.decennale_expiration && new Date(st.decennale_expiration) < now) {
+                  alerts.push({ type: 'critical', msg: `Décennale expirée : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
+                } else if (st.decennale_expiration && new Date(st.decennale_expiration) < new Date(now.getTime() + 30 * 24 * 3600 * 1000)) {
+                  alerts.push({ type: 'warning', msg: `Décennale expire bientôt : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
+                }
+                if (st.urssaf_date && (now.getTime() - new Date(st.urssaf_date).getTime()) > sixMonths) {
+                  alerts.push({ type: 'warning', msg: `URSSAF >6 mois : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
+                }
+                if (!st.decennale_expiration && !st.urssaf_date) {
+                  alerts.push({ type: 'info', msg: `Documents manquants : ${st.prenom ? st.prenom + ' ' : ''}${st.nom}` });
+                }
+              });
+              if (alerts.length === 0) return null;
+              const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+              const titleClass = isDark ? 'text-white' : 'text-slate-900';
+              const critical = alerts.filter(a => a.type === 'critical').length;
+              const warning = alerts.filter(a => a.type === 'warning').length;
+              return (
+                <div
+                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-shadow`}
+                  onClick={() => setPage('equipe')}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${critical > 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'} ${isDark ? 'bg-opacity-20' : ''}`}>
+                      <AlertTriangle size={20} />
+                    </div>
+                    <p className={`font-semibold ${titleClass}`}>Sous-traitants</p>
+                    <span className={`ml-auto text-xs px-2 py-1 rounded-full font-medium ${critical > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'} ${isDark ? 'bg-opacity-20' : ''}`}>
+                      {alerts.length} alerte{alerts.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {alerts.slice(0, 3).map((a, i) => (
+                      <p key={i} className={`text-xs flex items-center gap-2 ${a.type === 'critical' ? 'text-red-500' : a.type === 'warning' ? 'text-amber-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${a.type === 'critical' ? 'bg-red-500' : a.type === 'warning' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                        {a.msg}
+                      </p>
+                    ))}
+                    {alerts.length > 3 && <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>+{alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''}</p>}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Bank Widget */}
             <BankWidget
               isDark={isDark}
