@@ -6,7 +6,7 @@ import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
-import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks } from '../lib/templates/task-templates-v2';
+import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks, getAvailableProjectTypes } from '../lib/templates/task-templates-v2';
 import TaskGeneratorModal from './TaskGeneratorModal';
 import SituationsTravaux from './chantiers/SituationsTravaux';
 import RapportChantier from './chantiers/RapportChantier';
@@ -535,7 +535,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         </div>
 
-        {/* === SECTION: AVANCEMENT & TÂCHES === */}
+        {/* === SECTION: AVANCEMENT & TÂCHES (redesigned) === */}
         {(() => {
           const allTasks = ch.taches || [];
           const pendingTasks = allTasks.filter(t => !t.done);
@@ -543,421 +543,270 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           const criticalTasks = pendingTasks.filter(t => t.critical);
           const progress = calculateProgressByPhase(allTasks);
 
-          // Group tasks by phase for display
           const tasksByPhase = {};
-          PHASES.forEach(phase => {
-            tasksByPhase[phase.id] = allTasks.filter(t => t.phase === phase.id);
-          });
-          // Tasks without phase go to 'preparation' by default
+          PHASES.forEach(phase => { tasksByPhase[phase.id] = allTasks.filter(t => t.phase === phase.id); });
           const tasksNoPhase = allTasks.filter(t => !t.phase);
 
-          // Filter tasks based on taskFilter
           const getFilteredTasks = (tasks) => {
             if (taskFilter === 'pending') return tasks.filter(t => !t.done);
             if (taskFilter === 'critical') return tasks.filter(t => t.critical && !t.done);
-            return tasks; // 'all' shows all tasks (done + pending)
+            return tasks;
+          };
+          const togglePhase = (phaseId) => setCollapsedPhases(prev => ({ ...prev, [phaseId]: !prev[phaseId] }));
+          const deleteTask = (taskId) => { updateChantier(ch.id, { taches: allTasks.filter(t => t.id !== taskId) }); setEditingTask(null); };
+          const updateTask = (taskId, updates) => { updateChantier(ch.id, { taches: allTasks.map(t => t.id === taskId ? { ...t, ...updates } : t) }); setEditingTask(null); };
+          const getPhaseProgress = (phaseId) => { const p = tasksByPhase[phaseId] || []; if (!p.length) return { done: 0, total: 0, percent: 0 }; const d = p.filter(t => t.done).length; return { done: d, total: p.length, percent: Math.round((d / p.length) * 100) }; };
+
+          // Inline IA generator: generate tasks for a project type
+          const handleInlineGenerate = (projectTypeKey) => {
+            const metier = ch.metier || entreprise?.metier || 'general';
+            const newTasks = generateSmartTasks(metier, projectTypeKey);
+            if (newTasks.length > 0) {
+              const tasksWithIds = newTasks.map(t => ({ ...t, id: generateId(), done: false }));
+              updateChantier(ch.id, { taches: [...allTasks, ...tasksWithIds] });
+              showToast(`${tasksWithIds.length} tâches générées`, 'success');
+            }
           };
 
-          // Toggle phase collapse
-          const togglePhase = (phaseId) => {
-            setCollapsedPhases(prev => ({ ...prev, [phaseId]: !prev[phaseId] }));
-          };
-
-          // Delete task
-          const deleteTask = (taskId) => {
-            const updatedTasks = allTasks.filter(t => t.id !== taskId);
-            onUpdateChantier(ch.id, { taches: updatedTasks });
-            setEditingTask(null);
-          };
-
-          // Update task
-          const updateTask = (taskId, updates) => {
-            const updatedTasks = allTasks.map(t => t.id === taskId ? { ...t, ...updates } : t);
-            onUpdateChantier(ch.id, { taches: updatedTasks });
-            setEditingTask(null);
-          };
-
-          // Calculate progress per phase
-          const getPhaseProgress = (phaseId) => {
-            const phaseTasks = tasksByPhase[phaseId] || [];
-            if (phaseTasks.length === 0) return { done: 0, total: 0, percent: 0 };
-            const done = phaseTasks.filter(t => t.done).length;
-            return { done, total: phaseTasks.length, percent: Math.round((done / phaseTasks.length) * 100) };
+          // Project types for inline selector
+          const projectTypes = getAvailableProjectTypes();
+          const typeIcons = {
+            'renovation-complete': '🏠', 'salle-de-bain': '🚿', 'cuisine': '🍳', 'extension': '🏗️',
+            'peinture-interieure': '🎨', 'toiture': '🏚️', 'facade': '🧱', 'terrasse': '🪵',
+            'piscine': '🏊', 'cloture': '🏡', 'electricite': '⚡', 'plomberie': '🔧',
+            'isolation': '🧤', 'chauffage': '🔥', 'amenagement-combles': '📐', 'garage': '🚗'
           };
 
           return (
             <div className={`${cardBg} rounded-xl border p-4`}>
-              {/* Header avec progression circulaire */}
-              <div className="flex items-center gap-4 mb-4">
-                {/* Cercle de progression SVG */}
-                <div className="relative w-16 h-16 flex-shrink-0">
-                  <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-                    <circle
-                      cx="32" cy="32" r="28"
-                      stroke={isDark ? '#334155' : '#e5e7eb'}
-                      strokeWidth="6"
-                      fill="none"
-                    />
-                    <circle
-                      cx="32" cy="32" r="28"
-                      stroke={progress.total === 100 ? '#10b981' : couleur}
-                      strokeWidth="6"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 28 * progress.total / 100} ${2 * Math.PI * 28}`}
-                      className="transition-all duration-500"
-                    />
-                  </svg>
-                  <span className={`absolute inset-0 flex items-center justify-center font-bold text-lg ${progress.total === 100 ? 'text-emerald-500' : textPrimary}`}>
-                    {progress.total}%
-                  </span>
+              {/* Header: titre + mini IA button */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Tâches</span>
                 </div>
-                <div className="flex-1">
-                  <p className={`font-semibold text-lg ${textPrimary} transition-transform ${counterPulse ? 'scale-110' : ''}`} style={{ transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>{tasksDone}/{tasksTotal} tâches</p>
-                  <p className={`text-sm ${textMuted}`}>
-                    {tasksTotal === 0 ? 'Aucune tâche' :
-                     tasksDone === tasksTotal ? '✅ Chantier terminé !' :
-                     `${tasksTotal - tasksDone} restante${tasksTotal - tasksDone > 1 ? 's' : ''}`}
-                  </p>
-                  {criticalTasks.length > 0 && (
-                    <p className="text-xs text-red-500 font-medium mt-1">
-                      <AlertCircle size={12} className="inline mr-1" />
-                      {criticalTasks.length} prioritaire{criticalTasks.length > 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowTaskGenerator(true)}
-                  className="p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all text-white"
-                  style={{ background: couleur }}
-                  title="Générer des tâches"
-                >
-                  <Sparkles size={18} />
-                </button>
+                <div className="flex-1" />
+                {allTasks.length > 0 && (
+                  <button
+                    onClick={() => setShowTaskGenerator(true)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                    title="Compléter avec l'IA"
+                  >
+                    <Sparkles size={13} style={{ color: couleur }} />
+                    IA
+                  </button>
+                )}
               </div>
 
-              {/* Input création rapide */}
-              <div className="flex gap-2 mb-4">
-                <input
-                  placeholder="Ajouter une tâche..."
-                  value={newTache}
-                  onChange={e => setNewTache(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && addTache()}
-                  className={`flex-1 px-3 py-2 border rounded-xl text-sm min-h-[44px] ${inputBg}`}
-                />
-                <button
-                  onClick={addTache}
-                  disabled={!newTache.trim()}
-                  className="px-3 py-2 text-white rounded-xl min-h-[44px] disabled:opacity-50 transition-all active:scale-[0.98]"
-                  style={{ background: couleur }}
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
-
-              {/* Filtres rapides */}
-              {tasksTotal > 0 && (
-                <div className="flex gap-1.5 mb-3 flex-wrap">
-                  {[
-                    { key: 'all', label: 'Toutes' },
-                    { key: 'pending', label: 'À faire' },
-                    { key: 'critical', label: 'Prioritaires' }
-                  ].map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => setTaskFilter(f.key)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        taskFilter === f.key
-                          ? 'text-white'
-                          : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                      style={taskFilter === f.key ? { background: couleur } : {}}
-                    >
-                      {f.label}
-                      {f.key === 'critical' && criticalTasks.length > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px]">
-                          {criticalTasks.length}
+              {allTasks.length === 0 ? (
+                /* === EMPTY STATE: Big CTA + inline project type selector === */
+                <div className="text-center">
+                  <div className={`py-6 rounded-xl mb-4 ${isDark ? 'bg-slate-700/30' : 'bg-gradient-to-br from-orange-50 to-amber-50'}`}>
+                    <Sparkles size={36} className="mx-auto mb-3" style={{ color: couleur }} />
+                    <p className={`font-semibold text-base ${textPrimary} mb-1`}>Générer mes tâches avec l'IA</p>
+                    <p className={`text-xs ${textMuted}`}>Sélectionnez un type de projet pour démarrer</p>
+                  </div>
+                  {/* Project type grid inline */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                    {projectTypes.slice(0, 12).map(pt => (
+                      <button
+                        key={pt.key}
+                        onClick={() => handleInlineGenerate(pt.key)}
+                        className={`p-3 rounded-xl text-left transition-all border ${isDark ? 'bg-slate-700/50 border-slate-600 hover:border-slate-500 hover:bg-slate-700' : 'bg-white border-slate-200 hover:border-orange-300 hover:bg-orange-50'}`}
+                      >
+                        <span className="text-lg">{typeIcons[pt.key] || '📋'}</span>
+                        <p className={`text-xs font-medium mt-1 ${textPrimary}`}>{pt.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setShowTaskGenerator(true)}
+                    className={`text-xs font-medium ${textMuted} hover:underline`}
+                  >
+                    Ou configurer manuellement →
+                  </button>
+                </div>
+              ) : (
+                /* === TASKS EXIST: Donut + List layout === */
+                <>
+                  {/* Desktop: Donut left + summary right | Mobile: inline */}
+                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    {/* Donut */}
+                    <div className="flex sm:flex-col items-center gap-3 sm:gap-1">
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                          <circle cx="32" cy="32" r="26" stroke={isDark ? '#334155' : '#e5e7eb'} strokeWidth="8" fill="none" />
+                          <circle cx="32" cy="32" r="26" stroke={progress.total === 100 ? '#10b981' : couleur} strokeWidth="8" fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 26 * progress.total / 100} ${2 * Math.PI * 26}`} className="transition-all duration-500" />
+                        </svg>
+                        <span className={`absolute inset-0 flex items-center justify-center font-bold text-xl ${progress.total === 100 ? 'text-emerald-500' : textPrimary}`}>
+                          {progress.total}%
                         </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+                      </div>
+                      <div className="sm:text-center">
+                        <p className={`font-semibold ${textPrimary}`}>{tasksDone}/{tasksTotal}</p>
+                        <p className={`text-xs ${textMuted}`}>
+                          {tasksDone === tasksTotal ? 'Terminé !' : `${tasksTotal - tasksDone} restante${tasksTotal - tasksDone > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Liste des tâches par phase */}
-              {tasksTotal > 0 ? (
-                <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1">
-                  {PHASES.map(phase => {
-                    const phaseTasks = tasksByPhase[phase.id] || [];
-                    const filteredPhaseTasks = getFilteredTasks(phaseTasks);
-                    const phaseProgress = getPhaseProgress(phase.id);
-                    const isCollapsed = collapsedPhases[phase.id];
+                    {/* Filtres + liste */}
+                    <div className="flex-1 min-w-0">
+                      {/* Filtres rapides */}
+                      <div className="flex gap-1.5 mb-3 flex-wrap">
+                        {[
+                          { key: 'all', label: 'Toutes' },
+                          { key: 'pending', label: 'À faire' },
+                          { key: 'critical', label: 'Prioritaires' }
+                        ].map(f => (
+                          <button
+                            key={f.key}
+                            onClick={() => setTaskFilter(f.key)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                              taskFilter === f.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                            style={taskFilter === f.key ? { background: couleur } : {}}
+                          >
+                            {f.label}
+                            {f.key === 'critical' && criticalTasks.length > 0 && (
+                              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[10px]">{criticalTasks.length}</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
 
-                    // Skip phases with no tasks matching filter
-                    if (filteredPhaseTasks.length === 0 && taskFilter !== 'all') return null;
-                    if (phaseTasks.length === 0) return null;
+                      {/* Task list by phase */}
+                      <div className="max-h-[350px] overflow-y-auto space-y-1.5 pr-1">
+                        {PHASES.map(phase => {
+                          const phaseTasks = tasksByPhase[phase.id] || [];
+                          const filteredPhaseTasks = getFilteredTasks(phaseTasks);
+                          const phaseProgress = getPhaseProgress(phase.id);
+                          const isCollapsed = collapsedPhases[phase.id];
+                          if (filteredPhaseTasks.length === 0 && taskFilter !== 'all') return null;
+                          if (phaseTasks.length === 0) return null;
 
-                    return (
-                      <div key={phase.id} className={`rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                        {/* Phase header */}
-                        <button
-                          onClick={() => togglePhase(phase.id)}
-                          className={`w-full flex items-center gap-2 p-3 text-left transition-all ${
-                            isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
-                          } ${isCollapsed ? 'rounded-xl' : 'rounded-t-xl'}`}
-                        >
-                          <ChevronRight
-                            size={16}
-                            className={`transition-transform ${isCollapsed ? '' : 'rotate-90'} ${textMuted}`}
-                          />
-                          <div
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: phase.color }}
-                          />
-                          <span className={`text-sm font-medium flex-1 ${textPrimary}`}>{phase.label}</span>
-                          <span className={`text-xs ${textMuted}`}>
-                            {phaseProgress.done}/{phaseProgress.total}
-                          </span>
-                          {/* Mini progress bar */}
-                          <div className={`w-12 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${phaseProgress.percent}%`,
-                                background: phaseProgress.percent === 100 ? '#10b981' : phase.color
-                              }}
-                            />
-                          </div>
-                        </button>
-
-                        {/* Phase tasks */}
-                        {!isCollapsed && (
-                          <div className={`px-3 pb-3 space-y-1`}>
-                            {filteredPhaseTasks.map(t => (
-                              <div
-                                key={t.id}
-                                className={`flex items-center gap-3 p-2 rounded-lg group transition-all ${
-                                  t.critical
-                                    ? (isDark ? 'bg-red-900/20' : 'bg-red-50')
-                                    : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')
-                                }`}
-                              >
-                                {/* Checkbox only - separate click zone */}
-                                <input
-                                  type="checkbox"
-                                  checked={t.done}
-                                  onChange={() => toggleTache(t.id)}
-                                  className={`w-5 h-5 rounded border-2 cursor-pointer flex-shrink-0 transition-transform ${
-                                    t.critical ? 'border-red-500 text-red-500' : ''
-                                  } ${animatedTaskId === t.id ? 'scale-125' : ''}`}
-                                  style={{
-                                    ...((!t.critical) ? { borderColor: phase.color, accentColor: phase.color } : {}),
-                                    transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                                  }}
-                                />
-                                {/* Task text - click to edit */}
-                                <span
-                                  onClick={() => setEditingTask(t)}
-                                  className={`flex-1 text-sm cursor-pointer hover:underline ${
-                                    t.done ? 'line-through opacity-50' : ''
-                                  } ${t.critical ? 'font-medium' : ''} ${textPrimary}`}
-                                >
-                                  {t.text}
-                                </span>
-                                {/* Critical badge */}
-                                {t.critical && !t.done && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-medium">
-                                    Prioritaire
-                                  </span>
-                                )}
-                                {/* Menu button */}
-                                <button
-                                  onClick={() => setEditingTask(t)}
-                                  className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                                    isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
-                                  }`}
-                                  title="Modifier"
-                                >
-                                  <MoreVertical size={14} className={textMuted} />
-                                </button>
+                          return (
+                            <div key={phase.id} className={`rounded-lg border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                              <button onClick={() => togglePhase(phase.id)} className={`w-full flex items-center gap-2 p-2.5 text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${isCollapsed ? 'rounded-lg' : 'rounded-t-lg'}`}>
+                                <ChevronRight size={14} className={`transition-transform ${isCollapsed ? '' : 'rotate-90'} ${textMuted}`} />
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: phase.color }} />
+                                <span className={`text-xs font-medium flex-1 ${textPrimary}`}>{phase.label}</span>
+                                <span className={`text-[10px] ${textMuted}`}>{phaseProgress.done}/{phaseProgress.total}</span>
+                                <div className={`w-10 h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${phaseProgress.percent}%`, background: phaseProgress.percent === 100 ? '#10b981' : phase.color }} />
+                                </div>
+                              </button>
+                              {!isCollapsed && (
+                                <div className="px-2.5 pb-2 space-y-0.5">
+                                  {filteredPhaseTasks.map(t => (
+                                    <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${t.critical ? (isDark ? 'bg-red-900/20' : 'bg-red-50') : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')}`}>
+                                      <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className={`w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0 ${t.critical ? 'border-red-500 text-red-500' : ''} ${animatedTaskId === t.id ? 'scale-125' : ''}`} style={{ ...((!t.critical) ? { borderColor: phase.color, accentColor: phase.color } : {}), transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                                      <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${t.critical ? 'font-medium' : ''} ${textPrimary}`}>{t.text}</span>
+                                      {t.critical && !t.done && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-medium">!</span>}
+                                      <button onClick={() => setEditingTask(t)} className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={12} className={textMuted} /></button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {/* Tasks without phase */}
+                        {tasksNoPhase.length > 0 && (
+                          <div className={`rounded-lg border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                            <button onClick={() => togglePhase('no-phase')} className={`w-full flex items-center gap-2 p-2.5 text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${collapsedPhases['no-phase'] ? 'rounded-lg' : 'rounded-t-lg'}`}>
+                              <ChevronRight size={14} className={`transition-transform ${collapsedPhases['no-phase'] ? '' : 'rotate-90'} ${textMuted}`} />
+                              <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Autres tâches</span>
+                              <span className={`text-[10px] ${textMuted}`}>{tasksNoPhase.filter(t => t.done).length}/{tasksNoPhase.length}</span>
+                            </button>
+                            {!collapsedPhases['no-phase'] && (
+                              <div className="px-2.5 pb-2 space-y-0.5">
+                                {getFilteredTasks(tasksNoPhase).map(t => (
+                                  <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg group transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                                    <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className="w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0" style={{ borderColor: couleur, accentColor: couleur }} />
+                                    <span onClick={() => setEditingTask(t)} className={`flex-1 text-xs cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${textPrimary}`}>{t.text}</span>
+                                    <button onClick={() => setEditingTask(t)} className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}><MoreVertical size={12} className={textMuted} /></button>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
 
-                  {/* Tâches sans phase */}
-                  {tasksNoPhase.length > 0 && (
-                    <div className={`rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      <button
-                        onClick={() => togglePhase('no-phase')}
-                        className={`w-full flex items-center gap-2 p-3 text-left transition-all ${
-                          isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
-                        } ${collapsedPhases['no-phase'] ? 'rounded-xl' : 'rounded-t-xl'}`}
-                      >
-                        <ChevronRight
-                          size={16}
-                          className={`transition-transform ${collapsedPhases['no-phase'] ? '' : 'rotate-90'} ${textMuted}`}
-                        />
-                        <span className={`text-sm font-medium flex-1 ${textPrimary}`}>Autres tâches</span>
-                        <span className={`text-xs ${textMuted}`}>
-                          {tasksNoPhase.filter(t => t.done).length}/{tasksNoPhase.length}
-                        </span>
+                  {/* Completed tasks collapsible */}
+                  {completedTasks.length > 0 && taskFilter === 'all' && (
+                    <div className="mb-3">
+                      <button onClick={() => setShowCompletedTasks(!showCompletedTasks)} className={`w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all ${isDark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-50 hover:bg-slate-100'}`}>
+                        <ChevronRight size={14} className={`transition-transform ${showCompletedTasks ? 'rotate-90' : ''} ${textMuted}`} />
+                        <CheckCircle size={14} className="text-emerald-500" />
+                        <span className={`text-xs font-medium ${textMuted}`}>Terminées ({completedTasks.length})</span>
                       </button>
-                      {!collapsedPhases['no-phase'] && (
-                        <div className="px-3 pb-3 space-y-1">
-                          {getFilteredTasks(tasksNoPhase).map(t => (
-                            <div
-                              key={t.id}
-                              className={`flex items-center gap-3 p-2 rounded-lg group transition-all ${
-                                isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={t.done}
-                                onChange={() => toggleTache(t.id)}
-                                className="w-5 h-5 rounded border-2 cursor-pointer flex-shrink-0"
-                                style={{ borderColor: couleur, accentColor: couleur }}
-                              />
-                              <span
-                                onClick={() => setEditingTask(t)}
-                                className={`flex-1 text-sm cursor-pointer hover:underline ${t.done ? 'line-through opacity-50' : ''} ${textPrimary}`}
-                              >
-                                {t.text}
-                              </span>
-                              <button
-                                onClick={() => setEditingTask(t)}
-                                className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                                  isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
-                                }`}
-                              >
-                                <MoreVertical size={14} className={textMuted} />
-                              </button>
+                      {showCompletedTasks && (
+                        <div className="mt-1 space-y-0.5 max-h-[150px] overflow-y-auto">
+                          {completedTasks.map(t => (
+                            <div key={t.id} className={`flex items-center gap-2 p-1.5 rounded-lg opacity-50 ${isDark ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'}`}>
+                              <input type="checkbox" checked={t.done} onChange={() => toggleTache(t.id)} className="w-4 h-4 rounded border-2 cursor-pointer flex-shrink-0 text-emerald-500" />
+                              <span className={`flex-1 text-xs line-through ${textMuted}`}>{t.text}</span>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className={`text-center py-6 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
-                  <CheckSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                  <p className={`text-sm font-medium ${textPrimary} mb-1`}>Aucune tâche</p>
-                  <p className={`text-xs ${textMuted}`}>Ajoutez des tâches ou générez-en automatiquement</p>
-                </div>
+                </>
               )}
 
-              {/* Section tâches terminées (collapsible) */}
-              {completedTasks.length > 0 && (
-                <div className="mt-3">
-                  <button
-                    onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                    className={`w-full flex items-center gap-2 p-2 rounded-xl text-left transition-all ${
-                      isDark ? 'bg-slate-700/30 hover:bg-slate-700/50' : 'bg-slate-50 hover:bg-slate-100'
-                    }`}
-                  >
-                    <ChevronRight
-                      size={16}
-                      className={`transition-transform ${showCompletedTasks ? 'rotate-90' : ''} ${textMuted}`}
-                    />
-                    <CheckCircle size={16} className="text-emerald-500" />
-                    <span className={`text-sm font-medium ${textMuted}`}>
-                      Tâches terminées ({completedTasks.length})
-                    </span>
-                  </button>
-                  {showCompletedTasks && (
-                    <div className="mt-2 space-y-1 max-h-[200px] overflow-y-auto">
-                      {completedTasks.map(t => (
-                        <div
-                          key={t.id}
-                          className={`flex items-center gap-3 p-2 rounded-lg opacity-60 ${
-                            isDark ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={t.done}
-                            onChange={() => toggleTache(t.id)}
-                            className="w-5 h-5 rounded border-2 cursor-pointer flex-shrink-0 text-emerald-500"
-                          />
-                          <span className={`flex-1 text-sm line-through ${textMuted}`}>
-                            {t.text}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Always-visible "Ajouter une tâche" input at bottom */}
+              <div className={`flex gap-2 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <input
+                  placeholder="Ajouter une tâche..."
+                  value={newTache}
+                  onChange={e => setNewTache(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && addTache()}
+                  className={`flex-1 px-3 py-2 border rounded-lg text-sm min-h-[40px] ${inputBg}`}
+                />
+                <button
+                  onClick={addTache}
+                  disabled={!newTache.trim()}
+                  className="px-3 py-2 text-white rounded-lg min-h-[40px] disabled:opacity-50 transition-all active:scale-[0.98]"
+                  style={{ background: couleur }}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
 
-              {/* Modal d'édition de tâche */}
+              {/* Task edit modal */}
               {editingTask && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingTask(null)}>
                   <div className={`${cardBg} rounded-2xl w-full max-w-md p-4 shadow-xl`} onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className={`font-semibold ${textPrimary}`}>Modifier la tâche</h3>
-                      <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                        <X size={18} className={textMuted} />
-                      </button>
+                      <button onClick={() => setEditingTask(null)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} className={textMuted} /></button>
                     </div>
                     <div className="space-y-4">
                       <div>
                         <label className={`text-sm font-medium ${textMuted} block mb-1`}>Nom de la tâche</label>
-                        <input
-                          type="text"
-                          value={editingTask.text}
-                          onChange={e => setEditingTask({ ...editingTask, text: e.target.value })}
-                          className={`w-full px-3 py-2 border rounded-xl ${inputBg}`}
-                        />
+                        <input type="text" value={editingTask.text} onChange={e => setEditingTask({ ...editingTask, text: e.target.value })} className={`w-full px-3 py-2 border rounded-xl ${inputBg}`} />
                       </div>
                       <div>
                         <label className={`text-sm font-medium ${textMuted} block mb-1`}>Phase</label>
-                        <select
-                          value={editingTask.phase || ''}
-                          onChange={e => setEditingTask({ ...editingTask, phase: e.target.value })}
-                          className={`w-full px-3 py-2 border rounded-xl ${inputBg}`}
-                        >
+                        <select value={editingTask.phase || ''} onChange={e => setEditingTask({ ...editingTask, phase: e.target.value })} className={`w-full px-3 py-2 border rounded-xl ${inputBg}`}>
                           <option value="">Sans phase</option>
-                          {PHASES.map(p => (
-                            <option key={p.id} value={p.id}>{p.label}</option>
-                          ))}
+                          {PHASES.map(p => (<option key={p.id} value={p.id}>{p.label}</option>))}
                         </select>
                       </div>
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          id="task-critical"
-                          checked={editingTask.critical || false}
-                          onChange={e => setEditingTask({ ...editingTask, critical: e.target.checked })}
-                          className="w-5 h-5 rounded border-2 border-red-500 text-red-500"
-                        />
+                        <input type="checkbox" id="task-critical" checked={editingTask.critical || false} onChange={e => setEditingTask({ ...editingTask, critical: e.target.checked })} className="w-5 h-5 rounded border-2 border-red-500 text-red-500" />
                         <label htmlFor="task-critical" className={`text-sm ${textPrimary}`}>Tâche prioritaire</label>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <button
-                          onClick={() => deleteTask(editingTask.id)}
-                          className="px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"
-                        >
-                          <Trash2 size={16} className="inline mr-1" /> Supprimer
-                        </button>
+                        <button onClick={() => deleteTask(editingTask.id)} className="px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
                         <div className="flex-1" />
-                        <button
-                          onClick={() => setEditingTask(null)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })}
-                          className="px-4 py-2 rounded-xl text-white text-sm font-medium"
-                          style={{ background: couleur }}
-                        >
-                          Sauvegarder
-                        </button>
+                        <button onClick={() => setEditingTask(null)} className={`px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>Annuler</button>
+                        <button onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: couleur }}>Sauvegarder</button>
                       </div>
                     </div>
                   </div>
