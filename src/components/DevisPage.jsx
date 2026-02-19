@@ -196,6 +196,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (filter === 'devis' && d.type !== 'devis') return false;
     if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
+    if (filter === 'a_traiter') {
+      const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
+      if (d.statut === 'brouillon' && days > 2) return true;
+      if (['envoye', 'vu'].includes(d.statut) && days > 7) return true;
+      return false;
+    }
+    if (filter === 'factures_impayees' && !(d.type === 'facture' && d.statut !== 'payee')) return false;
+    if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
     // Search by numero, client name/entreprise, chantier name, and objet
     if (debouncedSearch) {
       const client = clients.find(c => c.id === d.client_id);
@@ -3058,144 +3066,84 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </button>
         </div>
       </div>
-      {/* === SECTION: VUE D'ENSEMBLE === */}
-      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
-          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Vue d'ensemble</h2>
-          <span className={`text-xs ${textMuted}`}>— Suivez l'avancement de vos documents</span>
-        </div>
-
-      {/* Pipeline View */}
+      {/* === SECTION: KPIs CLIQUABLES === */}
       {(() => {
-        // Exclude ghost devis (same filter as the list display)
         const cleanDevis = devis.filter(d => {
           if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
           if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
           return true;
         });
-        // Calculate pipeline stats from clean data
-        const devisBrouillon = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
-        const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'envoye');
+        const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
         const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut));
         const devisRefuse = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'refuse');
-
         const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
         const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
-        const facturesEnRetard = facturesEnAttente.filter(f => {
-          const days = Math.floor((new Date() - new Date(f.date)) / 86400000);
-          return days > 30;
-        });
-        const montantEnRetard = facturesEnRetard.reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
-
-        // Group documents by client for "Accès rapide"
-        const clientsWithDocs = {};
-        cleanDevis.forEach(d => {
-          if (!d.client_id) return;
-          if (!clientsWithDocs[d.client_id]) {
-            const client = clients.find(c => c.id === d.client_id);
-            clientsWithDocs[d.client_id] = { client, devis: [], factures: [] };
-          }
-          if (d.type === 'devis') clientsWithDocs[d.client_id].devis.push(d);
-          else clientsWithDocs[d.client_id].factures.push(d);
-        });
-        const activeClients = Object.values(clientsWithDocs)
-          .filter(c => c.devis.some(d => d.statut !== 'refuse') || c.factures.some(f => f.statut !== 'payee'))
-          .slice(0, 5);
-
-        // Calculate amounts per stage
-        const montantBrouillon = devisBrouillon.reduce((s, d) => s + (d.total_ttc || 0), 0);
-        const montantEnvoye = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
-        const montantAccepte = devisAccepte.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const facturesEnRetard = facturesEnAttente.filter(f => Math.floor((Date.now() - new Date(f.date)) / 86400000) > 30);
         const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
-
-        // Conversion rate
+        const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const totalEnvoyes = devisEnvoye.length + devisAccepte.length + devisRefuse.length;
-        const tauxConversion = totalEnvoyes > 0 ? ((devisAccepte.length / totalEnvoyes) * 100).toFixed(0) : null;
+        const tauxConversion = totalEnvoyes > 0 ? Math.round((devisAccepte.length / totalEnvoyes) * 100) : null;
+        // Count "à traiter" items
+        const aTraiterCount = cleanDevis.filter(d => {
+          const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
+          return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
+        }).length;
 
         return (
           <div className="space-y-3">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* CA encaissé */}
-              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>CA encaissé</p>
-                <p className={`text-lg sm:text-xl font-bold`} style={{color: couleur}}>
-                  {modeDiscret ? '·····' : formatMoney(montantPayees)}
-                </p>
-                <p className={`text-xs ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length > 1 ? 's' : ''} payée{facturesPayees.length > 1 ? 's' : ''}</p>
+              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { ringColor: couleur } : {}}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>CA encaissé</p>
+                <p className="text-lg font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : formatMoney(montantPayees)}</p>
+                <p className={`text-[11px] ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''}</p>
               </button>
 
-              {/* Devis en cours */}
-              <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>Devis en cours</p>
-                <p className={`text-lg sm:text-xl font-bold text-amber-600`}>
-                  {devisEnvoye.length + devisBrouillon.length}
-                </p>
-                <p className={`text-xs ${textMuted}`}>
-                  {modeDiscret ? '·····' : formatMoney(montantBrouillon + montantEnvoye)}
-                </p>
+              {/* En cours */}
+              <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { ringColor: couleur } : {}}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>En cours</p>
+                <p className="text-lg font-bold text-blue-600">{devisEnvoye.length}</p>
+                <p className={`text-[11px] ${textMuted}`}>{modeDiscret ? '·····' : formatMoney(montantEnCours)}</p>
               </button>
 
-              {/* Taux de conversion */}
-              <button onClick={() => setFilter('devis')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>Conversion</p>
-                <p className={`text-lg sm:text-xl font-bold ${tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {tauxConversion ? `${tauxConversion}%` : '—'}
+              {/* Conversion */}
+              <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { ringColor: couleur } : {}}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>Conversion</p>
+                <p className={`text-lg font-bold ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
+                  {tauxConversion != null ? `${tauxConversion}%` : '—'}
                 </p>
-                <p className={`text-xs ${textMuted}`}>{devisAccepte.length} signé{devisAccepte.length > 1 ? 's' : ''} / {totalEnvoyes} envoyé{totalEnvoyes > 1 ? 's' : ''}</p>
+                <p className={`text-[11px] ${textMuted}`}>{devisAccepte.length}/{totalEnvoyes} signés</p>
               </button>
 
               {/* À encaisser */}
-              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-colors hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-200') : ''}`}>
-                <p className={`text-[10px] font-medium uppercase tracking-wide ${textMuted} mb-1`}>À encaisser</p>
-                <p className={`text-lg sm:text-xl font-bold ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-indigo-600'}`}>
+              <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { ringColor: couleur } : {}}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>À encaisser</p>
+                <p className={`text-lg font-bold ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
                   {modeDiscret ? '·····' : formatMoney(montantAEncaisser)}
                 </p>
-                <p className={`text-xs ${facturesEnRetard.length > 0 ? (isDark ? 'text-red-400' : 'text-red-600') : textMuted}`}>
-                  {facturesEnAttente.length} en attente{facturesEnRetard.length > 0 ? ` · ${facturesEnRetard.length} en retard` : ''}
+                <p className={`text-[11px] ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
+                  {facturesEnRetard.length > 0 ? `⚠️ ${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} en attente`}
                 </p>
               </button>
             </div>
 
-            {/* Overdue alert - compact */}
-            {facturesEnRetard.length > 0 && (
-              <button onClick={() => setFilter('factures')} className={`w-full rounded-lg p-3 flex items-center justify-between ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                <span className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                  {facturesEnRetard.length} en retard • {formatMoney(montantEnRetard)}
+            {/* À traiter badge */}
+            {aTraiterCount > 0 && (
+              <button
+                onClick={() => setFilter('a_traiter')}
+                className={`w-full rounded-xl p-3 flex items-center justify-between transition-all ${filter === 'a_traiter' ? 'text-white' : isDark ? 'bg-amber-900/20 hover:bg-amber-900/30' : 'bg-amber-50 hover:bg-amber-100'}`}
+                style={filter === 'a_traiter' ? { background: couleur } : {}}
+              >
+                <span className={`text-sm font-semibold ${filter === 'a_traiter' ? 'text-white' : isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                  🔔 {aTraiterCount} document{aTraiterCount > 1 ? 's' : ''} à traiter aujourd'hui
                 </span>
-                <ChevronRight size={16} className="text-red-500" />
+                <ChevronRight size={16} className={filter === 'a_traiter' ? 'text-white' : 'text-amber-500'} />
               </button>
             )}
-
-            {/* Quick status badges */}
-            <div className="flex gap-2 flex-wrap">
-              {devisBrouillon.length > 0 && (
-                <button
-                  onClick={() => { setFilter('devis'); setSortBy('status'); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  <FileText size={14} />
-                  {devisBrouillon.length} brouillon{devisBrouillon.length > 1 ? 's' : ''}
-                </button>
-              )}
-              {devisEnvoye.length > 0 && (
-                <button
-                  onClick={() => { setFilter('attente'); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-amber-900/30 text-amber-300 hover:bg-amber-900/50' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
-                >
-                  <Send size={14} />
-                  {devisEnvoye.length} en attente de réponse
-                </button>
-              )}
-            </div>
-
-            {/* Section supprimée pour simplifier l'interface */}
           </div>
         );
       })()}
-      </div>
 
       {/* === SECTION: LISTE DES DOCUMENTS === */}
       <div className="space-y-3">
@@ -3209,7 +3157,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
         <input placeholder="🔍 Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
         <div role="group" aria-label="Filtrer par type">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', '🔔 À traiter']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
         </div>
         <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
         <div role="group" aria-label="Trier par">
