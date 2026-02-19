@@ -104,6 +104,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
+  const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -2530,6 +2531,46 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         />
 
         {/* Signature Link Modal */}
+        {/* Creation success modal */}
+        {showCreationSuccess && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreationSuccess(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
+              {/* Success animation */}
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+                  <CheckCircle size={32} style={{ color: couleur }} />
+                </div>
+              </div>
+              <h3 className={`text-xl font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {showCreationSuccess.devis?.type === 'facture' ? 'Facture' : 'Devis'} cree !
+              </h3>
+              <p className={`text-sm text-center mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                N&deg; {showCreationSuccess.numero}
+              </p>
+              <p className={`text-2xl font-bold text-center mb-5`} style={{ color: couleur }}>
+                {formatMoney(showCreationSuccess.devis?.total_ttc)}
+              </p>
+
+              <button
+                onClick={() => {
+                  setShowCreationSuccess(null);
+                  if (showCreationSuccess.devis) sendEmail(showCreationSuccess.devis);
+                }}
+                className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3"
+                style={{ backgroundColor: couleur }}
+              >
+                <Send size={16} /> Envoyer maintenant
+              </button>
+              <button
+                onClick={() => setShowCreationSuccess(null)}
+                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Plus tard
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Post-send confirmation modal */}
         {showSendConfirmation && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSendConfirmation(null)}>
@@ -3592,11 +3633,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const numero = await generateNumero(devisData.type);
           const newDevis = await onSubmit({ ...devisData, numero });
           if (!newDevis?.id) {
-            throw new Error('Le devis n\'a pas pu être créé. Vérifiez les données et réessayez.');
+            throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
           }
           setSelected(newDevis);
           setMode('preview');
-          showToast(`${devisData.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`, 'success');
+          // Show creation success modal instead of simple toast
+          setShowCreationSuccess({ devis: newDevis, numero });
           return newDevis;
         }}
         onUpdate={async (id, devisData) => {
@@ -3619,6 +3661,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         entreprise={entreprise}
         isDark={isDark}
         couleur={couleur}
+        onSwitchToAI={() => {
+          showToast('Devis IA bientot disponible', 'info');
+        }}
+        onSwitchToExpress={() => {
+          setShowDevisExpressModal(true);
+        }}
       />
 
       {/* Signature Pad Modal */}

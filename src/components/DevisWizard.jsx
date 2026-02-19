@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Plus, User, FileText, Receipt, Search, Star, Trash2, ChevronDown, ChevronUp, Sparkles, Clock, RotateCcw, AlertCircle, Mic, Zap, Edit3 } from 'lucide-react';
 import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
@@ -27,11 +27,13 @@ export default function DevisWizard({
   chantiers = [],
   entreprise = {},
   isDark = false,
-  couleur = '#f97316'
+  couleur = '#f97316',
+  onSwitchToAI,
+  onSwitchToExpress
 }) {
   const isEditMode = !!initialData;
   const { confirm, ConfirmDialog } = useConfirm();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(isEditMode ? 1 : 0);
   const [form, setForm] = useState({
     type: 'devis',
     clientId: '',
@@ -121,7 +123,7 @@ export default function DevisWizard({
   // Reset form when closing (but keep draft in storage)
   useEffect(() => {
     if (!isOpen) {
-      setStep(1);
+      setStep(isEditMode ? 1 : 0);
       setForm({
         type: 'devis',
         clientId: '',
@@ -355,7 +357,7 @@ export default function DevisWizard({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">
-                  {step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
+                  {step === 0 ? 'Comment creer ?' : step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
                 </h2>
                 <p className="text-white/80 text-sm">
                   {isEditMode
@@ -371,7 +373,7 @@ export default function DevisWizard({
 
           {/* Progress bar */}
           <div className="flex gap-1">
-            {[1, 2, 3].map(s => (
+            {(isEditMode ? [1, 2, 3] : [0, 1, 2, 3]).map(s => (
               <div
                 key={s}
                 className={`flex-1 h-1 rounded-full transition-all ${s <= step ? 'bg-white' : 'bg-white/30'}`}
@@ -421,6 +423,75 @@ export default function DevisWizard({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
+
+          {/* STEP 0: Mode Choice (creation only) */}
+          {step === 0 && !isEditMode && (
+            <div className="space-y-4">
+              <p className={`text-sm text-center ${textMuted}`}>
+                Choisissez votre methode de creation
+              </p>
+              <div className="grid gap-3">
+                {/* Dicter IA */}
+                <button
+                  onClick={() => {
+                    if (onSwitchToAI) {
+                      onClose?.();
+                      onSwitchToAI();
+                    }
+                  }}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-purple-500 bg-slate-800/50' : 'border-slate-200 hover:border-purple-400 bg-white'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center text-white shrink-0">
+                      <Mic size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold text-base ${textPrimary}`}>Dicter avec l'IA</h3>
+                      <p className={`text-sm mt-0.5 ${textMuted}`}>Decrivez votre devis, l'IA le cree pour vous</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700">Beta</span>
+                  </div>
+                </button>
+
+                {/* Template Express */}
+                <button
+                  onClick={() => {
+                    if (onSwitchToExpress) {
+                      onClose?.();
+                      onSwitchToExpress();
+                    }
+                  }}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-amber-500 bg-slate-800/50' : 'border-slate-200 hover:border-amber-400 bg-white'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shrink-0">
+                      <Zap size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold text-base ${textPrimary}`}>Template Express</h3>
+                      <p className={`text-sm mt-0.5 ${textMuted}`}>Partez d'un modele et personnalisez en 1 min</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Manuel */}
+                <button
+                  onClick={() => setStep(1)}
+                  className={`p-5 rounded-2xl border-2 text-left transition-all hover:shadow-lg ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800/50' : 'border-slate-200 hover:border-slate-400 bg-white'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}bb)` }}>
+                      <Edit3 size={24} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold text-base ${textPrimary}`}>Manuel</h3>
+                      <p className={`text-sm mt-0.5 ${textMuted}`}>Creez ligne par ligne avec le catalogue</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* STEP 1: Client Selection */}
           {step === 1 && (
@@ -805,48 +876,50 @@ export default function DevisWizard({
           )}
         </div>
 
-        {/* Footer with navigation */}
-        <div className={`px-5 py-4 border-t flex gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {step > 1 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className={`px-4 py-3 rounded-xl flex items-center gap-2 min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
-            >
-              <ArrowLeft size={18} />
-              Retour
-            </button>
-          )}
-
-          {/* Error message */}
-          {errors.submit && (
-            <p className="text-red-500 text-sm flex-1">{errors.submit}</p>
-          )}
-
-          <button
-            onClick={step === 3 ? handleSubmit : () => setStep(step + 1)}
-            disabled={!canProceed || isSubmitting}
-            className="flex-1 px-4 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 min-h-[48px] disabled:opacity-50 hover:shadow-lg active:scale-[0.98] transition-all"
-            style={{ backgroundColor: couleur }}
-          >
-            {step === 3 ? (
-              <>
-                {isSubmitting ? (
-                  <span className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                ) : (
-                  <Check size={18} />
-                )}
-                {isSubmitting
-                  ? (isEditMode ? 'Enregistrement...' : 'Création...')
-                  : (isEditMode ? 'Enregistrer les modifications' : `Créer le ${form.type}`)}
-              </>
-            ) : (
-              <>
-                Continuer
-                <ArrowRight size={18} />
-              </>
+        {/* Footer with navigation (hidden on step 0) */}
+        {step > 0 && (
+          <div className={`px-5 py-4 border-t flex gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            {((isEditMode && step > 1) || (!isEditMode && step > 1)) && (
+              <button
+                onClick={() => setStep(step - 1)}
+                className={`px-4 py-3 rounded-xl flex items-center gap-2 min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+              >
+                <ArrowLeft size={18} />
+                Retour
+              </button>
             )}
-          </button>
-        </div>
+
+            {/* Error message */}
+            {errors.submit && (
+              <p className="text-red-500 text-sm flex-1">{errors.submit}</p>
+            )}
+
+            <button
+              onClick={step === 3 ? handleSubmit : () => setStep(step + 1)}
+              disabled={!canProceed || isSubmitting}
+              className="flex-1 px-4 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 min-h-[48px] disabled:opacity-50 hover:shadow-lg active:scale-[0.98] transition-all"
+              style={{ backgroundColor: couleur }}
+            >
+              {step === 3 ? (
+                <>
+                  {isSubmitting ? (
+                    <span className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Check size={18} />
+                  )}
+                  {isSubmitting
+                    ? (isEditMode ? 'Enregistrement...' : 'Creation...')
+                    : (isEditMode ? 'Enregistrer les modifications' : `Creer le ${form.type}`)}
+                </>
+              ) : (
+                <>
+                  Continuer
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Quick Client Modal */}
