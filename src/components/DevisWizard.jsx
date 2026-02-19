@@ -533,7 +533,7 @@ export default function DevisWizard({
               {/* Quick add button */}
               <button
                 onClick={() => setShowQuickClient(true)}
-                className={`w-full p-3 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-all hover:shadow-lg ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}
+                className={`w-full p-3 rounded-xl border-2 flex items-center justify-center gap-2 transition-all hover:shadow-lg ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}
               >
                 <Plus size={18} style={{ color: couleur }} />
                 <span className={textSecondary}>Nouveau client</span>
@@ -643,7 +643,7 @@ export default function DevisWizard({
               {/* Add from catalog button */}
               <button
                 onClick={() => setShowCatalog(true)}
-                className="w-full p-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-3 transition-all hover:shadow-lg group"
+                className="w-full p-4 rounded-xl border-2 flex items-center justify-center gap-3 transition-all hover:shadow-lg group"
                 style={{ borderColor: `${couleur}50` }}
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ backgroundColor: `${couleur}20` }}>

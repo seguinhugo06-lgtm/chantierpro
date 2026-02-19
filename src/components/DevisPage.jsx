@@ -2756,7 +2756,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Smart Template Wizard - Full guided flow */}
           <button
             onClick={() => setShowSmartWizard(true)}
-            className={`p-4 rounded-xl border-2 border-dashed flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
+            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform flex-shrink-0">
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -2771,7 +2771,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Load Template - Add lines to current form */}
           <button
             onClick={() => setShowTemplateSelector(true)}
-            className={`p-4 rounded-xl border-2 border-dashed flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-blue-500/50 hover:border-blue-400 bg-gradient-to-r from-blue-900/20 to-indigo-900/20' : 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50'}`}
+            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-blue-500/50 hover:border-blue-400 bg-gradient-to-r from-blue-900/20 to-indigo-900/20' : 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50'}`}
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0">
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -2998,7 +2998,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Add line button */}
               <button
                 onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)}
-                className={`w-full py-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
+                className={`w-full py-3 border-2 rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
               >
                 <Plus size={18} style={{ color: couleur }} />
                 <span className="font-medium" style={{ color: couleur }}>Ajouter une ligne</span>

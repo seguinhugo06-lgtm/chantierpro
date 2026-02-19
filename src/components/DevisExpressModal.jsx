@@ -267,7 +267,7 @@ export default function DevisExpressModal({
               {/* Option: Charger un modèle existant */}
               <button
                 onClick={() => setShowTemplateSelector(true)}
-                className={`w-full p-4 rounded-xl border-2 border-dashed ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
+                className={`w-full p-4 rounded-xl border-2 ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
                 style={{ borderColor: `${couleur}60` }}
               >
                 <div
