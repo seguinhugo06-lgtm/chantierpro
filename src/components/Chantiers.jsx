@@ -841,221 +841,168 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
-        {/* === SECTION: FINANCES === */}
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-            <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Finances du chantier</span>
-            <span className={`text-[10px] ${textMuted}`}>— Revenus, dépenses et marge</span>
-          </div>
-          {/* Titre et marge */}
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              {bilan.margeBrute < 0 ? (
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
-                  <TrendingDown size={20} className="text-red-500" />
+        {/* === SECTION: FINANCES (condensé + accordion) === */}
+        {(() => {
+          const healthColor = bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
+          const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
+          const [finExpanded, setFinExpanded] = React.useState({});
+          const toggleFin = (k) => setFinExpanded(p => ({ ...p, [k]: !p[k] }));
+
+          return (
+            <div className={`${cardBg} rounded-xl border p-4`}>
+              {/* Summary line */}
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Finances</span>
                 </div>
-              ) : bilan.tauxMarge < 15 ? (
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-amber-900/50' : 'bg-amber-100'}`}>
-                  <AlertTriangle size={20} className="text-amber-500" />
+                <div className="flex-1" />
+                <div className="flex items-center gap-3 text-sm flex-wrap">
+                  <span className={textMuted}>Budget <strong className={textPrimary}>{formatMoney(revenuTotal)}</strong></span>
+                  <span className={textMuted}>Dépensé <strong className="text-red-500">{formatMoney(bilan.totalDepenses)}</strong></span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-bold" style={{ color: healthColor }}>{formatPct(bilan.tauxMarge)}</span>
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: healthColor }} />
+                  </span>
                 </div>
-              ) : (
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-900/50' : 'bg-emerald-100'}`}>
-                  <TrendingUp size={20} className="text-emerald-500" />
+              </div>
+
+              {/* Horizontal bar: vert (revenus) vs rouge (dépenses) */}
+              {revenuTotal > 0 && (
+                <div className="mb-4">
+                  <div className={`h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-emerald-100'}`}>
+                    <div className="h-full rounded-full transition-all bg-red-400" style={{ width: `${depPct}%` }} />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className={`text-[10px] ${textMuted}`}>0 €</span>
+                    <span className={`text-[10px] font-medium ${depPct > 90 ? 'text-red-500' : textMuted}`}>{Math.round(depPct)}% consommé</span>
+                    <span className={`text-[10px] ${textMuted}`}>{formatMoney(revenuTotal)}</span>
+                  </div>
                 </div>
               )}
-              <div>
-                <p className={`text-xs ${textMuted}`}>Marge prévisionnelle</p>
-                <p className={`font-bold text-xl ${bilan.margeBrute < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                  {formatMoney(bilan.margeBrute)} <span className="text-sm opacity-80">({formatPct(bilan.tauxMarge)})</span>
-                </p>
-              </div>
-            </div>
-            {devisLie && (
-              <span className={`text-xs px-3 py-1.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
-                Lie au devis {devisLie.numero}
-              </span>
-            )}
-          </div>
 
-          {/* Quick Stats - 3 key metrics for mobile */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
-              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Marge</p>
-              <p className={`text-lg font-bold ${bilan.tauxMarge < 0 ? 'text-red-500' : bilan.tauxMarge < 15 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                {formatPct(bilan.tauxMarge)}
-              </p>
-            </div>
-            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
-              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Reste</p>
-              <p className={`text-lg font-bold ${revenuTotal - bilan.totalDepenses < 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                {formatMoney(Math.max(0, revenuTotal - bilan.totalDepenses))}
-              </p>
-            </div>
-            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>
-              <p className={`text-[10px] uppercase tracking-wider ${textMuted}`}>Avancement</p>
-              <p className={`text-lg font-bold ${textPrimary}`}>{Math.round(avancement)}%</p>
-            </div>
-          </div>
+              {/* +Revenu / +Dépense buttons always visible */}
+              <div className="flex gap-2 mb-4">
+                <button onClick={() => setShowAjustement('REVENU')} className={`flex-1 min-h-[44px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'} active:scale-[0.98] transition-all`}>
+                  <Plus size={16} /> Revenu
+                </button>
+                <button onClick={() => setShowQuickMateriau(true)} className={`flex-1 min-h-[44px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'} active:scale-[0.98] transition-all`}>
+                  <Plus size={16} /> Dépense
+                </button>
+              </div>
 
-          {/* Grille Revenus vs Dépenses */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Colonne Revenus */}
-            <div className={`rounded-xl p-4 border ${isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <ArrowUpRight size={16} className="text-emerald-500" />
-                <h4 className={`font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenus</h4>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${textSecondary}`}>Montant devis</span>
-                  <span className={`font-semibold ${textPrimary}`}>{bilan.revenuPrevu > 0 ? formatMoney(bilan.revenuPrevu) : <span className={textMuted}>Non défini</span>}</span>
-                </div>
-                {(bilan.adjRevenus || 0) > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className={`text-sm ${textSecondary}`}>Travaux supplémentaires</span>
-                    <span className="font-semibold text-emerald-600">+{formatMoney(bilan.adjRevenus)}</span>
-                  </div>
-                )}
-                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-emerald-800' : 'border-emerald-200'}`}>
-                  <span className={`font-medium ${textPrimary}`}>Total prévu</span>
-                  <span className="font-bold text-lg" style={{ color: couleur }}>{formatMoney(revenuTotal)}</span>
-                </div>
-                {bilan.revenuEncaisse > 0 && (
-                  <div className="flex justify-between items-center text-xs">
-                    <span className={textMuted}>Déjà encaissé</span>
-                    <span className="text-emerald-600">{formatMoney(bilan.revenuEncaisse)}</span>
-                  </div>
-                )}
-              </div>
-              <button onClick={() => setShowAjustement('REVENU')} className={`mt-3 w-full min-h-[48px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-emerald-800/50 text-emerald-300 hover:bg-emerald-800' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} active:scale-[0.98] transition-all`}>
-                <Plus size={16} /> Ajouter un revenu
-              </button>
-            </div>
-
-            {/* Colonne Dépenses */}
-            <div className={`rounded-xl p-4 border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <ArrowDownRight size={16} className="text-red-500" />
-                <h4 className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-700'}`}>Dépenses</h4>
-              </div>
+              {/* Accordion sections */}
               <div className="space-y-1">
-                <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowQuickMateriau(true)}>
-                  <span className={`text-sm ${textSecondary} flex items-center gap-2`}><Package size={16} /> Matériaux</span>
-                  <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
-                </div>
-                <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowMODetail(true)}>
-                  <span className={`text-sm ${textSecondary} flex items-center gap-2`}><UserCog size={16} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
-                  <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
-                </div>
-                {(bilan.coutAutres || 0) > 0 && (
-                  <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowAjustement('DEPENSE')}>
-                    <span className={`text-sm ${textSecondary}`}>Autres frais</span>
-                    <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutAutres)}</span>
+                {/* Revenus */}
+                <button onClick={() => toggleFin('revenus')} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                  <ChevronRight size={14} className={`transition-transform ${finExpanded.revenus ? 'rotate-90' : ''} ${textMuted}`} />
+                  <ArrowUpRight size={14} className="text-emerald-500" />
+                  <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Revenus</span>
+                  <span className="text-xs font-bold" style={{ color: couleur }}>{formatMoney(revenuTotal)}</span>
+                </button>
+                {finExpanded.revenus && (
+                  <div className={`ml-6 p-3 rounded-lg space-y-2 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                    <div className="flex justify-between"><span className={`text-xs ${textMuted}`}>Montant devis</span><span className={`text-xs font-medium ${textPrimary}`}>{bilan.revenuPrevu > 0 ? formatMoney(bilan.revenuPrevu) : 'Non défini'}</span></div>
+                    {(bilan.adjRevenus || 0) > 0 && <div className="flex justify-between"><span className={`text-xs ${textMuted}`}>Travaux suppl.</span><span className="text-xs font-medium text-emerald-600">+{formatMoney(bilan.adjRevenus)}</span></div>}
+                    {bilan.revenuEncaisse > 0 && <div className="flex justify-between"><span className={`text-xs ${textMuted}`}>Encaissé</span><span className="text-xs font-medium text-emerald-600">{formatMoney(bilan.revenuEncaisse)}</span></div>}
                   </div>
                 )}
-                <div className={`flex justify-between items-center pt-2 border-t ${isDark ? 'border-red-800' : 'border-red-200'}`}>
-                  <span className={`font-medium ${textPrimary}`}>Total dépenses</span>
-                  <span className="font-bold text-lg text-red-500">{formatMoney(bilan.totalDepenses)}</span>
-                </div>
-              </div>
-              <button onClick={() => setShowQuickMateriau(true)} className={`mt-3 w-full min-h-[48px] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-red-800/50 text-red-300 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'} active:scale-[0.98] transition-all`}>
-                <Plus size={16} /> Ajouter une dépense
-              </button>
-            </div>
-          </div>
 
-          {/* Suivi des objectifs de coûts */}
-          {(ch.budget_materiaux > 0 || ch.heures_estimees > 0) ? (
-            <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Target size={16} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
-                <h4 className={`font-semibold text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Objectifs vs Réel</h4>
-              </div>
-              <div className="space-y-3">
-                {/* Matériaux */}
-                {ch.budget_materiaux > 0 && (
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-xs ${textMuted}`}>Matériaux</span>
-                      <span className={`text-xs font-medium ${bilan.coutMateriaux > ch.budget_materiaux ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {formatMoney(bilan.coutMateriaux)} / {formatMoney(ch.budget_materiaux)}
-                        {bilan.coutMateriaux > ch.budget_materiaux && ' (dépassé!)'}
-                      </span>
+                {/* Dépenses */}
+                <button onClick={() => toggleFin('depenses')} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                  <ChevronRight size={14} className={`transition-transform ${finExpanded.depenses ? 'rotate-90' : ''} ${textMuted}`} />
+                  <ArrowDownRight size={14} className="text-red-500" />
+                  <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Dépenses</span>
+                  <span className="text-xs font-bold text-red-500">{formatMoney(bilan.totalDepenses)}</span>
+                </button>
+                {finExpanded.depenses && (
+                  <div className={`ml-6 p-3 rounded-lg space-y-1 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                    <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowQuickMateriau(true)}>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><Package size={12} /> Matériaux</span>
+                      <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutMateriaux)}</span>
                     </div>
-                    <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-white'}`}>
-                      <div
-                        className={`h-full rounded-full transition-all ${bilan.coutMateriaux > ch.budget_materiaux ? 'bg-red-500' : bilan.coutMateriaux > ch.budget_materiaux * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                        style={{ width: `${Math.min(100, (bilan.coutMateriaux / ch.budget_materiaux) * 100)}%` }}
-                      />
+                    <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowMODetail(true)}>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1.5`}><UserCog size={12} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
+                      <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
                     </div>
+                    {(bilan.coutAutres || 0) > 0 && (
+                      <div className="flex justify-between items-center cursor-pointer p-1.5 rounded hover:opacity-80" onClick={() => setShowAjustement('DEPENSE')}>
+                        <span className={`text-xs ${textMuted}`}>Autres frais</span>
+                        <span className={`text-xs font-medium ${textPrimary}`}>{formatMoney(bilan.coutAutres)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
-                {/* Heures */}
-                {ch.heures_estimees > 0 && (
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-xs ${textMuted}`}>Heures de travail</span>
-                      <span className={`text-xs font-medium ${bilan.heuresTotal > ch.heures_estimees ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {bilan.heuresTotal}h / {ch.heures_estimees}h
-                        {bilan.heuresTotal > ch.heures_estimees && ' (dépassé!)'}
-                      </span>
-                    </div>
-                    <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-white'}`}>
-                      <div
-                        className={`h-full rounded-full transition-all ${bilan.heuresTotal > ch.heures_estimees ? 'bg-red-500' : bilan.heuresTotal > ch.heures_estimees * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                        style={{ width: `${Math.min(100, (bilan.heuresTotal / ch.heures_estimees) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : revenuTotal > 0 && (
-            <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={`text-sm ${textSecondary}`}>Marge prévisionnelle</span>
-                <span className={`font-semibold ${bilan.margeBrute < 0 ? 'text-red-500' : textPrimary}`}>
-                  {formatMoney(bilan.margeBrute)} ({formatPct(bilan.tauxMarge)})
-                </span>
-              </div>
-              <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                <div
-                  className={`h-full rounded-full transition-all ${bilan.totalDepenses > revenuTotal ? 'bg-red-500' : bilan.totalDepenses > revenuTotal * 0.9 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min(100, (bilan.totalDepenses / revenuTotal) * 100)}%` }}
-                />
-              </div>
-              <p className={`text-xs mt-2 ${textMuted}`}>
-                Définissez un objectif de coûts pour suivre votre budget plus précisément.
-              </p>
-            </div>
-          )}
 
-          {/* Projection */}
-          {avancement > 0 && avancement < 100 && revenuTotal > 0 && (
-            <div className={`mt-4 rounded-xl p-4 border-2 border-dashed ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <Target size={18} style={{ color: couleur }} />
-                <h4 className={`font-medium ${textPrimary}`}>Projection fin de chantier</h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} ${textMuted}`}>Estimation</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Dépenses totales estimées</p>
-                  <p className="font-bold text-red-500 text-lg">{formatMoney(depensesFinalesEstimees)}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Bénéfice projeté</p>
-                  <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'} text-center`}>
-                  <p className={`text-xs ${textMuted} mb-1`}>Marge projetée</p>
-                  <p className={`font-bold text-lg ${getMargeColor(tauxMargeProjecte)}`}>{formatPct(tauxMargeProjecte)}</p>
-                </div>
+                {/* Objectifs */}
+                {(ch.budget_materiaux > 0 || ch.heures_estimees > 0) && (
+                  <>
+                    <button onClick={() => toggleFin('objectifs')} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                      <ChevronRight size={14} className={`transition-transform ${finExpanded.objectifs ? 'rotate-90' : ''} ${textMuted}`} />
+                      <Target size={14} className="text-amber-500" />
+                      <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Objectifs vs Réel</span>
+                    </button>
+                    {finExpanded.objectifs && (
+                      <div className={`ml-6 p-3 rounded-lg space-y-3 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                        {ch.budget_materiaux > 0 && (
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className={`text-xs ${textMuted}`}>Matériaux</span>
+                              <span className={`text-[10px] font-medium ${bilan.coutMateriaux > ch.budget_materiaux ? 'text-red-500' : 'text-emerald-500'}`}>{formatMoney(bilan.coutMateriaux)} / {formatMoney(ch.budget_materiaux)}</span>
+                            </div>
+                            <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-white'}`}>
+                              <div className={`h-full rounded-full ${bilan.coutMateriaux > ch.budget_materiaux ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (bilan.coutMateriaux / ch.budget_materiaux) * 100)}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        {ch.heures_estimees > 0 && (
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className={`text-xs ${textMuted}`}>Heures</span>
+                              <span className={`text-[10px] font-medium ${bilan.heuresTotal > ch.heures_estimees ? 'text-red-500' : 'text-emerald-500'}`}>{bilan.heuresTotal}h / {ch.heures_estimees}h</span>
+                            </div>
+                            <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-white'}`}>
+                              <div className={`h-full rounded-full ${bilan.heuresTotal > ch.heures_estimees ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (bilan.heuresTotal / ch.heures_estimees) * 100)}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Projection */}
+                {avancement > 0 && avancement < 100 && revenuTotal > 0 && (
+                  <>
+                    <button onClick={() => toggleFin('projection')} className={`w-full flex items-center gap-2 p-2.5 rounded-lg text-left transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}>
+                      <ChevronRight size={14} className={`transition-transform ${finExpanded.projection ? 'rotate-90' : ''} ${textMuted}`} />
+                      <BarChart3 size={14} style={{ color: couleur }} />
+                      <span className={`text-xs font-medium flex-1 ${textPrimary}`}>Projection fin de chantier</span>
+                    </button>
+                    {finExpanded.projection && (
+                      <div className={`ml-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center">
+                            <p className={`text-[10px] ${textMuted}`}>Dépenses est.</p>
+                            <p className="font-bold text-sm text-red-500">{formatMoney(depensesFinalesEstimees)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className={`text-[10px] ${textMuted}`}>Bénéfice</p>
+                            <p className={`font-bold text-sm ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className={`text-[10px] ${textMuted}`}>Marge</p>
+                            <p className={`font-bold text-sm ${getMargeColor(tauxMargeProjecte)}`}>{formatPct(tauxMargeProjecte)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* === SECTION: DÉTAILS DU CHANTIER === */}
         <div className="flex items-center gap-2 mt-2 mb-2">
