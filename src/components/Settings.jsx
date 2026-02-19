@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useToast } from '../context/AppContext';
 import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield } from 'lucide-react';
 import { auth } from '../supabaseClient';
-// import AdminHelp from './admin-help/AdminHelp'; // removed for simplification
+import AdminHelp from './admin-help/AdminHelp';
 import {
   INTEGRATION_TYPES,
   SYNC_STATUS,
@@ -18,10 +18,9 @@ import {
   syncToIndy
 } from '../lib/integrations/accounting';
 
-// Removed tabs — commented out to reduce bundle
-// import Facture2026Tab from './settings/Facture2026Tab';
-// import RelanceConfigTab from './settings/RelanceConfigTab';
-// import MultiEntreprise from './settings/MultiEntreprise';
+import Facture2026Tab from './settings/Facture2026Tab';
+import RelanceConfigTab from './settings/RelanceConfigTab';
+import MultiEntreprise from './settings/MultiEntreprise';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
@@ -474,11 +473,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           ['_sep1', ''],
           // Documents & Facturation
           ['documents', '📄 Documents'],
+          ['facture2026', '🧾 Facture 2026'],
+          ['relances', '📨 Relances'],
           ['_sep2', ''],
           // Gestion
           ['comptabilite', '🧮 Comptabilité'],
           ['rentabilite', '📊 Rentabilité'],
           ['donnees', '💾 Données'],
+          ['administratif', '📁 Administratif'],
+          ['multi', '🏗️ Multi-entreprise'],
         ].filter(([k]) => k).map(([k, v]) => (
           k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
@@ -888,8 +891,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* FACTURE 2026 — removed */}
-      {false && tab === 'facture2026' && (
+      {/* FACTURE 2026 */}
+      {tab === 'facture2026' && (
         <Facture2026Tab
           entreprise={entreprise}
           isDark={isDark}
@@ -897,8 +900,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* RELANCES — removed */}
-      {false && tab === 'relances' && (
+      {/* RELANCES */}
+      {tab === 'relances' && (
         <RelanceConfigTab
           entreprise={entreprise}
           updateEntreprise={updateEntreprise}
@@ -1553,8 +1556,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Multi-entreprise Tab — removed */}
-      {false && tab === 'multi' && (
+      {/* Multi-entreprise Tab */}
+      {tab === 'multi' && (
         <MultiEntreprise
           entreprise={entreprise}
           setEntreprise={setEntreprise}
@@ -1563,8 +1566,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* Administratif Tab — removed */}
-      {false && tab === 'administratif' && (
+      {/* Administratif Tab */}
+      {tab === 'administratif' && (
         <AdminHelp
           chantiers={chantiers}
           clients={clients}
