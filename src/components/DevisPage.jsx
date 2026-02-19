@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap } from 'lucide-react';
 import supabase from '../supabaseClient';
+import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
@@ -3260,75 +3261,64 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           )}
         </div>
       ) : (
-        <div className="space-y-3">{filtered.map(d => {
+        <div className="space-y-2">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
-          const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
+          const chantier = chantiers.find(ch => ch.id === d.chantier_id);
+          const daysSince = Math.floor((Date.now() - new Date(d.date)) / 86400000);
+          const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
+          const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
+
+          // Contextual quick action
+          const getQuickAction = () => {
+            if (d.statut === 'brouillon') return { label: 'Envoyer', Icon: Send, cls: 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            if (['envoye', 'vu'].includes(d.statut) && daysSince > 7) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-700 hover:bg-amber-600 text-white' : 'bg-amber-100 hover:bg-amber-200 text-amber-700', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            if (d.statut === 'accepte' && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            return null;
+          };
+          const qa = getQuickAction();
+
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[70px]`}>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${d.type === 'facture' ? (isDark ? 'bg-purple-900/30' : 'bg-purple-100') : (isDark ? 'bg-blue-900/30' : 'bg-blue-100')}`}>
-                  {d.type === 'facture' ? <Receipt size={20} className="text-purple-600" /> : <FileText size={20} className="text-blue-600" />}
-                </div>
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-md transition-all duration-200`}>
+              <div className="flex items-center gap-3">
+                {/* Status dot */}
+                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColor.dot}`} />
+
+                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className={`font-semibold ${textPrimary}`}>{d.numero}</p>
-                    {/* Status badge - improved spacing with py-1 for better readability */}
-                    {d.statut === 'brouillon' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Brouillon</span>}
-                    {d.statut === 'envoye' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Envoyé</span>}
-                    {d.statut === 'accepte' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Signé</span>}
-                    {d.statut === 'acompte_facture' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
-                    {d.statut === 'facture' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Facturé</span>}
-                    {d.statut === 'payee' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Payé</span>}
-                    {d.statut === 'refuse' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Refusé</span>}
-                    {hasAcompte && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
-                    {d.facture_type === 'acompte' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
-                    {d.facture_type === 'solde' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
-                    {d.facture_type === 'totale' && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Complète</span>}
-                    {d.is_avenant && <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
-                    {d.type === 'facture' && isFacturXCompliant(d, client, entreprise) && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>2026 ✓</span>
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <p className={`font-semibold text-sm ${textPrimary}`}>{d.numero}</p>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
+                    {hasAcompte && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
+                    {d.is_avenant && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
+                    {needsFollowUp(d) && !qa && (
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>⏰ Relancer</span>
                     )}
-                    {needsFollowUp(d) && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium animate-pulse ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>À relancer</span>
-                    )}
-                    {isExpiringSoon(d) && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>⏳ Expire dans {getExpiryDaysLeft(d)}j</span>
-                    )}
-                    {isExpired(d) && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>❌ Expiré</span>
-                    )}
-                    {d.facture_type === 'avoir' && (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>
-                    )}
-                    {(() => { const es = getDocumentEmailStatus(d.id); return es.sent > 0 ? (
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium inline-flex items-center gap-1 ${isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700'}`} title={`Envoyé ${es.sent} fois — Dernier: ${es.lastSent ? new Date(es.lastSent).toLocaleDateString('fr-FR') : ''}`}>
-                        <Mail size={10} /> {es.sent}×
-                      </span>
-                    ) : null; })()}
+                    {isExpired(d) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
                   </div>
-                  <p className={`text-sm ${textMuted}`}>{client ? `${client.prenom || ''} ${client.nom}`.trim() : (d.client_nom || 'Client supprimé')} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                  <p className={`text-xs ${textMuted} truncate`}>
+                    {client ? `${client.prenom || ''} ${client.nom}`.trim() : (d.client_nom || 'Client')}
+                    {chantier ? ` · ${chantier.nom}` : ''}
+                    {` · ${new Date(d.date).toLocaleDateString('fr-FR')}`}
+                  </p>
                 </div>
-                {/* Action buttons - simple icons for list view */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); sendEmail(d); }}
-                    className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                    title="Envoyer par email"
-                    aria-label={`Envoyer ${d.numero}`}
-                  >
-                    <Send size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); previewPDF(d); }}
-                    className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                    title="Voir l'aperçu PDF"
-                    aria-label={`Aperçu PDF de ${d.numero}`}
-                  >
-                    <Eye size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  </button>
+
+                {/* Quick action OR PDF */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {qa ? (
+                    <button onClick={qa.fn} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 min-h-[36px] transition-all ${qa.cls}`}>
+                      <qa.Icon size={14} />
+                      <span className="hidden sm:inline">{qa.label}</span>
+                    </button>
+                  ) : (
+                    <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
+                      <Eye size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                    </button>
+                  )}
+                  <p className={`text-sm sm:text-base font-bold min-w-[80px] sm:min-w-[100px] text-right tabular-nums ${getDevisTTC(d) === 0 ? textMuted : ''}`} style={getDevisTTC(d) > 0 ? {color: couleur} : {}}>
+                    {formatMoney(getDevisTTC(d))}
+                  </p>
                 </div>
-                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${getDevisTTC(d) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={getDevisTTC(d) > 0 ? {color: couleur} : {}}>{formatMoney(getDevisTTC(d))}</p>
               </div>
             </div>
           );
