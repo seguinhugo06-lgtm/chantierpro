@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -922,41 +922,102 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
+      {/* Toolbar */}
+      <div className="space-y-3">
+        {/* Search bar full-width */}
+        <div className="relative">
           <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input type="text" placeholder="Rechercher un client..." aria-label="Rechercher un client" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+          <input
+            type="text"
+            placeholder="Rechercher par nom, téléphone, email, adresse..."
+            aria-label="Rechercher un client"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className={`w-full pl-10 pr-10 py-3 border rounded-xl text-sm ${inputBg}`}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
+              <X size={16} />
+            </button>
+          )}
         </div>
+
+        {/* Filters row */}
         {clients.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            {/* Grid/List toggle */}
+            <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                style={viewMode === 'grid' ? { background: couleur } : {}}
+                title="Vue grille"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                style={viewMode === 'list' ? { background: couleur } : {}}
+                title="Vue liste"
+              >
+                <List size={16} />
+              </button>
+            </div>
+
+            {/* Type filter */}
             <select
               value={filterCategorie}
               onChange={e => setFilterCategorie(e.target.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm border ${inputBg}`}
+              className={`px-3 py-1.5 rounded-lg text-sm border min-h-[36px] ${inputBg}`}
             >
-              <option value="">Tous</option>
-              <option value="Particulier">Particulier</option>
-              <option value="Professionnel">Professionnel</option>
-              <option value="Syndic">Syndic</option>
-              <option value="Architecte">Architecte</option>
-              <option value="Promoteur">Promoteur</option>
-              <option value="Collectivité">Collectivité</option>
+              <option value="">Type : Tous</option>
+              {CLIENT_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
             </select>
-            <span className={`text-sm ${textMuted} flex items-center gap-1 whitespace-nowrap`}><ArrowUpDown size={14} /> Trier:</span>
-            {[
-              { key: 'recent', label: 'Recent' },
-              { key: 'name', label: 'Nom' },
-              { key: 'ca', label: 'CA' }
-            ].map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => setSortBy(opt.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                style={sortBy === opt.key ? { background: couleur } : {}}
-              >
-                {opt.label}
-              </button>
-            ))}
+
+            {/* Sort buttons */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <ArrowUpDown size={14} className={textMuted} />
+              {[
+                { key: 'recent', label: 'Récent' },
+                { key: 'name', label: 'Nom' },
+                { key: 'ca', label: 'CA' },
+                { key: 'activite', label: 'Activité' },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  style={sortBy === opt.key ? { background: couleur } : {}}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active filter indicator */}
+        {(kpiFilter || filterCategorie) && (
+          <div className="flex items-center gap-2">
+            <span className={`text-xs ${textMuted}`}>Filtres actifs :</span>
+            {kpiFilter && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white" style={{ background: couleur }}>
+                {kpiFilter === 'actifs' ? 'Clients actifs' : kpiFilter === 'ca' ? 'CA > 0' : kpiFilter === 'devis_attente' ? 'Devis en attente' : kpiFilter}
+                <button onClick={() => setKpiFilter(null)} className="ml-0.5 hover:opacity-80">×</button>
+              </span>
+            )}
+            {filterCategorie && (
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'}`}>
+                {filterCategorie}
+                <button onClick={() => setFilterCategorie('')} className="ml-0.5 hover:opacity-80">×</button>
+              </span>
+            )}
+            <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); }} className={`text-xs underline ${textMuted} hover:${textPrimary}`}>
+              Tout effacer
+            </button>
           </div>
         )}
       </div>
