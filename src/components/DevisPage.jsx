@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2 } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap } from 'lucide-react';
 import supabase from '../supabaseClient';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
@@ -3004,32 +3004,57 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // === LIST VIEW ===
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-3">
+      {/* ========== HEADER ========== */}
+      <div className="space-y-3">
         <div className="flex items-center gap-3">
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
               className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Quick access to Devis Express Modal */}
+
+        {/* 3 Hero Buttons */}
+        <div className="grid grid-cols-3 gap-2">
+          {/* Devis IA */}
+          <button
+            onClick={() => showToast('Devis IA bientôt disponible ici — utilisez le Dashboard', 'info')}
+            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+          >
+            <Mic size={20} className="mb-1 text-white/90" />
+            <p className="font-bold text-xs sm:text-sm leading-tight">Devis IA</p>
+            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">Dictez vos travaux</p>
+            <Sparkles size={32} className="absolute -top-1 -right-1 text-white/10" />
+          </button>
+
+          {/* Devis Express */}
           <button
             onClick={() => setShowDevisExpressModal(true)}
-            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
+            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)' }}
           >
-            <Sparkles size={16} />
-            <span className="hidden sm:inline">Devis express</span>
+            <Zap size={20} className="mb-1 text-white/90" />
+            <p className="font-bold text-xs sm:text-sm leading-tight">Express</p>
+            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">3 clics, c'est chiffré</p>
+            <FileText size={32} className="absolute -top-1 -right-1 text-white/10" />
           </button>
-          <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
-            <Plus size={16} />
-            <span className="hidden sm:inline">Nouveau</span>
+
+          {/* Nouveau */}
+          <button
+            onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }}
+            className={`relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
+            style={{ background: `linear-gradient(135deg, ${couleur}cc, ${couleur})` }}
+          >
+            <Plus size={20} className="mb-1 text-white/90" />
+            <p className="font-bold text-xs sm:text-sm leading-tight">Nouveau</p>
+            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">Devis manuel</p>
+            <Edit3 size={32} className="absolute -top-1 -right-1 text-white/10" />
           </button>
         </div>
       </div>
