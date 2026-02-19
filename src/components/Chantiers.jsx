@@ -2144,12 +2144,43 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (newChantier?.id) setView(newChantier.id);
   };
 
+  // Helper: get Monday-Sunday of current week
+  const getCurrentWeekRange = () => {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun, 1=Mon...
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { monday, sunday, mondayStr: monday.toISOString().split('T')[0], sundayStr: sunday.toISOString().split('T')[0] };
+  };
+
+  // Helper: does a chantier overlap the current week?
+  const chantierOverlapsWeek = (c) => {
+    const { mondayStr, sundayStr } = getCurrentWeekRange();
+    const debut = c.date_debut ? c.date_debut.split('T')[0] : null;
+    const fin = c.date_fin ? c.date_fin.split('T')[0] : null;
+    // No dates = include if en_cours
+    if (!debut && !fin) return c.statut === 'en_cours';
+    // Has debut but no fin: overlaps if debut <= sunday
+    if (debut && !fin) return debut <= sundayStr;
+    // Has fin but no debut: overlaps if fin >= monday
+    if (!debut && fin) return fin >= mondayStr;
+    // Both: classic overlap check
+    return debut <= sundayStr && fin >= mondayStr;
+  };
+
   // Filtering and sorting logic
   const getFilteredAndSortedChantiers = () => {
     // First filter by status — exclude archived unless viewing archives
     let filtered = [...chantiers];
     if (filterStatus === 'archive') {
       filtered = filtered.filter(c => c.statut === 'archive');
+    } else if (filterStatus === 'cette_semaine') {
+      filtered = filtered.filter(c => c.statut !== 'archive' && chantierOverlapsWeek(c));
     } else {
       filtered = filtered.filter(c => c.statut !== 'archive');
       if (filterStatus !== 'all') {
@@ -2189,8 +2220,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Stats for filter tabs
   const archivedCount = chantiers.filter(c => c.statut === 'archive').length;
+  const cetteSemaineCount = chantiers.filter(c => c.statut !== 'archive' && chantierOverlapsWeek(c)).length;
   const statusCounts = {
     all: chantiers.filter(c => c.statut !== 'archive').length,
+    cette_semaine: cetteSemaineCount,
     en_cours: chantiers.filter(c => c.statut === 'en_cours').length,
     prospect: chantiers.filter(c => c.statut === 'prospect').length,
     termine: chantiers.filter(c => c.statut === 'termine').length,
@@ -2546,6 +2579,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
               {[
                 { key: 'all', label: 'Tous', color: couleur },
+                { key: 'cette_semaine', label: 'Cette semaine', color: '#8b5cf6' },
                 { key: 'en_cours', label: 'En cours', color: '#f97316' },
                 { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
                 { key: 'termine', label: 'Terminés', color: '#22c55e' },
@@ -2575,7 +2609,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : 'Chantiers terminés'}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : 'Chantiers terminés'}</span>
                 <span className={`text-[10px] ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -2663,61 +2697,78 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             // Force 100% for completed projects
             const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, allTasks.length);
 
+            // Format date range
+            const formatDateRange = () => {
+              if (!ch.date_debut && !ch.date_fin) return null;
+              const opts = { day: 'numeric', month: 'short' };
+              const d = ch.date_debut ? new Date(ch.date_debut).toLocaleDateString('fr-FR', opts) : '?';
+              const f = ch.date_fin ? new Date(ch.date_fin).toLocaleDateString('fr-FR', opts) : '?';
+              return `${d} → ${f}`;
+            };
+            const dateRange = formatDateRange();
+
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border p-4 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'border-amber-700 hover:border-amber-600' : 'border-amber-300 hover:border-amber-400')) : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className={`font-semibold truncate ${textPrimary}`} title={ch.nom}>{ch.nom}</h3>
-                    <p className={`text-xs ${textMuted} truncate`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</p>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusColor}`}>
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'border-amber-700 hover:border-amber-600' : 'border-amber-300 hover:border-amber-400')) : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
+                {/* Row 1: Nom + Badge statut */}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <h3 className={`font-semibold text-sm leading-tight ${textPrimary}`}>{ch.nom}</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 ${statusColor}`}>
                     {statusLabel}
                   </span>
                 </div>
 
-                {/* Progress bar */}
-                {ch.statut === 'en_cours' && (
-                  <div className="mb-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs ${textMuted}`}>Avancement</span>
-                      <span className={`text-xs font-semibold`} style={{ color: couleur }}>{avancement}%</span>
-                    </div>
-                    <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
-                    </div>
-                  </div>
-                )}
+                {/* Row 2: Client · Dates */}
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className={`text-xs ${textMuted}`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</span>
+                  {dateRange && (
+                    <>
+                      <span className={`text-xs ${textMuted}`}>·</span>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1`}>
+                        <Calendar size={11} />
+                        {dateRange}
+                      </span>
+                    </>
+                  )}
+                </div>
 
-                {/* Stats row */}
-                <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                  <div className="flex items-center gap-4">
-                    {budgetPrevu > 0 ? (
-                      <div className={`flex items-center gap-1.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200')) : ''} ${hasAlert ? 'px-2 py-1 rounded-lg' : ''}`} title={bilan.tauxMarge < 0 ? 'Marge négative — le chantier génère une perte' : budgetDepleted ? `Budget consommé à ${revenuTotalList > 0 ? ((bilan.totalDepenses / revenuTotalList) * 100).toFixed(0) : 0}%` : `Marge : ${formatPct(bilan.tauxMarge)}`}>
-                        <span className={`text-sm font-bold ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
-                        {hasAlert && <AlertTriangle size={14} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'} animate-pulse`} />}
+                {/* Row 3: Progress bar + Budget/Marge compacts */}
+                <div className="flex items-center gap-3">
+                  {/* Progress bar - inline */}
+                  {ch.statut === 'en_cours' && (
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
-                    ) : (
-                      <span className={`text-xs ${textMuted}`}>Budget non défini</span>
-                    )}
-                    {/* Task indicator */}
+                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
+                    </div>
+                  )}
+                  {ch.statut !== 'en_cours' && <div className="flex-1" />}
+
+                  {/* Budget + Marge + Tasks compact */}
+                  <div className="flex items-center gap-3 shrink-0">
                     {allTasks.length > 0 && (
-                      <div className="flex items-center gap-1.5">
-                        <CheckSquare size={14} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
-                        <span className={`text-xs font-medium ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                      <div className="flex items-center gap-1">
+                        <CheckSquare size={12} className={pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'} />
+                        <span className={`text-[11px] font-medium tabular-nums ${pendingTasks.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                           {tasksDone}/{allTasks.length}
                         </span>
                       </div>
                     )}
+                    {budgetPrevu > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>{formatMoney(budgetPrevu)}</span>
+                        <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
+                        {hasAlert && <AlertTriangle size={12} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
+                      </div>
+                    )}
                   </div>
-                  <span className={`text-sm font-bold whitespace-nowrap tabular-nums ${textPrimary}`}>{budgetPrevu > 0 ? formatMoney(budgetPrevu) : ''}</span>
                 </div>
 
                 {/* Unarchive button for archived chantiers */}
                 {ch.statut === 'archive' && (
                   <button
                     onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'termine' }); showToast('Chantier restauré', 'success'); }}
-                    className={`w-full mt-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    className={`w-full mt-2 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                   >
                     <Archive size={14} /> Restaurer
                   </button>
