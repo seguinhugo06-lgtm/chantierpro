@@ -509,18 +509,20 @@ export default function Dashboard({
   const [showAIChat, setShowAIChat] = useState(false);
 
   // Widget configuration - persisted in localStorage
+  // Default widgets — show only essential ones by default to reduce dashboard density
+  // Users can re-enable hidden widgets via "Personnaliser"
   const DEFAULT_WIDGETS = [
     { id: 'overview', label: 'Vue d\'ensemble', visible: true },
-    { id: 'revenue', label: 'Chiffre d\'affaires', visible: true },
     { id: 'devis', label: 'Devis & Factures', visible: true },
     { id: 'chantiers', label: 'Chantiers', visible: true },
-    { id: 'tresorerie', label: 'Trésorerie', visible: true },
-    { id: 'score', label: 'Score Santé', visible: true },
     { id: 'activity', label: 'Activité récente', visible: true },
-    { id: 'weather', label: 'Alertes Météo', visible: true },
-    { id: 'stock', label: 'Stock', visible: true },
-    { id: 'subscription', label: 'Abonnement', visible: true },
     { id: 'conformity', label: 'Conformité', visible: true },
+    { id: 'revenue', label: 'Chiffre d\'affaires', visible: false },
+    { id: 'tresorerie', label: 'Trésorerie', visible: false },
+    { id: 'score', label: 'Score Santé', visible: false },
+    { id: 'weather', label: 'Alertes Météo', visible: false },
+    { id: 'stock', label: 'Stock', visible: false },
+    { id: 'subscription', label: 'Abonnement', visible: false },
   ];
 
   const [widgetConfig, setWidgetConfig] = useState(() => {

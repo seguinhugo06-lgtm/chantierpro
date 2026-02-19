@@ -1295,7 +1295,7 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
+        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-16 lg:pb-0`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
@@ -1332,6 +1332,7 @@ export default function App() {
         </main>
 
         {/* Floating Action Button (FAB) for quick actions - hidden on form pages */}
+        {/* FAB Menu - hidden on mobile when bottom nav is visible */}
         <FABMenu
           onNewDevis={() => setShowFABDevisWizard(true)}
           onNewClient={() => setShowFABQuickClient(true)}
@@ -1346,6 +1347,56 @@ export default function App() {
             page === 'devis' || page === 'settings'
           }
         />
+
+        {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
+        <nav className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'} pb-[env(safe-area-inset-bottom)]`}>
+          <div className="flex items-center justify-around h-14">
+            {[
+              { id: 'dashboard', icon: Home, label: 'Accueil' },
+              { id: 'devis', icon: FileText, label: 'Devis' },
+              { id: 'chantiers', icon: Building2, label: 'Chantiers' },
+              { id: 'memos', icon: ClipboardList, label: 'Mémos' },
+              { id: 'plus', icon: Plus, label: 'Nouveau' },
+            ].map(item => {
+              const isActive = item.id === page;
+              const isPlus = item.id === 'plus';
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (isPlus) {
+                      setShowFABDevisWizard(true);
+                    } else {
+                      setPage(item.id);
+                      setSidebarOpen(false);
+                      setSelectedChantier(null);
+                      setSelectedDevis(null);
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                    isPlus
+                      ? ''
+                      : isActive
+                        ? ''
+                        : isDark ? 'text-slate-500' : 'text-slate-400'
+                  }`}
+                  style={isActive && !isPlus ? { color: couleur } : {}}
+                >
+                  {isPlus ? (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white -mt-4 shadow-lg" style={{ backgroundColor: couleur }}>
+                      <item.icon size={22} />
+                    </div>
+                  ) : (
+                    <>
+                      <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                      <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
 
       {/* FAB Devis Wizard */}
