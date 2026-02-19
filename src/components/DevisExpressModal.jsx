@@ -178,7 +178,16 @@ export default function DevisExpressModal({
     handleClose();
   };
 
-  // Step 2 running total based on modeleQtys
+  // Get métiers
+  const metiers = useMemo(() => getMetiersWithModeles(), []);
+
+  // Get modèles for selected métier
+  const modeles = useMemo(() => {
+    if (!selectedMetier) return [];
+    return getModelesByMetier(selectedMetier.id);
+  }, [selectedMetier]);
+
+  // Step 2 running total based on modeleQtys (must be after modeles declaration)
   const step2Total = useMemo(() => {
     if (!modeles.length) return 0;
     return Object.entries(modeleQtys).reduce((sum, [modeleId, qty]) => {
@@ -188,15 +197,6 @@ export default function DevisExpressModal({
       return sum + calculateModeleTotal(modele) * qty;
     }, 0);
   }, [modeleQtys, modeles]);
-
-  // Get métiers
-  const metiers = useMemo(() => getMetiersWithModeles(), []);
-
-  // Get modèles for selected métier
-  const modeles = useMemo(() => {
-    if (!selectedMetier) return [];
-    return getModelesByMetier(selectedMetier.id);
-  }, [selectedMetier]);
 
   // Filter modèles by search
   const filteredModeles = useMemo(() => {
