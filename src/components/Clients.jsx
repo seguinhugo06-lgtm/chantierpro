@@ -410,40 +410,67 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
-            <p className={`text-lg sm:text-2xl font-bold ${stats.chantiers === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={stats.chantiers > 0 ? {color: couleur} : {}}>{stats.chantiers}</p>
-            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Home size={12} /> Chantiers</p>
-          </div>
-          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
-            <p className={`text-lg sm:text-2xl font-bold ${stats.devis === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-blue-500'}`}>{stats.devis}</p>
-            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Devis</p>
-          </div>
-          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
-            <p className={`text-lg sm:text-2xl font-bold ${stats.factures === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-purple-500'}`}>{stats.factures}</p>
-            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
-          </div>
-          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
-            <p className={`text-lg sm:text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{formatMoney(stats.ca)}</p>
-            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
-          </div>
+        {/* KPI Row — Clickable */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            { key: 'chantiers', icon: Home, color: couleur, value: stats.chantiers, label: 'Chantiers', sub: stats.chantiersEnCours > 0 ? `${stats.chantiersEnCours} en cours` : null, tab: 'chantiers' },
+            { key: 'devis', icon: FileText, color: '#3b82f6', value: stats.devis, label: 'Devis', sub: stats.devisActifs > 0 ? `${stats.devisActifs} en attente` : null, tab: 'documents' },
+            { key: 'factures', icon: Receipt, color: '#8b5cf6', value: stats.factures, label: 'Factures', sub: null, tab: 'documents' },
+            { key: 'ca', icon: Euro, color: '#10b981', value: formatMoney(stats.ca), label: 'CA Total', sub: null, tab: 'documents' },
+          ].map(kpi => {
+            const Icon = kpi.icon;
+            const isActive = activeTab === kpi.tab;
+            return (
+              <button
+                key={kpi.key}
+                onClick={() => setActiveTab(kpi.tab)}
+                className={`${cardBg} rounded-xl border p-3 text-center transition-all hover:shadow-sm ${isActive ? 'ring-1' : ''}`}
+                style={isActive ? { borderColor: kpi.color, '--tw-ring-color': kpi.color } : {}}
+              >
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Icon size={14} style={{ color: kpi.color }} />
+                </div>
+                <p className={`text-lg font-bold ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
+                <p className={`text-[10px] ${textMuted}`}>{kpi.label}</p>
+                {kpi.sub && <p className={`text-[10px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Onglets Historique */}
-        <div className={`flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {[
-            ['historique', <History size={14} />, 'Historique'],
-            ['chantiers', <Home size={14} />, 'Chantiers'],
-            ['documents', <FileText size={14} />, 'Documents'],
-            ['echanges', <MessageSquare size={14} />, 'Échanges'],
-            ['photos', <Camera size={14} />, 'Photos'],
-            ['memos', <ClipboardList size={14} />, 'Mémos']
-          ].map(([k, icon, label]) => (
-            <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2.5 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[44px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
-              {icon} {label}
-            </button>
-          ))}
+        {/* Tabs with badges */}
+        <div className={`flex gap-1 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          {(() => {
+            // Compute badge counts
+            const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
+            const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
+            const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
+
+            const tabs = [
+              { key: 'historique', icon: <History size={14} />, label: 'Historique', badge: 0 },
+              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
+              { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
+              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
+              { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
+              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Mémos', badge: memoCount },
+            ];
+
+            return tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 transition-colors ${activeTab === tab.key ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
+              >
+                {tab.icon}
+                <span className="hidden sm:inline">{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className={`ml-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ${activeTab === tab.key ? 'text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`} style={activeTab === tab.key ? { background: couleur } : {}}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            ));
+          })()}
         </div>
 
         {activeTab === 'historique' && (() => {
@@ -697,7 +724,43 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         )}
 
         {activeTab === 'memos' && (
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
+          <div className="space-y-4">
+            {/* Notes internes */}
+            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className={`text-sm font-medium ${textPrimary}`}>Notes internes</p>
+              </div>
+              {client.notes ? (
+                <p className={`text-sm p-3 rounded-lg ${isDark ? 'bg-amber-900/20 text-amber-200' : 'bg-amber-50 text-amber-800'} whitespace-pre-line`}>{client.notes}</p>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>
+                  + Ajouter des notes
+                </button>
+              )}
+              {/* Quick tags */}
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {['À rappeler', 'VIP', 'Problème paiement', 'Recommandé'].map(tag => {
+                  const hasTag = client.notes?.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        if (hasTag) return;
+                        const newNotes = client.notes ? `${client.notes}\n[${tag}]` : `[${tag}]`;
+                        updateClient?.(client.id, { notes: newNotes });
+                      }}
+                      className={`px-2 py-1 rounded-full text-[10px] font-medium transition-all ${hasTag ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                      style={hasTag ? { background: couleur } : {}}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Memos list */}
+            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
               const clientMemos = memos.filter(m => m.client_id === client.id);
               const activeMemos = clientMemos.filter(m => !m.is_done);
@@ -780,6 +843,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 </div>
               );
             })()}
+          </div>
           </div>
         )}
 
