@@ -312,10 +312,10 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     const devisOnly = cleanDevis.filter(d => d.type === 'devis');
     const factures = cleanDevis.filter(d => d.type === 'facture');
 
-    // Potentiel = brouillon + envoyé + vu (tout ce qui n'est pas encore signé)
-    const devisEnAttente = devisOnly.filter(d => ['brouillon', 'envoye', 'vu'].includes(d.statut)).length;
+    // En attente de réponse = envoyé + vu (aligné avec Dashboard)
+    const devisEnAttente = devisOnly.filter(d => ['envoye', 'vu'].includes(d.statut)).length;
     const montantEnAttente = devisOnly
-      .filter(d => ['brouillon', 'envoye', 'vu'].includes(d.statut))
+      .filter(d => ['envoye', 'vu'].includes(d.statut))
       .reduce((sum, d) => sum + (d.total_ttc || d.total_ht || 0), 0);
 
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;

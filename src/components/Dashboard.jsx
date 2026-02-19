@@ -594,7 +594,7 @@ export default function Dashboard({
     // Pipeline
     const devisPipeline = {
       brouillon: devisOnly.filter((d) => d.statut === 'brouillon'),
-      envoye: devisOnly.filter((d) => d.statut === 'envoye'),
+      envoye: devisOnly.filter((d) => d.statut === 'envoye' || d.statut === 'vu'),
       accepte: devisOnly.filter((d) =>
         ['accepte', 'acompte_facture', 'facture'].includes(d.statut)
       ),
@@ -631,9 +631,9 @@ export default function Dashboard({
     const chantiersProspect = safeChantiers.filter((c) => c.statut === 'prospect').length;
     const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
-    // Devis stats - potentiel commercial = brouillon + envoyé (tout ce qui n'est pas encore signé)
-    const devisEnAttente = devisPipeline.brouillon.length + devisPipeline.envoye.length;
-    const montantDevisEnAttente = [...devisPipeline.brouillon, ...devisPipeline.envoye].reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
+    // Devis en attente de réponse = envoyé + vu (exclu brouillons)
+    const devisEnAttente = devisPipeline.envoye.length;
+    const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
 
     // Conversion rate
     const devisTotalEnvoyes =
@@ -1120,7 +1120,8 @@ export default function Dashboard({
         {/* Devis à relancer */}
         {(() => {
           const staleDevis = safeDevis.filter(d => {
-            if (d.type !== 'devis' || d.statut !== 'envoye') return false;
+            if (d.type !== 'devis' || !['envoye', 'vu'].includes(d.statut)) return false;
+            if ((d.total_ttc || d.total_ht || 0) <= 1) return false; // Exclure devis à 0€/0,01€
             return daysSince(d.date) >= 7;
           }).sort((a, b) => daysSince(b.date) - daysSince(a.date));
 

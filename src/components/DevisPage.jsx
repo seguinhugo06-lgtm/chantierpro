@@ -1448,7 +1448,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 )}
               </div>
               <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h2>
-              <p className={`text-sm ${textMuted}`}>{client ? `${client.nom} ${client.prenom || ''}` : (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
+              <p className={`text-sm ${textMuted}`}>{client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
 
             {/* Header actions - with labels for better accessibility */}
@@ -1657,7 +1657,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         showToast('Le devis doit être signé avant de facturer', 'info');
                         return;
                       }
-                      const clientName = client ? `${client.nom || ''} ${client.prenom || ''}`.trim() : 'le client';
+                      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
                       const confirmed = await confirm({
                         title: canAcompte ? 'Créer une facture d\'acompte ?' : 'Créer la facture ?',
                         message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
@@ -2032,7 +2032,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className={`mb-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                 <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
                 <p className={`font-semibold ${client ? textPrimary : 'text-red-500'}`}>
-                  {client ? `${client.nom} ${client.prenom || ''}` : (selected.client_nom || 'Client supprimé')}
+                  {client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')}
                 </p>
                 {client?.adresse && <p className={`text-sm ${textMuted} whitespace-pre-line`}>{client.adresse}</p>}
               </div>
@@ -3309,7 +3309,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </span>
                     ) : null; })()}
                   </div>
-                  <p className={`text-sm ${textMuted}`}>{client?.nom || d.client_nom || 'Client supprimé'} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
+                  <p className={`text-sm ${textMuted}`}>{client ? `${client.prenom || ''} ${client.nom}`.trim() : (d.client_nom || 'Client supprimé')} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
                 {/* Action buttons - simple icons for list view */}
                 <div className="flex items-center gap-1 flex-shrink-0">

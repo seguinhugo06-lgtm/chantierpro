@@ -15,6 +15,10 @@ export const DEVIS_STATUS = {
   PAYEE: 'payee'
 };
 
+// Filtres devis centralisés — source unique de vérité
+export const DEVIS_EN_ATTENTE = [DEVIS_STATUS.ENVOYE, DEVIS_STATUS.VU]; // En attente de réponse client
+export const DEVIS_PIPELINE = [DEVIS_STATUS.BROUILLON, DEVIS_STATUS.ENVOYE, DEVIS_STATUS.VU]; // Pipeline commercial total
+
 export const DEVIS_STATUS_LABELS = {
   [DEVIS_STATUS.BROUILLON]: 'Brouillon',
   [DEVIS_STATUS.ENVOYE]: 'Envoyé',
