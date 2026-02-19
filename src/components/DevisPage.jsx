@@ -96,6 +96,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
@@ -1472,6 +1473,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Eye size={18} className="flex-shrink-0" />
                 <span className="hidden sm:inline text-sm font-medium">Aperçu</span>
               </button>
+              {/* Modifier button - only for editable statuses */}
+              {['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
+                <button
+                  onClick={() => {
+                    setEditingDevis(selected);
+                    setShowDevisWizard(true);
+                  }}
+                  className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
+                  style={{ backgroundColor: couleur }}
+                  title="Modifier ce document"
+                  aria-label="Modifier ce document"
+                >
+                  <Pen size={18} className="flex-shrink-0" />
+                  <span className="hidden sm:inline text-sm font-medium">Modifier</span>
+                </button>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
@@ -3002,7 +3019,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <Sparkles size={16} />
             <span className="hidden sm:inline">Devis express</span>
           </button>
-          <button onClick={() => setShowDevisWizard(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} />
             <span className="hidden sm:inline">Nouveau</span>
           </button>
@@ -3239,7 +3256,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                   <FileText size={18} />
                   Créer mon premier devis
                 </button>
@@ -3254,7 +3271,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                 <Plus size={18} />
                 Créer un nouveau document
               </button>
@@ -3508,7 +3525,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {/* Devis Wizard - Step-by-step devis creation */}
       <DevisWizard
         isOpen={showDevisWizard}
-        onClose={() => setShowDevisWizard(false)}
+        onClose={() => { setShowDevisWizard(false); setEditingDevis(null); }}
+        initialData={editingDevis}
         onSubmit={async (devisData) => {
           const numero = await generateNumero(devisData.type);
           const newDevis = await onSubmit({ ...devisData, numero });
@@ -3519,6 +3537,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           setMode('preview');
           showToast(`${devisData.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`, 'success');
           return newDevis;
+        }}
+        onUpdate={async (id, devisData) => {
+          await onUpdate(id, devisData);
+          // Refresh the selected devis with updated data
+          const updated = { ...selected, ...devisData };
+          setSelected(updated);
+          setDevis(prev => prev.map(d => d.id === id ? updated : d));
+          setEditingDevis(null);
+          showToast('Document modifié avec succès', 'success');
         }}
         clients={clients}
         addClient={(data) => {

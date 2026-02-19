@@ -19,6 +19,8 @@ export default function DevisWizard({
   isOpen,
   onClose,
   onSubmit,
+  onUpdate,
+  initialData = null,
   clients = [],
   addClient,
   catalogue = [],
@@ -27,6 +29,7 @@ export default function DevisWizard({
   isDark = false,
   couleur = '#f97316'
 }) {
+  const isEditMode = !!initialData;
   const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -47,29 +50,52 @@ export default function DevisWizard({
   const [draftRestored, setDraftRestored] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Load draft from localStorage when opening
+  // Load draft or initialData when opening
   useEffect(() => {
     if (isOpen) {
+      // Edit mode: pre-fill form from initialData
+      if (initialData) {
+        setForm({
+          type: initialData.type || 'devis',
+          clientId: initialData.client_id || '',
+          chantierId: initialData.chantier_id || '',
+          date: initialData.date || new Date().toISOString().split('T')[0],
+          validite: initialData.validite || entreprise?.validiteDevis || 30,
+          tvaDefaut: initialData.tvaRate || entreprise?.tvaDefaut || 10,
+          lignes: (initialData.lignes || []).map((l, i) => ({
+            id: l.id || `line-${i}`,
+            description: l.description || '',
+            quantite: l.quantite || 1,
+            unite: l.unite || 'u',
+            prixUnitaire: l.prixUnitaire || 0,
+            prixAchat: l.prixAchat || 0,
+            tva: l.tva !== undefined ? l.tva : (initialData.tvaRate || 10),
+          })),
+          remise: initialData.remise || 0,
+          notes: initialData.notes || ''
+        });
+        setStep(2); // Start at items step in edit mode
+        return;
+      }
+      // Create mode: restore draft
       try {
         const saved = localStorage.getItem(DRAFT_KEY);
         if (saved) {
           const draft = JSON.parse(saved);
-          // Only restore if draft has meaningful data (client or items)
           if (draft.clientId || draft.lignes?.length > 0) {
             setForm(prev => ({
               ...prev,
               ...draft,
-              date: new Date().toISOString().split('T')[0] // Always use today's date
+              date: new Date().toISOString().split('T')[0]
             }));
             setStep(draft.clientId ? 2 : 1);
             setDraftRestored(true);
-            // Auto-dismiss draft banner after 5s
             setTimeout(() => setDraftRestored(false), 5000);
           }
         }
       } catch { /* ignore */ }
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   // Save draft to localStorage when form changes (debounced)
   useEffect(() => {
@@ -277,7 +303,8 @@ export default function DevisWizard({
       chantier_id: form.chantierId || undefined,
       date: form.date,
       validite: form.validite,
-      statut: 'brouillon',
+      // In edit mode, preserve original status; new devis starts as brouillon
+      statut: isEditMode ? initialData.statut : 'brouillon',
       tvaRate: form.tvaDefaut,
       lignes: lignesFormatted,
       remise: form.remise,
@@ -290,12 +317,16 @@ export default function DevisWizard({
     // Attempt save — do NOT close modal if save fails
     setIsSubmitting(true);
     try {
-      const result = await onSubmit?.(devisData);
+      if (isEditMode) {
+        await onUpdate?.(initialData.id, devisData);
+      } else {
+        const result = await onSubmit?.(devisData);
+      }
       // Only clear draft and close if save succeeded
-      clearDraft();
+      if (!isEditMode) clearDraft();
       onClose?.();
     } catch (error) {
-      console.error('❌ Erreur création devis:', error);
+      console.error(`❌ Erreur ${isEditMode ? 'modification' : 'création'} devis:`, error);
       setErrors({ submit: `Erreur de sauvegarde : ${error.message || 'Erreur inconnue'}` });
     } finally {
       setIsSubmitting(false);
@@ -327,7 +358,9 @@ export default function DevisWizard({
                   {step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
                 </h2>
                 <p className="text-white/80 text-sm">
-                  {form.type === 'facture' ? 'Nouvelle facture' : 'Nouveau devis'}
+                  {isEditMode
+                    ? `Modifier ${form.type === 'facture' ? 'la facture' : 'le devis'}`
+                    : form.type === 'facture' ? 'Nouvelle facture' : 'Nouveau devis'}
                 </p>
               </div>
             </div>
@@ -802,7 +835,9 @@ export default function DevisWizard({
                 ) : (
                   <Check size={18} />
                 )}
-                {isSubmitting ? 'Création...' : `Créer le ${form.type}`}
+                {isSubmitting
+                  ? (isEditMode ? 'Enregistrement...' : 'Création...')
+                  : (isEditMode ? 'Enregistrer les modifications' : `Créer le ${form.type}`)}
               </>
             ) : (
               <>
