@@ -183,4 +183,36 @@ export const CURRENCY = {
   LOCALE: 'fr-FR'
 };
 
+// Client types
+export const CLIENT_TYPES = ['Particulier', 'Professionnel', 'Architecte', 'Promoteur', 'Syndic'];
+
+export const CLIENT_TYPE_COLORS = {
+  'Particulier': { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500', color: '#3b82f6', darkBg: 'bg-blue-900/40', darkText: 'text-blue-300' },
+  'Professionnel': { bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500', color: '#f59e0b', darkBg: 'bg-amber-900/40', darkText: 'text-amber-300' },
+  'Architecte': { bg: 'bg-purple-100', text: 'text-purple-700', dot: 'bg-purple-500', color: '#8b5cf6', darkBg: 'bg-purple-900/40', darkText: 'text-purple-300' },
+  'Promoteur': { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', color: '#10b981', darkBg: 'bg-emerald-900/40', darkText: 'text-emerald-300' },
+  'Syndic': { bg: 'bg-rose-100', text: 'text-rose-700', dot: 'bg-rose-500', color: '#f43f5e', darkBg: 'bg-rose-900/40', darkText: 'text-rose-300' },
+};
+
+export const CLIENT_STATUS = {
+  ACTIF: 'actif',
+  EN_DEVIS: 'en_devis',
+  PROSPECT: 'prospect',
+  INACTIF: 'inactif',
+};
+
+export const CLIENT_STATUS_LABELS = {
+  actif: 'Actif',
+  en_devis: 'En devis',
+  prospect: 'Prospect',
+  inactif: 'Inactif',
+};
+
+export const CLIENT_STATUS_COLORS = {
+  actif: { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', darkBg: 'bg-emerald-900/40', darkText: 'text-emerald-300' },
+  en_devis: { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500', darkBg: 'bg-blue-900/40', darkText: 'text-blue-300' },
+  prospect: { bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500', darkBg: 'bg-amber-900/40', darkText: 'text-amber-300' },
+  inactif: { bg: 'bg-slate-100', text: 'text-slate-500', dot: 'bg-slate-400', darkBg: 'bg-slate-700', darkText: 'text-slate-400' },
+};
+
 // Formatters removed — use src/lib/formatters.js instead

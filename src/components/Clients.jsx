@@ -5,6 +5,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
+import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
 
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
   const { confirm } = useConfirm();
@@ -103,6 +104,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   const getClientStats = (id) => {
     return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
+  };
+
+  // Dynamic client status based on activity
+  const getClientStatus = (clientId) => {
+    const s = getClientStats(clientId);
+    if (s.chantiersEnCours > 0) return 'actif';
+    if (s.devisActifs > 0) return 'en_devis';
+    // Check if client was created recently (< 90 days)
+    const client = clients.find(c => c.id === clientId);
+    if (client?.created_at) {
+      const daysSinceCreation = (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceCreation < 90 && s.chantiers === 0 && s.devis === 0) return 'prospect';
+    }
+    if (s.chantiersActifs > 0 || s.devisActifs > 0) return 'actif';
+    return 'inactif';
   };
 
   const submit = async () => {
