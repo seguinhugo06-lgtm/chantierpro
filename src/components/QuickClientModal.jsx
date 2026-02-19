@@ -1,19 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
 import FormError from './ui/FormError';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
  * 2 required fields (nom, telephone) + expandable details
+ * With real-time duplicate detection
  */
 export default function QuickClientModal({
   isOpen,
   onClose,
   onSubmit,
   isDark = false,
-  couleur = '#f97316'
+  couleur = '#f97316',
+  existingClients = [],
+  onViewClient,
 }) {
   const [form, setForm] = useState({
     nom: '',
@@ -26,7 +29,9 @@ export default function QuickClientModal({
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [duplicates, setDuplicates] = useState([]);
   const inputRef = useRef(null);
+  const dupeTimeoutRef = useRef(null);
 
   // Validation helpers
   const validateEmail = (email) => {
@@ -39,6 +44,41 @@ export default function QuickClientModal({
     // French phone format: 10 digits, may have spaces/dots/dashes
     const cleaned = phone.replace(/[\s.\-]/g, '');
     return /^(0[1-9])\d{8}$/.test(cleaned);
+  };
+
+  // Duplicate detection
+  const checkDuplicates = (field, value) => {
+    if (!value || !existingClients.length) { setDuplicates([]); return; }
+    const found = [];
+    const normalizePhone = (p) => (p || '').replace(/[\s.\-+]/g, '');
+
+    if (field === 'telephone') {
+      const cleanVal = normalizePhone(value);
+      if (cleanVal.length >= 6) {
+        existingClients.forEach(c => {
+          if (normalizePhone(c.telephone) === cleanVal) {
+            found.push({ ...c, reason: 'Même téléphone' });
+          }
+        });
+      }
+    }
+
+    if (field === 'nom') {
+      const q = value.toLowerCase().trim();
+      if (q.length >= 3) {
+        existingClients.forEach(c => {
+          const fullName = `${c.nom || ''} ${c.prenom || ''}`.toLowerCase().trim();
+          const reverseName = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().trim();
+          if (fullName.includes(q) || reverseName.includes(q) || q.includes((c.nom || '').toLowerCase())) {
+            if (!found.some(f => f.id === c.id)) {
+              found.push({ ...c, reason: 'Nom similaire' });
+            }
+          }
+        });
+      }
+    }
+
+    setDuplicates(found.slice(0, 3));
   };
 
   // Theme classes
@@ -62,6 +102,7 @@ export default function QuickClientModal({
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
+      setDuplicates([]);
     }
   }, [isOpen]);
 
@@ -189,8 +230,11 @@ export default function QuickClientModal({
                 type="text"
                 value={form.nom}
                 onChange={e => {
-                  setForm(p => ({ ...p, nom: e.target.value }));
+                  const val = e.target.value;
+                  setForm(p => ({ ...p, nom: val }));
                   if (errors.nom) setErrors(p => ({ ...p, nom: null }));
+                  clearTimeout(dupeTimeoutRef.current);
+                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('nom', val), 500);
                 }}
                 placeholder="Dupont"
                 aria-required="true"
@@ -229,8 +273,11 @@ export default function QuickClientModal({
                 type="tel"
                 value={form.telephone}
                 onChange={e => {
-                  setForm(p => ({ ...p, telephone: e.target.value }));
+                  const val = e.target.value;
+                  setForm(p => ({ ...p, telephone: val }));
                   if (errors.telephone) setErrors(p => ({ ...p, telephone: null }));
+                  clearTimeout(dupeTimeoutRef.current);
+                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('telephone', val), 500);
                 }}
                 placeholder="06 12 34 56 78"
                 aria-invalid={!!errors.telephone}
@@ -240,6 +287,36 @@ export default function QuickClientModal({
               <FormError id="qc-telephone-error" message={errors.telephone} />
             </div>
           </div>
+
+          {/* Duplicate detection warning */}
+          {duplicates.length > 0 && (
+            <div className={`rounded-xl p-3 ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={14} className="text-amber-500" />
+                <p className={`text-xs font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                  Client(s) similaire(s) détecté(s)
+                </p>
+              </div>
+              {duplicates.map(dup => (
+                <div key={dup.id} className={`flex items-center gap-2 py-1.5 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+                  <span className="text-xs flex-1">
+                    <span className="font-medium">{dup.nom} {dup.prenom}</span>
+                    {dup.telephone && <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>· {dup.telephone}</span>}
+                    <span className={`ml-1 text-[10px] ${isDark ? 'text-amber-500' : 'text-amber-500'}`}>({dup.reason})</span>
+                  </span>
+                  {onViewClient && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
+                      className="text-[10px] font-medium flex items-center gap-0.5 px-2 py-1 rounded-md transition-colors hover:bg-amber-500/20"
+                      style={{ color: couleur }}
+                    >
+                      Voir <ExternalLink size={10} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Expandable details section */}
           <div className={`border rounded-xl overflow-hidden transition-all ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>

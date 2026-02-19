@@ -951,6 +951,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         onSubmit={handleQuickSubmit}
         isDark={isDark}
         couleur={couleur}
+        existingClients={clients}
+        onViewClient={(id) => { setShowQuickModal(false); setViewId(id); }}
       />
 
       {/* KPI Cards - Clickable */}
