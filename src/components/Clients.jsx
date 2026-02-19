@@ -1199,15 +1199,111 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           })}
         </div>
       ) : (
-        /* Vue Liste - placeholder, will be implemented in step 5 */
+        /* Vue Liste compacte */
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+          {/* Header row - desktop only */}
+          <div className={`hidden sm:grid grid-cols-[40px_1fr_100px_100px_80px_80px_70px] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+            <span></span>
+            <span>Client</span>
+            <span>Type</span>
+            <span>Téléphone</span>
+            <span className="text-right">CA</span>
+            <span className="text-center">Stats</span>
+            <span></span>
+          </div>
           {getSortedClients().map((c, idx) => {
             const s = getClientStats(c.id);
+            const status = getClientStatus(c.id);
+            const statusColor = CLIENT_STATUS_COLORS[status];
+            const typeColor = CLIENT_TYPE_COLORS[c.categorie];
+            const avatarBg = typeColor?.color || couleur;
+            const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+
             return (
-              <div key={c.id} className={`p-3 flex items-center gap-3 cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${idx > 0 ? `border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}` : ''}`} onClick={() => setViewId(c.id)}>
-                <span className={`text-sm font-medium ${textPrimary} flex-1`}>{c.nom} {c.prenom}</span>
-                <span className={`text-xs ${textMuted}`}>{formatMoney(s.ca)}</span>
-                <ChevronRight size={14} className={textMuted} />
+              <div
+                key={c.id}
+                className={`group cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${idx > 0 ? `border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}` : ''}`}
+                onClick={() => setViewId(c.id)}
+              >
+                {/* Desktop row */}
+                <div className="hidden sm:grid grid-cols-[40px_1fr_100px_100px_80px_80px_70px] gap-3 px-4 py-2.5 items-center">
+                  {/* Avatar */}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg }}>
+                    {initials}
+                  </div>
+                  {/* Name + company + status */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium text-sm ${textPrimary} truncate`}>{c.nom} {c.prenom}</span>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
+                        {CLIENT_STATUS_LABELS[status]}
+                      </span>
+                    </div>
+                    {c.entreprise && <p className={`text-xs ${textMuted} truncate`}>{c.entreprise}</p>}
+                  </div>
+                  {/* Type */}
+                  <div>
+                    {c.categorie && typeColor ? (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
+                        {c.categorie}
+                      </span>
+                    ) : (
+                      <span className={`text-xs ${textMuted}`}>—</span>
+                    )}
+                  </div>
+                  {/* Phone */}
+                  <span className={`text-xs ${textSecondary} truncate`}>{c.telephone || '—'}</span>
+                  {/* CA */}
+                  <span className={`text-xs font-bold text-right ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
+                  {/* Stats */}
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`flex items-center gap-0.5 text-[10px] ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={10} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
+                    </span>
+                    <span className={`flex items-center gap-0.5 text-[10px] ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={10} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
+                    </span>
+                  </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
+                    {c.telephone && (
+                      <>
+                        <button onClick={() => callPhone(c.telephone)} className={`w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
+                          <Phone size={13} className="text-blue-500" />
+                        </button>
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
+                          <MessageCircle size={13} className="text-green-500" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile row */}
+                <div className="sm:hidden px-4 py-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg }}>
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium text-sm ${textPrimary} truncate`}>{c.nom} {c.prenom}</span>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {c.entreprise && <span className={`text-xs ${textMuted} truncate`}>{c.entreprise}</span>}
+                      <span className={`text-xs font-medium ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    {c.telephone && (
+                      <button onClick={() => callPhone(c.telephone)} className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`}>
+                        <Phone size={16} className="text-blue-500" />
+                      </button>
+                    )}
+                  </div>
+                  <ChevronRight size={16} className={textMuted} />
+                </div>
               </div>
             );
           })}
