@@ -450,6 +450,27 @@ export default function App() {
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
   }, [page]);
 
+  // Bank callback handler - detect /bank/callback?ref=xxx and process
+  useEffect(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (path === '/bank/callback' && ref) {
+      window.history.replaceState({}, '', '/');
+      setPage('dashboard');
+      import('./lib/integrations/gocardless').then(async ({ checkConnection }) => {
+        try {
+          const result = await checkConnection(ref);
+          if (result.status === 'linked') {
+            console.log('[BANK] Connection successful:', result.details);
+          }
+        } catch (e) {
+          console.error('[BANK] Callback error:', e);
+        }
+      });
+    }
+  }, []);
+
   // Auth state listener - persists session across page refreshes
   useEffect(() => {
     // Check for existing session on mount
@@ -525,7 +546,7 @@ export default function App() {
   // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
     const REDIRECTS = {
-      ouvrages: 'catalogue', soustraitants: 'clients', commandes: 'chantiers',
+      ouvrages: 'catalogue', commandes: 'chantiers',
       tresorerie: 'finances', 'ia-devis': 'devis', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
@@ -945,6 +966,7 @@ export default function App() {
       badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} mémo${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
+    { id: 'soustraitants', icon: UserCheck, label: 'Sous-traitants' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }

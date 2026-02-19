@@ -1,10 +1,11 @@
 import React, { lazy, Suspense, useState } from 'react';
-import { Wallet, Download, BarChart3 } from 'lucide-react';
+import { Wallet, Download, BarChart3, Landmark } from 'lucide-react';
 
-// Lazy load the 3 sub-modules
+// Lazy load the 4 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
 const ExportComptable = lazy(() => import('./export/ExportComptable'));
 const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
+const BankModule = lazy(() => import('./bank/BankModule'));
 
 const LoadingSpinner = ({ couleur }) => (
   <div className="flex items-center justify-center py-16">
@@ -15,6 +16,7 @@ const LoadingSpinner = ({ couleur }) => (
 
 const TAB_CONFIG = [
   { key: 'tresorerie', label: 'Trésorerie', icon: Wallet },
+  { key: 'banque', label: 'Banque', icon: Landmark },
   { key: 'export', label: 'Export Comptable', icon: Download },
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
 ];
@@ -64,6 +66,22 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             clients={clients}
             paiements={paiements}
             entreprise={entreprise}
+            isDark={isDark}
+            couleur={couleur}
+            setPage={setPage}
+            modeDiscret={modeDiscret}
+          />
+        </Suspense>
+      </div>
+
+      <div style={{ display: activeTab === 'banque' ? 'block' : 'none' }}>
+        <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+          <BankModule
+            devis={devis}
+            depenses={depenses}
+            clients={clients}
+            entreprise={entreprise}
+            paiements={paiements}
             isDark={isDark}
             couleur={couleur}
             setPage={setPage}

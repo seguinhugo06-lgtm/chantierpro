@@ -31,5 +31,8 @@ export { default as RevenueChartWidget, RevenueChartWidgetSkeleton } from './Rev
 // Health Score Widget
 export { default as ScoreSanteWidget, ScoreSanteWidget as ScoreSanteWidgetNamed } from './ScoreSanteWidget';
 
+// Bank Widget
+export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';

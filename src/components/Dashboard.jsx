@@ -75,6 +75,9 @@ import {
   RevenueChartWidget,
   // Health Score Widget
   ScoreSanteWidget,
+  // Bank Widget
+  BankWidget,
+  BankWidgetSkeleton,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -1598,6 +1601,13 @@ export default function Dashboard({
                 </div>
               );
             })()}
+
+            {/* Bank Widget */}
+            <BankWidget
+              isDark={isDark}
+              onConnectBank={() => setPage('settings')}
+              onViewTransactions={() => setPage('finances')}
+            />
           </div>
         </section>
       </div>

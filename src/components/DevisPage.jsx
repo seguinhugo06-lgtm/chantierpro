@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2 } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2 } from 'lucide-react';
+import supabase from '../supabaseClient';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
@@ -97,6 +98,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
+  const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
+  const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -1135,6 +1138,52 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     });
   };
 
+  // ============================================================================
+  // Signature link generation
+  // ============================================================================
+  const buildSignatureUrl = (token) => token ? `${window.location.origin}/devis/signer/${token}` : null;
+
+  const getOrGenerateSignatureToken = async (doc) => {
+    // Return existing valid token
+    if (doc.signature_token && doc.signature_expires_at && new Date(doc.signature_expires_at) > new Date()) {
+      return doc.signature_token;
+    }
+    // Generate new token via RPC
+    if (supabase && !supabase._isDemo) {
+      try {
+        // Ensure entreprise config is up to date for the public signature page
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && entreprise) {
+            await supabase.from('entreprise_config').upsert({
+              user_id: user.id,
+              nom: entreprise.nom || null,
+              logo: entreprise.logo || null,
+              adresse: entreprise.adresse || null,
+              telephone: entreprise.tel || null,
+              email: entreprise.email || null,
+              siret: entreprise.siret || null,
+              conditions_paiement: entreprise.conditionsPaiement || entreprise.conditions_paiement || null,
+              mentions_legales: entreprise.mentionsLegales || entreprise.mentions_legales || null,
+              couleur_principale: entreprise.couleur || couleur || '#f97316',
+            }, { onConflict: 'user_id' });
+          }
+        } catch (e) { /* non-critical */ }
+
+        const { data, error } = await supabase.rpc('generate_signature_token', { p_devis_id: doc.id });
+        if (!error && data) {
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+          setDevis(prev => prev.map(d => d.id === doc.id ? { ...d, signature_token: data, signature_expires_at: expiresAt } : d));
+          if (selected?.id === doc.id) {
+            setSelectedDevis(prev => prev?.id === doc.id ? { ...prev, signature_token: data, signature_expires_at: expiresAt } : prev);
+          }
+          return data;
+        }
+      } catch (e) { /* fallback to null */ }
+    }
+    return null;
+  };
+
   // Send helpers — update status FIRST, then open communication link in setTimeout
   // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
   const sendWhatsApp = (doc) => {
@@ -1568,6 +1617,35 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     aria-label="Faire signer le devis"
                   >
                     <PenTool size={16} /> <span>Signer</span>
+                  </button>
+                )}
+
+                {/* Lien de signature - generate & share signing link */}
+                {'facture' !== selected.statut && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = await getOrGenerateSignatureToken(selected);
+                        if (token) {
+                          const url = buildSignatureUrl(token);
+                          setSignatureLinkUrl(url);
+                          setShowSignatureLinkModal(true);
+                        } else {
+                          showToast('Impossible de générer le lien de signature', 'error');
+                        }
+                      } catch (e) {
+                        showToast('Erreur lors de la génération du lien', 'error');
+                      }
+                    }}
+                    className={`px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm flex items-center gap-2 transition-all font-medium ${
+                      selected.statut === 'envoye'
+                        ? 'text-white hover:opacity-90 shadow-sm'
+                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
+                    title="Générer un lien de signature client"
+                  >
+                    <Link2 size={16} /> <span className="hidden sm:inline">Lien signature</span>
                   </button>
                 )}
 
@@ -2404,6 +2482,81 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isDark={isDark}
           couleur={couleur}
         />
+
+        {/* Signature Link Modal */}
+        {showSignatureLinkModal && signatureLinkUrl && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSignatureLinkModal(false)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Lien de signature</h3>
+                <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                  <X size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                </button>
+              </div>
+              <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Partagez ce lien avec votre client pour qu'il puisse signer le devis <strong>{selected?.numero}</strong> en ligne.
+              </p>
+              {/* URL display + copy */}
+              <div className={`flex items-center gap-2 p-3 rounded-xl mb-4 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                <input
+                  type="text"
+                  readOnly
+                  value={signatureLinkUrl}
+                  className={`flex-1 text-sm bg-transparent outline-none ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(signatureLinkUrl);
+                    showToast('Lien copié !', 'success');
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white"
+                  style={{ background: couleur }}
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+              {/* Share buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const client = clients.find(c => c.id === selected?.client_id);
+                    const phone = (client?.telephone || '').replace(/\s/g, '');
+                    const text = `Bonjour, veuillez signer votre devis ${selected?.numero} en ligne :\n${signatureLinkUrl}`;
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+                    setShowSignatureLinkModal(false);
+                  }}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
+                >
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => {
+                    const client = clients.find(c => c.id === selected?.client_id);
+                    const phone = (client?.telephone || '').replace(/\s/g, '');
+                    const text = `Signez votre devis ${selected?.numero}: ${signatureLinkUrl}`;
+                    window.location.href = `sms:${phone}?body=${encodeURIComponent(text)}`;
+                    setShowSignatureLinkModal(false);
+                  }}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                >
+                  SMS
+                </button>
+                <button
+                  onClick={() => {
+                    const client = clients.find(c => c.id === selected?.client_id);
+                    const subject = `Signature devis ${selected?.numero}`;
+                    const body = `Bonjour,%0A%0AVeuillez signer votre devis en ligne :%0A${encodeURIComponent(signatureLinkUrl)}%0A%0ACordialement`;
+                    window.location.href = `mailto:${client?.email || ''}?subject=${subject}&body=${body}`;
+                    setShowSignatureLinkModal(false);
+                  }}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                >
+                  Email
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Payment Modal — also needed in preview mode */}
         <PaymentModal
