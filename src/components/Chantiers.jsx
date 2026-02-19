@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic } from 'lucide-react';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
@@ -2239,6 +2239,95 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </button>
         </div>
       </div>
+
+      {/* === BANDE JOURNEE D'AUJOURD'HUI === */}
+      {(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const chantiersToday = chantiers.filter(c => {
+          if (c.statut !== 'en_cours') return false;
+          const debut = c.date_debut ? c.date_debut.split('T')[0] : null;
+          const fin = c.date_fin ? c.date_fin.split('T')[0] : null;
+          if (!debut) return true; // en_cours sans date = toujours affiche
+          return debut <= today && (!fin || fin >= today);
+        });
+        const tachesEnAttente = chantiersToday.reduce((sum, c) => sum + (c.taches || []).filter(t => !t.done).length, 0);
+
+        if (chantiersToday.length === 0 && chantiers.length > 0) {
+          return (
+            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                  <Calendar size={20} className={textMuted} />
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${textPrimary}`}>Aucun chantier planifie aujourd'hui</p>
+                  <p className={`text-xs ${textMuted}`}>Voulez-vous en creer un ?</p>
+                </div>
+                <button onClick={() => setShow(true)} className="px-3 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: couleur }}>
+                  <Plus size={14} className="inline mr-1" />Creer
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        if (chantiersToday.length > 0) {
+          return (
+            <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+              {/* Header */}
+              <div className="px-4 py-3 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${couleur}10, ${couleur}05)` }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className={`text-sm font-semibold ${textPrimary}`}>
+                    Aujourd'hui : {chantiersToday.length} chantier{chantiersToday.length > 1 ? 's' : ''}
+                  </span>
+                  {tachesEnAttente > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                      {tachesEnAttente} tache{tachesEnAttente > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Chantiers du jour */}
+              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                {chantiersToday.slice(0, 4).map(c => {
+                  const cl = clients.find(cl => cl.id === c.client_id);
+                  return (
+                    <div key={c.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.nom}</p>
+                        <p className={`text-xs ${textMuted}`}>
+                          {cl ? `${cl.nom} ${cl.prenom || ''}`.trim() : ''}
+                          {c.ville ? ` · ${c.ville}` : ''}
+                        </p>
+                      </div>
+                      {(c.adresse || c.ville) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const address = encodeURIComponent(`${c.adresse || ''} ${c.codePostal || ''} ${c.ville || ''}`);
+                            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                            const isAndroid = /Android/.test(navigator.userAgent);
+                            if (isIOS) window.open(`maps://maps.apple.com/?q=${address}`, '_blank');
+                            else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
+                            else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                          }}
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                          style={{ backgroundColor: couleur }}
+                          title="Ouvrir GPS"
+                        >
+                          <Navigation size={16} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Search bar */}
       {chantiers.length > 3 && (
