@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 
 // Custom colored markers using SVG
 const createColoredIcon = (color, isActive = false) => {
-  const size = isActive ? 36 : 28;
+  const size = isActive ? 40 : 32;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${size}" height="${Math.round(size * 1.5)}">
     <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/>
     <circle cx="12" cy="12" r="5" fill="white" opacity="0.9"/>
@@ -72,6 +72,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);
+  const [mapFilter, setMapFilter] = useState('all'); // 'all', 'en_cours', 'prospect'
   const geocacheRef = useRef({});
 
   // Geocode all chantiers with addresses
@@ -179,6 +180,30 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         </div>
       )}
 
+      {/* Filter overlay buttons */}
+      <div className={`absolute top-3 left-3 z-[1000] flex gap-1.5`}>
+        {[
+          { key: 'all', label: 'Tous', color: couleur },
+          { key: 'en_cours', label: 'En cours', color: STATUS_COLORS.en_cours },
+          { key: 'prospect', label: 'Prospects', color: STATUS_COLORS.prospect },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => setMapFilter(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium shadow-md transition-all ${
+              mapFilter === f.key
+                ? 'text-white'
+                : isDark
+                  ? 'bg-slate-800/90 text-slate-300 hover:bg-slate-700'
+                  : 'bg-white/90 text-slate-600 hover:bg-white'
+            }`}
+            style={mapFilter === f.key ? { backgroundColor: f.color } : {}}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Legend */}
       <div className={`absolute bottom-6 left-3 z-[1000] px-3 py-2 rounded-xl text-xs shadow-lg ${isDark ? 'bg-slate-800/95 text-slate-300' : 'bg-white/95 text-slate-600'}`}>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -243,10 +268,21 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         )}
 
         {/* Chantier markers */}
-        {positions.map(ch => {
+        {positions
+          .filter(ch => mapFilter === 'all' || ch.statut === mapFilter)
+          .map(ch => {
           const client = clients?.find(c => c.id === ch.client_id);
           const color = STATUS_COLORS[ch.statut] || STATUS_COLORS.prospect;
           const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'prospect' ? 'Prospect' : ch.statut;
+
+          // Calculate avancement
+          const allTasks = ch.taches || [];
+          const tasksDone = allTasks.filter(t => t.done).length;
+          const avancement = ch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
+
+          // GPS URL
+          const gpsAddr = [ch.adresse, ch.codePostal, ch.ville].filter(Boolean).join(' ');
+          const gpsUrl = gpsAddr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(gpsAddr)}` : null;
 
           return (
             <Marker
@@ -258,34 +294,89 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
               }}
             >
               <Popup>
-                <div style={{ minWidth: '180px' }}>
-                  <p className="font-bold text-sm mb-1" style={{ color: isDark ? '#e2e8f0' : '#1e293b' }}>{ch.nom}</p>
-                  {client && (
-                    <p className="text-xs mb-1" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                      {client.nom} {client.prenom || ''}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mb-2">
+                <div style={{ minWidth: '200px' }}>
+                  {/* Name + Status badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <p className="font-bold text-sm" style={{ color: isDark ? '#e2e8f0' : '#1e293b', margin: 0, flex: 1 }}>{ch.nom}</p>
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                       style={{ background: `${color}20`, color }}
                     >
                       {statusLabel}
                     </span>
                   </div>
-                  {ch.adresse && (
-                    <p className="text-xs mb-2" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                      <MapPin size={10} className="inline mr-1" />
-                      {ch.adresse}{ch.ville ? `, ${ch.ville}` : ''}
+
+                  {/* Client */}
+                  {client && (
+                    <p className="text-xs mb-1" style={{ color: isDark ? '#94a3b8' : '#64748b', margin: '0 0 4px 0' }}>
+                      {client.nom} {client.prenom || ''}
                     </p>
                   )}
-                  <button
-                    onClick={() => onSelectChantier?.(ch.id)}
-                    className="w-full text-xs font-medium py-1.5 rounded-lg text-white text-center block"
-                    style={{ background: couleur }}
-                  >
-                    Voir le chantier →
-                  </button>
+
+                  {/* Progress bar */}
+                  {ch.statut === 'en_cours' && allTasks.length > 0 && (
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                        <span className="text-[10px]" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Avancement</span>
+                        <span className="text-[10px] font-semibold" style={{ color: couleur }}>{avancement}%</span>
+                      </div>
+                      <div style={{ height: '4px', borderRadius: '2px', background: isDark ? '#334155' : '#e2e8f0', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: '2px', width: `${Math.max(3, avancement)}%`, background: couleur, transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action buttons: GPS + Open */}
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {gpsUrl && (
+                      <a
+                        href={gpsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          padding: '6px 8px',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: '#f97316',
+                          background: isDark ? '#431407' : '#fff7ed',
+                          border: `1px solid ${isDark ? '#9a3412' : '#fed7aa'}`,
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Navigation size={12} />
+                        GPS
+                      </a>
+                    )}
+                    <button
+                      onClick={() => onSelectChantier?.(ch.id)}
+                      style={{
+                        flex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        padding: '6px 8px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: couleur,
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <ExternalLink size={12} />
+                      Ouvrir fiche
+                    </button>
+                  </div>
                 </div>
               </Popup>
             </Marker>
