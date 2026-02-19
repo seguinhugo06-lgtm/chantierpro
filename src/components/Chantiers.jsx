@@ -242,7 +242,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const margeFaible = !margeNegative && bilan.tauxMarge < 15;
 
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6 pb-24">
         {/* Header sticky avec navigation ← → */}
         {(() => {
           // Navigation entre chantiers
@@ -258,6 +258,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center shrink-0`}>
                   <ArrowLeft size={20} className={textPrimary} />
                 </button>
+                {/* Sync status dot */}
+                <div className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} title={isOnline ? 'En ligne' : 'Hors ligne'} />
                 <h2 className={`flex-1 min-w-0 text-base sm:text-xl font-bold leading-tight ${textPrimary}`}>{ch.nom}</h2>
                 <select
                   value={ch.statut}
@@ -1148,7 +1150,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             {/* Photos grid with timestamp badges */}
             {(!ch.photos || ch.photos.length === 0) ? (
-              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50 border border-dashed border-slate-300'}`}>
+              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50 border border-solid border-slate-300'}`}>
                 <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
                   <Camera size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
                 </div>
@@ -1939,7 +1941,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                               updateChantier(ch.id, { taches: [...(ch.taches || []), { id: generateId(), text: `Phase: ${phase}`, done: false }] });
                             }
                           }}
-                          className={`px-3 py-2 rounded-lg text-sm border-2 border-dashed ${isDark ? 'border-slate-600 hover:border-slate-500 text-slate-300' : 'border-slate-300 hover:border-slate-400 text-slate-600'}`}
+                          className={`px-3 py-2 rounded-lg text-sm border-2 border-solid ${isDark ? 'border-slate-600 hover:border-slate-500 text-slate-300' : 'border-slate-300 hover:border-slate-400 text-slate-600'}`}
                         >
                           {i + 1}. {phase}
                         </button>
@@ -2496,7 +2498,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   ) : tasksTotal === 0 ? (
                     <button
                       onClick={(e) => { e.stopPropagation(); setView(current.id); }}
-                      className={`w-full py-3 rounded-lg border-2 border-dashed text-sm ${isDark ? 'border-slate-600 text-slate-400' : 'border-slate-200 text-slate-500'}`}
+                      className={`w-full py-3 rounded-lg border-2 border-solid text-sm ${isDark ? 'border-slate-600 text-slate-400' : 'border-slate-200 text-slate-500'}`}
                     >
                       + Ajouter des tâches
                     </button>
