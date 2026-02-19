@@ -241,108 +241,148 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Breadcrumb navigation */}
-        <div className={`flex items-center gap-1.5 text-sm ${textMuted}`}>
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className="hover:underline flex items-center gap-1">
-            <Building2 size={14} />
-            <span>Chantiers</span>
-          </button>
-          <ChevronRight size={14} />
-          <span className={textPrimary}>{ch.nom}</span>
-        </div>
+        {/* Header sticky avec navigation ← → */}
+        {(() => {
+          // Navigation entre chantiers
+          const navList = chantiers.filter(c => c.statut !== 'archive');
+          const currentIdx = navList.findIndex(c => c.id === ch.id);
+          const prevChantier = currentIdx > 0 ? navList[currentIdx - 1] : null;
+          const nextChantier = currentIdx < navList.length - 1 ? navList[currentIdx + 1] : null;
 
-        {/* Header */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
-          <div className="flex-1 min-w-0"><h2 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h2></div>
-          <button
-            onClick={() => setEditingChantier(ch)}
-            className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
-            title="Modifier le chantier"
-          >
-            <Edit3 size={18} className={textMuted} />
-          </button>
-          <button
-            onClick={() => {
-              const clone = {
-                nom: `${ch.nom} (copie)`,
-                client_id: ch.client_id,
-                clientId: ch.client_id,
-                adresse: ch.adresse,
-                ville: ch.ville,
-                codePostal: ch.codePostal,
-                dateDebut: new Date().toISOString().split('T')[0],
-                date_debut: new Date().toISOString().split('T')[0],
-                dateFin: '',
-                date_fin: '',
-                budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0,
-                budget_estime: ch.budget_estime || ch.budgetPrevu || 0,
-                budget_materiaux: ch.budget_materiaux || 0,
-                heures_estimees: ch.heures_estimees || 0,
-                description: ch.description || '',
-                notes: ch.notes || '',
-                taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })),
-                photos: [],
-                documents: [],
-                messages: [],
-                statut: 'prospect'
-              };
-              const newCh = addChantier(clone);
-              showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
-              if (newCh?.id) setView(newCh.id);
-            }}
-            className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
-            title="Dupliquer le chantier"
-          >
-            <Copy size={18} className={textMuted} />
-          </button>
-          {ch.statut !== 'archive' && (
-            <button
-              onClick={async () => {
-                const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` });
-                if (confirmed) {
-                  updateChantier(ch.id, { statut: 'archive' });
-                  showToast('Chantier archivé', 'success');
-                  setView(null);
-                }
-              }}
-              className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
-              title="Archiver le chantier"
-            >
-              <Archive size={18} className={textMuted} />
-            </button>
-          )}
-          <button
-            onClick={() => setShowTaskGenerator(true)}
-            className="px-3 py-2 rounded-xl min-h-[44px] flex items-center gap-2 text-white text-sm font-medium transition-all hover:opacity-90"
-            style={{ background: couleur }}
-          >
-            <Sparkles size={16} />
-            <span className="hidden sm:inline">Générer tâches</span>
-          </button>
-          <select
-            value={ch.statut}
-            onChange={e => {
-              const newStatus = e.target.value;
-              updateChantier(ch.id, { statut: newStatus });
-              showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
-            }}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer border-0 outline-none appearance-none pr-7 bg-no-repeat bg-right min-h-[44px] ${
-              ch.statut === 'en_cours' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
-              : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-              : ch.statut === 'abandonne' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
-              : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
-            }`}
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '16px', backgroundPosition: 'right 8px center' }}
-          >
-            {/* Current status always shown */}
-            <option value={ch.statut}>{CHANTIER_STATUS_LABELS[ch.statut]}</option>
-            {/* Only show valid transitions */}
-            {getAvailableChantierTransitions(ch.statut).map(status => (
-              <option key={status} value={status}>{CHANTIER_STATUS_LABELS[status]}</option>
-            ))}
-          </select>
-        </div>
+          return (
+            <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6 ${isDark ? 'bg-slate-900/95' : 'bg-slate-50/95'} backdrop-blur-md border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              {/* Row 1: Back + Title + Status */}
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center shrink-0`}>
+                  <ArrowLeft size={20} className={textPrimary} />
+                </button>
+                <h2 className={`flex-1 min-w-0 text-base sm:text-xl font-bold leading-tight ${textPrimary}`}>{ch.nom}</h2>
+                <select
+                  value={ch.statut}
+                  onChange={e => {
+                    const newStatus = e.target.value;
+                    updateChantier(ch.id, { statut: newStatus });
+                    showToast(`Statut changé: ${CHANTIER_STATUS_LABELS[newStatus]}`, 'success');
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border-0 outline-none appearance-none pr-6 bg-no-repeat bg-right min-h-[36px] shrink-0 ${
+                    ch.statut === 'en_cours' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
+                    : ch.statut === 'termine' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+                    : ch.statut === 'abandonne' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700')
+                    : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')
+                  }`}
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '14px', backgroundPosition: 'right 6px center' }}
+                >
+                  <option value={ch.statut}>{CHANTIER_STATUS_LABELS[ch.statut]}</option>
+                  {getAvailableChantierTransitions(ch.statut).map(status => (
+                    <option key={status} value={status}>{CHANTIER_STATUS_LABELS[status]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Row 2: Nav ← → + action buttons compact */}
+              <div className="flex items-center justify-between gap-2">
+                {/* Nav ← → */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => prevChantier && setView(prevChantier.id)}
+                    disabled={!prevChantier}
+                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[32px] ${
+                      prevChantier
+                        ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
+                        : 'opacity-30 cursor-not-allowed'
+                    } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    title={prevChantier ? `← ${prevChantier.nom}` : ''}
+                  >
+                    <ArrowLeft size={14} />
+                    <span className="hidden sm:inline max-w-[100px] truncate">{prevChantier?.nom || ''}</span>
+                  </button>
+                  <button
+                    onClick={() => nextChantier && setView(nextChantier.id)}
+                    disabled={!nextChantier}
+                    className={`px-2 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-all min-h-[32px] ${
+                      nextChantier
+                        ? isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'
+                        : 'opacity-30 cursor-not-allowed'
+                    } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                    title={nextChantier ? `${nextChantier.nom} →` : ''}
+                  >
+                    <span className="hidden sm:inline max-w-[100px] truncate">{nextChantier?.nom || ''}</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                {/* Action buttons compact */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditingChantier(ch)}
+                    className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
+                    title="Modifier"
+                  >
+                    <Edit3 size={16} className={textMuted} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const clone = {
+                        nom: `${ch.nom} (copie)`,
+                        client_id: ch.client_id,
+                        clientId: ch.client_id,
+                        adresse: ch.adresse,
+                        ville: ch.ville,
+                        codePostal: ch.codePostal,
+                        dateDebut: new Date().toISOString().split('T')[0],
+                        date_debut: new Date().toISOString().split('T')[0],
+                        dateFin: '',
+                        date_fin: '',
+                        budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0,
+                        budget_estime: ch.budget_estime || ch.budgetPrevu || 0,
+                        budget_materiaux: ch.budget_materiaux || 0,
+                        heures_estimees: ch.heures_estimees || 0,
+                        description: ch.description || '',
+                        notes: ch.notes || '',
+                        taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })),
+                        photos: [],
+                        documents: [],
+                        messages: [],
+                        statut: 'prospect'
+                      };
+                      const newCh = addChantier(clone);
+                      showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
+                      if (newCh?.id) setView(newCh.id);
+                    }}
+                    className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
+                    title="Dupliquer"
+                  >
+                    <Copy size={16} className={textMuted} />
+                  </button>
+                  {ch.statut !== 'archive' && (
+                    <button
+                      onClick={async () => {
+                        const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` });
+                        if (confirmed) {
+                          updateChantier(ch.id, { statut: 'archive' });
+                          showToast('Chantier archivé', 'success');
+                          setView(null);
+                        }
+                      }}
+                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
+                      title="Archiver"
+                    >
+                      <Archive size={16} className={textMuted} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowTaskGenerator(true)}
+                    className="px-3 py-1.5 rounded-lg min-h-[36px] flex items-center gap-1.5 text-white text-xs font-medium transition-all hover:opacity-90"
+                    style={{ background: couleur }}
+                  >
+                    <Sparkles size={14} />
+                    <span className="hidden sm:inline">IA Tâches</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Auto-suggestion: mark as terminé when all tasks done */}
         {ch.statut !== 'termine' && tasksTotal > 0 && tasksDone === tasksTotal && (
