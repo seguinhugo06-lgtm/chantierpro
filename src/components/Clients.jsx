@@ -250,96 +250,103 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const clientDevis = devis?.filter(d => d.client_id === client.id) || [];
     const clientChantiers = chantiers?.filter(c => c.client_id === client.id) || [];
 
+    const clientStatus = getClientStatus(client.id);
+    const clientStatusColor = CLIENT_STATUS_COLORS[clientStatus];
+    const clientTypeColor = CLIENT_TYPE_COLORS[client.categorie];
+
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={() => setViewId(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-            <ArrowLeft size={20} className={textPrimary} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h2>
-            <div className="flex items-center gap-2 flex-wrap">
-              {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-sm`}><Building2 size={14} />{client.entreprise}</span>}
-              {client.categorie && <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}><Tag size={10} />{client.categorie}</span>}
+      <div className="space-y-4">
+        {/* Sticky Header */}
+        <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 backdrop-blur-md ${isDark ? 'bg-slate-900/80' : 'bg-white/80'} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => setViewId(null)} className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+              <ArrowLeft size={20} className={textPrimary} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} leading-tight`}>{client.nom} {client.prenom}</h2>
+              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-xs`}><Building2 size={12} />{client.entreprise}</span>}
+                {/* Status badge */}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientStatusColor.darkBg + ' ' + clientStatusColor.darkText : clientStatusColor.bg + ' ' + clientStatusColor.text}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} />
+                  {CLIENT_STATUS_LABELS[clientStatus]}
+                </span>
+                {/* Type badge */}
+                {client.categorie && clientTypeColor && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientTypeColor.darkBg + ' ' + clientTypeColor.darkText : clientTypeColor.bg + ' ' + clientTypeColor.text}`}>
+                    {client.categorie}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
-              <Edit3 size={14} /><span>Modifier</span>
-            </button>
-            <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer ce client">
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[40px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
+                <Edit3 size={14} /><span className="hidden sm:inline">Modifier</span>
+              </button>
+              <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[40px] min-w-[40px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Actions rapides */}
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-          {/* Boutons d'action - affichés uniquement si téléphone ou adresse */}
-          {(client.telephone || client.adresse) && (
-            <div className="flex gap-2 sm:gap-3 flex-wrap mb-4">
-              {client.telephone && (
-                <>
-                  <button onClick={() => callPhone(client.telephone)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                    <Phone size={16} /><span>Appeler</span>
-                  </button>
-                  <button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                    <MessageCircle size={16} /><span>WhatsApp</span>
-                  </button>
-                </>
-              )}
-              {client.adresse && (
-                <button onClick={() => openGPS(client.adresse)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
-                  <MapPin size={16} /><span>Itinéraire</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Informations client avec placeholders */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Phone size={14} /> Téléphone</p>
-              {client.telephone ? (
-                <p className={`font-medium ${textPrimary}`}>{client.telephone}</p>
-              ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
-                  + Ajouter un téléphone
-                </button>
-              )}
-            </div>
-            <div>
-              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Mail size={14} /> Email</p>
-              {client.email ? (
-                <p className={`font-medium ${textPrimary}`}>{client.email}</p>
-              ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
-                  + Ajouter un email
-                </button>
-              )}
-            </div>
-            <div className="col-span-2">
-              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><MapPin size={14} /> Adresse</p>
-              {client.adresse ? (
-                <p className={`font-medium ${textPrimary} whitespace-pre-line`}>{client.adresse}</p>
-              ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
-                  + Ajouter une adresse
-                </button>
-              )}
-            </div>
+        {/* Zone Contact — above the fold */}
+        <div className={`${cardBg} rounded-xl border p-4`}>
+          {/* 3 action buttons */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+            {/* GPS first on mobile via order */}
+            <button
+              onClick={() => client.adresse ? openGPS(client.adresse) : startEdit(client)}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg order-first sm:order-last ${!client.adresse ? 'opacity-50' : ''}`}
+              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)' }}
+            >
+              <MapPin size={20} />
+              <span className="text-xs font-medium">Itinéraire</span>
+            </button>
+            <button
+              onClick={() => client.telephone ? callPhone(client.telephone) : startEdit(client)}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg ${!client.telephone ? 'opacity-50' : ''}`}
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+            >
+              <Phone size={20} />
+              <span className="text-xs font-medium">Appeler</span>
+            </button>
+            <button
+              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : startEdit(client)}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg ${!client.telephone ? 'opacity-50' : ''}`}
+              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+            >
+              <MessageCircle size={20} />
+              <span className="text-xs font-medium">WhatsApp</span>
+            </button>
           </div>
 
-          {/* Notes */}
-          <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <p className={`text-sm ${textMuted} mb-2`}>Notes internes</p>
-            {client.notes ? (
-              <p className={`text-sm p-3 rounded-xl ${isDark ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>{client.notes}</p>
-            ) : (
-              <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-500 hover:text-slate-600'} hover:underline`}>
-                + Ajouter des notes
-              </button>
-            )}
+          {/* Contact info */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2.5">
+              <Phone size={14} className={textMuted} />
+              {client.telephone ? (
+                <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`text-sm font-medium ${textPrimary} hover:underline`}>{client.telephone}</a>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter un téléphone</button>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Mail size={14} className={textMuted} />
+              {client.email ? (
+                <a href={`mailto:${client.email}`} className={`text-sm font-medium ${textPrimary} hover:underline truncate`}>{client.email}</a>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter un email</button>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5">
+              <MapPin size={14} className={textMuted} />
+              {client.adresse ? (
+                <p className={`text-sm ${textPrimary} flex-1`}>{client.adresse}</p>
+              ) : (
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter une adresse</button>
+              )}
+            </div>
           </div>
         </div>
 
