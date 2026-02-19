@@ -30,8 +30,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const debouncedSearch = useDebounce(search, 300);
   const [activeTab, setActiveTab] = useState('historique');
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
-  const [sortBy, setSortBy] = useState('recent'); // recent, name, ca
+  const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
   const [filterCategorie, setFilterCategorie] = useState('');
+  const [kpiFilter, setKpiFilter] = useState(null); // null | 'actifs' | 'ca' | 'devis_attente'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
@@ -49,10 +51,44 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   }, [show, viewId, showQuickModal]);
 
   const filtered = clients.filter(c => {
-    const matchSearch = !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase());
+    const q = debouncedSearch?.toLowerCase() || '';
+    const matchSearch = !q ||
+      c.nom?.toLowerCase().includes(q) ||
+      c.prenom?.toLowerCase().includes(q) ||
+      c.entreprise?.toLowerCase().includes(q) ||
+      c.telephone?.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.adresse?.toLowerCase().includes(q);
     const matchCat = !filterCategorie || c.categorie === filterCategorie;
-    return matchSearch && matchCat;
+    // KPI filter
+    let matchKpi = true;
+    if (kpiFilter === 'actifs') {
+      matchKpi = getClientStatus(c.id) === 'actif';
+    } else if (kpiFilter === 'ca') {
+      matchKpi = getClientStats(c.id).ca > 0;
+    } else if (kpiFilter === 'devis_attente') {
+      matchKpi = getClientStats(c.id).devisActifs > 0;
+    }
+    return matchSearch && matchCat && matchKpi;
   });
+
+  // Get last activity date for a client (for sorting)
+  const getLastActivity = (clientId) => {
+    let latest = 0;
+    (devis || []).forEach(d => {
+      if (d.client_id === clientId && d.created_at) {
+        const t = new Date(d.created_at).getTime();
+        if (t > latest) latest = t;
+      }
+    });
+    (chantiers || []).forEach(ch => {
+      if (ch.client_id === clientId && ch.created_at) {
+        const t = new Date(ch.created_at).getTime();
+        if (t > latest) latest = t;
+      }
+    });
+    return latest;
+  };
 
   const getSortedClients = () => {
     const sorted = [...filtered];
@@ -61,6 +97,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         return sorted.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
       case 'ca':
         return sorted.sort((a, b) => getClientStats(b.id).ca - getClientStats(a.id).ca);
+      case 'activite':
+        return sorted.sort((a, b) => getLastActivity(b.id) - getLastActivity(a.id));
       case 'recent':
       default:
         return sorted.sort((a, b) => parseInt(b.id) - parseInt(a.id));
@@ -784,54 +822,64 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         couleur={couleur}
       />
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Clickable */}
       {clients.length > 0 && (() => {
         const totalCA = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
-        const clientsActifs = Array.from(clientStatsMap.values()).filter(v => v.chantiersActifs > 0 || v.devisActifs > 0).length;
-        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && d.statut === 'envoye').length;
+        const caFacture = (devis || []).filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.montant_ttc || 0), 0);
+        const caDevis = totalCA - caFacture;
+        const clientsActifs = clients.filter(c => getClientStatus(c.id) === 'actif').length;
+        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
         let topClient = null;
         let topCA = 0;
         clientStatsMap.forEach((v, cid) => {
           if (v.ca > topCA) { topCA = v.ca; topClient = clients.find(c => c.id === cid); }
         });
+
+        const kpiItems = [
+          { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${clients.length}` },
+          { key: 'ca', icon: Euro, color: '#10b981', iconBg: 'rgba(16,185,129,0.1)', value: formatMoney(totalCA), label: 'CA total', sub: modeDiscret ? '' : `${formatMoney(caFacture)} facturé` },
+          { key: 'top', icon: Briefcase, color: '#8b5cf6', iconBg: 'rgba(139,92,246,0.1)', value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
+          { key: 'devis_attente', icon: Send, color: '#3b82f6', iconBg: 'rgba(59,130,246,0.1)', value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
+        ];
+
         return (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                  <Users size={16} style={{ color: couleur }} />
-                </div>
-              </div>
-              <p className={`text-lg sm:text-xl font-bold ${textPrimary}`}>{clientsActifs}</p>
-              <p className={`text-xs ${textMuted}`}>Clients actifs</p>
-            </div>
-            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10">
-                  <Euro size={16} className="text-emerald-500" />
-                </div>
-              </div>
-              <p className={`text-lg sm:text-xl font-bold text-emerald-500`}>{formatMoney(totalCA)}</p>
-              <p className={`text-xs ${textMuted}`}>CA total</p>
-            </div>
-            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10">
-                  <Briefcase size={16} className="text-purple-500" />
-                </div>
-              </div>
-              <p className={`text-lg sm:text-xl font-bold text-purple-500 truncate`}>{modeDiscret ? '·····' : (topClient?.nom || '—')}</p>
-              <p className={`text-xs ${textMuted}`}>Top client</p>
-            </div>
-            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/10">
-                  <Send size={16} className="text-blue-500" />
-                </div>
-              </div>
-              <p className={`text-lg sm:text-xl font-bold text-blue-500`}>{devisEnAttente}</p>
-              <p className={`text-xs ${textMuted}`}>Devis en attente</p>
-            </div>
+            {kpiItems.map(kpi => {
+              const isActive = kpiFilter === kpi.key;
+              const Icon = kpi.icon;
+              return (
+                <button
+                  key={kpi.key}
+                  onClick={() => {
+                    if (kpi.key === 'top' && topClient) {
+                      setViewId(topClient.id);
+                    } else {
+                      setKpiFilter(isActive ? null : kpi.key);
+                    }
+                  }}
+                  className={`${cardBg} rounded-xl border p-3 sm:p-4 text-left transition-all duration-200 ${isActive ? 'ring-2 shadow-lg scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01]'}`}
+                  style={isActive ? { borderColor: kpi.color, ringColor: kpi.color, '--tw-ring-color': kpi.color } : {}}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: kpi.iconBg }}>
+                      <Icon size={16} style={{ color: kpi.color }} />
+                    </div>
+                    {isActive && (
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs"
+                        style={{ background: kpi.color }}
+                        onClick={(e) => { e.stopPropagation(); setKpiFilter(null); }}
+                      >
+                        ×
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-lg sm:text-xl font-bold truncate ${kpi.key === 'top' ? 'text-purple-500' : ''}`} style={kpi.key !== 'top' ? { color: kpi.color } : {}}>{kpi.value}</p>
+                  <p className={`text-xs ${textMuted}`}>{kpi.label}</p>
+                  {kpi.sub && <p className={`text-[10px] ${textMuted} mt-0.5`}>{kpi.sub}</p>}
+                </button>
+              );
+            })}
           </div>
         );
       })()}
