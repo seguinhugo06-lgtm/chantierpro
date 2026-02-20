@@ -34,14 +34,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [showDetail, setShowDetail] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [filterEmploye, setFilterEmploye] = useState('');
-  const [filterType, setFilterType] = useState('');
+  const [filterTypes, setFilterTypes] = useState(new Set()); // P1.3: multi-select type filter
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
   const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
   const [showTips, setShowTips] = useState(() => { try { return !localStorage.getItem('cp_planning_tips_dismissed'); } catch { return true; } });
   const [mobileWeekDay, setMobileWeekDay] = useState(0); // index into weekDays for mobile week grid
   const [agendaRange, setAgendaRange] = useState(30); // days to show in agenda view
   const weekGridRef = useRef(null);
-  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
+  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', dateEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
   // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
@@ -183,7 +183,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     const d = typeof day === 'string' ? day : `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return allEvents.filter(e => {
       if (filterEmploye && e.employeId !== filterEmploye) return false;
-      if (filterType && e.type !== filterType) return false;
+      if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
       if (e.dateEnd) return d >= e.date && d <= e.dateEnd;
       return e.date === d;
     });
@@ -251,8 +251,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const startEdit = () => {
     setForm({ title: showDetail.title || '', date: showDetail.date || '', time: showDetail.time || '',
-      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', description: showDetail.description || '',
-      duration: showDetail.duration || 60, recurrence: showDetail.recurrence || 'never', recurrenceEnd: showDetail.recurrenceEnd || '' });
+      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', chantierId: showDetail.chantierId || '',
+      description: showDetail.description || '', duration: showDetail.duration || 60, recurrence: showDetail.recurrence || 'never', recurrenceEnd: showDetail.recurrenceEnd || '',
+      dateEnd: showDetail.dateEnd || '' });
     setEditMode(true);
   };
 
@@ -272,13 +273,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         <h2 className={`text-2xl font-bold ${textPrimary}`}>Nouvel événement</h2>
       </div>
 
-      {/* Quick type selection */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {Object.entries(TYPE_LABELS).filter(([k]) => k !== 'chantier').map(([key, label]) => {
+      {/* Quick type selection — P1.1: includes Chantier */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {Object.entries(TYPE_LABELS).map(([key, label]) => {
           const Icon = TYPE_ICONS[key];
           const isSelected = form.type === key;
           return (
-            <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${isSelected ? 'text-white border-transparent' : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`} style={isSelected ? { background: typeColors[key] } : {}}>
+            <button key={key} onClick={() => setForm(p => ({...p, type: key, ...(key !== 'chantier' ? { chantierId: '', dateEnd: '' } : {})}))} className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${isSelected ? 'text-white border-transparent' : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`} style={isSelected ? { background: typeColors[key] } : {}}>
               <Icon size={18} />
               <span className="text-sm font-medium">{label}</span>
             </button>
@@ -326,9 +327,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
             {clients.length > 0 && (
-              <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+              <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
             )}
           </div>
+          {/* P1.1: Chantier associé — when type is 'chantier' or when a client is selected */}
+          {form.type === 'chantier' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
+                  <option value="">— Sélectionner —</option>
+                  {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
+                    <option key={ch.id} value={ch.id}>{ch.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de fin</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
+              </div>
+            </div>
+          )}
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Adresse, infos utiles..." /></div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
@@ -363,7 +382,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Planning</h1>
-            <p className={`text-sm ${textMuted}`}>{todayEvents.length} événement{todayEvents.length > 1 ? 's' : ''} aujourd'hui</p>
+            <p className={`text-sm ${textMuted}`}>{todayEvents.length === 0 ? "Aucun événement aujourd'hui" : `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -383,10 +402,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             <option value="">Tous</option>
             {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
           </select>
-          <select className={`px-3 py-1.5 border rounded-lg text-sm hidden sm:block ${inputBg}`} value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="">Tous types</option>
-            {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          {filterTypes.size > 0 && (
+            <button
+              onClick={() => setFilterTypes(new Set())}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
+            >
+              Tout afficher
+            </button>
+          )}
         </div>
         <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <button onClick={() => { setViewMode('month'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
@@ -396,29 +419,50 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         </div>
       </div>
 
-      {/* Legend */}
-      <div className={`flex gap-2 sm:gap-3 flex-wrap p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-white shadow-sm border border-slate-200'}`}>
+      {/* Legend — P1.3: clickable multi-select filters */}
+      <div className={`flex gap-2 sm:gap-3 flex-wrap p-3 rounded-xl items-center ${isDark ? 'bg-slate-800/50' : 'bg-white shadow-sm border border-slate-200'}`}>
         {Object.entries(TYPE_LABELS).map(([key, label]) => {
           const Icon = TYPE_ICONS[key];
-          const isActive = filterType === key;
+          const isActive = filterTypes.size === 0 || filterTypes.has(key);
+          const isFiltering = filterTypes.size > 0;
           return (
             <button
               key={key}
-              onClick={() => setFilterType(filterType === key ? '' : key)}
+              onClick={() => {
+                setFilterTypes(prev => {
+                  const next = new Set(prev);
+                  if (next.has(key)) {
+                    next.delete(key);
+                  } else {
+                    next.add(key);
+                  }
+                  return next;
+                });
+              }}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                isActive
+                isFiltering && isActive
                   ? 'text-white shadow-md'
+                  : isFiltering && !isActive
+                  ? `border ${isDark ? 'border-slate-600 opacity-50' : 'border-slate-300 opacity-50'}`
                   : isDark
                   ? 'bg-slate-700 hover:bg-slate-600'
                   : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'
               }`}
-              style={isActive ? { background: typeColors[key] } : {}}
+              style={isFiltering && isActive ? { background: typeColors[key] } : {}}
             >
-              <span className={`w-4 h-4 rounded-full shadow-sm ${isActive ? 'bg-white/40' : ''}`} style={!isActive ? { background: typeColors[key] } : {}} />
-              <span className={`text-sm font-semibold ${isActive ? '' : textPrimary}`}>{label}</span>
+              <span className={`w-4 h-4 rounded-full shadow-sm ${isFiltering && isActive ? 'bg-white/40' : ''}`} style={!(isFiltering && isActive) ? { background: typeColors[key] } : {}} />
+              <span className={`text-sm font-semibold ${isFiltering && isActive ? '' : textPrimary}`}>{label}</span>
             </button>
           );
         })}
+        {filterTypes.size > 0 && (
+          <button
+            onClick={() => setFilterTypes(new Set())}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+          >
+            <X size={14} /> Tout
+          </button>
+        )}
       </div>
 
       {/* Calendar */}
@@ -763,8 +807,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
                               className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b min-h-[56px] ${isDark ? 'border-slate-700/50 hover:bg-slate-800' : 'border-slate-100 hover:bg-slate-50'}`}>
                               <div className="flex flex-col items-center w-14 flex-shrink-0">
-                                <span className={`text-sm font-bold ${textPrimary}`}>{ev.time || '--:--'}</span>
-                                {ev.duration && <span className={`text-[10px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
+                                {ev.time ? (
+                                  <span className={`text-sm font-bold ${textPrimary}`}>{ev.time}</span>
+                                ) : (
+                                  <span className={`text-[10px] italic ${textMuted}`}>Journée</span>
+                                )}
+                                {ev.time && ev.duration && <span className={`text-[10px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
                               </div>
                               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: eventColor }} />
                               <div className="flex-1 min-w-0">
@@ -806,7 +854,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: getEventColor(ev) }} />
                 <span className={`font-semibold text-sm ${textPrimary} truncate`}>{ev.title}</span>
               </div>
-              {ev.time && <p className={`text-xs ${textMuted} mb-1`}>{ev.time}{ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}</p>}
+              <p className={`text-xs ${textMuted} mb-1`}>{ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
               {client && <p className={`text-xs ${textMuted} mb-1`}>{client.nom} {client.prenom || ''}</p>}
               {(ev.recurrence && ev.recurrence !== 'never') && <p className={`text-xs ${textMuted} mb-1`}>🔁 {ev.recurrence === 'weekly' ? 'Chaque semaine' : 'Chaque mois'}</p>}
               <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
@@ -934,7 +982,24 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
                     </div>
                     {clients.length > 0 && (
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+                    )}
+                    {form.type === 'chantier' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé</label>
+                          <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
+                            <option value="">— Sélectionner —</option>
+                            {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
+                              <option key={ch.id} value={ch.id}>{ch.nom}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date de fin</label>
+                          <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
+                        </div>
+                      </div>
                     )}
                     <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
                   </div>
@@ -945,12 +1010,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         <Calendar size={16} className={textMuted} />
                         <span className={textPrimary}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span>
                       </div>
-                      {showDetail.time && (
-                        <div className="flex items-center gap-3">
-                          <Clock size={16} className={textMuted} />
+                      <div className="flex items-center gap-3">
+                        <Clock size={16} className={textMuted} />
+                        {showDetail.time ? (
                           <span className={textPrimary}>{showDetail.time}{showDetail.duration ? ` — ${formatDuration(showDetail.duration)}` : ''}</span>
-                        </div>
-                      )}
+                        ) : (
+                          <span className={`italic ${textMuted}`}>Toute la journée</span>
+                        )}
+                      </div>
                       {showDetail.employeId && (
                         <div className="flex items-center gap-3">
                           <User size={16} className={textMuted} />
