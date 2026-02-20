@@ -98,6 +98,22 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }
   }, [wizardStep, showSetupWizard]);
 
+  // Debounced save notification with visible indicator (MUST be before lookupSIRENE)
+  const saveTimeoutRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
+  const updateEntreprise = useCallback((updater) => {
+    setEntreprise(updater);
+    setSaveStatus('saving');
+    // Debounce the toast to avoid spam
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('saved');
+      showToast('Modifications enregistrées', 'success');
+      // Reset indicator after 3s
+      setTimeout(() => setSaveStatus(null), 3000);
+    }, 800);
+  }, [setEntreprise, showToast]);
+
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {
     const siret = (entreprise.siret || '').replace(/\s/g, '');
@@ -212,22 +228,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     };
   });
 
-  // Debounced save notification with visible indicator
-  const saveTimeoutRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
-  const updateEntreprise = useCallback((updater) => {
-    setEntreprise(updater);
-    setSaveStatus('saving');
-    // Debounce the toast to avoid spam
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      setSaveStatus('saved');
-      showToast('Modifications enregistrées', 'success');
-      // Reset indicator after 3s
-      setTimeout(() => setSaveStatus(null), 3000);
-    }, 800);
-  }, [setEntreprise, showToast]);
-  
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
