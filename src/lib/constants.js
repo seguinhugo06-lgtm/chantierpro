@@ -9,6 +9,7 @@ export const DEVIS_STATUS = {
   ENVOYE: 'envoye',
   VU: 'vu',
   ACCEPTE: 'accepte',
+  SIGNE: 'signe',
   REFUSE: 'refuse',
   ACOMPTE_FACTURE: 'acompte_facture',
   FACTURE: 'facture',
@@ -20,6 +21,7 @@ export const DEVIS_STATUS_LABELS = {
   [DEVIS_STATUS.ENVOYE]: 'Envoyé',
   [DEVIS_STATUS.VU]: 'Vu',
   [DEVIS_STATUS.ACCEPTE]: 'Accepté',
+  [DEVIS_STATUS.SIGNE]: 'Signé',
   [DEVIS_STATUS.REFUSE]: 'Refusé',
   [DEVIS_STATUS.ACOMPTE_FACTURE]: 'Acompte facturé',
   [DEVIS_STATUS.FACTURE]: 'Facturé',
@@ -31,6 +33,7 @@ export const DEVIS_STATUS_COLORS = {
   [DEVIS_STATUS.ENVOYE]: { bg: 'bg-blue-100', text: 'text-blue-600', dot: 'bg-blue-500' },
   [DEVIS_STATUS.VU]: { bg: 'bg-purple-100', text: 'text-purple-600', dot: 'bg-purple-500' },
   [DEVIS_STATUS.ACCEPTE]: { bg: 'bg-emerald-100', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+  [DEVIS_STATUS.SIGNE]: { bg: 'bg-emerald-100', text: 'text-emerald-600', dot: 'bg-emerald-500' },
   [DEVIS_STATUS.REFUSE]: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-500' },
   [DEVIS_STATUS.ACOMPTE_FACTURE]: { bg: 'bg-amber-100', text: 'text-amber-600', dot: 'bg-amber-500' },
   [DEVIS_STATUS.FACTURE]: { bg: 'bg-indigo-100', text: 'text-indigo-600', dot: 'bg-indigo-500' },
@@ -133,6 +136,31 @@ export const PAYMENT_METHODS = [
   { value: 'especes', label: 'Espèces', icon: '💶' },
   { value: 'carte', label: 'Carte bancaire', icon: '💳' },
   { value: 'autre', label: 'Autre', icon: '📋' }
+];
+
+// Sous-traitant specialities (BTP trades)
+export const SOUS_TRAITANT_SPECIALITES = [
+  'Plomberie',
+  'Electricite',
+  'Maconnerie',
+  'Peinture',
+  'Carrelage',
+  'Menuiserie',
+  'Couverture / Toiture',
+  'Isolation',
+  'Climatisation / CVC',
+  'Terrassement',
+  'Demolition',
+  'Serrurerie',
+  'Vitrerie',
+  'Etancheite',
+  'Autre'
+];
+
+// Sous-traitant rate types
+export const TARIF_TYPES = [
+  { value: 'horaire', label: 'Taux horaire (EUR/h)' },
+  { value: 'forfaitaire', label: 'Forfait' }
 ];
 
 // Pointage types
