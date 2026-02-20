@@ -228,6 +228,19 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
           </div>
+          {/* Duration quick picker */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Durée</label>
+            <div className="flex flex-wrap gap-2">
+              {DURATIONS.map(d => (
+                <button key={d.value} type="button" onClick={() => setForm(p => ({...p, duration: d.value}))}
+                  className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                  style={form.duration === d.value ? { background: couleur } : {}}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
             {clients.length > 0 && (
@@ -584,6 +597,18 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
                     </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>Durée</label>
+                      <div className="flex flex-wrap gap-2">
+                        {DURATIONS.map(d => (
+                          <button key={d.value} type="button" onClick={() => setForm(p => ({...p, duration: d.value}))}
+                            className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            style={form.duration === d.value ? { background: couleur } : {}}>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
@@ -603,7 +628,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       {showDetail.time && (
                         <div className="flex items-center gap-3">
                           <Clock size={16} className={textMuted} />
-                          <span className={textPrimary}>{showDetail.time}</span>
+                          <span className={textPrimary}>{showDetail.time}{showDetail.duration ? ` — ${formatDuration(showDetail.duration)}` : ''}</span>
                         </div>
                       )}
                       {showDetail.employeId && (
