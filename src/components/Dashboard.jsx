@@ -679,18 +679,25 @@ export default function Dashboard({
     let tendance = null;
     let tendanceLabel = 'vs mois dernier';
 
+    const fmtCA = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+
     if (isEarlyMonth) {
       tendance = null;
-      tendanceLabel = 'D\u00e9but de mois';
+      tendanceLabel = `Début de mois · ${fmtCA(lastMonthCA)} mois dernier`;
     } else if (lastMonthCA > 0) {
       if (thisMonthCA === 0) {
         tendance = -100;
+        tendanceLabel = `vs ${fmtCA(lastMonthCA)} mois dernier`;
       } else {
         const rawChange = ((thisMonthCA - lastMonthCA) / lastMonthCA) * 100;
         if (Math.abs(rawChange) <= 200) {
           tendance = Math.round(rawChange);
         }
+        tendanceLabel = `vs ${fmtCA(lastMonthCA)} mois dernier`;
       }
+    } else {
+      // No previous month data
+      tendanceLabel = thisMonthCA > 0 ? `vs 0 € mois dernier` : 'Pas de données';
     }
 
     // Calculate monthly objective based on average of last 3 months
@@ -848,22 +855,25 @@ export default function Dashboard({
       });
     });
 
-    // Recent sent devis
-    stats.devisPipeline?.envoye?.slice(0, 2).forEach((d) => {
-      const client = safeClients.find((c) => c.id === d.client_id);
-      activities.push({
-        id: `sent-${d.id}`,
-        itemId: d.id,
-        type: 'devis',
-        icon: Send,
-        title: `Devis ${d.numero} envoyé`,
-        subtitle: client?.nom || 'Client',
-        amount: d.total_ttc,
-        date: new Date(d.date),
-        color: 'blue',
-        page: 'devis',
+    // Recent sent devis (exclude 0€ devis)
+    stats.devisPipeline?.envoye
+      ?.filter((d) => (d.total_ttc || d.total_ht || 0) > 0)
+      .slice(0, 2)
+      .forEach((d) => {
+        const client = safeClients.find((c) => c.id === d.client_id);
+        activities.push({
+          id: `sent-${d.id}`,
+          itemId: d.id,
+          type: 'devis',
+          icon: Send,
+          title: `Devis ${d.numero} envoyé`,
+          subtitle: client?.nom || 'Client',
+          amount: d.total_ttc || d.total_ht,
+          date: new Date(d.date),
+          color: 'blue',
+          page: 'devis',
+        });
       });
-    });
 
     // Recent started chantiers
     safeChantiers
@@ -1170,7 +1180,7 @@ export default function Dashboard({
                 </p>
                 {stats.tendance != null && (
                   <span className={`text-[11px] font-bold ${stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {stats.tendance >= 0 ? '\u2197' : '\u2198'} {stats.tendance >= 0 ? '+' : ''}{stats.tendance}%
+                    {stats.tendance >= 0 ? '↗' : '↘'} {stats.tendance >= 0 ? '+' : ''}{stats.tendance}%
                   </span>
                 )}
               </div>
@@ -1199,7 +1209,7 @@ export default function Dashboard({
               priority: days > 14 ? 1 : 2,
               color: days > 14 ? 'red' : 'amber',
               title: clientNom,
-              subtitle: `${shortNum ? shortNum + ' · ' : ''}${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j sans r\u00e9ponse`,
+              subtitle: `${shortNum ? shortNum + ' · ' : ''}${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j sans réponse`,
               action: () => handleOpenRelance(d),
               actionLabel: 'Relancer',
             });
@@ -1340,11 +1350,11 @@ export default function Dashboard({
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {ch.nom}
+                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={ch.nom}>
+                          {ch.nom}{ch.reference ? ` · #${ch.reference}` : ch.id ? ` · #${ch.id.slice(-4).toUpperCase()}` : ''}
                         </p>
                         <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {ch.clientNom}{ch.prochEch ? ` \u00b7 \u00c9ch. ${ch.prochEch}` : ''}
+                          {ch.clientNom}{ch.prochEch ? ` · Éch. ${ch.prochEch}` : ''}
                         </p>
                       </div>
                       <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: couleur }}>
@@ -1404,10 +1414,10 @@ export default function Dashboard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Facture {'\u00e9'}lectronique obligatoire dans <strong>J-{daysLeft}</strong>
+                    Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
                   </p>
                   <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Votre conformit{'\u00e9'} : {f26score}% {'\u2014'} {7 - f26checks.filter(Boolean).length} crit{'\u00e8'}re{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''} manquant{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''}
+                    Votre conformité : {f26score}% — {7 - f26checks.filter(Boolean).length} critère{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''} manquant{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''}
                   </p>
                 </div>
                 <button
@@ -1415,7 +1425,7 @@ export default function Dashboard({
                   className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
                   style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
                 >
-                  Compl{'\u00e9'}ter
+                  Compléter
                 </button>
               </div>
             </section>
@@ -1561,7 +1571,7 @@ export default function Dashboard({
                     <div>
                       <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Équipe en direct</h3>
                       <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length} membres
+                        {(() => { const n = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length; return `${n} ${n > 1 ? 'membres' : 'membre'}`; })()}
                       </p>
                     </div>
                   </div>

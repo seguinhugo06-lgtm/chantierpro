@@ -33,12 +33,17 @@ import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../co
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
 
 /**
- * Format currency compact
+ * Format currency — exact amounts for consistency across Dashboard
+ * Compact only for very large amounts (100k+)
  */
 function formatMoney(amount) {
+  if (amount == null || isNaN(amount)) return '0 €';
   if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M €`;
-  if (amount >= 1000) return `${Math.round(amount / 1000)}k €`;
-  return `${Math.round(amount)} €`;
+  if (amount >= 100000) return `${Math.round(amount / 1000)}k €`;
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency', currency: 'EUR',
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 /**
@@ -500,8 +505,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
           <StatCard
             icon={Percent}
             title="Conversion"
-            mainValue={stats.tauxConversion < 0 ? '\u2014' : `${stats.tauxConversion}%`}
-            secondaryValue={stats.tauxConversion >= 0 ? `${stats.devisSent} envoy\u00e9s \u2192 ${stats.devisSignesOv} sign\u00e9s` : undefined}
+            mainValue={stats.tauxConversion < 0 ? '—' : `${stats.tauxConversion}%`}
+            secondaryValue={stats.tauxConversion >= 0 ? `${stats.devisSent} envoyés → ${stats.devisSignesOv} signés` : undefined}
             color={stats.tauxConversion >= 50 ? '#10b981' : stats.tauxConversion >= 30 ? '#f59e0b' : '#ef4444'}
             gradient={stats.tauxConversion >= 50
               ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
@@ -514,7 +519,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             progress={stats.tauxConversion >= 0 ? {
               value: stats.tauxConversion,
               max: 100,
-              label: stats.tauxConversion >= 50 ? 'Excellent' : stats.tauxConversion >= 30 ? 'Bon' : '\u00c0 am\u00e9liorer',
+              label: stats.tauxConversion >= 50 ? 'Excellent' : stats.tauxConversion >= 30 ? 'Bon' : 'À améliorer',
             } : undefined}
           />
 
