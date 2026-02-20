@@ -111,6 +111,16 @@ export function formatMoney(amount) {
 }
 
 /**
+ * Validate document numero format
+ * @param {string} numero - The document number to validate
+ * @returns {boolean} True if valid format (DEV-YYYY-NNNNN or FAC-YYYY-NNNNN)
+ */
+export function isValidNumero(numero) {
+  if (!numero) return false;
+  return /^(DEV|FAC)-\d{4}-\d{5}$/.test(numero);
+}
+
+/**
  * Status display configuration
  */
 export const STATUS_CONFIG = {
