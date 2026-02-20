@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, BarChart3, Layers, ClipboardList, ShoppingCart,
   Truck, History, DollarSign, Percent, Check, ChevronRight, Eye, Hash,
   PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw,
-  Camera, ScanBarcode, FileText, Bell, BellOff, Zap
+  Camera, ScanBarcode, FileText, Bell, BellOff, Zap, MoreHorizontal
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -48,6 +48,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   // ====== CORE STATE ======
   const [activeTab, setActiveTab] = useState('catalogue'); // catalogue, fournisseurs, mouvements, packs, inventaire, parametres
   const [show, setShow] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [priceFlash, setPriceFlash] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [coefSaved, setCoefSaved] = useState(false);
   const [editId, setEditId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -467,9 +471,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   // ====== CRUD ======
   const submit = async () => {
-    if (!form.nom?.trim() || !form.prix) return showToast('Nom et prix requis', 'error');
+    const errors = {};
+    if (!form.nom?.trim()) errors.nom = 'Le nom est requis';
+    if (!form.prix) errors.prix = 'Le prix de vente est requis';
+    else if (parseFloat(form.prix) <= 0) errors.prix = 'Le prix doit être supérieur à 0';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      showToast('Veuillez corriger les erreurs', 'error');
+      return;
+    }
+    setFormErrors({});
     const prixVente = parseFloat(form.prix);
-    if (prixVente <= 0) return showToast('Le prix de vente doit être supérieur à 0', 'error');
     let prixAchat = parseFloat(form.prixAchat) || 0;
     // Auto coefficient
     if (form.coefAuto && prixAchat > 0 && !form.prix) {
@@ -514,7 +526,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
   const startEdit = (item) => {
     setForm({ nom: item.nom || '', reference: item.reference || '', description: item.description || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '', unite: item.unite || 'u', categorie: item.categorie || 'Autre', tva_rate: (item.tva_rate || item.tva || 20).toString(), favori: item.favori || false, stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '', fournisseur: '', coefAuto: item.coefAuto || false });
-    setEditId(item.id); setShow(true);
+    setEditId(item.id); setShow(true); setFormErrors({});
   };
 
   const toggleFavori = async (id) => {
@@ -882,15 +894,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Prix vente', value: modeDiscret ? '·····' : `${item.prix}€`, sub: `/${item.unite}`, color: couleur },
-            { label: 'Prix achat', value: modeDiscret ? '·····' : `${item.prixAchat || '—'}€`, sub: !modeDiscret && item.prixAchat ? `/${item.unite}` : '', color: '#3b82f6' },
-            { label: 'Marge', value: modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—'), sub: !modeDiscret && marge !== null ? `${(item.prix - (item.prixAchat || 0)).toFixed(2)}€/u` : '', color: marge >= 25 ? '#22c55e' : '#ef4444' },
-            { label: 'Stock', value: item.stock_actuel !== undefined ? item.stock_actuel.toString() : '—', sub: item.stock_seuil_alerte ? `Min: ${item.stock_seuil_alerte}` : '', color: (item.stock_actuel !== undefined && item.stock_seuil_alerte && item.stock_actuel < item.stock_seuil_alerte) ? '#ef4444' : '#8b5cf6' }
+            { label: 'Prix vente', value: modeDiscret ? '·····' : `${item.prix} €`, sub: `/${item.unite}`, color: couleur },
+            { label: 'Prix achat', value: modeDiscret ? '·····' : `${item.prixAchat || '—'} €`, sub: !modeDiscret && item.prixAchat ? `/${item.unite}` : '', color: '#94A3B8' },
+            { label: 'Marge', value: modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—'), sub: !modeDiscret && marge !== null ? `${(item.prix - (item.prixAchat || 0)).toFixed(2)} €/${item.unite}` : '', color: marge >= 25 ? '#22c55e' : '#ef4444' },
+            { label: 'Stock', value: item.stock_actuel !== undefined ? item.stock_actuel.toString() : '—', sub: item.stock_actuel !== undefined && item.stock_seuil_alerte ? (item.stock_actuel < item.stock_seuil_alerte ? 'Stock bas' : 'En stock') : (item.stock_seuil_alerte ? `Min: ${item.stock_seuil_alerte}` : ''), color: (item.stock_actuel !== undefined && item.stock_seuil_alerte && item.stock_actuel < item.stock_seuil_alerte) ? '#ef4444' : '#22c55e' }
           ].map((kpi, i) => (
             <div key={i} className={`${cardBg} rounded-xl border p-4`}>
               <p className={`text-xs ${textMuted} mb-1`}>{kpi.label}</p>
               <p className="text-2xl font-bold" style={{ color: kpi.color }}>{kpi.value}</p>
-              {kpi.sub && <p className={`text-xs ${textMuted}`}>{kpi.sub}</p>}
+              {kpi.sub && <p className={`text-xs font-medium ${kpi.sub === 'En stock' ? 'text-emerald-500' : kpi.sub === 'Stock bas' ? 'text-red-500' : textMuted}`}>{kpi.sub}</p>}
             </div>
           ))}
         </div>
@@ -989,7 +1001,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         <div className="space-y-4">
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label>
-            <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} placeholder="Ex: Tube PER 16mm, Câble R2V 3G2.5..." />
+            <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${formErrors.nom ? 'border-red-400 ring-1 ring-red-400' : ''}`} value={form.nom} onChange={e => { setForm(p => ({...p, nom: e.target.value})); if (formErrors.nom) setFormErrors(p => ({...p, nom: ''})); }} placeholder="Ex: Tube PER 16mm, Câble R2V 3G2.5..." />
+            {formErrors.nom && <p className="text-xs text-red-500 mt-1">{formErrors.nom}</p>}
             {duplicateSuggestions.length > 0 && (
               <div className={`mt-2 p-3 rounded-xl text-sm ${isDark ? 'bg-amber-900/20 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
                 <p className="text-amber-600 font-medium flex items-center gap-1 mb-1"><AlertTriangle size={14} /> Articles similaires :</p>
@@ -1013,6 +1026,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   if (p.coefAuto && pa) {
                     const coef = coefficients[p.categorie] || 1.5;
                     newForm.prix = (parseFloat(pa) * coef).toFixed(2);
+                    setPriceFlash(true);
+                    setTimeout(() => setPriceFlash(false), 1200);
                   }
                   return newForm;
                 });
@@ -1023,7 +1038,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 Prix vente HT *
                 {form.coefAuto && <span className={`ml-1 text-xs ${textMuted}`}>(×{coefficients[form.categorie] || 1.5})</span>}
               </label>
-              <input type="number" min="0.01" step="0.01" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prix} onChange={e => setForm(p => ({...p, prix: e.target.value, coefAuto: false}))} />
+              <input type="number" min="0.01" step="0.01" className={`w-full px-4 py-2.5 border rounded-xl transition-all duration-300 ${inputBg} ${priceFlash ? 'ring-2 ring-offset-1' : ''} ${formErrors.prix ? 'border-red-400 ring-1 ring-red-400' : ''}`} style={priceFlash ? { '--tw-ring-color': couleur, '--tw-ring-offset-color': isDark ? '#1e293b' : '#fff' } : {}} value={form.prix} onChange={e => { setForm(p => ({...p, prix: e.target.value, coefAuto: false})); if (formErrors.prix) setFormErrors(p => ({...p, prix: ''})); }} />
+              {formErrors.prix && <p className="text-xs text-red-500 mt-1">{formErrors.prix}</p>}
+              {form.coefAuto && form.prixAchat && (
+                <p className="text-xs mt-1 flex items-center gap-1" style={{ color: couleur }}>
+                  <Zap size={10} /> Calculé auto (×{coefficients[form.categorie] || 1.5})
+                </p>
+              )}
             </div>
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Unité</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.unite} onChange={e => setForm(p => ({...p, unite: e.target.value}))}>{UNITES.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div>
             <div>
@@ -1319,16 +1340,38 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         </div>
         <div className="flex gap-2 flex-wrap">
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
-          <button onClick={() => fileInputRef.current?.click()} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Import CSV">
+          {/* Desktop: 3 icon buttons */}
+          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer des articles (CSV/Excel)">
             <Upload size={16} />
           </button>
-          <button onClick={exportCSV} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Export CSV">
+          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV)">
             <Download size={16} />
           </button>
-          {/* Barcode Scanner button */}
-          <button onClick={startScanner} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Scanner code-barres">
+          <button onClick={startScanner} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Scanner un article / Code-barres">
             <Camera size={16} />
           </button>
+          {/* Mobile: overflow menu */}
+          <div className="relative sm:hidden">
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
+              <MoreHorizontal size={16} />
+            </button>
+            {showMobileMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
+                <div className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                    <Upload size={16} className={textMuted} /> Importer (CSV/Excel)
+                  </button>
+                  <button onClick={() => { exportCSV(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                    <Download size={16} className={textMuted} /> Exporter le catalogue
+                  </button>
+                  <button onClick={() => { startScanner(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                    <Camera size={16} className={textMuted} /> Scanner code-barres
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={() => setShowArticlePicker(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
             <Sparkles size={16} /><span className="hidden sm:inline">Référentiel BTP</span>
           </button>
