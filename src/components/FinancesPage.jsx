@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
-import { Wallet, Download, BarChart3, Landmark } from 'lucide-react';
+import { Wallet, Download, BarChart3, Landmark, Eye, EyeOff } from 'lucide-react';
 
 // Lazy load the 4 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
@@ -21,17 +21,33 @@ const TAB_CONFIG = [
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
 ];
 
-export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, isDark, couleur = '#F97316', setPage, modeDiscret }) {
+export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal }) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const [activeTab, setActiveTab] = useState('tresorerie');
+  const [localDiscret, setLocalDiscret] = useState(false);
+  const modeDiscret = modeDiscretGlobal || localDiscret;
 
   return (
     <div>
       {/* Header */}
-      <div className="mb-5">
-        <h1 className={`text-2xl font-bold ${textPrimary}`}>Finances</h1>
-        <p className={`text-sm ${textMuted}`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Finances</h1>
+          <p className={`text-sm ${textMuted}`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
+        </div>
+        <button
+          onClick={() => setLocalDiscret(d => !d)}
+          title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+            isDark
+              ? modeDiscret ? 'bg-slate-700 text-slate-200' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+              : modeDiscret ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
+          <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer'}</span>
+        </button>
       </div>
 
       {/* Tab buttons */}

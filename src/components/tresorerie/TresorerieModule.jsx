@@ -2022,12 +2022,27 @@ export default function TresorerieModule({
             <BarChart3 size={14} /> {monthlyData.length} mois affichés
           </div>
         </div>
-        {monthlyData.length > 0 ? (
+        {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
           <CashFlowChart data={monthlyData} isDark={isDark} couleur={couleur} />
         ) : (
-          <div className={`flex flex-col items-center justify-center py-16 ${textSecondary}`}>
-            <BarChart3 size={40} className="opacity-30 mb-3" />
-            <p className="text-sm">Aucune donnée à afficher</p>
+          <div className="relative">
+            {/* Faux graphique semi-transparent */}
+            <div className="flex items-end justify-between gap-2 h-40 px-4 opacity-15">
+              {[35, 55, 45, 70, 60, 80, 50, 65, 40, 75, 55, 90].map((h, i) => (
+                <div key={i} className="flex-1 flex flex-col gap-1 items-center justify-end h-full">
+                  <div className="w-full rounded-t" style={{ height: `${h}%`, backgroundColor: couleur }} />
+                  <div className="w-full rounded-b bg-red-400" style={{ height: `${h * 0.6}%` }} />
+                </div>
+              ))}
+            </div>
+            {/* Overlay message */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className={`px-6 py-4 rounded-2xl backdrop-blur-sm text-center ${isDark ? 'bg-slate-800/80' : 'bg-white/80'}`}>
+                <BarChart3 size={28} className={`mx-auto mb-2 ${textSecondary}`} />
+                <p className={`text-sm font-semibold ${textPrimary}`}>Pas encore de données</p>
+                <p className={`text-xs mt-1 ${textSecondary}`}>Le graphique s'affichera dès que vous aurez des entrées ou sorties enregistrées</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
