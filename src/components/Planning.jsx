@@ -44,6 +44,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
+  // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
+  const formatLocalDate = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   // Escape key handler for form and modal
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -179,14 +187,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       if (e.dateEnd) return d >= e.date && d <= e.dateEnd;
       return e.date === d;
     });
-  };
-
-  // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
-  const formatLocalDate = (dateObj) => {
-    const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const d = String(dateObj.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
   };
 
   const getEventsForDate = (dateObj) => {
