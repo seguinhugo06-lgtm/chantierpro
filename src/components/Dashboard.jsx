@@ -514,7 +514,6 @@ export default function Dashboard({
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [kpiPeriod, setKpiPeriod] = useState('month'); // For KPI card period selector
-  const [isLoading, setIsLoading] = useState(true);
   const [relanceModal, setRelanceModal] = useState({ isOpen: false, item: null });
   const [encaisserModalOpen, setEncaisserModalOpen] = useState(false);
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
@@ -591,11 +590,8 @@ export default function Dashboard({
   const safeEquipe = equipe || [];
   const safeCatalogue = catalogue || [];
 
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+  // Use real data loading state instead of artificial delay
+  const isLoading = dataLoading;
 
   // ============ COMPUTED STATS ============
 
@@ -1106,7 +1102,7 @@ export default function Dashboard({
                   </div>
                   <button
                     onClick={urgentAction.ctaAction}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 outline-none"
                   >
                     {urgentAction.ctaLabel}
                     <ArrowRight size={14} />
@@ -1123,8 +1119,8 @@ export default function Dashboard({
             {/* Devis IA */}
             <button
               onClick={() => setShowAIChat(true)}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 outline-none"
+              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`, '--tw-ring-color': couleur }}
             >
               <div className="relative z-10">
                 <MessageCircle size={26} className="mb-2 text-white/90" />
@@ -1137,7 +1133,7 @@ export default function Dashboard({
             {/* Devis Express */}
             <button
               onClick={() => setShowDevisExpress(true)}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 outline-none"
               style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)' }}
             >
               <div className="relative z-10">
@@ -1156,7 +1152,7 @@ export default function Dashboard({
             {/* À encaisser */}
             <button
               onClick={() => setEncaisserModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
             >
               <div className="flex items-center gap-2 mb-1">
                 <Wallet size={15} className="text-orange-500" />
@@ -1180,7 +1176,7 @@ export default function Dashboard({
             {/* Ce mois */}
             <button
               onClick={() => setCeMoisModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
             >
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp size={15} className={stats.tendance != null ? (stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
@@ -1291,7 +1287,7 @@ export default function Dashboard({
                       key={item.id}
                       className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
                     >
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} />
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} role="status" />
                       {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
@@ -1303,8 +1299,8 @@ export default function Dashboard({
                       </div>
                       <button
                         onClick={item.action}
-                        className="flex-shrink-0 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95"
-                        style={{ backgroundColor: couleur }}
+                        className="flex-shrink-0 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                        style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
                       >
                         {item.actionLabel}
                       </button>
@@ -1328,10 +1324,10 @@ export default function Dashboard({
               <button
                 key={s.label}
                 onClick={s.action}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all border ${
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                   isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 focus-visible:ring-orange-400'
+                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 focus-visible:ring-orange-500'
                 }`}
               >
                 <s.icon size={18} style={{ color: couleur }} />
@@ -1357,7 +1353,7 @@ export default function Dashboard({
                 </div>
                 <button
                   onClick={() => setPage?.('chantiers')}
-                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 focus-visible:ring-orange-500'}`}
                 >
                   Voir tous <ChevronRight size={14} />
                 </button>
@@ -1367,7 +1363,7 @@ export default function Dashboard({
                   <button
                     key={ch.id}
                     onClick={() => { setSelectedChantier?.(ch); setPage?.('chantiers'); }}
-                    className={`w-full text-left p-3 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                    className={`w-full text-left p-3 rounded-xl transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-700/50 focus-visible:ring-orange-400' : 'hover:bg-slate-50 focus-visible:ring-orange-500'}`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex-1 min-w-0">
@@ -1414,14 +1410,14 @@ export default function Dashboard({
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
                 >
                   Planifier un chantier
                 </button>
                 <button
                   onClick={() => setPage?.('chantiers')}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
                 >
                   Voir mes chantiers →
                 </button>
@@ -1510,12 +1506,12 @@ export default function Dashboard({
           <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Vue d'ensemble</h2>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               showWidgetConfig
                 ? `text-white`
-                : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800 focus-visible:ring-orange-400' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100 focus-visible:ring-orange-500'
             }`}
-            style={showWidgetConfig ? { backgroundColor: couleur } : {}}
+            style={showWidgetConfig ? { backgroundColor: couleur, '--tw-ring-color': couleur } : {}}
           >
             <Settings size={14} />
             Personnaliser
@@ -1651,7 +1647,7 @@ export default function Dashboard({
                   </div>
                   <button
                     onClick={() => setPage('equipe')}
-                    className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                    className={`text-xs font-medium px-2 py-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'text-slate-400 hover:bg-slate-700 focus-visible:ring-orange-400' : 'text-slate-500 hover:bg-slate-100 focus-visible:ring-orange-500'}`}
                   >
                     Voir tout →
                   </button>
@@ -1686,7 +1682,7 @@ export default function Dashboard({
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: avatarColor }}>
                             {emp.prenom?.[0]}{emp.nom?.[0]}
                           </div>
-                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-slate-800' : 'border-white'} ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-slate-800' : 'border-white'} ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} role="status" aria-label={isActive ? 'En activité' : 'Inactif'} />
                         </div>
                         {/* Info */}
                         <div className="flex-1 min-w-0">
@@ -1712,7 +1708,7 @@ export default function Dashboard({
                         ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); setPage('equipe'); }}
-                            className={`text-[10px] font-medium px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                            className={`text-[10px] font-medium px-2 py-1 rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300 focus-visible:ring-orange-400' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus-visible:ring-orange-500'}`}
                           >
                             Assigner
                           </button>

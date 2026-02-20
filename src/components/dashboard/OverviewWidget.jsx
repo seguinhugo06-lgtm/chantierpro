@@ -242,7 +242,7 @@ function StatCard({
 /**
  * OverviewWidget Component
  */
-export default function OverviewWidget({ setPage, isDark = false, className }) {
+function OverviewWidget({ setPage, isDark = false, className }) {
   const { chantiers = [] } = useChantiers();
   const { clients = [] } = useClients();
   const { devis = [] } = useDevis();
@@ -581,6 +581,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     </Widget>
   );
 }
+
+export default React.memo(OverviewWidget);
 
 /**
  * Skeleton

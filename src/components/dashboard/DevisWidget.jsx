@@ -532,7 +532,7 @@ function DevisCardSkeleton() {
  *
  * @param {DevisWidgetProps} props
  */
-export default function DevisWidget({
+function DevisWidget({
   userId,
   maxDisplay = 3,
   limit, // Backward compatibility
@@ -843,6 +843,8 @@ export default function DevisWidget({
     </>
   );
 }
+
+export default React.memo(DevisWidget);
 
 /**
  * DevisWidgetSkeleton - Full skeleton for the widget
