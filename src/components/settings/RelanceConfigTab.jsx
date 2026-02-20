@@ -304,6 +304,12 @@ function ScenarioStep({
                   <span className={cn('text-sm font-medium', textPrimary)}>
                     {step.name}
                   </span>
+                  {step.name?.toLowerCase().includes('contentieux') && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      <AlertTriangle className="w-3 h-3" />
+                      Pré-contentieux
+                    </span>
+                  )}
                   <ChannelBadge channel={step.channel} isDark={isDark} />
                 </div>
               </div>
@@ -665,7 +671,7 @@ function ScenarioCard({
  * Variables reference card
  */
 function VariablesCard({ isDark, couleur }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
@@ -909,27 +915,32 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
         </div>
       )}
 
-      {/* Devis scenario card */}
-      <ScenarioCard
-        title="Relance Devis"
-        icon={FileText}
-        steps={relanceConfig.devisSteps || DEFAULT_DEVIS_STEPS}
-        onStepsChange={handleDevisStepsChange}
-        isDark={isDark}
-        couleur={couleur}
-        scenarioType="devis"
-      />
+      {/* Scenario cards — grayed out when relances are disabled */}
+      <div className={cn(!relanceConfig.enabled && 'opacity-40 pointer-events-none select-none')}>
+        {/* Devis scenario card */}
+        <div className="mb-4">
+          <ScenarioCard
+            title="Relance Devis"
+            icon={FileText}
+            steps={relanceConfig.devisSteps || DEFAULT_DEVIS_STEPS}
+            onStepsChange={handleDevisStepsChange}
+            isDark={isDark}
+            couleur={couleur}
+            scenarioType="devis"
+          />
+        </div>
 
-      {/* Facture scenario card */}
-      <ScenarioCard
-        title="Relance Factures impayées"
-        icon={Receipt}
-        steps={relanceConfig.factureSteps || DEFAULT_FACTURE_STEPS}
-        onStepsChange={handleFactureStepsChange}
-        isDark={isDark}
-        couleur={couleur}
-        scenarioType="facture"
-      />
+        {/* Facture scenario card */}
+        <ScenarioCard
+          title="Relance Factures impayées"
+          icon={Receipt}
+          steps={relanceConfig.factureSteps || DEFAULT_FACTURE_STEPS}
+          onStepsChange={handleFactureStepsChange}
+          isDark={isDark}
+          couleur={couleur}
+          scenarioType="facture"
+        />
+      </div>
 
       {/* Variables reference */}
       <VariablesCard isDark={isDark} couleur={couleur} />

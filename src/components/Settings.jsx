@@ -1030,6 +1030,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value={60}>2 mois</option>
                   <option value={90}>3 mois</option>
                 </select>
+                <p className={`text-xs mt-1 ${textMuted}`}>Art. L.111-1 du Code de la consommation</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">TVA par défaut</label>
@@ -1039,6 +1040,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value={5.5}>5,5% (réno. énergétique)</option>
                   <option value={0}>0% (franchise TVA)</option>
                 </select>
+                <p className={`text-xs mt-1 ${textMuted}`}>20% standard · 10% rénovation {'>'} 2 ans · 5,5% performance énergétique</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Délai de paiement</label>
@@ -1055,7 +1057,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
                   <option value={0}>Pas d'acompte</option>
                   <option value={20}>20%</option>
-                  <option value={30}>30% (max légal si &gt;1500€)</option>
+                  <option value={30}>30% (recommandé BTP)</option>
                   <option value={40}>40%</option>
                   <option value={50}>50%</option>
                 </select>
@@ -1089,10 +1091,51 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
+          {/* Pénalités de retard */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold">Pénalités de retard</h3>
+                <p className={`text-sm ${textMuted}`}>Art. L441-10 du Code de commerce — obligatoire sur les factures</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={entreprise.mentionPenalites !== false} onChange={e => updateEntreprise(p => ({...p, mentionPenalites: e.target.checked}))} className="sr-only peer" />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+              </label>
+            </div>
+            {entreprise.mentionPenalites !== false && (
+              <div className="flex items-center gap-3">
+                <label className={`text-sm ${textSecondary}`}>Taux annuel :</label>
+                <div className="flex items-center">
+                  <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites ?? 11.62} onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || 0}))} />
+                  <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>%</span>
+                </div>
+                <p className={`text-xs ${textMuted}`}>Défaut : 3× taux directeur BCE</p>
+              </div>
+            )}
+          </div>
+
+          {/* Médiateur de la consommation */}
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+            <h3 className="font-semibold mb-1">Médiateur de la consommation</h3>
+            <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire depuis 2016 (Art. L612-1 du Code de la consommation)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nom du médiateur</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={e => updateEntreprise(p => ({...p, mediateur: e.target.value}))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Site web / Adresse</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={e => updateEntreprise(p => ({...p, mediateurContact: e.target.value}))} />
+              </div>
+            </div>
+          </div>
+
+          {/* CGV */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
             <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => updateEntreprise(p => ({...p, cgv: e.target.value}))} />
-            <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
+            <p className={`text-xs ${textMuted} mt-2`}>Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
       )}
@@ -1325,6 +1368,34 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Autre logiciel card */}
+              <div
+                className={`${cardBg} rounded-xl border-2 border-dashed p-4 ${isDark ? 'border-slate-600' : 'border-slate-300'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${couleur}15` }}
+                  >
+                    <FileText size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-semibold ${textPrimary}`}>Autre logiciel comptable</h3>
+                    <p className={`text-xs mt-1 ${textMuted}`}>
+                      Vous utilisez un autre logiciel ? Exportez vos données au format FEC ou CSV depuis l'onglet Export.
+                    </p>
+                    <button
+                      onClick={() => setComptaSubTab('export')}
+                      className="mt-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                      style={{ color: couleur }}
+                    >
+                      <Download size={14} />
+                      Aller à l'Export
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

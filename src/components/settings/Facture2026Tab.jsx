@@ -135,6 +135,12 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
 
   const isReady = score >= 80;
 
+  const daysLeft = useMemo(() => {
+    const target = new Date('2026-09-01');
+    const now = new Date();
+    return Math.max(0, Math.ceil((target - now) / (1000 * 60 * 60 * 24)));
+  }, []);
+
   return (
     <div className="space-y-5">
       {/* ── Alert Banner ── */}
@@ -163,8 +169,8 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
             </h2>
             <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isReady
-                ? 'Vous êtes prêt avec ChantierPro \u2713'
-                : 'Actions requises pour être conforme'}
+                ? 'Vous êtes prêt avec ChantierPro ✓'
+                : `${daysLeft} jours restants — actions requises pour être conforme`}
             </p>
           </div>
         </div>
