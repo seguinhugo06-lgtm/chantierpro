@@ -436,11 +436,18 @@ const RecentActivityWidget = memo(function RecentActivityWidget({
                     </div>
                     <span className={`text-[11px] font-medium whitespace-nowrap ${isDark ? 'text-slate-500' : 'text-gray-600'}`}>
                       {(() => {
-                        const diff = Date.now() - activity.date.getTime();
-                        const hours = Math.floor(diff / 3600000);
-                        if (hours < 1) return "À l'instant";
-                        if (hours < 24) return `${hours}h`;
-                        return 'Hier';
+                        const d = activity.date;
+                        const diffMs = Date.now() - d.getTime();
+                        const diffMin = Math.floor(diffMs / 60000);
+                        const diffH = Math.floor(diffMs / 3600000);
+                        const diffD = Math.floor(diffMs / 86400000);
+                        const hhmm = `${String(d.getHours()).padStart(2, '0')}h${String(d.getMinutes()).padStart(2, '0')}`;
+                        if (diffMin < 1) return "À l'instant";
+                        if (diffMin < 60) return `Il y a ${diffMin}min`;
+                        if (diffD === 0) return `Auj. ${hhmm}`;
+                        if (diffD === 1) return `Hier ${hhmm}`;
+                        if (diffD < 7) return `Il y a ${diffD}j`;
+                        return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                       })()}
                     </span>
                   </div>
@@ -1158,9 +1165,14 @@ export default function Dashboard({
               <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {formatMoney(stats.enAttente, modeDiscret)}
               </p>
-              {stats.facturesOverdue?.length > 0 && (
+              {stats.facturesEnAttente?.length > 0 && (
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente
+                </p>
+              )}
+              {stats.montantOverdue > 0 && (
                 <p className="text-[11px] text-red-500 font-medium mt-0.5">
-                  ⚠️ {stats.facturesOverdue.length} en retard
+                  dont {formatMoney(stats.montantOverdue, modeDiscret)} en retard +30j
                 </p>
               )}
             </button>
@@ -1436,58 +1448,76 @@ export default function Dashboard({
           const f26target = new Date('2026-09-01');
           const now = new Date();
           const daysLeft = Math.max(0, Math.ceil((f26target - now) / (1000 * 60 * 60 * 24)));
-          const f26checks = [
-            entreprise?.siret, entreprise?.tvaIntra,
-            entreprise?.rcsVille && entreprise?.rcsNumero,
-            entreprise?.banque || entreprise?.iban,
-            entreprise?.adresse, entreprise?.rcProAssureur, true,
+          const f26criteria = [
+            { label: 'SIRET', ok: !!entreprise?.siret },
+            { label: 'N° TVA intra.', ok: !!entreprise?.tvaIntra },
+            { label: 'RCS', ok: !!(entreprise?.rcsVille && entreprise?.rcsNumero) },
+            { label: 'Coordonnées bancaires', ok: !!(entreprise?.banque || entreprise?.iban) },
+            { label: 'Adresse complète', ok: !!entreprise?.adresse },
+            { label: 'Assurance RC Pro', ok: !!entreprise?.rcProAssureur },
+            { label: 'Format numérotation', ok: true },
           ];
-          const f26score = Math.round((f26checks.filter(Boolean).length / f26checks.length) * 100);
+          const f26done = f26criteria.filter(c => c.ok).length;
+          const f26score = Math.round((f26done / f26criteria.length) * 100);
           if (f26score >= 100 || daysLeft <= 0) return null;
           return (
             <section className="px-4 sm:px-6 pb-4">
-              <div className={`rounded-xl border p-4 flex items-center gap-4 ${
+              <div className={`rounded-xl border p-4 ${
                 f26score < 50
                   ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
                   : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
               }`}>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
-                  f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
-                }`}>
-                  {f26score}%
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
+                    f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
+                  }`}>
+                    {f26score}%
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                      Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
+                    </p>
+                    <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {f26done}/{f26criteria.length} critères remplis
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setPage('settings')}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
+                  >
+                    Compléter
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
-                  </p>
-                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Votre conformité : {f26score}% — {7 - f26checks.filter(Boolean).length} critère{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''} manquant{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''}
-                  </p>
+                {/* Criteria checklist */}
+                <div className="mt-3 pt-3 border-t border-current/10 grid grid-cols-2 gap-1.5">
+                  {f26criteria.map(c => (
+                    <div key={c.label} className="flex items-center gap-1.5 text-xs">
+                      <span className={c.ok ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}>{c.ok ? '✓' : '✗'}</span>
+                      <span className={c.ok ? (isDark ? 'text-slate-300' : 'text-slate-600') : (isDark ? 'text-slate-500' : 'text-slate-400')}>
+                        {c.label}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <button
-                  onClick={() => setPage('settings')}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
-                  style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
-                >
-                  Compléter
-                </button>
               </div>
             </section>
           );
         })()}
 
-        {/* Dashboard Customization Button */}
-        <section className="px-4 sm:px-6 pb-4 flex items-center justify-end">
+        {/* Vue d'ensemble header with Personnaliser button */}
+        <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
+          <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Vue d'ensemble</h2>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               showWidgetConfig
                 ? `text-white`
                 : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
             }`}
             style={showWidgetConfig ? { backgroundColor: couleur } : {}}
           >
-            <LayoutDashboard size={16} />
+            <Settings size={14} />
             Personnaliser
           </button>
         </section>
