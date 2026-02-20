@@ -129,6 +129,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Employee detail view
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  // Vue Terrain mode
+  const [showTerrainView, setShowTerrainView] = useState(false);
+  // Per-chantier active timers tracking (for Vue Terrain)
+  const [terrainTimers, setTerrainTimers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cp_terrain_timers') || '{}'); } catch { return {}; }
+  });
 
   // Smart Clocking hook (stubbed - full version loads lazily)
   const smartClocking = useSmartClockingStub();
@@ -1401,9 +1407,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </button>
           </div>
           {!isSousTraitants && (
-            <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-              <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
-            </button>
+            <>
+              <button onClick={() => setShowTerrainView(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg">
+                <HardHat size={16} /> <span className="hidden sm:inline">Pointer</span>
+              </button>
+              <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                <Zap size={16} /> <span className="hidden sm:inline">Saisie groupée</span>
+              </button>
+            </>
           )}
           <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: isSousTraitants ? '#7c3aed' : couleur}}>
             <Plus size={16} /> <span className="hidden sm:inline">{isSousTraitants ? 'Sous-traitant' : 'Employé'}</span>
@@ -1696,7 +1707,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             { key: 'pointage', label: 'Pointage', icon: Timer },
             { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
             { key: 'conges', label: 'Congés', icon: CalendarOff, count: conges.filter(c => c.status === 'pending').length, alert: conges.filter(c => c.status === 'pending').length > 0 },
-            { key: 'chat', label: 'Chat', icon: MessageSquare, count: messages.filter(m => { const t = new Date(m.timestamp); return (Date.now() - t.getTime()) < 3600000; }).length },
+            { key: 'chat', label: 'WhatsApp', icon: Phone },
             { key: 'competences', label: 'Compétences', icon: Award },
             { key: 'productivite', label: 'Productivité', icon: BarChart3 },
             { key: 'historique', label: 'Export', icon: FileSpreadsheet }
@@ -2120,22 +2131,43 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         )}
 
                         {/* Mobile quick pointage: one-tap start on active chantiers */}
-                        {!isSousTraitants && !chrono.running && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                        {!isSousTraitants && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
                           <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>Pointage rapide</p>
                             <div className="flex flex-wrap gap-1.5">
-                              {chantiers.filter(c => c.statut === 'en_cours').slice(0, 3).map(ch => (
-                                <button
-                                  key={ch.id}
-                                  onClick={(ev) => { ev.stopPropagation(); quickStartTimer(e.id, ch.id); }}
-                                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[36px] ${
-                                    isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                  }`}
-                                >
-                                  <Play size={10} fill="currentColor" />
-                                  {ch.nom?.length > 15 ? ch.nom.slice(0, 15) + '...' : ch.nom}
-                                </button>
-                              ))}
+                              {chantiers.filter(c => c.statut === 'en_cours').slice(0, 4).map(ch => {
+                                const isRunningHere = chrono.running && chrono.chantierId === ch.id && chrono.employeId === e.id;
+                                // Discriminant: if duplicate names, add start date
+                                const dupes = chantiers.filter(c2 => c2.statut === 'en_cours' && c2.nom === ch.nom);
+                                const label = ch.nom?.length > 40 ? ch.nom.slice(0, 37) + '...' : ch.nom;
+                                const discriminant = dupes.length > 1 && ch.date_debut ? ` (${new Date(ch.date_debut + 'T00:00:00').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })})` : '';
+                                return (
+                                  <button
+                                    key={ch.id}
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      if (isRunningHere) {
+                                        setPendingStopChrono(true);
+                                        setNoteModalOpen(true);
+                                      } else {
+                                        quickStartTimer(e.id, ch.id);
+                                      }
+                                    }}
+                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all min-h-[44px] max-w-[180px] ${
+                                      isRunningHere
+                                        ? 'bg-emerald-500 text-white shadow-md'
+                                        : isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                    }`}
+                                  >
+                                    {isRunningHere ? (
+                                      <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse flex-shrink-0" />
+                                    ) : (
+                                      <Play size={12} fill="currentColor" className="flex-shrink-0" />
+                                    )}
+                                    <span className="text-left leading-tight line-clamp-2">{label}{discriminant}</span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -3498,146 +3530,219 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         )}
       </AnimatePresence>
 
-      {/* ============ CHAT ÉQUIPE TAB ============ */}
+      {/* ============ WHATSAPP ÉQUIPE TAB ============ */}
       <AnimatePresence mode="wait">
         {tab === 'chat' && (
-          <motion.div className="space-y-0" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-            <div className={`${cardBg} rounded-2xl border overflow-hidden flex flex-col`} style={{ height: 'calc(100vh - 320px)', minHeight: '400px' }}>
-              {/* Channel Selector */}
-              <div className={`flex items-center gap-2 p-3 border-b overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                {CHAT_CHANNELS.map(ch => {
-                  const ChIcon = ch.icon;
-                  const unread = messages.filter(m => m.channel === ch.id && (Date.now() - new Date(m.timestamp).getTime()) < 3600000).length;
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => setChatChannel(ch.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                        chatChannel === ch.id ? 'text-white shadow' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                      }`}
-                      style={chatChannel === ch.id ? { background: couleur } : {}}
-                    >
-                      <ChIcon size={14} />
-                      {ch.label}
-                      {unread > 0 && chatChannel !== ch.id && (
-                        <span className="min-w-[16px] h-4 px-1 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">{unread}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Pinned Messages */}
-              {pinnedMessages.length > 0 && channelMessages.some(m => pinnedMessages.includes(m.id)) && (
-                <div className={`px-4 py-2 border-b ${isDark ? 'bg-amber-900/20 border-slate-700' : 'bg-amber-50 border-amber-100'}`}>
-                  {channelMessages.filter(m => pinnedMessages.includes(m.id)).slice(-1).map(m => (
-                    <div key={m.id} className="flex items-center gap-2">
-                      <Pin size={12} className="text-amber-500 flex-shrink-0" />
-                      <p className={`text-xs truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                        <strong>{m.senderName}:</strong> {m.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {channelMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                      <MessageSquare size={28} className={textMuted} />
-                    </div>
-                    <p className={`font-medium ${textPrimary}`}>Aucun message</p>
-                    <p className={`text-sm ${textMuted} mt-1`}>Commencez la conversation dans #{CHAT_CHANNELS.find(c => c.id === chatChannel)?.label || 'général'}</p>
+          <motion.div className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+            <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+              {/* Header */}
+              <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">💬</div>
+                  <div>
+                    <h3 className="text-lg font-bold">Communication Équipe</h3>
+                    <p className="text-sm text-white/70">Contactez votre équipe via WhatsApp</p>
                   </div>
-                ) : (
-                  channelMessages.map((msg, i) => {
-                    const isAdmin = msg.sender === 'admin';
-                    const prevMsg = channelMessages[i - 1];
-                    const showDate = !prevMsg || new Date(msg.timestamp).toDateString() !== new Date(prevMsg.timestamp).toDateString();
-                    const isPinned = pinnedMessages.includes(msg.id);
+                </div>
+              </div>
 
+              <div className="p-4 space-y-3">
+                {/* Group WhatsApp button */}
+                <button
+                  onClick={() => {
+                    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+                    if (isMobile) {
+                      window.open('whatsapp://send?text=', '_blank');
+                    } else {
+                      window.open('https://web.whatsapp.com', '_blank');
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl bg-[#25D366] text-white hover:bg-[#20BD5C] transition-colors min-h-[56px]"
+                >
+                  <MessageSquare size={20} />
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-sm">Ouvrir WhatsApp</p>
+                    <p className="text-xs text-white/70">Envoyer un message à l'équipe</p>
+                  </div>
+                  <ChevronRight size={18} />
+                </button>
+
+                {/* Individual contacts */}
+                <p className={`text-xs font-semibold uppercase tracking-wide mt-4 ${textMuted}`}>Contacter un membre</p>
+                <div className="space-y-2">
+                  {equipe.filter(e => e.actif !== false && e.telephone).map(emp => {
+                    const config = getRoleConfig(emp.role);
+                    const phone = emp.telephone?.replace(/[\s.-]/g, '').replace(/^0/, '+33');
                     return (
-                      <React.Fragment key={msg.id}>
-                        {showDate && (
-                          <div className="flex items-center gap-3 py-2">
-                            <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                            <span className={`text-xs font-medium ${textMuted}`}>
-                              {new Date(msg.timestamp).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                            </span>
-                            <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                          </div>
-                        )}
-                        <div className={`group flex gap-3 ${isAdmin ? 'flex-row-reverse' : ''}`}>
-                          <div className={`max-w-[75%] ${isAdmin ? 'text-right' : ''}`}>
-                            <div className="flex items-center gap-2 mb-0.5" style={{ justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
-                              <span className={`text-xs font-semibold ${isAdmin ? 'text-blue-500' : textPrimary}`}>{msg.senderName}</span>
-                              <span className={`text-[10px] ${textMuted}`}>{new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                              {isPinned && <Pin size={10} className="text-amber-500" />}
-                            </div>
-                            <div
-                              className={`inline-block px-4 py-2.5 rounded-2xl text-sm ${
-                                isAdmin
-                                  ? 'text-white rounded-br-md'
-                                  : isDark ? 'bg-slate-700 text-slate-200 rounded-bl-md' : 'bg-slate-100 text-slate-800 rounded-bl-md'
-                              }`}
-                              style={isAdmin ? { background: couleur } : {}}
-                            >
-                              {msg.text}
-                            </div>
-                            {/* Actions */}
-                            <div className={`flex gap-1 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isAdmin ? 'justify-end' : ''}`}>
-                              <button onClick={() => togglePin(msg.id)} className={`p-1 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title={isPinned ? 'Dépingler' : 'Épingler'}>
-                                <Pin size={11} className={isPinned ? 'text-amber-500' : textMuted} />
-                              </button>
-                            </div>
-                          </div>
+                      <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: config.color }}>
+                          {emp.prenom?.[0]}{emp.nom?.[0]}
                         </div>
-                      </React.Fragment>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom} {emp.nom}</p>
+                          <p className={`text-xs ${textMuted}`}>{emp.role || 'Employé'}</p>
+                        </div>
+                        <a
+                          href={`https://wa.me/${phone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-11 h-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center hover:bg-[#20BD5C]"
+                          title={`WhatsApp ${emp.prenom}`}
+                        >
+                          <MessageSquare size={16} />
+                        </a>
+                        <a
+                          href={`tel:${emp.telephone}`}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          title={`Appeler ${emp.prenom}`}
+                        >
+                          <Phone size={16} />
+                        </a>
+                      </div>
                     );
-                  })
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Quick Replies */}
-              <div className={`px-4 py-2 flex gap-2 overflow-x-auto border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                {['Bien reçu 👍', 'Je suis en route', 'Besoin de matériel', 'RAS aujourd\'hui', 'Terminé ✅'].map(q => (
-                  <button
-                    key={q}
-                    onClick={() => { setChatInput(q); }}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-
-              {/* Input Bar */}
-              <div className={`p-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder={`Message dans #${CHAT_CHANNELS.find(c => c.id === chatChannel)?.label || 'général'}...`}
-                    className={`flex-1 px-4 py-3 border rounded-xl text-sm ${inputBg}`}
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                  />
-                  <motion.button
-                    onClick={sendMessage}
-                    disabled={!chatInput.trim()}
-                    className="p-3 text-white rounded-xl disabled:opacity-50 shadow-md"
-                    style={{ background: couleur }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Send size={18} />
-                  </motion.button>
+                  })}
+                  {equipe.filter(e => e.actif !== false && e.telephone).length === 0 && (
+                    <div className={`text-center py-8 ${textMuted}`}>
+                      <Phone size={32} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Aucun membre avec numéro de téléphone</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ============ VUE TERRAIN MODAL ============ */}
+      <AnimatePresence>
+        {showTerrainView && (
+          <motion.div className="fixed inset-0 z-50 flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/60" onClick={() => setShowTerrainView(false)} />
+            <motion.div
+              className={`relative flex-1 flex flex-col w-full max-w-lg mx-auto ${isDark ? 'bg-slate-900' : 'bg-white'} overflow-hidden`}
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{ maxHeight: '100vh' }}
+            >
+              {/* Terrain Header */}
+              <div className="p-4 text-white flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center"><HardHat size={24} /></div>
+                  <div>
+                    <h2 className="text-lg font-bold">Vue Terrain</h2>
+                    <p className="text-sm text-white/70">{isOnline ? '🟢 En ligne' : '🔴 Hors ligne — sync différée'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTerrainView(false)} className="w-11 h-11 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Active timer banner */}
+              {chrono.running && (() => {
+                const emp = equipe.find(e => e.id === chrono.employeId);
+                const ch = chantiers.find(c => c.id === chrono.chantierId);
+                const secs = Math.max(0, elapsed);
+                const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60); const s = secs % 60;
+                return (
+                  <div className="px-4 py-3 bg-emerald-600 text-white flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold">{emp ? `${emp.prenom} ${emp.nom}` : 'Employé'} — {ch?.nom || 'Chantier'}</p>
+                      <p className="text-2xl font-mono font-bold">{String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}</p>
+                    </div>
+                    <button
+                      onClick={() => { setPendingStopChrono(true); setNoteModalOpen(true); }}
+                      className="w-14 h-14 rounded-xl bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg"
+                    >
+                      <Square size={24} fill="white" className="text-white" />
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Chantier list */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <p className={`text-xs uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>
+                  Chantiers actifs ({chantiers.filter(c => c.statut === 'en_cours').length})
+                </p>
+                {chantiers.filter(c => c.statut === 'en_cours').length === 0 ? (
+                  <div className={`text-center py-12 ${textMuted}`}>
+                    <MapPin size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">Aucun chantier actif</p>
+                  </div>
+                ) : (
+                  chantiers.filter(c => c.statut === 'en_cours').map(ch => {
+                    const isThisRunning = chrono.running && chrono.chantierId === ch.id;
+                    return (
+                      <div key={ch.id} className={`rounded-2xl border p-4 ${isThisRunning ? (isDark ? 'bg-emerald-900/30 border-emerald-700' : 'bg-emerald-50 border-emerald-300') : cardBg}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isThisRunning ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                            <Building2 size={20} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold text-sm leading-tight ${textPrimary}`}>{ch.nom}</p>
+                            {ch.adresse && <p className={`text-xs mt-0.5 ${textMuted}`}><MapPin size={10} className="inline mr-1" />{ch.adresse}</p>}
+                            {ch.client_id && (() => {
+                              // Try to find client name if available
+                              return null; // Client display handled by name below
+                            })()}
+                            {isThisRunning && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-xs font-bold text-emerald-500">En cours</span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Start/Stop button — large 56px touch target */}
+                          {isThisRunning ? (
+                            <button
+                              onClick={() => { setPendingStopChrono(true); setNoteModalOpen(true); }}
+                              className="w-14 h-14 rounded-xl bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg flex-shrink-0"
+                              aria-label="Arrêter le pointage"
+                            >
+                              <Square size={22} fill="white" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (chrono.running) {
+                                  showToast('Arrêtez le pointage en cours d\'abord', 'error');
+                                  return;
+                                }
+                                // Start for first available employee or show employee selector
+                                const activeEmps = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant');
+                                if (activeEmps.length === 1) {
+                                  quickStartTimer(activeEmps[0].id, ch.id);
+                                } else if (activeEmps.length > 0) {
+                                  quickStartTimer(activeEmps[0].id, ch.id);
+                                }
+                                setShowTerrainView(false);
+                              }}
+                              className="w-14 h-14 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg flex-shrink-0"
+                              aria-label="Démarrer le pointage"
+                            >
+                              <Play size={22} fill="white" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Offline indicator footer */}
+              {!isOnline && (
+                <div className="px-4 py-3 bg-amber-500/20 border-t border-amber-500/30 flex items-center gap-2">
+                  <WifiOff size={16} className="text-amber-500" />
+                  <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                    Mode hors ligne — les pointages seront synchronisés à la reconnexion
+                  </p>
+                </div>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3701,6 +3806,35 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </a>
                     )}
                   </div>
+
+                  {/* POINTAGE RAPIDE — Mobile-first, visible sans scroll */}
+                  {chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                    <div className={`p-3 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800/50' : 'bg-emerald-50 border border-emerald-200'}`}>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>⚡ Pointage rapide</p>
+                      <div className="flex flex-wrap gap-2">
+                        {chantiers.filter(c => c.statut === 'en_cours').slice(0, 4).map(ch => {
+                          const isRunning = chrono.running && chrono.chantierId === ch.id && chrono.employeId === emp.id;
+                          return (
+                            <button
+                              key={ch.id}
+                              onClick={() => {
+                                if (isRunning) { setPendingStopChrono(true); setNoteModalOpen(true); }
+                                else { quickStartTimer(emp.id, ch.id); setSelectedEmployee(null); }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium min-h-[44px] transition-all ${
+                                isRunning
+                                  ? 'bg-emerald-500 text-white shadow-md'
+                                  : isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-white text-slate-700 hover:bg-slate-100 shadow-sm'
+                              }`}
+                            >
+                              {isRunning ? <Square size={14} fill="white" /> : <Play size={14} fill="currentColor" />}
+                              <span className="leading-tight text-left line-clamp-2 max-w-[120px]">{ch.nom}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-4 gap-2">
@@ -4281,26 +4415,62 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {activeChantiers.length > 0 && equipe.length > 0 && (
                     <div className={`rounded-2xl border ${cardBg} p-4`}>
                       <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Sparkles size={20} style={{color: couleur}} /> Suggestions d'affectation</h3>
-                      <div className="space-y-4">
+                      <div className="space-y-5">
                         {activeChantiers.slice(0, 3).map(chantier => {
-                          const matches = equipe.map(emp => ({ emp, ...getMatchScore(emp, chantier) })).sort((a, b) => b.score - a.score);
+                          const matches = equipe.filter(emp => emp.actif !== false && emp.contrat !== 'sous_traitant').map(emp => ({ emp, ...getMatchScore(emp, chantier) })).sort((a, b) => b.score - a.score);
+                          const bestMatches = matches.filter(m => m.score > 0);
+                          const noQualified = bestMatches.length === 0 || bestMatches[0].score === 0;
                           return (
-                            <div key={chantier.id}>
+                            <div key={chantier.id} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
                               <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>
                                 <Building2 size={14} className="inline mr-1" />{chantier.nom}
                               </p>
-                              <div className="flex flex-wrap gap-2">
-                                {matches.slice(0, 4).map(({ emp, score }) => (
-                                  <div key={emp.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: getRoleConfig(emp.role).color }}>
+                              {/* No qualified employees alert */}
+                              {noQualified && (
+                                <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${isDark ? 'bg-amber-900/30 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
+                                  <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
+                                  <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                                    Aucun membre qualifié — <button onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }} className="underline font-medium">Sous-traitant ?</button>
+                                  </p>
+                                </div>
+                              )}
+                              <div className="space-y-2">
+                                {matches.slice(0, 4).map(({ emp, score, matching, missing }) => (
+                                  <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'} ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getRoleConfig(emp.role).color }}>
                                       {emp.prenom?.[0]}{emp.nom?.[0]}
                                     </div>
-                                    <div>
-                                      <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom}</p>
-                                      <p className="text-xs" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#64748b' }}>
-                                        {score >= 75 ? '★★★' : score >= 50 ? '★★' : '★'} {score}% match
-                                      </p>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom} {emp.nom?.[0]}.</p>
+                                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444', background: score >= 75 ? '#22c55e15' : score >= 50 ? '#f59e0b15' : '#ef444415' }}>
+                                          {score}%
+                                        </span>
+                                      </div>
+                                      {/* Reasoning: matching + missing skills */}
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {matching.map(s => (
+                                          <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>✅ {s}</span>
+                                        ))}
+                                        {missing.map(s => (
+                                          <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-500'}`}>❌ {s}</span>
+                                        ))}
+                                        {matching.length === 0 && missing.length === 0 && (
+                                          <span className={`text-[10px] ${textMuted}`}>Pas de compétences requises détectées</span>
+                                        )}
+                                      </div>
                                     </div>
+                                    {/* Affecter button */}
+                                    <button
+                                      onClick={() => {
+                                        quickStartTimer(emp.id, chantier.id);
+                                        showToast(`${emp.prenom} affecté à ${chantier.nom}`, 'success');
+                                      }}
+                                      className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[36px]"
+                                      style={{ backgroundColor: couleur }}
+                                    >
+                                      Affecter
+                                    </button>
                                   </div>
                                 ))}
                               </div>
