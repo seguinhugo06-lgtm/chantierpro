@@ -1224,18 +1224,36 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             )}
 
-            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm ${textPrimary}`}>
-              <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
-              <p className="ml-4">- Matériaux (achats)</p>
-              <p className="ml-4">- Main d’œuvre (heures × coût chargé)</p>
-              <p className="ml-4">- Frais structure ({entreprise.tauxFraisStructure || 15}% du CA)</p>
-              <p className="ml-4">- Ajustements Dépenses</p>
+            {/* Visual formula breakdown */}
+            <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gradient-to-br from-slate-50 to-blue-50/50 border-slate-200'}`}>
+              <p className={`text-sm font-semibold mb-3 ${textPrimary}`}>Formule de calcul</p>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="px-3 py-1.5 rounded-lg font-semibold text-white" style={{ backgroundColor: couleur }}>Marge Réelle</span>
+                <span className={`text-lg font-bold ${textMuted}`}>=</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>CA HT</span>
+                <span className={`text-lg font-bold ${textMuted}`}>+</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>Ajustements Revenus</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm mt-2 ml-0 sm:ml-8">
+                <span className={`text-lg font-bold ${textMuted}`}>−</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Matériaux</span>
+                <span className={`text-lg font-bold ${textMuted}`}>−</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Main d'œuvre</span>
+                <span className={`text-lg font-bold ${textMuted}`}>−</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>Frais structure ({entreprise.tauxFraisStructure || 15}%)</span>
+                <span className={`text-lg font-bold ${textMuted}`}>−</span>
+                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Ajustements Dépenses</span>
+              </div>
             </div>
-            <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
-              <p><strong>Code couleur marge:</strong></p>
-              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge négative ({'<'}0%)</p>
-              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-500"></span> Orange: Marge faible (0-15%)</p>
-              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine ({'>'}15%)</p>
+
+            {/* Color legend */}
+            <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 border border-blue-800/30' : 'bg-blue-50 border border-blue-100'}`}>
+              <p className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Code couleur marge :</p>
+              <div className="flex flex-wrap gap-4">
+                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-red-500 shrink-0"></span> {'<'}0% — Négative</span>
+                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-amber-500 shrink-0"></span> 0-15% — Faible</span>
+                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> {'>'}15% — Saine</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1849,15 +1867,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
 
           {/* Danger Zone — Suppression de compte */}
-          <div className={`rounded-xl sm:rounded-2xl border-2 border-red-300 p-4 sm:p-6 ${isDark ? 'bg-red-950/20' : 'bg-red-50'}`}>
-            <h3 className="font-semibold mb-2 flex items-center gap-2 text-red-500">
+          <div className={`rounded-xl sm:rounded-2xl border-2 p-4 sm:p-6 ${isDark ? 'bg-red-950/20 border-red-800/50' : 'bg-red-50 border-red-300'}`}>
+            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
               <Trash2 size={18} />
               Zone de danger
             </h3>
-            <p className={`text-sm ${textMuted} mb-2`}>
+            <p className={`text-sm mb-2 ${isDark ? 'text-red-300/80' : 'text-red-700/80'}`}>
               <strong>Supprimer mon compte et mes données.</strong> Cette action est irréversible. Toutes vos données (devis, factures, clients, chantiers) seront définitivement supprimées.
             </p>
-            <p className={`text-xs ${textMuted} mb-4`}>
+            <p className={`text-xs mb-4 ${isDark ? 'text-red-400/60' : 'text-red-600/60'}`}>
               Nous vous recommandons d'exporter vos données avant de procéder.
             </p>
             <button
@@ -1879,7 +1897,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   showToast('Erreur lors de la suppression', 'error');
                 }
               }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium bg-red-500 text-white hover:bg-red-600 transition-all"
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-500 text-white hover:bg-red-600'}`}
             >
               <Trash2 size={18} />
               Supprimer mon compte
