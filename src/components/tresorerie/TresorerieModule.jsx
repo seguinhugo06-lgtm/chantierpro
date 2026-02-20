@@ -1630,8 +1630,8 @@ export default function TresorerieModule({
         </div>
       </div>
 
-      {/* ── Threshold Alert ─────────────────────────────────────────── */}
-      {soldeActuel < (settings.seuilAlerte || 5000) && !alertDismissed && (
+      {/* ── Threshold Alert (hidden during wizard) ─────────────────── */}
+      {(!showWizard || wizardStep >= 2) && soldeActuel < (settings.seuilAlerte || 5000) && !alertDismissed && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${soldeActuel < 0 ? isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200' : isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
           <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`} />
           <div className="flex-1">
@@ -1659,7 +1659,7 @@ export default function TresorerieModule({
         </div>
       )}
 
-      {alertNegativeBalance && (
+      {(!showWizard || wizardStep >= 2) && alertNegativeBalance && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
           <AlertTriangle size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
           <div>
@@ -1669,7 +1669,7 @@ export default function TresorerieModule({
         </div>
       )}
 
-      {alertLargePayment && (
+      {(!showWizard || wizardStep >= 2) && alertLargePayment && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
           <Info size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
           <div>
@@ -1791,8 +1791,8 @@ export default function TresorerieModule({
         </div>
       )}
 
-      {/* ── Widget "À encaisser maintenant" ──────────────────────── */}
-      {encaisserData.items.length > 0 && showEncaisserWidget && (
+      {/* ── Widget "À encaisser maintenant" (hidden during wizard) ── */}
+      {(!showWizard || wizardStep >= 2) && encaisserData.items.length > 0 && showEncaisserWidget && (
         <div className={`rounded-2xl border overflow-hidden ${encaisserData.overdueItems.length > 0 ? isDark ? 'border-orange-500/40' : 'border-orange-300' : isDark ? 'border-slate-700' : 'border-gray-200'}`}>
           {/* Header */}
           <div className={`flex items-center justify-between px-5 py-3 ${encaisserData.overdueItems.length > 0 ? isDark ? 'bg-orange-500/10' : 'bg-orange-50' : isDark ? 'bg-slate-800' : 'bg-white'}`}>
@@ -1808,7 +1808,7 @@ export default function TresorerieModule({
                   {encaisserData.items.length} facture{encaisserData.items.length > 1 ? 's' : ''} {'\u2022'} {formatMoney(encaisserData.totalAEncaisser)} TTC
                   {encaisserData.overdueItems.length > 0 && (
                     <span className={`ml-2 font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                      dont {formatMoney(encaisserData.overdueTotal)} en retard
+                      dont <strong className="text-red-500">{formatMoney(encaisserData.overdueTotal)}</strong> en retard
                     </span>
                   )}
                 </p>
@@ -1826,7 +1826,10 @@ export default function TresorerieModule({
             {encaisserData.items.slice(0, 5).map((item) => (
               <div key={item.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}>
                 {/* Overdue indicator */}
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.isOverdue ? item.joursRetard > 30 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className={`w-2.5 h-2.5 rounded-full ${item.isOverdue ? item.joursRetard > 14 ? 'bg-red-600' : item.joursRetard > 7 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
+                  {item.isOverdue && item.joursRetard > 14 && <AlertTriangle size={12} className="text-red-500" />}
+                </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
@@ -1848,7 +1851,7 @@ export default function TresorerieModule({
                 </div>
 
                 {/* Amount */}
-                <span className={`text-sm font-bold whitespace-nowrap ${item.isOverdue ? isDark ? 'text-orange-400' : 'text-orange-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                <span className={`text-sm font-bold whitespace-nowrap ${item.isOverdue ? item.joursRetard > 7 ? 'text-red-500' : isDark ? 'text-orange-400' : 'text-orange-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                   {formatMoney(item.montant)}
                 </span>
 
@@ -1858,7 +1861,7 @@ export default function TresorerieModule({
                     <button
                       onClick={() => handleWhatsAppRelance(item)}
                       className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors"
-                      title="Relancer par WhatsApp"
+                      title="Envoyer un rappel WhatsApp"
                     >
                       <MessageCircle size={14} />
                     </button>
@@ -1964,7 +1967,7 @@ export default function TresorerieModule({
                           </div>
                           {exists ? (
                             <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                              <Check size={10} className="inline mr-0.5" />Déj{'\u00e0'} ajouté
+                              <Check size={10} className="inline mr-0.5" />Déjà ajouté
                             </span>
                           ) : (
                             <button
@@ -2633,19 +2636,23 @@ export default function TresorerieModule({
             {(settings.regimeTva || 'trimestriel') !== 'franchise' && (
               <div className="flex items-center gap-2">
                 <button onClick={() => exportCA3()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  title="Télécharger la liasse CA3 pour votre déclaration de TVA">
                   <FileText size={14} /> CA3
                 </button>
                 <button onClick={() => exportJournalVentes()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  title="Export des ventes avec TVA ventilée">
                   <Receipt size={14} /> Ventes
                 </button>
                 <button onClick={() => exportJournalAchats()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  title="Export des achats avec TVA déductible">
                   <Receipt size={14} /> Achats
                 </button>
                 <button onClick={() => exportFEC()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700'}`}>
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700'}`}
+                  title="Fichier d'Écritures Comptables — Format DGFiP">
                   <FileText size={14} /> FEC
                 </button>
               </div>
@@ -2673,9 +2680,9 @@ export default function TresorerieModule({
                   <p className={`text-xl font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>{formatMoney(tvaTotal.collectee)}</p>
                   <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Sur vos factures émises</p>
                 </div>
-                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-orange-50 border-orange-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>TVA Déductible</p>
-                  <p className={`text-xl font-bold ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>{formatMoney(tvaTotal.deductible)}</p>
+                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>TVA Déductible</p>
+                  <p className={`text-xl font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{formatMoney(tvaTotal.deductible)}</p>
                   <p className={`text-[10px] mt-0.5 ${textSecondary}`}>Sur vos achats / dépenses</p>
                 </div>
                 <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : tvaTotal.net >= 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>

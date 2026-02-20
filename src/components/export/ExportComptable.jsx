@@ -300,7 +300,7 @@ const PRESETS = [
 
 const FORMATS = [
   { key: 'csv', label: 'CSV', icon: FileText, desc: 'Séparateur point-virgule' },
-  { key: 'fec', label: 'FEC', icon: FileSpreadsheet, desc: 'Fichier des Écritures Comptables' },
+  { key: 'fec', label: 'FEC', icon: FileSpreadsheet, desc: 'Fichier des Écritures Comptables', tooltip: 'Format officiel pour votre expert-comptable et la DGFiP' },
   { key: 'excel', label: 'Excel', icon: Table, desc: 'Compatible Excel (UTF-8 BOM)' },
 ];
 
@@ -504,31 +504,31 @@ export default function ExportComptable({
       label: 'Dépenses / achats',
       value: filteredDepenses.length,
       icon: ShoppingCart,
-      color: '#8b5cf6',
+      color: isDark ? '#94a3b8' : '#64748b',
     },
     {
       label: 'Paiements reçus',
       value: filteredPaiements.length,
       icon: Euro,
-      color: '#3b82f6',
+      color: couleur,
     },
     {
       label: 'Total HT factures',
       value: fmtEUR.format(totalHTFactures),
       icon: Euro,
-      color: '#10b981',
+      color: couleur,
     },
     {
       label: 'Total encaissé',
       value: fmtEUR.format(totalPaiements),
       icon: Euro,
-      color: '#0ea5e9',
+      color: couleur,
     },
     {
       label: 'Total dépenses',
       value: fmtEUR.format(totalDepenses),
       icon: Euro,
-      color: '#ef4444',
+      color: isDark ? '#94a3b8' : '#64748b',
     },
   ];
 
@@ -645,6 +645,7 @@ export default function ExportComptable({
                 <button
                   key={f.key}
                   onClick={() => setFormat(f.key)}
+                  title={f.tooltip || ''}
                   className={`border rounded-xl p-4 text-left transition-all ${
                     isActive
                       ? 'ring-2 shadow-sm'
@@ -707,23 +708,27 @@ export default function ExportComptable({
               const count = j.key === 'all'
                 ? entries.length
                 : entries.filter((e) => e.journal === j.key).length;
+              const isEmpty = count === 0 && j.key !== 'all';
               return (
                 <button
                   key={j.key}
-                  onClick={() => { setJournalFilter(j.key); setPreviewPage(0); }}
+                  onClick={() => { if (!isEmpty) { setJournalFilter(j.key); setPreviewPage(0); } }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'text-white shadow-sm'
-                      : isDark
-                        ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    isEmpty
+                      ? 'opacity-40 cursor-not-allowed'
+                      : isActive
+                        ? 'text-white shadow-sm'
+                        : isDark
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
-                  style={isActive ? { backgroundColor: j.color } : {}}
+                  style={isActive && !isEmpty ? { backgroundColor: j.color } : {}}
+                  title={isEmpty ? 'Aucune écriture pour ce journal' : ''}
                 >
                   {j.label}
                   <span
                     className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                      isActive
+                      isActive && !isEmpty
                         ? 'bg-white/20 text-white'
                         : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-500'
                     }`}
@@ -943,17 +948,22 @@ export default function ExportComptable({
               </p>
             </div>
 
-            <button
-              onClick={handleExport}
-              disabled={filteredEntries.length === 0}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-              style={{
-                backgroundColor: filteredEntries.length === 0 ? (isDark ? '#475569' : '#94a3b8') : couleur,
-              }}
-            >
-              <Download className="w-4 h-4" />
-              Télécharger l'export
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleExport}
+                disabled={filteredEntries.length === 0}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                style={{
+                  backgroundColor: filteredEntries.length === 0 ? (isDark ? '#475569' : '#94a3b8') : couleur,
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Télécharger l'export
+              </button>
+              {filteredEntries.length === 0 && (
+                <p className={`text-xs ${mutedCls}`}>Aucune écriture pour la période sélectionnée</p>
+              )}
+            </div>
           </div>
 
           {/* Equilibre check */}

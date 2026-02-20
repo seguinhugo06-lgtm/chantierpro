@@ -228,35 +228,57 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
     return (
       <div className="space-y-6">
         {/* Empty state card */}
-        <div className={`p-12 rounded-2xl border-2 border-dashed text-center ${isDark ? 'border-slate-700' : 'border-slate-300'}`}>
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
-            <Building2 size={36} style={{ color: couleur }} />
+        <div className={`rounded-2xl border-2 border-dashed overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-300'}`}>
+          <div className="p-10 sm:p-12 text-center">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+              <Building2 size={36} style={{ color: couleur }} />
+            </div>
+            <h3 className={`text-xl font-semibold mb-2 ${tc.text}`}>Connexion bancaire</h3>
+            <p className={`text-sm mb-8 max-w-md mx-auto ${tc.textMuted}`}>
+              Centralisez vos flux financiers et gagnez du temps sur votre suivi de trésorerie.
+            </p>
+
+            {/* Benefits */}
+            <div className="flex flex-col sm:flex-row items-stretch gap-3 max-w-lg mx-auto mb-8">
+              {[
+                { icon: Zap, label: 'Rapprochement automatique' },
+                { icon: RefreshCw, label: 'Catégorisation automatique' },
+                { icon: TrendingUp, label: 'Solde en temps réel' },
+              ].map((b) => (
+                <div key={b.label} className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-xl ${isDark ? 'bg-slate-800/60' : 'bg-slate-50'}`}>
+                  <b.icon size={16} style={{ color: couleur }} className="flex-shrink-0" />
+                  <span className={`text-xs font-medium ${tc.text}`}>{b.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA buttons */}
+            <div className="flex flex-col items-center gap-3 max-w-sm mx-auto">
+              <button
+                onClick={() => setShowBankConnectModal(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-white font-semibold rounded-xl transition-all hover:shadow-lg"
+                style={{ background: couleur }}
+              >
+                <Landmark size={18} />
+                Connecter ma banque
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-xl border transition-all hover:shadow-md ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+              >
+                <Upload size={18} />
+                Importer un relevé CSV
+              </button>
+            </div>
+
+            {/* Security note */}
+            <div className={`flex items-center justify-center gap-2 mt-6 ${tc.textMuted}`}>
+              <Shield size={14} />
+              <p className="text-xs">
+                Connexion sécurisée via DSP2 — nous ne stockons jamais vos identifiants
+              </p>
+            </div>
           </div>
-          <h3 className={`text-xl font-semibold mb-2 ${tc.text}`}>Connexion bancaire</h3>
-          <p className={`text-sm mb-6 max-w-md mx-auto ${tc.textMuted}`}>
-            Importez votre relevé bancaire CSV pour rapprocher automatiquement
-            vos transactions avec vos factures.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 text-white font-medium rounded-xl transition-all hover:shadow-lg"
-              style={{ background: couleur }}
-            >
-              <Upload size={18} />
-              Importer un relevé CSV
-            </button>
-            <button
-              onClick={() => setShowBankConnectModal(true)}
-              className={`inline-flex items-center gap-2 px-6 py-3 font-medium rounded-xl border transition-all hover:shadow-md ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-            >
-              <Landmark size={18} />
-              Connecter ma banque
-            </button>
-          </div>
-          <p className={`text-xs mt-4 ${tc.textMuted}`}>
-            Compatible : Societe Generale, BNP, CIC, Caisse d'Epargne, LCL, Qonto, Shine, N26...
-          </p>
         </div>
 
         <Suspense fallback={null}>
