@@ -198,6 +198,25 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     return words.every(w => target.includes(w));
   }, [normalize]);
 
+  // ====== DEVIS USAGE: count how many devis use each article ======
+  const devisUsageMap = useMemo(() => {
+    const map = {};
+    (devis || []).forEach(d => {
+      const lignes = d.lignes || d.items || d.articles || [];
+      lignes.forEach(l => {
+        const artId = l.catalogueId || l.articleId || l.article_id;
+        const artNom = (l.designation || l.nom || '').toLowerCase();
+        if (artId) {
+          map[artId] = (map[artId] || 0) + 1;
+        } else if (artNom) {
+          const match = catalogue.find(c => (c.nom || '').toLowerCase() === artNom);
+          if (match) map[match.id] = (map[match.id] || 0) + 1;
+        }
+      });
+    });
+    return map;
+  }, [devis, catalogue]);
+
   // ====== FILTERED & SORTED ======
   const filtered = useMemo(() => {
     let items = catalogue.filter(c => {
@@ -234,26 +253,6 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     return stock != null && seuil != null && seuil > 0 && stock < seuil;
   });
   const activeFilters = (catFilter !== 'Tous' ? 1 : 0) + (onlyInStock ? 1 : 0) + (onlyFavoris ? 1 : 0) + (onlyLowStock ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 10000 ? 1 : 0);
-
-  // ====== DEVIS USAGE: count how many devis use each article ======
-  const devisUsageMap = useMemo(() => {
-    const map = {};
-    (devis || []).forEach(d => {
-      const lignes = d.lignes || d.items || d.articles || [];
-      lignes.forEach(l => {
-        const artId = l.catalogueId || l.articleId || l.article_id;
-        const artNom = (l.designation || l.nom || '').toLowerCase();
-        if (artId) {
-          map[artId] = (map[artId] || 0) + 1;
-        } else if (artNom) {
-          // fuzzy match by name
-          const match = catalogue.find(c => (c.nom || '').toLowerCase() === artNom);
-          if (match) map[match.id] = (map[match.id] || 0) + 1;
-        }
-      });
-    });
-    return map;
-  }, [devis, catalogue]);
 
   // ====== AUTO-FAVORITES: top 5 most used in devis ======
   const trendingArticles = useMemo(() => {
