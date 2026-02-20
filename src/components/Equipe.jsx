@@ -78,6 +78,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const [pForm, setPForm] = useState({ employeId: '', chantierId: '', date: formatLocalDate(new Date()), heures: '', note: '' });
   const [chrono, setChrono] = useState({ running: false, start: null, employeId: '', chantierId: '', paused: false, pausedAt: null, totalPauseTime: 0 });
   const [elapsed, setElapsed] = useState(0);
+  // Auto-select employee for chrono when only one exists
+  useEffect(() => {
+    if (equipe.length === 1 && !chrono.running && !chrono.employeId) {
+      setChrono(p => ({ ...p, employeId: equipe[0].id }));
+    }
+  }, [equipe.length]);
   const [showBulkEntry, setShowBulkEntry] = useState(false);
   const [bulkForm, setBulkForm] = useState({ chantierId: '', date: formatLocalDate(new Date()), heures: '8', selectedEmployees: [] });
 
@@ -1529,24 +1535,24 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
         </motion.div>
 
-        {/* Week Cost Card */}
+        {/* Week Cost Card — neutral color for 0€, brand color for >0€ */}
         <motion.div
           className={`${cardBg} rounded-2xl border p-4 relative overflow-hidden shadow-sm`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <div className="absolute top-0 right-0 w-16 h-16 rounded-full bg-red-500/10 -mr-6 -mt-6" />
+          <div className="absolute top-0 right-0 w-16 h-16 rounded-full -mr-6 -mt-6" style={{ background: weekCost > 0 ? `${couleur}15` : 'rgba(100,116,139,0.1)' }} />
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center mb-3">
-              <Euro size={18} className="text-red-500" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: weekCost > 0 ? `${couleur}15` : 'rgba(100,116,139,0.1)' }}>
+              <Euro size={18} style={{ color: weekCost > 0 ? couleur : '#6B7280' }} />
             </div>
             <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Coût semaine</p>
-            <p className="text-2xl sm:text-3xl font-bold text-red-500">
+            <p className={`text-2xl sm:text-3xl font-bold ${weekCost === 0 ? textMuted : ''}`} style={weekCost > 0 ? { color: couleur } : {}}>
               {modeDiscret ? '***' : weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
               <span className="text-base font-normal ml-1">€</span>
             </p>
-            <p className={`text-xs ${textMuted} mt-2`}>Charges comprises</p>
+            <p className={`text-xs ${textMuted} mt-2`} title="Inclut les charges sociales et patronales">{weekCost === 0 ? 'Aucun coût cette semaine' : 'Charges comprises'}</p>
           </div>
         </motion.div>
       </div>
@@ -2104,9 +2110,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
                                 </p>
                               </div>
-                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                                 <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
-                                <p className="text-xl font-bold text-red-500">
+                                <p className={`text-xl font-bold ${textPrimary}`}>
                                   {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
                                 </p>
                               </div>
@@ -2122,7 +2128,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             {!modeDiscret && (
                               <div className={`mt-3 flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/50'}`}>
                                 <span className={`text-xs ${textMuted}`}>Marge/heure:</span>
-                                <span className={`text-sm font-bold ${margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                <span className={`text-sm font-bold ${margin === 0 ? textMuted : margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                   {margin > 0 ? '+' : ''}{margin}€
                                 </span>
                               </div>
@@ -2558,10 +2564,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                   {/* Control Buttons */}
                   <div className="flex flex-col items-center gap-2">
-                    {!chrono.employeId && !chrono.running && (
-                      <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'} flex items-center gap-1 animate-pulse`}>
-                        <AlertCircle size={14} /> Sélectionnez un employé ci-dessus pour démarrer
-                      </p>
+                    {!chrono.employeId && !chrono.running && equipe.length > 0 && (
+                      <div className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 ${isDark ? 'bg-amber-900/30 text-amber-300 border border-amber-800/50' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                        <AlertCircle size={16} /> Sélectionnez un employé ci-dessus pour démarrer
+                      </div>
                     )}
                     <div className="flex gap-3 flex-wrap justify-center">
                     {!chrono.running ? (
@@ -4583,9 +4589,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <Percent size={16} className="text-blue-500" />
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Utilisation</span>
                       </div>
-                      <p className={`text-2xl font-bold ${utilizationRate >= 80 ? 'text-emerald-500' : utilizationRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{utilizationRate}%</p>
+                      <p className={`text-2xl font-bold ${utilizationRate === 0 ? textMuted : utilizationRate >= 80 ? 'text-emerald-500' : utilizationRate >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{utilizationRate}%</p>
                       <div className={`w-full h-2 rounded-full mt-2 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, utilizationRate)}%`, background: utilizationRate >= 80 ? '#22c55e' : utilizationRate >= 50 ? '#f59e0b' : '#ef4444' }} />
+                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, utilizationRate)}%`, background: utilizationRate === 0 ? '#94a3b8' : utilizationRate >= 80 ? '#22c55e' : utilizationRate >= 50 ? '#f59e0b' : '#ef4444' }} />
                       </div>
                     </div>
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
@@ -4593,7 +4599,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <Euro size={16} className="text-emerald-500" />
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Marge</span>
                       </div>
-                      <p className={`text-2xl font-bold ${monthRevenue - monthCost >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <p className={`text-2xl font-bold ${(monthRevenue - monthCost) === 0 ? textMuted : (monthRevenue - monthCost) > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                         {modeDiscret ? '***' : `${Math.round(monthRevenue - monthCost).toLocaleString('fr-FR')} €`}
                       </p>
                       <p className={`text-xs ${textMuted}`}>
