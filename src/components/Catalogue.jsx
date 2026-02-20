@@ -1373,7 +1373,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             )}
           </div>
           <button onClick={() => setShowArticlePicker(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
-            <Sparkles size={16} /><span className="hidden sm:inline">Référentiel BTP</span>
+            <Sparkles size={16} className="animate-pulse" /><span className="hidden sm:inline">Référentiel BTP</span>
+            <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${couleur}20`, color: couleur }}>2 000+</span>
           </button>
           <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 shadow-lg" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Ajouter</span>
@@ -1424,13 +1425,13 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   }, 0) / withMargin.length;
                 })();
                 return [
-                  { label: 'Articles', value: totalArticles, color: couleur },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : '—'), color: '#3b82f6' },
+                  { label: 'Articles catalogue', value: totalArticles, color: couleur },
+                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : '—'), color: couleur },
                   { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : '—'), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b' },
-                  { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e' },
-                  { label: 'Favoris', value: favoris.length, color: '#f59e0b' },
+                  { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock' },
+                  { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris') },
                 ].map((s, i) => (
-                  <div key={i} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div key={i} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'} ${s.onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`} onClick={s.onClick} title={s.title}>
                     <p className={`text-[11px] font-medium ${textMuted}`}>{s.label}</p>
                     <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
                   </div>
@@ -1557,12 +1558,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </AnimatePresence>
 
             {/* Category chips */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="relative">
+            <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 bg-gradient-to-l sm:hidden ${isDark ? 'from-slate-900' : 'from-white'}`} />
+            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {CATEGORIES.map(cat => (
                 <button key={cat} onClick={() => setCatFilter(cat)} className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={catFilter === cat ? {background: couleur} : {}}>
                   {cat}
                 </button>
               ))}
+            </div>
             </div>
           </div>
 
@@ -1606,7 +1610,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   </div>
                   <div>
                     <p className={`text-sm font-semibold ${textPrimary}`}>Enrichissez votre catalogue</p>
-                    <p className={`text-xs ${textMuted}`}>Importez des articles depuis le référentiel BTP pour gagner du temps</p>
+                    <p className={`text-xs ${textMuted}`}>Importez parmi <strong style={{ color: couleur }}>2 000+</strong> articles du référentiel BTP</p>
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                      {['Prix à jour', 'Catégories BTP', 'Unités standards'].map(tag => (
+                        <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-white/80 text-slate-600 border border-slate-200'}`}>{tag}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
@@ -1634,11 +1643,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
                       const stockLow = stockVal != null && seuilVal != null && seuilVal > 0 && stockVal < seuilVal;
                       return (
-                        <tr key={item.id} className={`border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-100'}`} onClick={() => setArticleDetail(item.id)}>
+                        <tr key={item.id} className={`group border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-100'}`} onClick={() => setArticleDetail(item.id)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
-                                <Star size={18} className={item.favori ? 'text-amber-500' : textMuted} fill={item.favori ? 'currentColor' : 'none'} />
+                                <Star size={18} className={`${item.favori ? 'text-amber-500' : `${textMuted} hover:text-amber-400`} transition-colors`} fill={item.favori ? 'currentColor' : 'none'} />
                               </button>
                               <div>
                                 <div className="flex items-center gap-2">
@@ -1675,7 +1684,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                             </td>
                           )}
                           <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}><Edit3 size={18} /></button>
                               <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 size={18} /></button>
                             </div>
@@ -2134,12 +2143,15 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </div>
           </div>
           {favoris.length === 0 ? (
-            <div className={`text-center py-12 ${textMuted}`}>
-              <Star size={40} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium mb-2">Aucun article en favoris</p>
-              <p className="text-xs mb-4">Cliquez sur l'étoile ★ d'un article pour l'ajouter à vos favoris.</p>
+            <div className={`text-center py-12`}>
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <Star size={32} style={{ color: couleur }} />
+              </div>
+              <p className={`text-lg font-bold ${textPrimary}`}>Aucun article en favoris</p>
+              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Cliquez sur l'étoile ★ d'un article pour l'ajouter à vos favoris.</p>
+              <p className={`text-xs ${textMuted} mt-2 max-w-sm mx-auto`} style={{ color: couleur }}>Les articles favoris apparaissent en premier lors de la création de devis</p>
               <button onClick={() => setActiveTab('catalogue')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white shadow-md" style={{ backgroundColor: couleur }}>
+                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white shadow-md hover:opacity-90 transition-all" style={{ backgroundColor: couleur }}>
                 <Package size={16} /> Voir le catalogue
               </button>
             </div>
