@@ -27,17 +27,19 @@ const DEVIS_STATUS_COLORS = {
   refuse: '#ef4444',
   expire: '#f97316',
   payee: '#0ea5e9',
+  facture: '#6366f1',
 };
 
 const DEVIS_STATUS_LABELS = {
   brouillon: 'Brouillon',
-  envoye: 'Envoy\u00e9',
+  envoye: 'Envoyé',
   vu: 'Vu',
-  accepte: 'Accept\u00e9',
-  signe: 'Sign\u00e9',
-  refuse: 'Refus\u00e9',
-  expire: 'Expir\u00e9',
-  payee: 'Pay\u00e9e',
+  accepte: 'Accepté',
+  signe: 'Signé',
+  refuse: 'Refusé',
+  expire: 'Expiré',
+  payee: 'Payée',
+  facture: 'Facturé',
 };
 
 const CHANTIER_STATUS_COLORS = {
@@ -48,7 +50,7 @@ const CHANTIER_STATUS_COLORS = {
 
 const CHANTIER_STATUS_LABELS = {
   en_cours: 'En cours',
-  termine: 'Termin\u00e9',
+  termine: 'Terminé',
   en_attente: 'En attente',
 };
 
@@ -118,6 +120,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
   } = useAnalytique({ devis, clients, chantiers, depenses, paiements, equipe, period });
 
   const topClientMax = topClients.length > 0 ? topClients[0].montant : 1;
+  const topClientTotal = topClients.reduce((s, c) => s + c.montant, 0) || 1;
   const cashFlowMax = Math.max(cashFlow.totalPaiements, cashFlow.totalDepenses, 1);
   const rentaMaxCA = rentabiliteChantiers.length > 0 ? Math.max(...rentabiliteChantiers.map(r => r.ca), 1) : 1;
 
@@ -192,7 +195,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <div className="flex-1">
             <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord analytique</h1>
             <p className={`text-sm ${textSecondary}`}>
-              Vue d'ensemble {period !== 'all' ? `\u2014 ${PERIOD_LABELS[period] || period}` : ''}
+              Vue d'ensemble {period !== 'all' ? `— ${PERIOD_LABELS[period] || period}` : ''}
               {period !== 'all' && totalDevis > 0 && <span className="ml-2">({totalDevis} devis)</span>}
             </p>
           </div>
@@ -235,7 +238,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{formatEUR(kpis.ca)}</p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className={`text-xs ${textSecondary}`}>Devis accept{'\u00e9'}s / sign{'\u00e9'}s TTC</p>
+            <p className={`text-xs ${textSecondary}`}>Devis acceptés / signés TTC</p>
             <ComparisonBadge value={comparisons.ca} isDark={isDark} />
           </div>
         </div>
@@ -250,7 +253,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.devisEnAttente}</p>
           <p className={`text-xs mt-1 ${textSecondary}`}>
-            {kpis.montantEnAttente > 0 ? `${formatEUR(kpis.montantEnAttente)} en jeu` : 'Envoy\u00e9s ou vus'}
+            {kpis.montantEnAttente > 0 ? `${formatEUR(kpis.montantEnAttente)} en jeu` : 'Envoyés ou vus'}
           </p>
         </div>
 
@@ -263,7 +266,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 <Info size={13} className={`${textSecondary} opacity-60 cursor-help`} />
                 <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-gray-800 text-white'}`}>
                   <p className="font-semibold mb-1">Calcul :</p>
-                  <p>Devis sign{'\u00e9'}s ({kpis.signedCount}) / Devis envoy{'\u00e9'}s ({kpis.totalDevisEnvoyes})</p>
+                  <p>Devis signés ({kpis.signedCount}) / Devis envoyés ({kpis.totalDevisEnvoyes})</p>
                   <p className="mt-1 opacity-70">Brouillons exclus du calcul ({kpis.brouillonsCount})</p>
                 </div>
               </div>
@@ -274,7 +277,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.tauxConversion.toFixed(1)}%</p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className={`text-xs ${textSecondary}`}>{kpis.signedCount}/{kpis.totalDevisEnvoyes} sign{'\u00e9'}s</p>
+            <p className={`text-xs ${textSecondary}`}>{kpis.signedCount}/{kpis.totalDevisEnvoyes} signés</p>
             <ComparisonBadge value={comparisons.tauxConversion} isDark={isDark} suffix="pts" />
           </div>
         </div>
@@ -292,7 +295,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className={`text-xs ${textSecondary}`}>
-              {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - D\u00e9penses'}
+              {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - Dépenses'}
             </p>
             <ComparisonBadge value={comparisons.marge} isDark={isDark} />
           </div>
@@ -305,7 +308,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <FileEdit size={16} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
           <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
             <span className="font-semibold">{kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''}</span>
-            {' '}({formatEUR(kpis.brouillonsMontant)} TTC) non comptabilis{'\u00e9'}{kpis.brouillonsCount > 1 ? 's' : ''} dans les statistiques
+            {' '}({formatEUR(kpis.brouillonsMontant)} TTC) non comptabilisé{kpis.brouillonsCount > 1 ? 's' : ''} dans les statistiques
           </p>
         </div>
       )}
@@ -350,7 +353,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
 
         {/* Monthly Revenue Chart (with depenses overlay) */}
         <div className={`${cardClass} lg:col-span-2`}>
-          <h2 className={`text-lg font-semibold mb-4 ${textPrimary}`}>CA & D{'\u00e9'}penses mensuels</h2>
+          <h2 className={`text-lg font-semibold mb-4 ${textPrimary}`}>CA & Dépenses mensuels</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyRevenue} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -367,7 +370,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="montant" name="CA" fill={couleur} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="depenses" name="D\u00e9penses" fill="#ef4444" radius={[4, 4, 0, 0]} opacity={0.6} />
+                <Bar dataKey="depenses" name="Dépenses" fill="#ef4444" radius={[4, 4, 0, 0]} opacity={0.6} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -380,14 +383,19 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             <h2 className={`text-lg font-semibold ${textPrimary}`}>Top clients</h2>
           </div>
           {topClients.length === 0 ? (
-            <p className={`text-sm ${textSecondary}`}>Aucune donn{'\u00e9'}e disponible</p>
+            <p className={`text-sm ${textSecondary}`}>Aucune donnée disponible</p>
           ) : (
             <div className="space-y-3">
               {topClients.slice(0, 5).map((client, idx) => (
                 <div key={idx}>
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-sm font-medium truncate mr-2 ${textPrimary}`}>{client.nom}</span>
-                    <span className={`text-sm font-semibold whitespace-nowrap ${textSecondary}`}>{formatEUR(client.montant)}</span>
+                    <span className={`text-sm font-semibold whitespace-nowrap ${textSecondary}`}>
+                      {formatEUR(client.montant)}
+                      <span className={`text-xs font-normal ml-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        ({((client.montant / topClientTotal) * 100).toFixed(0)}%)
+                      </span>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className={`flex-1 h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -402,7 +410,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                     </div>
                     {client.margePercent > 0 && (
                       <span className={`text-[10px] font-medium ${client.margePercent >= 20 ? 'text-green-500' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                        {client.margePercent.toFixed(0)}%
+                        marge {client.margePercent.toFixed(0)}%
                       </span>
                     )}
                   </div>
@@ -507,7 +515,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <div className={cardClass}>
             <div className="flex items-center gap-2 mb-4">
               <PieChartIcon size={18} style={{ color: couleur }} />
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>D{'\u00e9'}penses par cat{'\u00e9'}gorie</h2>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>Dépenses par catégorie</h2>
             </div>
             <div className="flex flex-col md:flex-row items-center gap-4">
               <div className="h-56 w-56 flex-shrink-0">
@@ -544,7 +552,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 { label: 'Excellent (≥30%)', count: marginDistribution.excellent, color: '#22c55e' },
                 { label: 'Bon (15-30%)', count: marginDistribution.bon, color: '#f59e0b' },
                 { label: 'Faible (0-15%)', count: marginDistribution.faible, color: '#f97316' },
-                { label: 'N\u00e9gatif (<0%)', count: marginDistribution.negatif, color: '#ef4444' },
+                { label: 'Négatif (<0%)', count: marginDistribution.negatif, color: '#ef4444' },
               ].filter(b => b.count > 0).map((band, i) => {
                 const total = marginDistribution.excellent + marginDistribution.bon + marginDistribution.faible + marginDistribution.negatif;
                 return (
@@ -570,12 +578,12 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
         )}
       </div>
 
-      {/* ────── Rentabilit\u00e9 par Chantier ────── */}
+      {/* ────── Rentabilité par Chantier ────── */}
       {rentabiliteChantiers.length > 0 && (
         <div className={cardClass}>
           <div className="flex items-center gap-2 mb-4">
             <Building2 size={18} style={{ color: couleur }} />
-            <h2 className={`text-lg font-semibold ${textPrimary}`}>Rentabilit{'\u00e9'} par chantier</h2>
+            <h2 className={`text-lg font-semibold ${textPrimary}`}>Rentabilité par chantier</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -583,10 +591,10 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                   <th className="text-left py-3 pr-4 font-semibold">Chantier</th>
                   <th className="text-right py-3 pr-4 font-semibold">CA TTC</th>
-                  <th className="text-right py-3 pr-4 font-semibold">D{'\u00e9'}penses</th>
+                  <th className="text-right py-3 pr-4 font-semibold">Dépenses</th>
                   <th className="text-right py-3 pr-4 font-semibold">Marge</th>
                   <th className="text-right py-3 pr-4 font-semibold">Marge %</th>
-                  <th className="text-left py-3 font-semibold" style={{ minWidth: 120 }}>Rentabilit{'\u00e9'}</th>
+                  <th className="text-left py-3 font-semibold" style={{ minWidth: 120 }}>Rentabilité</th>
                 </tr>
               </thead>
               <tbody>
@@ -602,7 +610,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                         <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${
                           r.statut === 'termine' ? isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
                           : isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
-                        }`}>{r.statut === 'termine' ? 'Termin\u00e9' : 'En cours'}{r.avancement > 0 ? ` \u2014 ${r.avancement}%` : ''}</span>
+                        }`}>{r.statut === 'termine' ? 'Terminé' : 'En cours'}{r.avancement > 0 ? ` — ${r.avancement}%` : ''}</span>
                       </td>
                       <td className={`py-3 pr-4 text-right font-semibold whitespace-nowrap ${textPrimary}`}>{formatEUR(r.ca)}</td>
                       <td className={`py-3 pr-4 text-right whitespace-nowrap text-red-500`}>{formatEUR(r.depenses)}</td>
@@ -650,13 +658,13 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-4">
           <CreditCard size={18} style={{ color: couleur }} />
-          <h2 className={`text-lg font-semibold ${textPrimary}`}>Flux de tr{'\u00e9'}sorerie</h2>
+          <h2 className={`text-lg font-semibold ${textPrimary}`}>Flux de trésorerie</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
           {/* Paiements received */}
           <div>
-            <p className={`text-sm mb-2 ${textSecondary}`}>Paiements re{'\u00e7'}us</p>
+            <p className={`text-sm mb-2 ${textSecondary}`}>Paiements reçus</p>
             <p className={`text-xl font-bold text-green-500 mb-2`}>{formatEUR(cashFlow.totalPaiements)}</p>
             <div className={`h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div
@@ -669,7 +677,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           {/* Depenses */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <p className={`text-sm ${textSecondary}`}>D{'\u00e9'}penses totales</p>
+              <p className={`text-sm ${textSecondary}`}>Dépenses totales</p>
               <ComparisonBadge value={comparisons.depenses} isDark={isDark} invert />
             </div>
             <p className={`text-xl font-bold text-red-500 mb-2`}>{formatEUR(cashFlow.totalDepenses)}</p>

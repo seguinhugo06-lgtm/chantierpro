@@ -91,23 +91,23 @@ const CATEGORY_COLORS = {
 /** Charges courantes BTP (Feature 6) */
 const BTP_CHARGES = [
   { categorie: 'Assurance', items: [
-    { label: 'Responsabilit\u00e9 civile pro (RC)', montantMoyen: 250, recurrence: 'mensuel' },
-    { label: 'D\u00e9cennale', montantMoyen: 800, recurrence: 'mensuel' },
+    { label: 'Responsabilité civile pro (RC)', montantMoyen: 250, recurrence: 'mensuel' },
+    { label: 'Décennale', montantMoyen: 800, recurrence: 'mensuel' },
     { label: 'Multirisque local', montantMoyen: 180, recurrence: 'mensuel' },
   ]},
-  { categorie: 'V\u00e9hicules', items: [
-    { label: 'Leasing v\u00e9hicule utilitaire', montantMoyen: 650, recurrence: 'mensuel' },
+  { categorie: 'Véhicules', items: [
+    { label: 'Leasing véhicule utilitaire', montantMoyen: 650, recurrence: 'mensuel' },
     { label: 'Carburant / Gasoil', montantMoyen: 500, recurrence: 'mensuel' },
-    { label: 'Entretien / CT v\u00e9hicules', montantMoyen: 120, recurrence: 'mensuel' },
+    { label: 'Entretien / CT véhicules', montantMoyen: 120, recurrence: 'mensuel' },
   ]},
-  { categorie: 'Local / D\u00e9p\u00f4t', items: [
-    { label: 'Loyer local / d\u00e9p\u00f4t', montantMoyen: 1800, recurrence: 'mensuel' },
-    { label: '\u00c9lectricit\u00e9 / Eau', montantMoyen: 200, recurrence: 'mensuel' },
-    { label: 'T\u00e9l\u00e9com / Internet', montantMoyen: 80, recurrence: 'mensuel' },
+  { categorie: 'Local / Dépôt', items: [
+    { label: 'Loyer local / dépôt', montantMoyen: 1800, recurrence: 'mensuel' },
+    { label: 'Électricité / Eau', montantMoyen: 200, recurrence: 'mensuel' },
+    { label: 'Télécom / Internet', montantMoyen: 80, recurrence: 'mensuel' },
   ]},
   { categorie: 'Personnel', items: [
     { label: 'Salaires + charges', montantMoyen: 3500, recurrence: 'mensuel' },
-    { label: 'Mutuelle / Pr\u00e9voyance', montantMoyen: 150, recurrence: 'mensuel' },
+    { label: 'Mutuelle / Prévoyance', montantMoyen: 150, recurrence: 'mensuel' },
     { label: 'Formation', montantMoyen: 200, recurrence: 'trimestriel' },
   ]},
   { categorie: 'Divers', items: [
@@ -654,6 +654,9 @@ export default function TresorerieModule({
   const [showPrefillConfirm, setShowPrefillConfirm] = useState(false);
   const [showEncaisserWidget, setShowEncaisserWidget] = useState(true);
   const [showChargesBTP, setShowChargesBTP] = useState(false);
+  const [alertDismissed, setAlertDismissed] = useState(() => {
+    try { return localStorage.getItem('cp_treso_alert_dismissed') === '1'; } catch { return false; }
+  });
 
   // Wizard bootstrapping state
   const [wizardDismissed] = useState(() => {
@@ -1051,7 +1054,7 @@ export default function TresorerieModule({
   // WhatsApp relance for overdue invoices
   const handleWhatsAppRelance = useCallback((item) => {
     const msg = encodeURIComponent(
-      `Bonjour ${item.clientNom},\n\nJe me permets de vous relancer concernant la facture n\u00b0${item.numero} d'un montant de ${formatCurrency(item.montant)} \u20ac.\n\n${item.joursRetard > 0 ? `Cette facture est en retard de ${item.joursRetard} jour${item.joursRetard > 1 ? 's' : ''}. ` : ''}Pourriez-vous proc\u00e9der au r\u00e8glement ?\n\nMerci d'avance,\nCordialement`
+      `Bonjour ${item.clientNom},\n\nJe me permets de vous relancer concernant la facture n°${item.numero} d'un montant de ${formatCurrency(item.montant)} €.\n\n${item.joursRetard > 0 ? `Cette facture est en retard de ${item.joursRetard} jour${item.joursRetard > 1 ? 's' : ''}. ` : ''}Pourriez-vous procéder au règlement ?\n\nMerci d'avance,\nCordialement`
     );
     const tel = (item.clientTel || '').replace(/\s/g, '').replace(/^0/, '+33');
     window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
@@ -1628,17 +1631,31 @@ export default function TresorerieModule({
       </div>
 
       {/* ── Threshold Alert ─────────────────────────────────────────── */}
-      {soldeActuel < (settings.seuilAlerte || 5000) && (
+      {soldeActuel < (settings.seuilAlerte || 5000) && !alertDismissed && (
         <div className={`flex items-start gap-3 p-4 rounded-2xl border ${soldeActuel < 0 ? isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200' : isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={20} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')} />
-          <div>
+          <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`} />
+          <div className="flex-1">
             <p className={`text-sm font-semibold ${soldeActuel < 0 ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
               Solde en dessous du seuil d'alerte ({formatMoney(settings.seuilAlerte || 5000)})
             </p>
             <p className={`text-xs mt-0.5 ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-amber-400' : 'text-amber-600')}`}>
               Votre solde actuel de {formatMoney(soldeActuel)} est inférieur au seuil configuré.
             </p>
+            <div className="flex items-center gap-3 mt-2">
+              <button onClick={() => setShowSettingsPanel(true)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${soldeActuel < 0 ? isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200' : isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
+                Modifier le seuil
+              </button>
+              <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch {} }}
+                className={`text-xs ${soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} hover:underline`}>
+                Ne plus afficher
+              </button>
+            </div>
           </div>
+          <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch {} }}
+            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <X size={16} className={soldeActuel < 0 ? (isDark ? 'text-red-400' : 'text-red-500') : (isDark ? 'text-amber-400' : 'text-amber-500')} />
+          </button>
         </div>
       )}
 
@@ -1686,24 +1703,24 @@ export default function TresorerieModule({
                   <Wallet size={20} />
                 </div>
                 <div>
-                  <h3 className={`text-base font-bold ${textPrimary}`}>Bienvenue dans la Tr{'\u00e9'}sorerie</h3>
-                  <p className={`text-sm ${textSecondary}`}>{'\u00c9'}tape 1/2 : Votre solde bancaire actuel</p>
+                  <h3 className={`text-base font-bold ${textPrimary}`}>Bienvenue dans la Trésorerie</h3>
+                  <p className={`text-sm ${textSecondary}`}>Étape 1/2 : Votre solde bancaire actuel</p>
                 </div>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Solde actuel de votre compte ({'\u20ac'})</label>
+                  <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Solde actuel de votre compte (€)</label>
                   <input type="number" placeholder="ex: 15000"
                     value={settings.soldeInitial || ''}
                     onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
                     className={`w-full px-4 py-3 rounded-xl border text-lg font-bold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
                   />
-                  <p className={`text-[10px] mt-1 ${textSecondary}`}>Ce sera votre point de d{'\u00e9'}part pour les projections</p>
+                  <p className={`text-[10px] mt-1 ${textSecondary}`}>Ce sera votre point de départ pour les projections</p>
                 </div>
                 <button onClick={() => setWizardStep(1)}
                   className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                   style={{ backgroundColor: couleur }}>
-                  Suivant {'\u2192'}
+                  Suivant →
                 </button>
               </div>
             </div>
@@ -1717,7 +1734,7 @@ export default function TresorerieModule({
                 </div>
                 <div>
                   <h3 className={`text-base font-bold ${textPrimary}`}>Vos charges mensuelles</h3>
-                  <p className={`text-sm ${textSecondary}`}>{'\u00c9'}tape 2/2 : S{'\u00e9'}lectionnez et ajustez</p>
+                  <p className={`text-sm ${textSecondary}`}>Étape 2/2 : Sélectionnez et ajustez</p>
                 </div>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1785,7 +1802,7 @@ export default function TresorerieModule({
               </div>
               <div>
                 <h3 className={`text-sm font-bold ${textPrimary}`}>
-                  {'\u00c0'} encaisser maintenant
+                  À encaisser maintenant
                 </h3>
                 <p className={`text-xs ${textSecondary}`}>
                   {encaisserData.items.length} facture{encaisserData.items.length > 1 ? 's' : ''} {'\u2022'} {formatMoney(encaisserData.totalAEncaisser)} TTC
@@ -1825,7 +1842,7 @@ export default function TresorerieModule({
                         {item.joursRetard}j de retard
                       </span>
                     ) : item.echeance ? (
-                      `\u00c9ch. ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                      `Éch. ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
                     ) : 'En attente'}
                   </p>
                 </div>
@@ -1849,7 +1866,7 @@ export default function TresorerieModule({
                   <button
                     onClick={() => handleEncaisserMarkPaid(item)}
                     className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-emerald-400' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600'}`}
-                    title="Marquer comme encaiss\u00e9"
+                    title="Marquer comme encaissé"
                   >
                     <Check size={14} />
                   </button>
@@ -1860,7 +1877,7 @@ export default function TresorerieModule({
               <div className={`px-5 py-2 text-center`}>
                 <button onClick={() => setActiveTab('previsions')}
                   className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
-                  Voir les {encaisserData.items.length - 5} autres factures {'\u2192'}
+                  Voir les {encaisserData.items.length - 5} autres factures →
                 </button>
               </div>
             )}
@@ -1871,13 +1888,13 @@ export default function TresorerieModule({
       {/* ── KPI Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Solde actuel" value={formatMoney(soldeActuel)} icon={Wallet}
-          trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel >= 0 ? '#10b981' : '#ef4444'} accent={couleur} isDark={isDark} />
+          trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel < 0 ? '#ef4444' : soldeActuel < (settings.seuilAlerte || 5000) ? '#f97316' : '#10b981'} accent={couleur} isDark={isDark} />
         <KpiCard label="Entrées prévues" value={formatMoney(entreesPrevues)} icon={ArrowDown}
           color="#3b82f6" trendLabel="Factures impayées + prévisions" isDark={isDark} />
         <KpiCard label="Sorties prévues" value={formatMoney(sortiesPrevues)} icon={ArrowUp}
           color="#f59e0b" trendLabel="Charges + prévisions" isDark={isDark} />
         <KpiCard label="Projection fin de mois" value={formatMoney(projectionFinMois)} icon={TrendingUp}
-          color={projectionFinMois >= 0 ? '#10b981' : '#ef4444'} trendLabel="Solde + entrées - sorties" isDark={isDark} />
+          color={projectionFinMois < 0 ? '#ef4444' : projectionFinMois < (settings.seuilAlerte || 5000) ? '#f97316' : '#10b981'} trendLabel="Solde + entrées - sorties" isDark={isDark} />
       </div>
 
       {/* ── TVA déductible auto-calculée (Feature 5 — Aperçu only) ──── */}
@@ -1888,21 +1905,21 @@ export default function TresorerieModule({
             <Percent size={20} className="text-purple-500" />
           </div>
           <div className="flex-1">
-            <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>TVA {'\u2014'} Auto-calcul\u00e9e depuis vos d\u00e9penses</p>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>TVA — Auto-calculée depuis vos dépenses</p>
             <div className="flex flex-wrap items-center gap-4 mt-1">
               <span className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                Collect\u00e9e : <strong>{formatMoney(tvaTotal.collectee)}</strong>
+                Collectée : <strong>{formatMoney(tvaTotal.collectee)}</strong>
               </span>
               <span className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                D\u00e9ductible : <strong>{formatMoney(tvaTotal.deductible)}</strong>
+                Déductible : <strong>{formatMoney(tvaTotal.deductible)}</strong>
               </span>
               <span className={`text-sm font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {tvaTotal.net >= 0 ? '\u00c0 reverser' : 'Cr\u00e9dit'} : {formatMoney(Math.abs(tvaTotal.net))}
+                {tvaTotal.net >= 0 ? 'À reverser' : 'Crédit'} : {formatMoney(Math.abs(tvaTotal.net))}
               </span>
             </div>
           </div>
           <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
-            D\u00e9tail TVA {'\u2192'}
+            Détail TVA →
           </span>
         </div>
       )}
@@ -1920,7 +1937,7 @@ export default function TresorerieModule({
               </div>
               <div className="text-left">
                 <p className={`text-sm font-bold ${textPrimary}`}>Charges courantes BTP</p>
-                <p className={`text-xs ${textSecondary}`}>Ajoutez rapidement vos charges r{'\u00e9'}currentes</p>
+                <p className={`text-xs ${textSecondary}`}>Ajoutez rapidement vos charges récurrentes</p>
               </div>
             </div>
             {showChargesBTP ? <ChevronUp size={18} className={textSecondary} /> : <ChevronDown size={18} className={textSecondary} />}
@@ -1947,7 +1964,7 @@ export default function TresorerieModule({
                           </div>
                           {exists ? (
                             <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                              <Check size={10} className="inline mr-0.5" />D{'\u00e9'}j{'\u00e0'} ajout{'\u00e9'}
+                              <Check size={10} className="inline mr-0.5" />Déj{'\u00e0'} ajouté
                             </span>
                           ) : (
                             <button
