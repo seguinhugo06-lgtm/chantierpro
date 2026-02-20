@@ -50,6 +50,54 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     return () => document.removeEventListener('keydown', handleEscape);
   }, [show, viewId, showQuickModal]);
 
+  // Client stats map — MUST be defined before filtered/getClientStatus/getClientStats
+  const clientStatsMap = useMemo(() => {
+    const map = new Map();
+    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
+    (devis || []).forEach(d => {
+      const cid = d.client_id;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      if (d.type === 'devis') s.devis++;
+      if (d.type === 'facture') s.factures++;
+      if (d.type === 'devis' && d.statut === 'accepte') {
+        s.ca += d.total_ttc || 0;
+      }
+      if (d.type === 'facture') {
+        s.ca += d.total_ttc || 0;
+      }
+      if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
+    });
+    (chantiers || []).forEach(ch => {
+      const cid = ch.client_id || ch.clientId;
+      if (!cid) return;
+      if (!map.has(cid)) map.set(cid, { ...empty });
+      const s = map.get(cid);
+      s.chantiers++;
+      if (ch.statut === 'en_cours') s.chantiersEnCours++;
+      if (ch.statut !== 'archive' && ch.statut !== 'abandonne' && ch.statut !== 'termine') s.chantiersActifs++;
+    });
+    return map;
+  }, [devis, chantiers]);
+
+  const getClientStats = (id) => {
+    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
+  };
+
+  const getClientStatus = (clientId) => {
+    const s = getClientStats(clientId);
+    if (s.chantiersEnCours > 0) return 'actif';
+    if (s.devisActifs > 0) return 'en_devis';
+    const client = clients.find(c => c.id === clientId);
+    if (client?.created_at) {
+      const daysSinceCreation = (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceCreation < 90 && s.chantiers === 0 && s.devis === 0) return 'prospect';
+    }
+    if (s.chantiersActifs > 0 || s.devisActifs > 0) return 'actif';
+    return 'inactif';
+  };
+
   const filtered = clients.filter(c => {
     const q = debouncedSearch?.toLowerCase() || '';
     const matchSearch = !q ||
@@ -103,60 +151,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       default:
         return sorted.sort((a, b) => parseInt(b.id) - parseInt(a.id));
     }
-  };
-
-  const clientStatsMap = useMemo(() => {
-    const map = new Map();
-    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
-    (devis || []).forEach(d => {
-      const cid = d.client_id;
-      if (!cid) return;
-      if (!map.has(cid)) map.set(cid, { ...empty });
-      const s = map.get(cid);
-      if (d.type === 'devis') s.devis++;
-      if (d.type === 'facture') s.factures++;
-      // CA = devis signés (accepte) + factures — reflète le CA engagé
-      // Pour les devis, ne compter que accepte (pas facture/acompte_facture car la facture les couvre)
-      if (d.type === 'devis' && d.statut === 'accepte') {
-        s.ca += d.total_ttc || 0;
-      }
-      // Pour les factures, compter toujours (elles remplacent le devis dans le CA)
-      if (d.type === 'facture') {
-        s.ca += d.total_ttc || 0;
-      }
-      // Devis actifs = envoyés ou acceptés (pas encore facturés/refusés)
-      if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
-    });
-    (chantiers || []).forEach(ch => {
-      const cid = ch.client_id || ch.clientId;
-      if (!cid) return;
-      if (!map.has(cid)) map.set(cid, { ...empty });
-      const s = map.get(cid);
-      s.chantiers++;
-      if (ch.statut === 'en_cours') s.chantiersEnCours++;
-      // Chantiers actifs = tout sauf archivé/abandonné/terminé
-      if (ch.statut !== 'archive' && ch.statut !== 'abandonne' && ch.statut !== 'termine') s.chantiersActifs++;
-    });
-    return map;
-  }, [devis, chantiers]);
-
-  const getClientStats = (id) => {
-    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
-  };
-
-  // Dynamic client status based on activity
-  const getClientStatus = (clientId) => {
-    const s = getClientStats(clientId);
-    if (s.chantiersEnCours > 0) return 'actif';
-    if (s.devisActifs > 0) return 'en_devis';
-    // Check if client was created recently (< 90 days)
-    const client = clients.find(c => c.id === clientId);
-    if (client?.created_at) {
-      const daysSinceCreation = (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceCreation < 90 && s.chantiers === 0 && s.devis === 0) return 'prospect';
-    }
-    if (s.chantiersActifs > 0 || s.devisActifs > 0) return 'actif';
-    return 'inactif';
   };
 
   const submit = async () => {
