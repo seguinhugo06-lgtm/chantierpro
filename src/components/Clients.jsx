@@ -7,6 +7,22 @@ import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
 
+// P2.2: Highlight matching search terms
+function HighlightText({ text, query, className = '' }) {
+  if (!text || !query || query.length < 2) return <span className={className}>{text}</span>;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
+  return (
+    <span className={className}>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase()
+          ? <mark key={i} className="bg-amber-400/80 text-white rounded px-0.5">{part}</mark>
+          : part
+      )}
+    </span>
+  );
+}
+
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
@@ -1255,7 +1271,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             )}
           </div>
           <div className="sm:col-span-2"><label htmlFor="client-adresse" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea id="client-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
-          <div className="sm:col-span-2"><label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea id="client-notes" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
+          <div className="sm:col-span-2">
+            <label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label>
+            <div className="relative">
+              <textarea id="client-notes" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} maxLength={500} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Ex: Code portail A1234, sonnette 2ème gauche, préfère être contacté le matin..." />
+              <span className={`absolute bottom-2 right-3 text-[10px] font-medium ${(form.notes?.length || 0) >= 400 ? 'text-amber-500' : textMuted}`}>
+                {form.notes?.length || 0} / 500
+              </span>
+            </div>
+          </div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
@@ -1512,83 +1536,98 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-          {/* Header with gradient */}
-          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")' }} />
+          {(() => {
+            // P2.4: Contextual empty states
+            const hasSearch = !!debouncedSearch;
+            const hasKpiFilter = !!kpiFilter;
+            const hasTypeFilter = !!filterCategorie;
+            const hasAnyFilter = hasKpiFilter || hasTypeFilter;
+            const noClientsAtAll = clients.length === 0;
 
-            <div className="relative">
-              {/* Icon */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-                <Users size={40} className="text-white" />
-              </div>
-
-              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
-                {search ? 'Aucun client trouvé' : 'Ajoutez votre premier client'}
-              </h2>
-              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-                {search
-                  ? 'Modifiez votre recherche ou ajoutez un nouveau client.'
-                  : 'Gérez vos contacts clients, leur historique et facilitez vos échanges.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Features grid */}
-          {!search && (
-            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <Phone size={18} style={{ color: couleur }} />
-                  </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Contact rapide</p>
-                    <p className={`text-xs ${textMuted}`}>Appel, SMS, WhatsApp</p>
+            // Case 1: No clients at all
+            if (noClientsAtAll && !hasSearch) return (
+              <>
+                <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+                  <div className="relative">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                      <Users size={40} className="text-white" />
+                    </div>
+                    <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Votre premier client ?</h2>
+                    <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>Gérez vos contacts clients, leur historique et facilitez vos échanges.</p>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <FileText size={18} style={{ color: couleur }} />
+                <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    {[
+                      { icon: Phone, label: 'Contact rapide', sub: 'Appel, SMS, WhatsApp' },
+                      { icon: FileText, label: 'Historique complet', sub: 'Devis, factures, chantiers' },
+                      { icon: MapPin, label: 'Itinéraire GPS', sub: 'Navigation directe' },
+                    ].map(f => (
+                      <div key={f.label} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                          <f.icon size={18} style={{ color: couleur }} />
+                        </div>
+                        <div><p className={`font-medium text-sm ${textPrimary}`}>{f.label}</p><p className={`text-xs ${textMuted}`}>{f.sub}</p></div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Historique complet</p>
-                    <p className={`text-xs ${textMuted}`}>Devis, factures, chantiers</p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                      <Plus size={18} /> Ajouter un client
+                    </button>
                   </div>
                 </div>
-                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                    <MapPin size={18} style={{ color: couleur }} />
-                  </div>
-                  <div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>Itinéraire GPS</p>
-                    <p className={`text-xs ${textMuted}`}>Navigation directe</p>
-                  </div>
-                </div>
-              </div>
+              </>
+            );
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-                  <Zap size={18} />
-                  Ajout rapide
-                </button>
-                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                  <Plus size={18} />
-                  Formulaire complet
+            // Case 2: Search with no results
+            if (hasSearch) return (
+              <div className="p-8 sm:p-10 text-center">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <Search size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <h2 className={`text-lg font-bold mb-1 ${textPrimary}`}>
+                  Aucun résultat pour « {debouncedSearch} »
+                </h2>
+                <p className={`text-sm ${textMuted} mb-6`}>Vérifiez l'orthographe ou créez un nouveau client.</p>
+                <button
+                  onClick={() => { setForm(p => ({...p, nom: debouncedSearch})); setShow(true); setSearch(''); }}
+                  className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium"
+                  style={{ background: couleur }}
+                >
+                  <Plus size={18} /> Créer « {debouncedSearch} » comme client
                 </button>
               </div>
-            </div>
-          )}
+            );
 
-          {/* Simple CTA for search empty state */}
-          {search && (
-            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-                <Zap size={18} />
-                Ajout rapide
-              </button>
-            </div>
-          )}
+            // Case 3: Filter with no results
+            if (hasAnyFilter) return (
+              <div className="p-8 sm:p-10 text-center">
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <Users size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                </div>
+                <h2 className={`text-lg font-bold mb-1 ${textPrimary}`}>Aucun client ne correspond à ce filtre</h2>
+                <p className={`text-sm ${textMuted} mb-6`}>
+                  {hasKpiFilter && `Filtre : ${kpiFilter === 'actifs' ? 'Clients actifs' : kpiFilter === 'ca' ? 'CA > 0' : 'Devis en attente'}`}
+                  {hasKpiFilter && hasTypeFilter && ' · '}
+                  {hasTypeFilter && `Type : ${filterCategorie}`}
+                </p>
+                <button
+                  onClick={() => { setKpiFilter(null); setFilterCategorie(''); }}
+                  className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <X size={18} /> Effacer les filtres
+                </button>
+              </div>
+            );
+
+            // Fallback
+            return (
+              <div className="p-8 text-center">
+                <p className={`font-medium ${textPrimary}`}>Aucun client trouvé</p>
+              </div>
+            );
+          })()}
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -1613,7 +1652,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}>{c.nom} {c.prenom}</h3>
+                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}><HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} /></h3>
                       </div>
                       {c.entreprise && (
                         <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
@@ -1653,7 +1692,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {c.telephone ? (
                     <div className="flex items-center gap-2">
                       <Smartphone size={13} className={textMuted} />
-                      <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
+                      <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
                           <Phone size={15} className="text-blue-500" />
@@ -1669,7 +1708,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {c.email && (
                     <div className="flex items-center gap-2 mt-1">
                       <Mail size={13} className={textMuted} />
-                      <span className={`text-xs ${textMuted} truncate`}>{c.email}</span>
+                      <HighlightText text={c.email} query={debouncedSearch} className={`text-xs ${textMuted} truncate`} />
                     </div>
                   )}
                 </div>
@@ -1730,7 +1769,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {/* Name + company + status */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`font-medium text-sm ${textPrimary} truncate`}>{c.nom} {c.prenom}</span>
+                      <HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
@@ -1765,7 +1804,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     )}
                   </div>
                   {/* Phone */}
-                  <span className={`text-xs ${textSecondary} truncate`}>{c.telephone || '—'}</span>
+                  {c.telephone ? <HighlightText text={c.telephone} query={debouncedSearch} className={`text-xs ${textSecondary} truncate`} /> : <span className={`text-xs ${textMuted}`}>—</span>}
                   {/* CA */}
                   <span className={`text-xs font-bold text-right ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                   {/* Stats */}
@@ -1799,7 +1838,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`font-medium text-sm ${textPrimary} truncate`}>{c.nom} {c.prenom}</span>
+                      <HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">

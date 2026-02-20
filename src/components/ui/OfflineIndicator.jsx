@@ -28,6 +28,7 @@ export default function OfflineIndicator({
   const [showBanner, setShowBanner] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [syncError, setSyncError] = useState(false);
   const syncAttempts = useRef(0);
   const prevPendingRef = useRef(pendingCount);
 
@@ -76,17 +77,25 @@ export default function OfflineIndicator({
 
     syncAttempts.current++;
     setIsSyncing(true);
+    setSyncError(false);
     try {
       await onSync();
     } catch (error) {
       console.error('Sync failed:', error);
+      setSyncError(true);
+      setShowBanner(true);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Don't show if online and no pending items and no banner
-  if (isOnline && pendingCount === 0 && !showBanner) {
+  // Clear error on successful sync (pending drops to 0)
+  useEffect(() => {
+    if (pendingCount === 0 && syncError) setSyncError(false);
+  }, [pendingCount, syncError]);
+
+  // Don't show if online and no pending items and no banner and no error
+  if (isOnline && pendingCount === 0 && !showBanner && !syncError) {
     return null;
   }
 
@@ -94,14 +103,16 @@ export default function OfflineIndicator({
     ? 'top-0 left-0 right-0'
     : 'bottom-0 left-0 right-0';
 
-  // Softer colors: gray for pending sync, red for offline, green for success
+  // Softer colors: gray for pending sync, red for offline/error, green for success
   const bgColor = !isOnline
     ? 'bg-red-500'
-    : showSuccess
-      ? 'bg-emerald-500'
-      : pendingCount > 0
-        ? 'bg-slate-600'
-        : 'bg-emerald-500';
+    : syncError
+      ? 'bg-red-500'
+      : showSuccess
+        ? 'bg-emerald-500'
+        : pendingCount > 0
+          ? 'bg-slate-600'
+          : 'bg-emerald-500';
 
   return (
     <div
@@ -120,6 +131,16 @@ export default function OfflineIndicator({
               </span>
             )}
           </>
+        ) : syncError ? (
+          <button onClick={handleSync} className="flex items-center gap-2 cursor-pointer">
+            <RefreshCw size={16} />
+            <span>Erreur de sync — Appuyer pour réessayer</span>
+            {pendingCount > 0 && (
+              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                {pendingCount} en attente
+              </span>
+            )}
+          </button>
         ) : showSuccess ? (
           <>
             <CheckCircle size={16} />
