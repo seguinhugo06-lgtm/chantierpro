@@ -199,7 +199,7 @@ export const hasErrors = (errors) => {
  * Client validation schema
  */
 export const clientSchema = {
-  nom: [required('Le nom est requis')],
+  nom: [required('Le nom est requis'), minLength(2, 'Le nom doit contenir au moins 2 caractères')],
   telephone: [phone()],
   email: [email()]
 };

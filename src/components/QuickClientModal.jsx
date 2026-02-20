@@ -88,10 +88,21 @@ export default function QuickClientModal({
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
-  // Auto-focus on open
+  // Auto-focus on open (robust: retry if animation blocks focus)
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen) {
+      const tryFocus = (attempt = 0) => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          // Verify focus was acquired, retry if not (animation may block)
+          if (document.activeElement !== inputRef.current && attempt < 3) {
+            setTimeout(() => tryFocus(attempt + 1), 150);
+          }
+        } else if (attempt < 5) {
+          setTimeout(() => tryFocus(attempt + 1), 100);
+        }
+      };
+      setTimeout(() => tryFocus(), 100);
     }
   }, [isOpen]);
 
@@ -236,6 +247,11 @@ export default function QuickClientModal({
                   clearTimeout(dupeTimeoutRef.current);
                   dupeTimeoutRef.current = setTimeout(() => checkDuplicates('nom', val), 500);
                 }}
+                onBlur={() => {
+                  if (form.nom.trim() && form.nom.trim().length < 2) {
+                    setErrors(p => ({ ...p, nom: 'Le nom doit contenir au moins 2 caractères' }));
+                  }
+                }}
                 placeholder="Dupont"
                 aria-required="true"
                 aria-invalid={!!errors.nom}
@@ -278,6 +294,11 @@ export default function QuickClientModal({
                   if (errors.telephone) setErrors(p => ({ ...p, telephone: null }));
                   clearTimeout(dupeTimeoutRef.current);
                   dupeTimeoutRef.current = setTimeout(() => checkDuplicates('telephone', val), 500);
+                }}
+                onBlur={() => {
+                  if (form.telephone && !validatePhone(form.telephone)) {
+                    setErrors(p => ({ ...p, telephone: 'Format invalide (ex: 06 12 34 56 78)' }));
+                  }
                 }}
                 placeholder="06 12 34 56 78"
                 aria-invalid={!!errors.telephone}
@@ -326,7 +347,7 @@ export default function QuickClientModal({
               className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
             >
               <span className={`text-sm font-medium ${textSecondary}`}>
-                Ajouter plus de details
+                Ajouter plus de détails
               </span>
               <motion.div
                 animate={{ rotate: showDetails ? 180 : 0 }}
@@ -358,6 +379,11 @@ export default function QuickClientModal({
                         onChange={e => {
                           setForm(p => ({ ...p, email: e.target.value }));
                           if (errors.email) setErrors(p => ({ ...p, email: null }));
+                        }}
+                        onBlur={() => {
+                          if (form.email && !validateEmail(form.email)) {
+                            setErrors(p => ({ ...p, email: 'Format email invalide (ex: nom@email.fr)' }));
+                          }
                         }}
                         placeholder="marie.dupont@email.fr"
                         aria-invalid={!!errors.email}
@@ -432,7 +458,7 @@ export default function QuickClientModal({
 
           {/* Hint */}
           <p className={`text-center text-xs ${textMuted}`}>
-            Appuyez sur Entree pour ajouter rapidement
+            Appuyez sur Entrée pour ajouter rapidement
           </p>
         </div>
         </motion.div>

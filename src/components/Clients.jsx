@@ -26,7 +26,7 @@ function HighlightText({ text, query, className = '' }) {
 export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-  const { errors, validateAll, clearErrors } = useFormValidation(clientSchema);
+  const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
 
   // Format money with modeDiscret support
   const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
@@ -230,14 +230,31 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     setViewId(targetId);
   };
 
+  // P3.1: Test data detection — hide in prod, badge in dev
+  const isTestClient = (c) => {
+    if (c.isTestData) return true;
+    const nom = (c.nom || '').toLowerCase();
+    const entreprise = (c.entreprise || '').toLowerCase();
+    return /^(clientpersist|test_|testclient)/i.test(c.nom || '') ||
+           /^(clientpersist|test_|testclient)/i.test(c.entreprise || '') ||
+           nom.includes('test') || entreprise.includes('test');
+  };
+
+  // In production, filter out test clients from the main list
+  const isProduction = typeof __DEV__ !== 'undefined' ? !__DEV__ : (import.meta.env?.PROD ?? true);
+  const displayClients = useMemo(() => {
+    if (isProduction) return clients.filter(c => !isTestClient(c));
+    return clients;
+  }, [clients, isProduction]);
+
   // P1.3: show TYPE column only if >= 20% of clients have a category
   const showTypeColumn = useMemo(() => {
-    if (clients.length === 0) return false;
-    const withType = clients.filter(c => c.categorie && c.categorie.trim()).length;
-    return (withType / clients.length) >= 0.2;
-  }, [clients]);
+    if (displayClients.length === 0) return false;
+    const withType = displayClients.filter(c => c.categorie && c.categorie.trim()).length;
+    return (withType / displayClients.length) >= 0.2;
+  }, [displayClients]);
 
-  const filtered = clients.filter(c => {
+  const filtered = displayClients.filter(c => {
     const q = debouncedSearch?.toLowerCase() || '';
     const matchSearch = !q ||
       c.nom?.toLowerCase().includes(q) ||
@@ -437,17 +454,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <span className="text-xs font-medium">Itinéraire</span>
             </button>
             <button
-              onClick={() => client.telephone ? callPhone(client.telephone) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg ${!client.telephone ? 'opacity-50' : ''}`}
+              onClick={() => client.telephone ? callPhone(client.telephone) : null}
+              disabled={!client.telephone}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+              title={!client.telephone ? 'Aucun numéro renseigné' : 'Appeler'}
             >
               <Phone size={20} />
               <span className="text-xs font-medium">Appeler</span>
             </button>
             <button
-              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg ${!client.telephone ? 'opacity-50' : ''}`}
+              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : null}
+              disabled={!client.telephone}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
               style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+              title={!client.telephone ? 'Aucun numéro renseigné' : 'WhatsApp'}
             >
               <MessageCircle size={20} />
               <span className="text-xs font-medium">WhatsApp</span>
@@ -1224,11 +1245,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div><label htmlFor="client-nom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input id="client-nom" aria-required="true" aria-invalid={!!errors.nom} aria-describedby={errors.nom ? 'client-nom-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /><FormError id="client-nom-error" message={errors.nom} /></div>
+          <div><label htmlFor="client-nom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input id="client-nom" aria-required="true" aria-invalid={!!errors.nom} aria-describedby={errors.nom ? 'client-nom-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => { setForm(p => ({...p, nom: e.target.value})); if (errors.nom) clearFieldError('nom'); }} onBlur={() => validate('nom', form.nom, form)} /><FormError id="client-nom-error" message={errors.nom} /></div>
           <div><label htmlFor="client-prenom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input id="client-prenom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
           <div><label htmlFor="client-entreprise" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input id="client-entreprise" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
-          <div><label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input id="client-telephone" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /><FormError id="client-telephone-error" message={errors.telephone} /></div>
-          <div><label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} /><FormError id="client-email-error" message={errors.email} /></div>
+          <div><label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input id="client-telephone" type="tel" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => { setForm(p => ({...p, telephone: e.target.value})); if (errors.telephone) clearFieldError('telephone'); }} onBlur={() => validate('telephone', form.telephone, form)} placeholder="06 12 34 56 78" /><FormError id="client-telephone-error" message={errors.telephone} /></div>
+          <div><label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => { setForm(p => ({...p, email: e.target.value})); if (errors.email) clearFieldError('email'); }} onBlur={() => validate('email', form.email, form)} placeholder="client@email.com" /><FormError id="client-email-error" message={errors.email} /></div>
           <div className="relative">
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
             <button
@@ -1308,11 +1329,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       />
 
       {/* KPI Cards - Clickable */}
-      {clients.length > 0 && (() => {
+      {displayClients.length > 0 && (() => {
         const totalCA = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
         const caFacture = (devis || []).filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.montant_ttc || 0), 0);
         const caDevis = totalCA - caFacture;
-        const clientsActifs = clients.filter(c => getClientStatus(c.id) === 'actif').length;
+        const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
         const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
         let topClient = null;
         let topCA = 0;
@@ -1321,7 +1342,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         });
 
         const kpiItems = [
-          { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${clients.length}` },
+          { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${displayClients.length}` },
           { key: 'ca', icon: Euro, color: '#10b981', iconBg: 'rgba(16,185,129,0.1)', value: formatMoney(totalCA), label: 'CA total', sub: modeDiscret ? '' : `${formatMoney(caFacture)} facturé` },
           { key: 'top', icon: Briefcase, color: '#8b5cf6', iconBg: 'rgba(139,92,246,0.1)', value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
           { key: 'devis_attente', icon: Send, color: '#3b82f6', iconBg: 'rgba(59,130,246,0.1)', value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
@@ -1381,7 +1402,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({displayClients.length})</h1>
         </div>
         <div className="flex items-center gap-2">
           {onImportClients && (
@@ -1428,7 +1449,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
 
         {/* Filters row */}
-        {clients.length > 1 && (
+        {displayClients.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto">
             {/* Grid/List toggle */}
             <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
@@ -1542,7 +1563,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const hasKpiFilter = !!kpiFilter;
             const hasTypeFilter = !!filterCategorie;
             const hasAnyFilter = hasKpiFilter || hasTypeFilter;
-            const noClientsAtAll = clients.length === 0;
+            const noClientsAtAll = displayClients.length === 0;
 
             // Case 1: No clients at all
             if (noClientsAtAll && !hasSearch) return (
@@ -1678,6 +1699,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                             <AlertTriangle size={10} /> Doublon
                           </span>
                         )}
+                        {/* Test data badge (dev only) */}
+                        {!isProduction && isTestClient(c) && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
+                            🧪 Test
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Edit button */}
@@ -1777,6 +1804,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       {hasDuplicates && (
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
                           <AlertTriangle size={9} /> Doublon
+                        </span>
+                      )}
+                      {!isProduction && isTestClient(c) && (
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
+                          🧪 Test
                         </span>
                       )}
                     </div>
