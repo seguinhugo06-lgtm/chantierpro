@@ -357,7 +357,7 @@ export default function DevisWizard({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">
-                  {step === 0 ? 'Comment creer ?' : step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
+                  {step === 0 ? 'Créer un document' : step === 1 ? 'Choisir le client' : step === 2 ? 'Ajouter les articles' : 'Finaliser'}
                 </h2>
                 <p className="text-white/80 text-sm">
                   {isEditMode
@@ -371,15 +371,24 @@ export default function DevisWizard({
             </button>
           </div>
 
-          {/* Progress bar */}
-          <div className="flex gap-1">
-            {(isEditMode ? [1, 2, 3] : [0, 1, 2, 3]).map(s => (
-              <div
-                key={s}
-                className={`flex-1 h-1 rounded-full transition-all ${s <= step ? 'bg-white' : 'bg-white/30'}`}
-              />
-            ))}
-          </div>
+          {/* Progress bar with labels */}
+          {(() => {
+            const steps = isEditMode
+              ? [{ idx: 1, label: 'Client' }, { idx: 2, label: 'Articles' }, { idx: 3, label: 'Finaliser' }]
+              : [{ idx: 0, label: 'Méthode' }, { idx: 1, label: 'Client' }, { idx: 2, label: 'Articles' }, { idx: 3, label: 'Finaliser' }];
+            return (
+              <div className="flex gap-1">
+                {steps.map((s, i) => (
+                  <div key={s.idx} className="flex-1 flex flex-col items-center gap-1">
+                    <div className={`w-full h-1 rounded-full transition-all ${s.idx <= step ? 'bg-white' : 'bg-white/30'}`} />
+                    <span className={`text-[10px] font-medium transition-all ${s.idx <= step ? 'text-white' : 'text-white/40'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Draft restored banner */}
@@ -725,7 +734,7 @@ export default function DevisWizard({
                     <div key={ligne.id} className="flex justify-between">
                       <span className={`text-sm truncate ${textSecondary}`}>{ligne.description}</span>
                       <span className={`text-sm font-medium ${textPrimary}`}>
-                        {((ligne.quantite || 1) * (ligne.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
+                        {((ligne.quantite || 1) * (ligne.prixUnitaire || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                       </span>
                     </div>
                   ))}

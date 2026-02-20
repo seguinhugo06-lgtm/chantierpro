@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
+import { formatMoney as fmtMoney } from '../lib/formatters';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -161,7 +162,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   });
 
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
-  const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+  const formatMoney = (n) => fmtMoney(n, 2);
 
   // Calcul pénalités de retard (Article L441-10 Code de commerce)
   const calculatePenalites = (doc) => {
@@ -866,9 +867,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(l.prixUnitaire||0)}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${getLineTotal(l).toFixed(2)} €</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
       </tr>
     `).join('');
 
@@ -985,18 +986,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${(doc.total_ht||0).toFixed(2)} €</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${((doc.total_ht||0) * doc.remise / 100).toFixed(2)} €</span></div>` : ''}
+    <div class="row sub"><span>Total HT</span><span>${formatMoney(doc.total_ht||0)}</span></div>
+    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${formatMoney((doc.total_ht||0) * doc.remise / 100)}</span></div>` : ''}
     ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
       ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${data.base.toFixed(2)} €)` : ''}</span><span>${data.montant.toFixed(2)} €</span></div>`
+        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${formatMoney(data.base)})` : ''}</span><span>${formatMoney(data.montant)}</span></div>`
       ).join('')
-      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)} €</span></div>`
+      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${formatMoney(doc.tva||0)}</span></div>`
     ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)} €</span></div>
+    <div class="row total"><span>Total TTC</span><span>${formatMoney(doc.total_ttc||0)}</span></div>
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${formatMoney((doc.total_ttc||0) * doc.acompte_pct / 100)}</span></div>
+    <div class="row sub"><span>Solde à régler</span><span>${formatMoney((doc.total_ttc||0) * (100-doc.acompte_pct) / 100)}</span></div>
     ` : ''}
   </div>
 
@@ -1460,7 +1461,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => canAcompte ? setShowAcompteModal(true) : createSolde(), color: 'bg-emerald-500 hover:bg-emerald-600' };
         if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: createSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
-        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: QrCode, action: () => setShowPaymentModal(true), color: 'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600' };
+        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
       }
       return null;
     };
@@ -1773,9 +1774,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {selected.statut !== 'payee' ? (
                     <button
                       onClick={() => setShowPaymentModal(true)}
-                      className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-lg bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 shadow-md"
+                      className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
+                      style={{ background: couleur }}
                     >
-                      <QrCode size={16} /> Encaisser
+                      <CreditCard size={16} /> Encaisser
                     </button>
                   ) : (
                     <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -2187,8 +2189,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                             <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
                             <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
-                            <td className={`text-right ${textSecondary}`}>{parseFloat(l.prixUnitaire || l.prix_unitaire || 0).toFixed(2)}€</td>
-                            <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{getLineTotal(l).toFixed(2)}€</td>
+                            <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
+                            <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
                             {!modeDiscret && (selected.lignes || []).some(lg => lg.prixAchat > 0) && (() => {
                               const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
                               const pa = parseFloat(l.prixAchat || 0);
@@ -3098,7 +3100,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Totaux avec multi-TVA et marge */}
           <div className="flex flex-col sm:flex-row justify-end gap-4">
             {/* Aperçu marge (visible seulement pour l'artisan, pas sur le PDF) */}
-            {totals.totalCoutAchat > 0 && (
+            {!modeDiscret && totals.totalCoutAchat > 0 && (
               <div className={`w-full sm:w-64 p-4 rounded-xl border ${totals.marge >= 0 ? (isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200') : (isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp size={16} className={totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'} />
@@ -3231,17 +3233,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* 3 Hero Buttons */}
         <div className="grid grid-cols-3 gap-2">
-          {/* Devis IA — feature coming soon */}
-          <button
-            onClick={() => showToast('Devis IA bientôt disponible — utilisez le Devis Express en attendant !', 'info')}
-            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white/80 transition-all active:scale-[0.98]"
+          {/* Devis IA — feature coming soon (disabled) */}
+          <div
+            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white/80 pointer-events-none opacity-60"
             style={{ background: `linear-gradient(135deg, ${couleur}99, ${couleur}77)` }}
           >
             <Mic size={20} className="mb-1 text-white/70" />
             <p className="font-bold text-xs sm:text-sm leading-tight">Devis IA</p>
             <p className="text-[10px] sm:text-xs text-white/50 mt-0.5 hidden sm:block">Bientôt disponible</p>
             <Sparkles size={32} className="absolute -top-1 -right-1 text-white/10" />
-          </button>
+            <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/25 text-white backdrop-blur-sm">Bientôt</span>
+          </div>
 
           {/* Devis Express */}
           <button
@@ -3475,7 +3477,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             if (d.statut === 'brouillon' && getDevisTTC(d) > 0) return { label: 'Envoyer', Icon: Send, cls: 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0) return { label: 'Modifier', Icon: Edit3, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (['envoye', 'vu'].includes(d.statut) && daysSince > 7) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-700 hover:bg-amber-600 text-white' : 'bg-amber-100 hover:bg-amber-200 text-amber-700', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
-            if (d.statut === 'accepte' && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            if (d.statut === 'refuse') return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
             return null;
           };
           const qa = getQuickAction();
@@ -3522,7 +3526,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     </button>
                   )}
                   {qa ? (
-                    <button onClick={qa.fn} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 min-h-[36px] transition-all ${qa.cls}`}>
+                    <button onClick={qa.fn} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 min-h-[36px] transition-all ${qa.cls}`} style={qa.style}>
                       <qa.Icon size={14} />
                       <span className="hidden sm:inline">{qa.label}</span>
                     </button>
