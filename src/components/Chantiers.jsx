@@ -67,6 +67,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [show, setShow] = useState(false);
   const [editingChantier, setEditingChantier] = useState(null); // Chantier being edited
   const [activeTab, setActiveTab] = useState('photos');
+
+  // Reset activeTab when switching between chantiers
+  const prevView = useRef(view);
+  useEffect(() => {
+    if (view !== prevView.current) {
+      setActiveTab('photos');
+      prevView.current = view;
+    }
+  }, [view]);
     const [newTache, setNewTache] = useState('');
   const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
   const [showAjustement, setShowAjustement] = useState(null);
@@ -1093,6 +1102,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {activeTab === 'finances' && (
           <div className="space-y-4">
+            {adjRevenus.length === 0 && adjDepenses.length === 0 && chDepenses.length === 0 && (
+              <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
+                <Wallet size={32} className={`mx-auto mb-3 ${textMuted}`} />
+                <p className={`font-medium ${textPrimary}`}>Aucune donnée financière</p>
+                <p className={`text-sm ${textMuted} mt-1`}>Ajoutez des revenus ou des dépenses pour suivre la rentabilité de ce chantier.</p>
+              </div>
+            )}
             {adjRevenus.length > 0 && (
               <div className={`${cardBg} rounded-2xl border p-5`}>
                 <h3 className="font-semibold mb-3 text-emerald-600"> Ajustements Revenus</h3>
@@ -2088,6 +2104,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Handle chantier creation from modal
   const handleCreateChantier = (formData) => {
+    // Duplicate detection
+    const duplicate = chantiers.some(c =>
+      c.nom?.toLowerCase().trim() === (formData.nom || '').toLowerCase().trim() &&
+      (c.client_id || '') === (formData.client_id || formData.clientId || '') &&
+      (c.adresse || '').toLowerCase().trim() === (formData.adresse || '').toLowerCase().trim()
+    );
+    if (duplicate && !window.confirm('Un chantier similaire existe déjà (même nom, client et adresse). Créer quand même ?')) {
+      return;
+    }
+
     const clientIdValue = formData.clientId || formData.client_id || '';
     const budgetValue = formData.budget_estime || formData.budgetPrevu || 0;
     const newChantier = addChantier({
@@ -2138,16 +2164,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     return debut <= sundayStr && fin >= mondayStr;
   };
 
+  // Helper: detect draft/test chantiers (incomplete data or test names)
+  const isDraftChantier = (ch) => {
+    const testNames = ['test', 'test1', 'test2', 'test3', 'essai', 'brouillon', 'zzz'];
+    const nom = (ch.nom || '').toLowerCase().trim();
+    if (testNames.includes(nom)) return true;
+    // Chantier with no substantial data
+    const hasNoData = !ch.adresse && !ch.budget_estime && !ch.budgetPrevu && (!ch.taches || ch.taches.length === 0) && !ch.client_id;
+    if (hasNoData && nom.length <= 5) return true;
+    return false;
+  };
+
   // Filtering and sorting logic
   const getFilteredAndSortedChantiers = () => {
     // First filter by status — exclude archived unless viewing archives
     let filtered = [...chantiers];
-    if (filterStatus === 'archive') {
+    if (filterStatus === 'brouillons') {
+      filtered = filtered.filter(c => c.statut !== 'archive' && isDraftChantier(c));
+    } else if (filterStatus === 'archive') {
       filtered = filtered.filter(c => c.statut === 'archive');
     } else if (filterStatus === 'cette_semaine') {
-      filtered = filtered.filter(c => c.statut !== 'archive' && chantierOverlapsWeek(c));
+      filtered = filtered.filter(c => c.statut !== 'archive' && !isDraftChantier(c) && chantierOverlapsWeek(c));
     } else {
-      filtered = filtered.filter(c => c.statut !== 'archive');
+      filtered = filtered.filter(c => c.statut !== 'archive' && !isDraftChantier(c));
       if (filterStatus !== 'all') {
         filtered = filtered.filter(c => c.statut === filterStatus);
       }
@@ -2185,13 +2224,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Stats for filter tabs
   const archivedCount = chantiers.filter(c => c.statut === 'archive').length;
-  const cetteSemaineCount = chantiers.filter(c => c.statut !== 'archive' && chantierOverlapsWeek(c)).length;
+  const brouillonsCount = chantiers.filter(c => c.statut !== 'archive' && isDraftChantier(c)).length;
+  const nonDraftNonArchive = chantiers.filter(c => c.statut !== 'archive' && !isDraftChantier(c));
+  const cetteSemaineCount = nonDraftNonArchive.filter(c => chantierOverlapsWeek(c)).length;
   const statusCounts = {
-    all: chantiers.filter(c => c.statut !== 'archive').length,
+    all: nonDraftNonArchive.length,
     cette_semaine: cetteSemaineCount,
-    en_cours: chantiers.filter(c => c.statut === 'en_cours').length,
-    prospect: chantiers.filter(c => c.statut === 'prospect').length,
-    termine: chantiers.filter(c => c.statut === 'termine').length,
+    en_cours: nonDraftNonArchive.filter(c => c.statut === 'en_cours').length,
+    prospect: nonDraftNonArchive.filter(c => c.statut === 'prospect').length,
+    termine: nonDraftNonArchive.filter(c => c.statut === 'termine').length,
+    brouillons: brouillonsCount,
     archive: archivedCount,
   };
 
@@ -2557,6 +2599,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 { key: 'en_cours', label: 'En cours', color: '#f97316' },
                 { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
                 { key: 'termine', label: 'Terminés', color: '#22c55e' },
+                ...(brouillonsCount > 0 ? [{ key: 'brouillons', label: 'Brouillons', color: '#a855f7' }] : []),
                 ...(archivedCount > 0 ? [{ key: 'archive', label: 'Archivés', color: '#6b7280' }] : []),
               ].map(tab => (
                 <button
@@ -2583,7 +2626,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : 'Chantiers terminés'}</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>{filterStatus === 'all' ? 'Tous les chantiers' : filterStatus === 'cette_semaine' ? 'Cette semaine' : filterStatus === 'en_cours' ? 'Chantiers en cours' : filterStatus === 'prospect' ? 'Prospects' : filterStatus === 'archive' ? 'Archivés' : filterStatus === 'brouillons' ? 'Brouillons / Tests' : 'Chantiers terminés'}</span>
                 <span className={`text-[10px] ${textMuted}`}>— {getFilteredAndSortedChantiers().length} projet{getFilteredAndSortedChantiers().length > 1 ? 's' : ''}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -2618,7 +2661,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
           {/* Map View */}
           {viewMode === 'map' && (
-            <Suspense fallback={<div className={`h-[400px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
+            <Suspense fallback={<div className={`h-[500px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
               <ChantierMap
                 chantiers={getFilteredAndSortedChantiers()}
                 clients={clients}
@@ -2671,24 +2714,37 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             // Force 100% for completed projects
             const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, allTasks.length);
 
-            // Format date range
+            // Format date range — clean display without "?"
             const formatDateRange = () => {
               if (!ch.date_debut && !ch.date_fin) return null;
               const opts = { day: 'numeric', month: 'short' };
-              const d = ch.date_debut ? new Date(ch.date_debut).toLocaleDateString('fr-FR', opts) : '?';
-              const f = ch.date_fin ? new Date(ch.date_fin).toLocaleDateString('fr-FR', opts) : '?';
-              return `${d} → ${f}`;
+              const d = ch.date_debut ? new Date(ch.date_debut).toLocaleDateString('fr-FR', opts) : null;
+              const f = ch.date_fin ? new Date(ch.date_fin).toLocaleDateString('fr-FR', opts) : null;
+              if (d && f) return `${d} → ${f}`;
+              if (d) return `Début : ${d}`;
+              if (f) return `Fin : ${f}`;
+              return null;
             };
             const dateRange = formatDateRange();
 
             return (
               <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'border-amber-700 hover:border-amber-600' : 'border-amber-300 hover:border-amber-400')) : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
-                {/* Row 1: Nom + Badge statut */}
+                {/* Row 1: Nom + Ref + Badge statut */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <h3 className={`font-semibold text-sm leading-tight ${textPrimary}`}>{ch.nom}</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap shrink-0 ${statusColor}`}>
-                    {statusLabel}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className={`font-semibold text-sm leading-tight truncate ${textPrimary}`}>{ch.nom}</h3>
+                    <span className={`text-[10px] font-mono shrink-0 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isDraftChantier(ch) && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                        Brouillon
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${statusColor}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Row 2: Client · Dates */}
@@ -2708,7 +2764,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Row 3: Progress bar + Budget/Marge compacts */}
                 <div className="flex items-center gap-3">
                   {/* Progress bar - inline */}
-                  {ch.statut === 'en_cours' && (
+                  {ch.statut === 'en_cours' && avancement === 0 && allTasks.length === 0 && (
+                    <div className="flex-1">
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>Non démarré</span>
+                    </div>
+                  )}
+                  {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                         <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
@@ -2731,7 +2792,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     {budgetPrevu > 0 && (
                       <div className="flex items-center gap-1.5">
                         <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>{formatMoney(budgetPrevu)}</span>
-                        <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`}>{formatPct(bilan.tauxMarge)}</span>
+                        <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
                         {hasAlert && <AlertTriangle size={12} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
                       </div>
                     )}

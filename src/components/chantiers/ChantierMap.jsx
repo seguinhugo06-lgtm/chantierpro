@@ -73,7 +73,9 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);
   const [mapFilter, setMapFilter] = useState('all'); // 'all', 'en_cours', 'prospect'
+  const [selectedChantier, setSelectedChantier] = useState(null); // Side panel
   const geocacheRef = useRef({});
+  const [failedCount, setFailedCount] = useState(0);
 
   // Geocode all chantiers with addresses
   useEffect(() => {
@@ -81,6 +83,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
     const geocodeAll = async () => {
       setLoading(true);
       const results = [];
+      let failed = 0;
 
       for (const ch of chantiers) {
         if (cancelled) break;
@@ -101,7 +104,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         // Build full address
         const addrParts = [ch.adresse, ch.codePostal, ch.ville].filter(Boolean);
         const fullAddr = addrParts.join(' ');
-        if (!fullAddr) continue;
+        if (!fullAddr) { failed++; continue; }
 
         // Check cache
         if (geocacheRef.current[fullAddr]) {
@@ -114,6 +117,8 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         if (coords) {
           geocacheRef.current[fullAddr] = coords;
           results.push({ ...ch, ...coords });
+        } else {
+          failed++;
         }
 
         // Small delay to respect Nominatim rate limit
@@ -122,6 +127,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
 
       if (!cancelled) {
         setPositions(results);
+        setFailedCount(failed);
         setLoading(false);
       }
     };
@@ -204,8 +210,17 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         ))}
       </div>
 
-      {/* Legend */}
+      {/* Counter + Legend */}
       <div className={`absolute bottom-6 left-3 z-[1000] px-3 py-2 rounded-xl text-xs shadow-lg ${isDark ? 'bg-slate-800/95 text-slate-300' : 'bg-white/95 text-slate-600'}`}>
+        <div className="flex items-center gap-2 mb-1.5">
+          <MapPin size={12} />
+          <span className="font-medium">{positions.filter(ch => mapFilter === 'all' || ch.statut === mapFilter).length} sur la carte</span>
+          {failedCount > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+              {failedCount} sans adresse
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {[
             { label: 'En cours', color: STATUS_COLORS.en_cours },
@@ -234,7 +249,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
         center={defaultCenter}
         zoom={positions.length > 0 ? 10 : 6}
         scrollWheelZoom={true}
-        style={{ height: '400px', width: '100%', borderRadius: '12px', zIndex: 1 }}
+        style={{ height: '500px', width: '100%', borderRadius: '12px', zIndex: 1 }}
         className={isDark ? 'map-dark' : ''}
       >
         <TileLayer
@@ -288,9 +303,9 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
             <Marker
               key={ch.id}
               position={[ch.lat, ch.lng]}
-              icon={createColoredIcon(color, ch.statut === 'en_cours')}
+              icon={createColoredIcon(color, selectedChantier?.id === ch.id || ch.statut === 'en_cours')}
               eventHandlers={{
-                click: () => {},
+                click: () => setSelectedChantier(ch),
               }}
             >
               <Popup>
@@ -383,6 +398,72 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
           );
         })}
       </MapContainer>
+
+      {/* Side panel — shown below the map when a chantier is selected */}
+      {selectedChantier && (() => {
+        const sch = selectedChantier;
+        const client = clients?.find(c => c.id === sch.client_id);
+        const color = STATUS_COLORS[sch.statut] || STATUS_COLORS.prospect;
+        const statusLabel = sch.statut === 'en_cours' ? 'En cours' : sch.statut === 'termine' ? 'Terminé' : sch.statut === 'prospect' ? 'Prospect' : sch.statut;
+        const allTasks = sch.taches || [];
+        const tasksDone = allTasks.filter(t => t.done).length;
+        const avancement = sch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
+        const gpsAddr = [sch.adresse, sch.codePostal, sch.ville].filter(Boolean).join(' ');
+        const gpsUrl = gpsAddr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(gpsAddr)}` : null;
+
+        return (
+          <div className={`mt-3 rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} animate-fade-in`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className={`font-bold text-base truncate ${textPrimary}`}>{sch.nom}</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ background: `${color}20`, color }}>
+                    {statusLabel}
+                  </span>
+                </div>
+                {client && <p className={`text-sm ${textMuted} mb-1`}>{client.nom} {client.prenom || ''}</p>}
+                {gpsAddr && <p className={`text-xs ${textMuted} flex items-center gap-1`}><MapPin size={11} />{gpsAddr}</p>}
+              </div>
+              <button onClick={() => setSelectedChantier(null)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <span className={`text-lg leading-none ${textMuted}`}>×</span>
+              </button>
+            </div>
+
+            {/* Progress */}
+            {sch.statut === 'en_cours' && (
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className={textMuted}>Avancement</span>
+                  <span className="font-semibold" style={{ color: couleur }}>{avancement}%</span>
+                </div>
+                <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <div className="h-full rounded-full" style={{ width: `${Math.max(3, avancement)}%`, background: couleur }} />
+                </div>
+              </div>
+            )}
+
+            {/* Budget */}
+            {(sch.budget_estime || sch.budgetPrevu) ? (
+              <div className={`mt-3 text-sm ${textPrimary}`}>
+                <span className={textMuted}>Budget : </span>
+                <span className="font-semibold">{formatMoney?.(sch.budget_estime || sch.budgetPrevu) || `${(sch.budget_estime || sch.budgetPrevu).toLocaleString('fr-FR')} €`}</span>
+              </div>
+            ) : null}
+
+            {/* Actions */}
+            <div className="flex gap-2 mt-3">
+              {gpsUrl && (
+                <a href={gpsUrl} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold border transition-colors ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  <Navigation size={13} /> Itinéraire
+                </a>
+              )}
+              <button onClick={() => onSelectChantier?.(sch.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white" style={{ background: couleur }}>
+                <ExternalLink size={13} /> Ouvrir la fiche
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
