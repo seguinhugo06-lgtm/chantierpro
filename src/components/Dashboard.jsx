@@ -1427,6 +1427,80 @@ export default function Dashboard({
               />
             )}
 
+            {/* Équipe en Direct Widget */}
+            {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length > 0 && (
+              <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className="p-4 flex items-center justify-between" style={{ borderBottom: `2px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                      <Users size={16} style={{ color: couleur }} />
+                    </div>
+                    <div>
+                      <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Équipe en direct</h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length} membres
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPage('equipe')}
+                    className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                  >
+                    Voir tout →
+                  </button>
+                </div>
+                <div className="p-3 space-y-1.5">
+                  {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').slice(0, 6).map(emp => {
+                    // Check if this employee has an active pointage today
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const todayPts = pointages.filter(p => p.employeId === emp.id && p.date === todayStr);
+                    const totalToday = todayPts.reduce((s, p) => s + (parseFloat(p.heures) || 0), 0);
+                    const isActive = totalToday > 0;
+                    // Find which chantier they worked on most today
+                    const chantierCounts = {};
+                    todayPts.forEach(p => { if (p.chantierId) chantierCounts[p.chantierId] = (chantierCounts[p.chantierId] || 0) + (p.heures || 0); });
+                    const topChantierId = Object.entries(chantierCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+                    const chantier = topChantierId ? chantiers.find(c => c.id === topChantierId) : null;
+
+                    const roleColors = {
+                      'Chef de chantier': '#f59e0b', 'Ouvrier qualifie': '#6366f1', 'Electricien': '#eab308',
+                      'Plombier': '#3b82f6', 'Peintre': '#8b5cf6', 'Macon': '#a16207', 'Apprenti': '#10b981'
+                    };
+                    const avatarColor = roleColors[emp.role] || '#64748b';
+
+                    return (
+                      <div
+                        key={emp.id}
+                        onClick={() => setPage('equipe')}
+                        className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                      >
+                        {/* Avatar with status dot */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: avatarColor }}>
+                            {emp.prenom?.[0]}{emp.nom?.[0]}
+                          </div>
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${isDark ? 'border-slate-800' : 'border-white'} ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{emp.prenom}</p>
+                          <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : 'Inactif'}
+                          </p>
+                        </div>
+                        {/* Duration badge */}
+                        {isActive && (
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                            {totalToday.toFixed(1)}h
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Subscription Usage Widget */}
             {isWidgetVisible('subscription') && (
               <UsageAlerts isDark={isDark} couleur={couleur} />
