@@ -1702,8 +1702,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       )}
 
       {/* Enhanced Tab Navigation */}
-      <div className={`p-1.5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-        <div className="flex gap-1 overflow-x-auto">
+      <div className={`p-1.5 rounded-2xl relative ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
           {(isSousTraitants ? [
             { key: 'overview', label: 'Sous-traitants', icon: UserCheck, count: sousTraitantsList.length },
             { key: 'couts', label: 'Coûts', icon: Euro },
@@ -1754,6 +1755,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </button>
           ))}
         </div>
+        {/* Mobile scroll fade indicator */}
+        <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none rounded-r-2xl sm:hidden ${isDark ? 'bg-gradient-to-l from-slate-800' : 'bg-gradient-to-l from-slate-100'}`} />
       </div>
 
       {/* Overview / Equipe Tab */}
@@ -1892,9 +1895,35 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
-                <p className={`font-medium ${textPrimary}`}>{isSousTraitants ? 'Aucun sous-traitant trouvé' : 'Aucun employé trouvé'}</p>
-                <p className={`text-sm ${textMuted} mt-1`}>{isSousTraitants ? 'Ajoutez votre premier sous-traitant' : 'Essayez avec d\'autres criteres'}</p>
+                {(searchQuery || filterRole) ? (
+                  <>
+                    <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
+                    <p className={`font-medium ${textPrimary}`}>Aucun résultat</p>
+                    <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres critères de recherche</p>
+                    <button
+                      onClick={() => { setSearchQuery(''); setFilterRole(''); }}
+                      className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90"
+                      style={{ background: couleur }}
+                    >
+                      <X size={16} /> Effacer les filtres
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                      {isSousTraitants ? <UserCheck size={32} style={{ color: couleur }} /> : <Users size={32} style={{ color: couleur }} />}
+                    </div>
+                    <p className={`font-medium ${textPrimary}`}>{isSousTraitants ? 'Aucun sous-traitant' : 'Aucun employé'}</p>
+                    <p className={`text-sm ${textMuted} mt-1`}>{isSousTraitants ? 'Ajoutez votre premier sous-traitant pour gérer vos partenaires' : 'Ajoutez votre premier employé pour commencer'}</p>
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      className="mt-4 px-5 py-2.5 rounded-xl text-sm font-medium text-white min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 shadow-lg"
+                      style={{ background: couleur }}
+                    >
+                      <UserPlus size={16} /> {isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'}
+                    </button>
+                  </>
+                )}
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
