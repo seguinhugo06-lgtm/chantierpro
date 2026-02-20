@@ -445,17 +445,35 @@ function DevisCard({
         <div className={cn('flex items-center gap-1.5 pt-3 border-t', isDark ? 'border-slate-700/50' : 'border-gray-100')}>
           <button
             type="button"
+            onClick={() => onConvert(devis)}
+            disabled={isConverting}
+            title="Transformer ce devis en facture"
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5',
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              'transition-all duration-150',
+              'bg-orange-500 hover:bg-orange-600 text-white shadow-sm',
+              isConverting && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {isConverting ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ArrowRight className="w-3.5 h-3.5" />
+            )}
+            Convertir
+          </button>
+          <button
+            type="button"
             onClick={() => onRelance(devis)}
             disabled={isRelancing}
             className={cn(
               'flex-1 inline-flex items-center justify-center gap-1.5',
               'px-3 py-2 rounded-lg text-xs font-medium',
               'transition-all duration-150',
-              needsRelance
-                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
-                : isDark
-                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+              isDark
+                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
               isRelancing && 'opacity-50 cursor-not-allowed'
             )}
           >
@@ -474,33 +492,12 @@ function DevisCard({
               'px-3 py-2 rounded-lg text-xs font-medium',
               'transition-all duration-150',
               isDark
-                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                ? 'bg-slate-700/50 hover:bg-slate-700 text-gray-400'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-500'
             )}
           >
             <Eye className="w-3.5 h-3.5" />
             Voir
-          </button>
-          <button
-            type="button"
-            onClick={() => onConvert(devis)}
-            disabled={isConverting}
-            className={cn(
-              'flex-1 inline-flex items-center justify-center gap-1.5',
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              'transition-all duration-150',
-              isDark
-                ? 'bg-primary-500/20 hover:bg-primary-500/30 text-primary-300'
-                : 'bg-primary-100 hover:bg-primary-200 text-primary-700',
-              isConverting && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            {isConverting ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <ArrowRight className="w-3.5 h-3.5" />
-            )}
-            Convertir
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
-import { CheckCircle2, Circle, ChevronRight, X, Rocket, Users, HardHat, FileText, ClipboardList, Palette } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { CheckCircle2, Circle, ChevronRight, ChevronDown, X, Rocket, Users, HardHat, FileText, ClipboardList, Palette, PartyPopper } from 'lucide-react';
 
 const STEPS = [
   {
@@ -40,9 +40,43 @@ const STEPS = [
 ];
 
 /**
+ * CSS confetti animation (no external library)
+ */
+function ConfettiEffect({ couleur }) {
+  const colors = [couleur, '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10" aria-hidden="true">
+      {Array.from({ length: 24 }).map((_, i) => (
+        <span
+          key={i}
+          className="absolute block rounded-sm"
+          style={{
+            width: `${6 + Math.random() * 6}px`,
+            height: `${6 + Math.random() * 6}px`,
+            backgroundColor: colors[i % colors.length],
+            left: `${5 + Math.random() * 90}%`,
+            top: '-10px',
+            opacity: 0,
+            animation: `confettiFall ${1.5 + Math.random() * 1.5}s ease-out ${Math.random() * 0.5}s forwards`,
+            transform: `rotate(${Math.random() * 360}deg)`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confettiFall {
+          0% { opacity: 1; top: -10px; transform: rotate(0deg) translateX(0); }
+          100% { opacity: 0; top: 100%; transform: rotate(${360 + Math.random() * 360}deg) translateX(${-30 + Math.random() * 60}px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/**
  * OnboardingChecklist — Guides new users through first steps
- * Shows on Dashboard until all 5 steps are completed or manually dismissed.
- * Persisted via localStorage key 'chantierpro_onboarding_checklist_dismissed'.
+ * - Auto-collapses when ≥4/5 steps done
+ * - Confetti animation at 5/5 completion
+ * - Permanently hidden after completion (localStorage onboarding_completed)
  */
 export default function OnboardingChecklist({
   clients = [],
@@ -54,6 +88,7 @@ export default function OnboardingChecklist({
   isDark = false,
 }) {
   const [dismissed, setDismissed] = useState(() =>
+    localStorage.getItem('chantierpro_onboarding_completed') === 'true' ||
     localStorage.getItem('chantierpro_onboarding_checklist_dismissed') === 'true'
   );
 
@@ -69,20 +104,37 @@ export default function OnboardingChecklist({
   const completedSteps = useMemo(() => STEPS.filter(s => s.check(data)), [data]);
   const completedCount = completedSteps.length;
   const allDone = completedCount === STEPS.length;
-  const progress = (completedCount / STEPS.length) * 100;
+  const almostDone = completedCount >= 4 && !allDone;
 
-  // Auto-dismiss when all steps complete (after a brief celebration delay)
+  // Auto-collapse when ≥4 steps done
+  const [collapsed, setCollapsed] = useState(() => completedCount >= 4);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const prevCount = useRef(completedCount);
+
+  // Detect 5/5 completion for confetti + permanent hide
   useEffect(() => {
     if (allDone && !dismissed) {
+      // Show confetti
+      setShowConfetti(true);
+
       const timer = setTimeout(() => {
         setDismissed(true);
+        localStorage.setItem('chantierpro_onboarding_completed', 'true');
         localStorage.setItem('chantierpro_onboarding_checklist_dismissed', 'true');
-      }, 3000);
+      }, 4000);
       return () => clearTimeout(timer);
     }
   }, [allDone, dismissed]);
 
-  // Don't show if dismissed, all done, or 14 days elapsed
+  // Auto-collapse when reaching 4 steps
+  useEffect(() => {
+    if (completedCount >= 4 && prevCount.current < 4) {
+      setCollapsed(true);
+    }
+    prevCount.current = completedCount;
+  }, [completedCount]);
+
+  // Don't show if permanently completed, dismissed, or 14 days elapsed
   const firstSeen = parseInt(localStorage.getItem('chantierpro_onboarding_first_seen') || '0');
   const daysSinceFirstSeen = firstSeen ? (Date.now() - firstSeen) / (1000 * 60 * 60 * 24) : 0;
   if (dismissed || daysSinceFirstSeen > 14) return null;
@@ -100,12 +152,40 @@ export default function OnboardingChecklist({
     progressBg: isDark ? 'bg-slate-700' : 'bg-slate-100',
   };
 
+  const progress = (completedCount / STEPS.length) * 100;
+
+  // Collapsed view: just a button to expand
+  if (collapsed && !allDone) {
+    return (
+      <button
+        onClick={() => setCollapsed(false)}
+        className={`w-full rounded-2xl border ${tc.card} p-4 flex items-center justify-between transition-colors ${tc.hover}`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: `${couleur}15` }}
+          >
+            <Rocket size={16} style={{ color: couleur }} />
+          </div>
+          <span className={`text-sm font-medium ${tc.text}`}>
+            Voir les étapes ({completedCount}/{STEPS.length} ✓)
+          </span>
+        </div>
+        <ChevronDown size={16} className={tc.muted} />
+      </button>
+    );
+  }
+
   return (
-    <div className={`rounded-2xl border ${tc.card} p-5 relative`}>
+    <div className={`rounded-2xl border ${tc.card} p-5 relative overflow-hidden`}>
+      {/* Confetti at 5/5 */}
+      {showConfetti && <ConfettiEffect couleur={couleur} />}
+
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}
-        className={`absolute top-3 right-3 p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
+        className={`absolute top-3 right-3 p-1.5 rounded-lg transition-colors z-20 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
         title="Masquer"
       >
         <X size={16} />
@@ -117,11 +197,11 @@ export default function OnboardingChecklist({
           className="w-10 h-10 rounded-xl flex items-center justify-center"
           style={{ backgroundColor: `${couleur}15` }}
         >
-          <Rocket size={20} style={{ color: couleur }} />
+          {allDone ? <PartyPopper size={20} style={{ color: couleur }} /> : <Rocket size={20} style={{ color: couleur }} />}
         </div>
         <div>
           <h2 className={`text-sm font-semibold ${tc.text}`}>
-            {allDone ? 'Bravo, tout est prêt !' : 'Premiers pas'}
+            {allDone ? '🎉 Bravo, tout est prêt !' : 'Premiers pas'}
           </h2>
           <p className={`text-xs ${tc.muted}`}>
             {allDone
@@ -172,6 +252,16 @@ export default function OnboardingChecklist({
           );
         })}
       </div>
+
+      {/* Collapse button when almost done */}
+      {almostDone && (
+        <button
+          onClick={() => setCollapsed(true)}
+          className={`mt-3 text-xs font-medium ${tc.muted} hover:underline`}
+        >
+          Replier
+        </button>
+      )}
     </div>
   );
 }

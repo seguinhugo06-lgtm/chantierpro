@@ -1201,15 +1201,15 @@ export default function Dashboard({
           staleDevis.slice(0, 4).forEach(d => {
             const client = safeClients.find(c => c.id === d.client_id);
             const days = daysSince(d.date);
-            // Short devis number: take last 6 chars or use "Devis"
             const shortNum = d.numero ? (d.numero.length > 10 ? d.numero.slice(-6) : d.numero) : '';
             const clientNom = client?.nom || client?.prenom || 'Client';
             actions.push({
               id: `devis-${d.id}`,
               priority: days > 14 ? 1 : 2,
               color: days > 14 ? 'red' : 'amber',
-              title: clientNom,
-              subtitle: `${shortNum ? shortNum + ' · ' : ''}${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j sans réponse`,
+              icon: '📄',
+              title: `${clientNom} · Devis ${shortNum ? '#' + shortNum : ''}`,
+              subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · Sans réponse depuis ${days}j`,
               action: () => handleOpenRelance(d),
               actionLabel: 'Relancer',
             });
@@ -1217,10 +1217,12 @@ export default function Dashboard({
 
           // Suggestions IA
           suggestions.slice(0, 3).forEach(s => {
+            const icon = s.type === 'payment_late' ? '🧾' : s.type === 'low_margin' ? '📊' : '💡';
             actions.push({
               id: `sug-${s.id}`,
               priority: s.priority === 'high' ? 1 : 2,
               color: s.priority === 'high' ? 'red' : 'amber',
+              icon,
               title: s.title,
               subtitle: s.description?.slice(0, 60) || '',
               action: () => handleSuggestionAction(s),
@@ -1235,6 +1237,7 @@ export default function Dashboard({
               id: `memo-${m.id}`,
               priority: isOverdue ? 2 : 3,
               color: isOverdue ? 'amber' : 'blue',
+              icon: '📝',
               title: m.text,
               subtitle: isOverdue ? 'En retard' : 'Aujourd\'hui',
               action: () => setPage?.('memos'),
@@ -1249,6 +1252,11 @@ export default function Dashboard({
             red: isDark ? 'bg-red-500' : 'bg-red-500',
             amber: isDark ? 'bg-amber-500' : 'bg-amber-500',
             blue: isDark ? 'bg-blue-500' : 'bg-blue-500',
+          };
+          const colorTooltips = {
+            red: 'Urgent',
+            amber: 'À surveiller',
+            blue: 'Information',
           };
 
           return (
@@ -1271,12 +1279,13 @@ export default function Dashboard({
                       key={item.id}
                       className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
                     >
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} />
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} />
+                      {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
                           {item.title}
                         </p>
-                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
                           {item.subtitle}
                         </p>
                       </div>
@@ -1321,8 +1330,8 @@ export default function Dashboard({
         </section>
 
         {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
-        {chantiersEnCours.length > 0 && (
-          <section className="px-4 sm:px-6 pb-4">
+        <section className="px-4 sm:px-6 pb-4">
+          {chantiersEnCours.length > 0 ? (
             <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -1357,22 +1366,57 @@ export default function Dashboard({
                           {ch.clientNom}{ch.prochEch ? ` · Éch. ${ch.prochEch}` : ''}
                         </p>
                       </div>
-                      <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: couleur }}>
-                        {ch.avancement}%
-                      </span>
+                      {!ch.avancement || ch.avancement === 0 ? (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                          Non démarré
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: couleur }}>
+                          {ch.avancement}%
+                        </span>
+                      )}
                     </div>
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${Math.min(100, ch.avancement)}%`, backgroundColor: couleur }}
-                      />
-                    </div>
+                    {ch.avancement > 0 && (
+                      <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${Math.min(100, ch.avancement)}%`, backgroundColor: couleur }}
+                        />
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
-          </section>
-        )}
+          ) : (
+            <div className={`rounded-2xl border p-6 text-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                <Calendar size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+              </div>
+              <h3 className={`text-sm font-semibold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Planifiez votre semaine
+              </h3>
+              <p className={`text-xs mb-4 max-w-xs mx-auto ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Ajoutez des dates à vos chantiers en cours pour les voir apparaître ici
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Planifier un chantier
+                </button>
+                <button
+                  onClick={() => setPage?.('chantiers')}
+                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                >
+                  Voir mes chantiers →
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
         <section className="px-4 sm:px-6 pb-4">
@@ -1618,14 +1662,30 @@ export default function Dashboard({
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{emp.prenom}</p>
                           <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : 'Inactif'}
+                            {isActive && chantier ? chantier.nom : isActive ? `${totalToday.toFixed(1)}h aujourd'hui` : (() => {
+                              // Calculate time since last pointage
+                              const lastPt = pointages.filter(p => p.employeId === emp.id).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+                              if (!lastPt) return 'Aucune activité';
+                              const lastDate = new Date(lastPt.date);
+                              const hoursAgo = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60));
+                              if (hoursAgo < 24) return `Inactif depuis ${hoursAgo}h`;
+                              const daysAgo = Math.floor(hoursAgo / 24);
+                              return `Inactif depuis ${daysAgo}j`;
+                            })()}
                           </p>
                         </div>
-                        {/* Duration badge */}
-                        {isActive && (
+                        {/* Duration badge or Assign button */}
+                        {isActive ? (
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
                             {totalToday.toFixed(1)}h
                           </span>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setPage('equipe'); }}
+                            className={`text-[10px] font-medium px-2 py-1 rounded-lg transition-colors ${isDark ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                          >
+                            Assigner
+                          </button>
                         )}
                       </div>
                     );
