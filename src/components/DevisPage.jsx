@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell } from 'lucide-react';
 import supabase from '../supabaseClient';
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
@@ -1635,6 +1635,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <select
                     value={selected.statut}
                     onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+                    aria-label="Changer le statut du document"
                     className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border outline-none ${isDark ? `${statusColors.darkBg || 'bg-slate-700'} ${statusColors.darkText || 'text-slate-300'} border-slate-600` : `${statusColors.bg || 'bg-slate-100'} ${statusColors.text || 'text-slate-600'} border-slate-200`}`}
                   >
                     <option value={selected.statut}>{DEVIS_STATUS_LABELS[selected.statut] || selected.statut}</option>
@@ -3294,26 +3295,50 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
         }).length;
 
+        // Monthly trend calculation (current month vs previous month)
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const payeesCeMois = facturesPayees.filter(f => new Date(f.date_paiement || f.updated_at || f.date) >= startOfMonth).reduce((s, f) => s + (f.total_ttc || 0), 0);
+        const payeesMoisDernier = facturesPayees.filter(f => { const d = new Date(f.date_paiement || f.updated_at || f.date); return d >= startOfPrevMonth && d < startOfMonth; }).reduce((s, f) => s + (f.total_ttc || 0), 0);
+        const trendCA = payeesMoisDernier > 0 ? Math.round(((payeesCeMois - payeesMoisDernier) / payeesMoisDernier) * 100) : null;
+
         return (
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* CA encaissé */}
               <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { ringColor: couleur } : {}}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>CA encaissé</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>CA encaissé</p>
+                  <Banknote size={14} style={{ color: couleur }} />
+                </div>
                 <p className="text-lg font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : formatMoney(montantPayees)}</p>
-                <p className={`text-[11px] ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''}</p>
+                <div className="flex items-center justify-between">
+                  <p className={`text-[11px] ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''}</p>
+                  {!modeDiscret && trendCA != null && (
+                    <span className={`text-[10px] font-semibold ${trendCA >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {trendCA >= 0 ? '↑' : '↓'} {Math.abs(trendCA)}%
+                    </span>
+                  )}
+                </div>
               </button>
 
               {/* En cours */}
               <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { ringColor: couleur } : {}}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>En cours</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>En cours</p>
+                  <Clock size={14} className="text-blue-500" />
+                </div>
                 <p className="text-lg font-bold text-blue-600">{devisEnvoye.length}</p>
                 <p className={`text-[11px] ${textMuted}`}>{modeDiscret ? '·····' : formatMoney(montantEnCours)}</p>
               </button>
 
               {/* Conversion */}
               <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { ringColor: couleur } : {}}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>Conversion</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Conversion</p>
+                  <TrendingUp size={14} className={tauxConversion != null && tauxConversion >= 50 ? 'text-emerald-500' : 'text-amber-500'} />
+                </div>
                 <p className={`text-lg font-bold ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
                   {tauxConversion != null ? `${tauxConversion}%` : '—'}
                 </p>
@@ -3322,7 +3347,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* À encaisser */}
               <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { ringColor: couleur } : {}}>
-                <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} mb-1`}>À encaisser</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>À encaisser</p>
+                  <AlertTriangle size={14} className={facturesEnRetard.length > 0 ? 'text-red-500' : 'text-violet-500'} />
+                </div>
                 <p className={`text-lg font-bold ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
                   {modeDiscret ? '·····' : formatMoney(montantAEncaisser)}
                 </p>
@@ -3358,30 +3386,48 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
-        <input placeholder="🔍 Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
-        <div role="group" aria-label="Filtrer par type">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', '🔔 À traiter']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+      <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        {/* Left: Search + Filter pills */}
+        <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
+          <div className="relative">
+            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-[150px] sm:w-[180px] pl-8 pr-3 py-2 border rounded-xl text-sm ${inputBg}`} />
+          </div>
+          <div role="group" aria-label="Filtrer par type" className="flex gap-1">
+            {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => (
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                {k === 'a_traiter' && <Bell size={12} />}
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-        <div role="group" aria-label="Trier par">
-          {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} aria-pressed={sortBy === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
+        {/* Right: Sort + Export */}
+        <div className="flex gap-2 items-center flex-shrink-0">
+          <div role="group" aria-label="Trier par" className="flex gap-1 items-center">
+            <ArrowUpDown size={14} className={textMuted} />
+            {[['recent', 'Récent'], ['status', 'Statut'], ['amount', 'Montant']].map(([k, v]) => (
+              <button key={k} onClick={() => setSortBy(k)} aria-pressed={sortBy === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>
+                {v}
+              </button>
+            ))}
+          </div>
+          {filtered.length > 0 && (
+            <>
+              <div className={`h-6 w-px ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+              <button
+                onClick={() => batchExportPDF(filtered)}
+                disabled={actionLoading === 'batch'}
+                className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                aria-label="Exporter les documents filtrés en PDF"
+              >
+                {actionLoading === 'batch' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                <span className="hidden sm:inline">Exporter ({filtered.length})</span>
+                <span className="sm:hidden">PDF</span>
+              </button>
+            </>
+          )}
         </div>
-        {filtered.length > 0 && (
-          <>
-            <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-            <button
-              onClick={() => batchExportPDF(filtered)}
-              disabled={actionLoading === 'batch'}
-              className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-              aria-label="Exporter les documents filtrés en PDF"
-            >
-              {actionLoading === 'batch' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-              <span className="hidden sm:inline">Exporter ({filtered.length})</span>
-              <span className="sm:hidden">PDF</span>
-            </button>
-          </>
-        )}
       </div>
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -3488,13 +3534,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-md transition-all duration-200`}>
               <div className="flex items-center gap-3">
                 {/* Status dot */}
-                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColor.dot}`} />
+                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColor.dot}`} role="status" aria-label={`Statut: ${statusLabel}`} />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
                     <p className={`font-semibold text-sm ${textPrimary}`}>{cleanNumero(d.numero)}</p>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`} role="status" aria-label={`Statut: ${statusLabel}`}>{statusLabel}</span>
                     {hasAcompte && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
                     {d.is_avenant && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
                     {needsFollowUp(d) && !qa && (
@@ -3502,7 +3548,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     )}
                     {isExpired(d) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
                   </div>
-                  <p className={`text-xs ${textMuted} truncate`}>
+                  <p className={`text-xs ${textMuted} truncate max-w-[280px]`} title={`${cleanClientName(client) || d.client_nom || 'Client sans nom'}${chantier ? ` · ${chantier.nom}` : ''} · ${new Date(d.date).toLocaleDateString('fr-FR')}`}>
                     {(() => {
                       const name = cleanClientName(client) || (d.client_nom || 'Client sans nom');
                       return name === 'Client sans nom'
