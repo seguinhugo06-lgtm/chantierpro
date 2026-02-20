@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 
-export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark }) {
+export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
   const { confirm } = useConfirm();
 
   // Theme classes
@@ -39,6 +39,15 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showDetail, showAdd, quickAdd]);
+
+  // Handle prefill from external navigation (e.g. Chantier → Planifier)
+  useEffect(() => {
+    if (prefill) {
+      setForm(prev => ({ ...emptyForm, ...prefill }));
+      setShowAdd(true);
+      clearPrefill?.();
+    }
+  }, [prefill]);
 
   const year = date.getFullYear();
   const month = date.getMonth();
