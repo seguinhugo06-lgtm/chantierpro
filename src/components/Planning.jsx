@@ -20,6 +20,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [filterEmploye, setFilterEmploye] = useState('');
   const [filterType, setFilterType] = useState('');
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
+  const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
   const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
@@ -423,7 +424,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {dayEvents.slice(0, 2).map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
                           return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}} title={ev.title}>
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                              onMouseEnter={(e) => { if (window.innerWidth >= 640) { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ event: ev, x: r.right + 8, y: r.top }); }}}
+                              onMouseLeave={() => setTooltip(null)}
+                              className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}}>
                               <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
                               <span className="truncate font-medium">{ev.title}</span>
                             </div>
@@ -570,6 +574,31 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           })()
         )}
       </div>
+
+      {/* Tooltip popover for month view */}
+      {tooltip && (() => {
+        const ev = tooltip.event;
+        const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
+        // Smart positioning: flip left if overflowing right
+        const tx = tooltip.x + 260 > window.innerWidth ? tooltip.x - 275 : tooltip.x;
+        const ty = tooltip.y + 150 > window.innerHeight ? tooltip.y - 100 : tooltip.y;
+        return (
+          <div className="fixed z-50 pointer-events-none" style={{ top: ty, left: tx }}>
+            <div className={`${cardBg} rounded-xl border shadow-2xl p-3 w-64`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: getEventColor(ev) }} />
+                <span className={`font-semibold text-sm ${textPrimary} truncate`}>{ev.title}</span>
+              </div>
+              {ev.time && <p className={`text-xs ${textMuted} mb-1`}>{ev.time}{ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}</p>}
+              {client && <p className={`text-xs ${textMuted} mb-1`}>{client.nom} {client.prenom || ''}</p>}
+              {(ev.recurrence && ev.recurrence !== 'never') && <p className={`text-xs ${textMuted} mb-1`}>🔁 {ev.recurrence === 'weekly' ? 'Chaque semaine' : 'Chaque mois'}</p>}
+              <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
+                {TYPE_LABELS[ev.type] || 'Événement'}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Upcoming events */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
