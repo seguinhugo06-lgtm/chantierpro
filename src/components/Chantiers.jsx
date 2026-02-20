@@ -97,6 +97,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
   const [showTaskGenerator, setShowTaskGenerator] = useState(false); // Task generator modal
   const [weather, setWeather] = useState(null); // Weather data for active chantier
+  const [showMobileActions, setShowMobileActions] = useState(null); // Mobile actions dropdown (chantier id)
   const [showTaskModal, setShowTaskModal] = useState(false); // Efficient task management modal
   const [collapsedPhases, setCollapsedPhases] = useState({}); // Track collapsed phases
   const [showCompletedTasks, setShowCompletedTasks] = useState(false); // Show/hide completed tasks
@@ -308,7 +309,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     title={prevChantier ? `← ${prevChantier.nom}` : ''}
                   >
                     <ArrowLeft size={14} />
-                    <span className="hidden sm:inline max-w-[100px] truncate">{prevChantier?.nom || ''}</span>
+                    <span className="hidden sm:inline max-w-[120px] truncate">{prevChantier?.nom || ''}</span>
                   </button>
                   <button
                     onClick={() => nextChantier && setView(nextChantier.id)}
@@ -320,85 +321,69 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     } ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
                     title={nextChantier ? `${nextChantier.nom} →` : ''}
                   >
-                    <span className="hidden sm:inline max-w-[100px] truncate">{nextChantier?.nom || ''}</span>
+                    <span className="hidden sm:inline max-w-[120px] truncate">{nextChantier?.nom || ''}</span>
                     <ArrowRight size={14} />
                   </button>
                 </div>
 
-                {/* Action buttons compact */}
+                {/* Action buttons: icons on desktop, ⋮ menu on mobile */}
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setEditingChantier(ch)}
-                    className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
-                    title="Modifier"
-                  >
-                    <Edit3 size={16} className={textMuted} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      const clone = {
-                        nom: `${ch.nom} (copie)`,
-                        client_id: ch.client_id,
-                        clientId: ch.client_id,
-                        adresse: ch.adresse,
-                        ville: ch.ville,
-                        codePostal: ch.codePostal,
-                        dateDebut: new Date().toISOString().split('T')[0],
-                        date_debut: new Date().toISOString().split('T')[0],
-                        dateFin: '',
-                        date_fin: '',
-                        budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0,
-                        budget_estime: ch.budget_estime || ch.budgetPrevu || 0,
-                        budget_materiaux: ch.budget_materiaux || 0,
-                        heures_estimees: ch.heures_estimees || 0,
-                        description: ch.description || '',
-                        notes: ch.notes || '',
-                        taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })),
-                        photos: [],
-                        documents: [],
-                        messages: [],
-                        statut: 'prospect'
-                      };
-                      const newCh = addChantier(clone);
-                      showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
-                      if (newCh?.id) setView(newCh.id);
-                    }}
-                    className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
-                    title="Dupliquer"
-                  >
-                    <Copy size={16} className={textMuted} />
-                  </button>
-                  {ch.statut === 'en_cours' && (
-                    <button
-                      onClick={async () => {
-                        const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` });
-                        if (confirmed) {
-                          updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] });
-                          showToast('Chantier marqué comme terminé ✅', 'success');
-                        }
-                      }}
-                      className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
-                      title="Marquer comme terminé"
-                    >
-                      <CheckCircle size={16} className="text-emerald-500" />
+                  {/* Desktop: icon buttons visible */}
+                  <div className="hidden sm:flex items-center gap-1">
+                    <button onClick={() => setEditingChantier(ch)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Modifier">
+                      <Edit3 size={16} className={textMuted} />
                     </button>
-                  )}
-                  {ch.statut !== 'archive' && (
                     <button
-                      onClick={async () => {
-                        const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` });
-                        if (confirmed) {
-                          updateChantier(ch.id, { statut: 'archive' });
-                          showToast('Chantier archivé', 'success');
-                          setView(null);
-                        }
+                      onClick={() => {
+                        const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: new Date().toISOString().split('T')[0], date_debut: new Date().toISOString().split('T')[0], dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' };
+                        const newCh = addChantier(clone);
+                        showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
+                        if (newCh?.id) setView(newCh.id);
                       }}
-                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
-                      title="Archiver"
+                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Dupliquer"
                     >
-                      <Archive size={16} className={textMuted} />
+                      <Copy size={16} className={textMuted} />
                     </button>
-                  )}
+                    {ch.statut === 'en_cours' && (
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier marqué comme terminé ✅', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
+                        <CheckCircle size={16} className="text-emerald-500" />
+                      </button>
+                    )}
+                    {ch.statut !== 'archive' && (
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Chantier archivé', 'success'); setView(null); } }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Archiver">
+                        <Archive size={16} className={textMuted} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Mobile: ⋮ dropdown menu with labels */}
+                  <div className="relative sm:hidden">
+                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}>
+                      <MoreVertical size={18} className={textMuted} />
+                    </button>
+                    {showMobileActions === ch.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setShowMobileActions(null)} />
+                        <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+                          <button onClick={() => { setEditingChantier(ch); setShowMobileActions(null); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}>
+                            <Edit3 size={15} className={textMuted} /> Modifier
+                          </button>
+                          <button onClick={() => { const clone = { nom: `${ch.nom} (copie)`, client_id: ch.client_id, clientId: ch.client_id, adresse: ch.adresse, ville: ch.ville, codePostal: ch.codePostal, dateDebut: new Date().toISOString().split('T')[0], date_debut: new Date().toISOString().split('T')[0], dateFin: '', date_fin: '', budgetPrevu: ch.budget_estime || ch.budgetPrevu || 0, budget_estime: ch.budget_estime || ch.budgetPrevu || 0, budget_materiaux: ch.budget_materiaux || 0, heures_estimees: ch.heures_estimees || 0, description: ch.description || '', notes: ch.notes || '', taches: (ch.taches || []).map(t => ({ ...t, id: generateId(), done: false })), photos: [], documents: [], messages: [], statut: 'prospect' }; const newCh = addChantier(clone); showToast(`Chantier dupliqué`, 'success'); if (newCh?.id) setView(newCh.id); setShowMobileActions(null); }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}>
+                            <Copy size={15} className={textMuted} /> Dupliquer
+                          </button>
+                          {ch.statut === 'en_cours' && (
+                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Terminer', message: `Marquer "${ch.nom}" comme terminé ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier terminé ✅', 'success'); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-emerald-400 hover:bg-slate-700' : 'text-emerald-600 hover:bg-slate-50'}`}>
+                              <CheckCircle size={15} /> Terminer
+                            </button>
+                          )}
+                          {ch.statut !== 'archive' && (
+                            <button onClick={async () => { setShowMobileActions(null); const confirmed = await confirm({ title: 'Archiver', message: `Archiver "${ch.nom}" ?` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Archivé', 'success'); setView(null); } }} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                              <Archive size={15} /> Archiver
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                   <button
                     onClick={() => setShowTaskGenerator(true)}
                     className="px-3 py-1.5 rounded-lg min-h-[36px] flex items-center gap-1.5 text-white text-xs font-medium transition-all hover:opacity-90"
@@ -628,16 +613,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
 
               {allTasks.length === 0 ? (
-                /* === EMPTY STATE: Big CTA + inline project type selector === */
+                /* === EMPTY STATE: Enriched + reduced grid === */
                 <div className="text-center">
                   <div className={`py-6 rounded-xl mb-4 ${isDark ? 'bg-slate-700/30' : 'bg-gradient-to-br from-orange-50 to-amber-50'}`}>
-                    <Sparkles size={36} className="mx-auto mb-3" style={{ color: couleur }} />
-                    <p className={`font-semibold text-base ${textPrimary} mb-1`}>Générer mes tâches avec l'IA</p>
-                    <p className={`text-xs ${textMuted}`}>Sélectionnez un type de projet pour démarrer</p>
+                    <Sparkles size={32} className="mx-auto mb-2" style={{ color: couleur }} />
+                    <p className={`font-semibold text-base ${textPrimary} mb-1`}>Planifiez vos étapes de travail</p>
+                    <p className={`text-xs ${textMuted} max-w-xs mx-auto`}>Découpez votre chantier en tâches pour suivre l'avancement et coordonner votre équipe</p>
                   </div>
-                  {/* Project type grid inline */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                    {projectTypes.slice(0, 12).map(pt => (
+                  {/* Quick actions */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {projectTypes.slice(0, 4).map(pt => (
                       <button
                         key={pt.key}
                         onClick={() => handleInlineGenerate(pt.key)}
@@ -648,6 +633,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       </button>
                     ))}
                   </div>
+                  <button onClick={() => setShowTaskGenerator(true)} className={`text-xs font-medium mb-3 ${textMuted} hover:underline`}>
+                    Voir plus de types →
+                  </button>
                   <button
                     onClick={() => setShowTaskGenerator(true)}
                     className={`text-xs font-medium ${textMuted} hover:underline`}
@@ -1036,28 +1024,28 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: couleur }} />
           <span className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Détails du chantier</span>
         </div>
-        {/* Onglets — 5 max + Plus dropdown */}
+        {/* Onglets — all in single scrollable bar + ••• for rare tabs */}
         {(() => {
           const photoCount = (ch.photos || []).length;
           const msgCount = (ch.messages || []).filter(m => !m.read).length;
-          const mainTabs = [
+          const allTabs = [
             { key: 'photos', label: 'Photos', icon: Camera, badge: photoCount > 0 ? photoCount : null },
             { key: 'finances', label: 'Finances', icon: Wallet },
             { key: 'situations', label: 'Situations', icon: Receipt },
             { key: 'messages', label: 'Messages', icon: MessageSquare, badge: msgCount > 0 ? msgCount : null },
-          ];
-          const moreTabs = [
-            { key: 'notes', label: 'Notes', icon: StickyNote },
             { key: 'documents', label: 'Documents', icon: Paperclip },
+            { key: 'notes', label: 'Notes', icon: StickyNote },
+          ];
+          const rareTabs = [
             { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'memos', label: 'Mémos', icon: ClipboardList },
           ];
-          const isMoreTabActive = moreTabs.some(t => t.key === activeTab);
+          const isRareTabActive = rareTabs.some(t => t.key === activeTab);
 
           return (
             <div className="relative">
-              <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                {mainTabs.map(({ key, label, icon: Icon, badge }) => (
+              <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {allTabs.map(({ key, label, icon: Icon, badge }) => (
                   <button key={key} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
                     <Icon size={15} />
                     <span className="hidden sm:inline">{label}</span>
@@ -1068,22 +1056,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     )}
                   </button>
                 ))}
-                {/* Plus button */}
+                {/* ••• compact submenu for Rapports & Mémos */}
                 <button
                   onClick={() => setShowMoreTabs(!showMoreTabs)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors ${isMoreTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-                  style={isMoreTabActive ? { background: couleur } : {}}
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors ${isRareTabActive ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                  style={isRareTabActive ? { background: couleur } : {}}
                 >
                   <MoreHorizontal size={15} />
-                  <span className="hidden sm:inline">Plus</span>
                 </button>
               </div>
-              {/* Dropdown */}
+              {/* Dropdown for rare tabs */}
               {showMoreTabs && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowMoreTabs(false)} />
-                  <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[180px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
-                    {moreTabs.map(({ key, label, icon: Icon }) => (
+                  <div className={`absolute right-0 top-full mt-1 z-20 py-1 rounded-xl shadow-lg border min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'}`}>
+                    {rareTabs.map(({ key, label, icon: Icon }) => (
                       <button
                         key={key}
                         onClick={() => { setActiveTab(key); setShowMoreTabs(false); }}
@@ -2799,15 +2786,23 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 </div>
 
-                {/* CTA for Prospect: create devis */}
+                {/* CTA for Prospect: create devis + view detail */}
                 {ch.statut === 'prospect' && setPage && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
-                    className="w-full mt-2 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 text-white transition-all hover:shadow-md active:scale-[0.98]"
-                    style={{ background: couleur }}
-                  >
-                    <FileText size={14} /> + Créer un devis
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98]"
+                      style={{ borderColor: couleur, color: couleur }}
+                    >
+                      <FileText size={13} /> Créer un devis
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                    >
+                      <ChevronRight size={13} /> Détail
+                    </button>
+                  </div>
                 )}
 
                 {/* Unarchive button for archived chantiers */}
