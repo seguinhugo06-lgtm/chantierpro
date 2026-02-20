@@ -3,7 +3,8 @@ import {
   Plus, Search, X, ChevronDown, ChevronRight, Calendar, Clock,
   ClipboardList, Trash2, AlertCircle, CheckCircle2, Star,
   Building2, Users, Tag, StickyNote, ChevronLeft, Filter,
-  ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square
+  ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square,
+  Mic, MicOff, Send, Share2, Copy, ExternalLink
 } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import { useConfirm, useToast } from '../context/AppContext';
@@ -189,9 +190,14 @@ function MemoItem({
             </span>
           )}
           {stTotal > 0 && (
-            <span className={`inline-flex items-center gap-1 text-xs font-medium ${stDone === stTotal ? 'text-green-500' : 'text-amber-500'}`}>
-              <CheckSquare size={10} />
-              {stDone}/{stTotal}
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-md ${
+                stDone === stTotal
+                  ? isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-50 text-green-600'
+                  : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {stDone === stTotal ? '☑' : '◻'} {stDone}/{stTotal}
             </span>
           )}
         </div>
@@ -328,18 +334,30 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
 function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, couleur, isDark, addMemo }) {
   const [text, setText] = useState(memo.text || '');
   const [notes, setNotes] = useState(memo.notes || '');
-  const debouncedText = useDebounce(text, 500);
-  const debouncedNotes = useDebounce(notes, 500);
+  const debouncedText = useDebounce(text, 800);
+  const debouncedNotes = useDebounce(notes, 800);
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const isFirstRender = useRef(true);
+  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const saveTimerRef = useRef(null);
 
   // Sync local state when memo changes
   useEffect(() => {
     setText(memo.text || '');
     setNotes(memo.notes || '');
     isFirstRender.current = true;
+    setSaveStatus('idle');
   }, [memo.id]);
+
+  // Show "saving..." when typing
+  useEffect(() => {
+    if (isFirstRender.current) return;
+    if (text !== memo.text || notes !== (memo.notes || '')) {
+      setSaveStatus('saving');
+    }
+  }, [text, notes]);
 
   // Auto-save text
   useEffect(() => {
@@ -349,6 +367,10 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
     }
     if (debouncedText !== memo.text) {
       onUpdate(memo.id, { text: debouncedText });
+      setSaveStatus('saved');
+      setLastSavedAt(Date.now());
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [debouncedText]);
 
@@ -356,8 +378,15 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
   useEffect(() => {
     if (debouncedNotes !== (memo.notes || '')) {
       onUpdate(memo.id, { notes: debouncedNotes });
+      setSaveStatus('saved');
+      setLastSavedAt(Date.now());
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     }
   }, [debouncedNotes]);
+
+  // Cleanup timer
+  useEffect(() => () => clearTimeout(saveTimerRef.current), []);
 
   const handleImmediateUpdate = (field, value) => {
     onUpdate(memo.id, { [field]: value || null });
@@ -391,6 +420,29 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
     }
   };
 
+  // ── WhatsApp / clipboard share ──
+  const handleShare = () => {
+    const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
+    const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
+    const parts = ['[Mémo ChantierPro]', memo.text];
+    if (memo.due_date) parts.push(`📅 ${formatDateFR(memo.due_date)}${memo.due_time ? ' à ' + formatTimeFR(memo.due_time) : ''}`);
+    if (chantier) parts.push(`🏗️ ${chantier.nom}`);
+    if (client) parts.push(`👤 ${client.nom || ''} ${client.prenom || ''}`);
+    const message = parts.join('\n');
+
+    // Mobile: open WhatsApp. Desktop: copy to clipboard
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.open(`whatsapp://send?text=${encodeURIComponent(message)}`, '_blank');
+    } else {
+      navigator.clipboard.writeText(message).then(() => {
+        showToast('Copié dans le presse-papiers', 'success');
+      }).catch(() => {
+        showToast('Erreur de copie', 'error');
+      });
+    }
+  };
+
   const recType = memo.recurrence?.type || memo.recurrence || '';
   const recInterval = memo.recurrence?.interval || 1;
   const recUnit = memo.recurrence?.unit || 'day';
@@ -417,14 +469,39 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
           <button onClick={onClose} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
             <ChevronLeft size={20} className={tc.muted} />
           </button>
-          <h2 className={`font-semibold ${tc.text}`}>Détail du mémo</h2>
-          <button
-            onClick={handleDelete}
-            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-            aria-label="Supprimer le mémo"
-          >
-            <Trash2 size={18} />
-          </button>
+          {/* Auto-save indicator */}
+          <div className="flex items-center gap-1.5">
+            {saveStatus === 'saving' && (
+              <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-500'}`}>
+                <RefreshCw size={11} className="animate-spin" /> Sauvegarde...
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                <CheckCircle2 size={11} /> Sauvegardé
+              </span>
+            )}
+            {saveStatus === 'idle' && (
+              <span className={`font-semibold text-sm ${tc.text}`}>Détail du mémo</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleShare}
+              className={`p-1.5 rounded-lg ${isDark ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50'}`}
+              aria-label="Partager via WhatsApp"
+              title="Partager via WhatsApp"
+            >
+              <Share2 size={18} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+              aria-label="Supprimer le mémo"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -617,28 +694,21 @@ function StatsBar({ memos, isDark, couleur }) {
 
     const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < today()).length;
 
-    // Streak: consecutive days with at least 1 completion
-    let streak = 0;
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    while (true) {
-      const dayStr = d.toISOString().split('T')[0];
-      const hasCompletion = memos.some(m =>
-        m.is_done && m.done_at && m.done_at.startsWith(dayStr)
-      );
-      if (!hasCompletion) break;
-      streak++;
-      d.setDate(d.getDate() - 1);
-    }
+    // Completed this month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const completedThisMonth = memos.filter(m =>
+      m.is_done && m.done_at && new Date(m.done_at) >= monthStart
+    ).length;
 
-    return { completedThisWeek, completionRate, overdueCount, streak };
+    return { completedThisWeek, completionRate, overdueCount, completedThisMonth };
   }, [memos]);
 
   const cards = [
     { value: stats.completedThisWeek, label: 'Cette semaine', bg: isDark ? 'bg-orange-900/30' : 'bg-orange-50', color: 'text-orange-600' },
     { value: `${stats.completionRate}%`, label: 'Complétion', bg: isDark ? 'bg-green-900/30' : 'bg-green-50', color: 'text-green-600' },
     { value: stats.overdueCount, label: 'En retard', bg: isDark ? 'bg-red-900/30' : 'bg-red-50', color: 'text-red-600' },
-    { value: `${stats.streak} 🔥`, label: 'Série', bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', color: 'text-blue-600' },
+    { value: `✅ ${stats.completedThisMonth}`, label: 'Ce mois', bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', color: 'text-blue-600' },
   ];
 
   return (
@@ -739,9 +809,89 @@ export default function MemosPage({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [filterCategoryChip, setFilterCategoryChip] = useState('');
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => {
+    try {
+      const ts = localStorage.getItem('cp_memos_nudge_dismissed');
+      return ts && (Date.now() - parseInt(ts)) < 86400000; // 24h
+    } catch { return false; }
+  });
+  const [focusSortIndex, setFocusSortIndex] = useState(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // ── Web Speech API availability ──
+  const hasSpeechAPI = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // ── Voice dictation ──
+  const startListening = useCallback(() => {
+    if (!hasSpeechAPI || isListening) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setNewMemoText(transcript);
+
+      // Auto-submit after 2s silence
+      clearTimeout(silenceTimerRef.current);
+      if (event.results[event.results.length - 1].isFinal) {
+        silenceTimerRef.current = setTimeout(() => {
+          stopListening();
+          // Submit if there's text
+          const trimmed = transcript.trim();
+          if (trimmed) {
+            addMemo({ text: trimmed });
+            setNewMemoText('');
+            showToast('Mémo vocal ajouté', 'success');
+          }
+        }, 2000);
+      }
+    };
+
+    recognition.onerror = (e) => {
+      console.warn('Speech recognition error:', e.error);
+      setIsListening(false);
+      if (e.error === 'not-allowed') {
+        showToast('Micro non autorisé', 'error');
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [hasSpeechAPI, isListening, addMemo, showToast]);
+
+  const stopListening = useCallback(() => {
+    clearTimeout(silenceTimerRef.current);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(silenceTimerRef.current);
+      if (recognitionRef.current) recognitionRef.current.stop();
+    };
+  }, []);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -929,9 +1079,10 @@ export default function MemosPage({
       });
     }
 
-    // Category filter
-    if (filterCategory) {
-      list = list.filter(m => m.category === filterCategory);
+    // Category filter (from dropdown or chips)
+    const activeCatFilter = filterCategory || filterCategoryChip;
+    if (activeCatFilter) {
+      list = list.filter(m => m.category === activeCatFilter);
     }
 
     // Priority filter
@@ -940,7 +1091,7 @@ export default function MemosPage({
     }
 
     return list;
-  }, [memos, debouncedSearch, filterCategory, filterPriority, chantiers, clients]);
+  }, [memos, debouncedSearch, filterCategory, filterCategoryChip, filterPriority, chantiers, clients]);
 
   // ── Sorting ──
   const sortMemos = useCallback((list) => {
@@ -1068,7 +1219,7 @@ export default function MemosPage({
     );
   };
 
-  const hasActiveFilters = filterCategory || filterPriority;
+  const hasActiveFilters = filterCategory || filterCategoryChip || filterPriority;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -1096,30 +1247,162 @@ export default function MemosPage({
       {/* Stats bar */}
       <StatsBar memos={memos} isDark={isDark} couleur={couleur} />
 
-      {/* Quick capture */}
-      <div className={`${tc.card} rounded-xl border ${tc.border} p-3 mb-4 flex items-center gap-3`}>
-        <div className="flex-shrink-0">
-          <Plus size={18} style={{ color: couleur }} />
-        </div>
-        <input
-          ref={inputRef}
-          type="text"
-          value={newMemoText}
-          onChange={(e) => setNewMemoText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Nouveau mémo... (Entrée pour ajouter)"
-          className={`flex-1 bg-transparent border-none outline-none text-sm ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
-        />
-        {newMemoText && (
+      {/* Quick capture — with voice + always-visible add button */}
+      <div className={`${tc.card} rounded-xl border ${tc.border} p-3 mb-4`}>
+        <div className="flex items-center gap-2">
+          {/* Voice dictation button */}
+          {hasSpeechAPI && (
+            <button
+              onClick={isListening ? stopListening : startListening}
+              className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+                isListening
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+              aria-label={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
+              title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
+            >
+              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+          )}
+          {/* Text input */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={newMemoText}
+            onChange={(e) => setNewMemoText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={isListening ? '🎤 Parlez maintenant...' : 'Nouveau mémo...'}
+            className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+          />
+          {/* Always-visible add button (44px touch target) */}
           <button
             onClick={handleQuickAdd}
-            className="px-3 py-1.5 rounded-lg text-white text-xs font-medium"
+            disabled={!newMemoText.trim()}
+            className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white transition-all disabled:opacity-40"
             style={{ backgroundColor: couleur }}
+            aria-label="Ajouter le mémo"
           >
-            Ajouter
+            <Plus size={20} strokeWidth={2.5} />
           </button>
+        </div>
+        {/* Listening indicator */}
+        {isListening && (
+          <div className="flex items-center gap-2 mt-2 px-1">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className={`text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+              Écoute en cours... (auto-submit après 2s de silence)
+            </span>
+          </div>
         )}
       </div>
+
+      {/* Nudge: unsorted memos */}
+      {(() => {
+        const undatedActive = memos.filter(m => !m.is_done && !m.due_date);
+        if (undatedActive.length >= 3 && !nudgeDismissed && focusSortIndex === null) {
+          return (
+            <div className={`${isDark ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'} border rounded-xl p-3 mb-4 flex items-center gap-3`}>
+              <span className="text-lg flex-shrink-0">📂</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+                  {undatedActive.length} mémo{undatedActive.length > 1 ? 's' : ''} sans date
+                </p>
+                <p className={`text-xs ${isDark ? 'text-amber-300/70' : 'text-amber-600'}`}>Les planifier maintenant ?</p>
+              </div>
+              <button
+                onClick={() => { setFocusSortIndex(0); setActiveTab('inbox'); }}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-white text-xs font-medium"
+                style={{ backgroundColor: couleur }}
+              >
+                Trier
+              </button>
+              <button
+                onClick={() => {
+                  setNudgeDismissed(true);
+                  try { localStorage.setItem('cp_memos_nudge_dismissed', String(Date.now())); } catch {}
+                }}
+                className={`flex-shrink-0 p-1 rounded ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Focus sort mode overlay */}
+      {focusSortIndex !== null && (() => {
+        const undatedActive = memos.filter(m => !m.is_done && !m.due_date);
+        if (undatedActive.length === 0 || focusSortIndex >= undatedActive.length) {
+          return (
+            <div className={`${tc.card} rounded-xl border ${tc.border} p-6 mb-4 text-center`}>
+              <span className="text-4xl block mb-3">🎉</span>
+              <p className={`font-medium ${tc.text}`}>Tous les mémos sont triés !</p>
+              <button
+                onClick={() => setFocusSortIndex(null)}
+                className="mt-3 px-4 py-2 rounded-lg text-white text-sm"
+                style={{ backgroundColor: couleur }}
+              >
+                Terminé
+              </button>
+            </div>
+          );
+        }
+        const memo = undatedActive[focusSortIndex];
+        return (
+          <div className={`${tc.card} rounded-xl border ${tc.border} p-4 mb-4`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className={`text-xs font-medium ${tc.muted}`}>
+                Tri rapide — {focusSortIndex + 1}/{undatedActive.length}
+              </span>
+              <button
+                onClick={() => setFocusSortIndex(null)}
+                className={`p-1 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+              >
+                <X size={14} className={tc.muted} />
+              </button>
+            </div>
+            {/* Progress bar */}
+            <div className={`h-1 rounded-full mb-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${((focusSortIndex) / undatedActive.length) * 100}%`, backgroundColor: couleur }} />
+            </div>
+            <p className={`text-sm font-medium mb-3 ${tc.text}`}>{memo.text}</p>
+            {memo.notes && <p className={`text-xs mb-3 ${tc.muted}`}>{memo.notes}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => { updateMemo(memo.id, { due_date: today() }); showToast('Planifié aujourd\'hui', 'success'); setFocusSortIndex(prev => prev + 1); }}
+                className="px-3 py-2 rounded-lg text-xs font-medium bg-amber-500 text-white min-h-[44px]"
+              >
+                📅 Aujourd'hui
+              </button>
+              <button
+                onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); updateMemo(memo.id, { due_date: d.toISOString().split('T')[0] }); showToast('Planifié demain', 'success'); setFocusSortIndex(prev => prev + 1); }}
+                className={`px-3 py-2 rounded-lg text-xs font-medium min-h-[44px] ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
+              >
+                Demain
+              </button>
+              <button
+                onClick={() => { const d = new Date(); d.setDate(d.getDate() + 7); updateMemo(memo.id, { due_date: d.toISOString().split('T')[0] }); showToast('Planifié la semaine prochaine', 'success'); setFocusSortIndex(prev => prev + 1); }}
+                className={`px-3 py-2 rounded-lg text-xs font-medium min-h-[44px] ${isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700'}`}
+              >
+                Semaine pro
+              </button>
+              <button
+                onClick={() => { setFocusSortIndex(prev => prev + 1); }}
+                className={`px-3 py-2 rounded-lg text-xs font-medium min-h-[44px] ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+              >
+                Passer →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tabs + search + filters */}
       <div className={`${tc.card} rounded-xl border ${tc.border} overflow-hidden`}>
@@ -1189,6 +1472,35 @@ export default function MemosPage({
               <Filter size={15} />
             </button>
           </div>
+        </div>
+
+        {/* Category filter chips */}
+        <div className={`flex items-center gap-1.5 px-3 py-2 border-b ${tc.border} overflow-x-auto scrollbar-hide`}>
+          <button
+            onClick={() => setFilterCategoryChip('')}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px] ${
+              !filterCategoryChip
+                ? 'text-white'
+                : isDark ? 'text-slate-400 bg-slate-700/50 hover:bg-slate-700' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+            }`}
+            style={!filterCategoryChip ? { backgroundColor: couleur } : {}}
+          >
+            Tous
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.value}
+              onClick={() => setFilterCategoryChip(filterCategoryChip === cat.value ? '' : cat.value)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px] ${
+                filterCategoryChip === cat.value
+                  ? 'text-white'
+                  : isDark ? 'text-slate-400 bg-slate-700/50 hover:bg-slate-700' : 'text-slate-600 bg-slate-100 hover:bg-slate-200'
+              }`}
+              style={filterCategoryChip === cat.value ? { backgroundColor: cat.color } : {}}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
 
         {/* Filters row */}
