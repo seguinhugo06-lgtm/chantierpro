@@ -8,6 +8,7 @@ const DURATIONS = [
   { label: '2h', value: 120 },
   { label: '4h', value: 240 },
   { label: 'Journée', value: 480 },
+  { label: 'Perso', value: -1 }, // P2.1: custom duration via end time
 ];
 
 const formatDuration = (mins) => {
@@ -40,8 +41,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [showTips, setShowTips] = useState(() => { try { return !localStorage.getItem('cp_planning_tips_dismissed'); } catch { return true; } });
   const [mobileWeekDay, setMobileWeekDay] = useState(0); // index into weekDays for mobile week grid
   const [agendaRange, setAgendaRange] = useState(30); // days to show in agenda view
+  const [agendaHideEmpty, setAgendaHideEmpty] = useState(true); // P2.6: hide empty days
   const weekGridRef = useRef(null);
-  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', dateEnd: '' };
+  const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', dateEnd: '', rappel: '' };
   const [form, setForm] = useState(emptyForm);
 
   // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
@@ -214,7 +216,17 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const submit = () => {
     if (!form.title || !form.date) return;
-    addEvent({ ...form });
+    // Compute real duration from endTime when custom
+    const data = { ...form };
+    if (data.duration === -1 && data.time && data.endTime) {
+      const [sh, sm] = data.time.split(':').map(Number);
+      const [eh, em] = data.endTime.split(':').map(Number);
+      const diff = (eh * 60 + em) - (sh * 60 + sm);
+      data.duration = diff > 0 ? diff : 60;
+    } else if (data.duration === -1) {
+      data.duration = 60; // fallback
+    }
+    addEvent(data);
     setShowAdd(false);
     setQuickAdd(null);
     setForm(emptyForm);
@@ -240,10 +252,20 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const handleUpdateEvent = () => {
     if (!showDetail || showDetail.isChantier) return;
     const realId = showDetail.isRecurrence ? showDetail.originalId : showDetail.id;
+    // Compute real duration from endTime when custom
+    const data = { ...form };
+    if (data.duration === -1 && data.time && data.endTime) {
+      const [sh, sm] = data.time.split(':').map(Number);
+      const [eh, em] = data.endTime.split(':').map(Number);
+      const diff = (eh * 60 + em) - (sh * 60 + sm);
+      data.duration = diff > 0 ? diff : 60;
+    } else if (data.duration === -1) {
+      data.duration = 60;
+    }
     if (updateEventProp) {
-      updateEventProp(realId, form);
+      updateEventProp(realId, data);
     } else {
-      setEvents(events.map(e => e.id === realId ? { ...e, ...form } : e));
+      setEvents(events.map(e => e.id === realId ? { ...e, ...data } : e));
     }
     setShowDetail(null); setEditMode(false);
     setForm(emptyForm);
@@ -251,9 +273,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const startEdit = () => {
     setForm({ title: showDetail.title || '', date: showDetail.date || '', time: showDetail.time || '',
-      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', chantierId: showDetail.chantierId || '',
+      endTime: showDetail.endTime || '', type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', chantierId: showDetail.chantierId || '',
       description: showDetail.description || '', duration: showDetail.duration || 60, recurrence: showDetail.recurrence || 'never', recurrenceEnd: showDetail.recurrenceEnd || '',
-      dateEnd: showDetail.dateEnd || '' });
+      dateEnd: showDetail.dateEnd || '', rappel: showDetail.rappel || '' });
     setEditMode(true);
   };
 
@@ -279,7 +301,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           const Icon = TYPE_ICONS[key];
           const isSelected = form.type === key;
           return (
-            <button key={key} onClick={() => setForm(p => ({...p, type: key, ...(key !== 'chantier' ? { chantierId: '', dateEnd: '' } : {})}))} className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${isSelected ? 'text-white border-transparent' : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`} style={isSelected ? { background: typeColors[key] } : {}}>
+            <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${isSelected ? 'text-white border-transparent' : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`} style={isSelected ? { background: typeColors[key] } : {}}>
               <Icon size={18} />
               <span className="text-sm font-medium">{label}</span>
             </button>
@@ -294,18 +316,44 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
           </div>
-          {/* Duration quick picker */}
+          {/* Duration quick picker — P2.1: custom duration */}
           <div>
             <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Durée</label>
             <div className="flex flex-wrap gap-2">
               {DURATIONS.map(d => (
-                <button key={d.value} type="button" onClick={() => setForm(p => ({...p, duration: d.value}))}
+                <button key={d.value} type="button" onClick={() => {
+                  if (d.value === 480) {
+                    // Journée: clear time, set duration
+                    setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
+                  } else if (d.value === -1) {
+                    // Custom: keep time, show end time picker
+                    setForm(p => ({...p, duration: -1}));
+                  } else {
+                    setForm(p => ({...p, duration: d.value, endTime: ''}));
+                  }
+                }}
                   className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                   style={form.duration === d.value ? { background: couleur } : {}}>
                   {d.label}
                 </button>
               ))}
             </div>
+            {/* P2.1: Custom end time field */}
+            {form.duration === -1 && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex-1">
+                  <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                  <input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
+                </div>
+                {form.time && form.endTime && (() => {
+                  const [sh, sm] = form.time.split(':').map(Number);
+                  const [eh, em] = form.endTime.split(':').map(Number);
+                  const diff = (eh * 60 + em) - (sh * 60 + sm);
+                  if (diff > 0) return <span className={`text-sm font-medium mt-5 ${textSecondary}`}>Durée : {formatDuration(diff)}</span>;
+                  return null;
+                })()}
+              </div>
+            )}
           </div>
           {/* Recurrence */}
           <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
@@ -330,22 +378,35 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
             )}
           </div>
-          {/* P1.1: Chantier associé — when type is 'chantier' or when a client is selected */}
-          {form.type === 'chantier' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
-                  <option value="">— Sélectionner —</option>
-                  {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
-                    <option key={ch.id} value={ch.id}>{ch.nom}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de fin</label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
-              </div>
+          {/* P2.2: Date de fin — available for all types */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de fin <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
+              <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
+            </div>
+            {/* P2.5: Rappel */}
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Rappel</label>
+              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}>
+                <option value="">Aucun</option>
+                <option value="15">15 min avant</option>
+                <option value="30">30 min avant</option>
+                <option value="60">1h avant</option>
+                <option value="1440">La veille</option>
+                <option value="2880">2 jours avant</option>
+              </select>
+            </div>
+          </div>
+          {/* P2.4: Chantier associé — when type is chantier OR when a client is selected */}
+          {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé</label>
+              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
+                <option value="">— Aucun —</option>
+                {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
+                  <option key={ch.id} value={ch.id}>{ch.nom}</option>
+                ))}
+              </select>
             </div>
           )}
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Adresse, infos utiles..." /></div>
@@ -787,9 +848,22 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               const dayEvts = getEventsForDay(dateStr).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
               agendaDays.push({ date: d, dateStr, events: dayEvts });
             }
+            // P2.6: filter empty days if toggle active
+            const visibleDays = agendaHideEmpty ? agendaDays.filter(d => d.events.length > 0 || d.dateStr === formatLocalDate(new Date())) : agendaDays;
             return (
               <div>
-                {agendaDays.map(({ date: dayDate, dateStr, events: dayEvts }) => {
+                {/* P2.6: Toggle hide empty days */}
+                <div className={`flex items-center justify-between px-4 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <span className={`text-xs ${textMuted}`}>{visibleDays.length} jour{visibleDays.length > 1 ? 's' : ''} affiché{visibleDays.length > 1 ? 's' : ''}</span>
+                  <button
+                    onClick={() => setAgendaHideEmpty(h => !h)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${agendaHideEmpty ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                    style={agendaHideEmpty ? { background: couleur } : {}}
+                  >
+                    {agendaHideEmpty ? 'Jours avec événements' : 'Tous les jours'}
+                  </button>
+                </div>
+                {visibleDays.map(({ date: dayDate, dateStr, events: dayEvts }) => {
                   const isToday = dateStr === formatLocalDate(new Date());
                   return (
                     <div key={dateStr}>
@@ -953,13 +1027,37 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>Durée</label>
                       <div className="flex flex-wrap gap-2">
                         {DURATIONS.map(d => (
-                          <button key={d.value} type="button" onClick={() => setForm(p => ({...p, duration: d.value}))}
+                          <button key={d.value} type="button" onClick={() => {
+                            if (d.value === 480) {
+                              setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
+                            } else if (d.value === -1) {
+                              setForm(p => ({...p, duration: -1}));
+                            } else {
+                              setForm(p => ({...p, duration: d.value, endTime: ''}));
+                            }
+                          }}
                             className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                             style={form.duration === d.value ? { background: couleur } : {}}>
                             {d.label}
                           </button>
                         ))}
                       </div>
+                      {/* P2.1: Custom end time field in edit modal */}
+                      {form.duration === -1 && (
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="flex-1">
+                            <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                            <input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
+                          </div>
+                          {form.time && form.endTime && (() => {
+                            const [sh, sm] = form.time.split(':').map(Number);
+                            const [eh, em] = form.endTime.split(':').map(Number);
+                            const diff = (eh * 60 + em) - (sh * 60 + sm);
+                            if (diff > 0) return <span className={`text-sm font-medium mt-5 ${textSecondary}`}>Durée : {formatDuration(diff)}</span>;
+                            return null;
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                       <div>
@@ -984,21 +1082,34 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     {clients.length > 0 && (
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
                     )}
-                    {form.type === 'chantier' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé</label>
-                          <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
-                            <option value="">— Sélectionner —</option>
-                            {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
-                              <option key={ch.id} value={ch.id}>{ch.nom}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date de fin</label>
-                          <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
-                        </div>
+                    {/* P2.2: Date de fin + P2.5: Rappel */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date de fin <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
+                        <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
+                      </div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Rappel</label>
+                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}>
+                          <option value="">Aucun</option>
+                          <option value="15">15 min avant</option>
+                          <option value="30">30 min avant</option>
+                          <option value="60">1h avant</option>
+                          <option value="1440">La veille</option>
+                          <option value="2880">2 jours avant</option>
+                        </select>
+                      </div>
+                    </div>
+                    {/* P2.4: Chantier associé — when type is chantier OR client selected */}
+                    {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé</label>
+                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
+                          <option value="">— Aucun —</option>
+                          {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
+                            <option key={ch.id} value={ch.id}>{ch.nom}</option>
+                          ))}
+                        </select>
                       </div>
                     )}
                     <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
@@ -1033,6 +1144,21 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           </div>
                         ) : null;
                       })()}
+                      {showDetail.chantierId && !showDetail.isChantier && (() => {
+                        const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
+                        return ch ? (
+                          <div className="flex items-center gap-3">
+                            <Home size={16} className={textMuted} />
+                            <button onClick={() => goToChantier(ch.id)} className="hover:underline" style={{ color: couleur }}>{ch.nom}</button>
+                          </div>
+                        ) : null;
+                      })()}
+                      {showDetail.rappel && (
+                        <div className="flex items-center gap-3">
+                          <Bell size={16} className={textMuted} />
+                          <span className={textPrimary}>Rappel : {showDetail.rappel === '15' ? '15 min avant' : showDetail.rappel === '30' ? '30 min avant' : showDetail.rappel === '60' ? '1h avant' : showDetail.rappel === '1440' ? 'La veille' : showDetail.rappel === '2880' ? '2 jours avant' : `${showDetail.rappel} min`}</span>
+                        </div>
+                      )}
                     </div>
                     {showDetail.description && (
                       <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
