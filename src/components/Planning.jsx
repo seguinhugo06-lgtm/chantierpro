@@ -23,6 +23,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
   const [showTips, setShowTips] = useState(() => { try { return !localStorage.getItem('cp_planning_tips_dismissed'); } catch { return true; } });
   const [mobileWeekDay, setMobileWeekDay] = useState(0); // index into weekDays for mobile week grid
+  const [agendaRange, setAgendaRange] = useState(30); // days to show in agenda view
   const weekGridRef = useRef(null);
   const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
@@ -382,6 +383,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={() => { setViewMode('month'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
           <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
           <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+          <button onClick={() => setViewMode('agenda')} className={`px-3 py-1.5 text-sm ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
         </div>
       </div>
 
@@ -413,15 +415,19 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
         <div className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
-            <ChevronLeft size={24} className={textPrimary} />
-          </button>
+          {viewMode !== 'agenda' ? (
+            <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+              <ChevronLeft size={24} className={textPrimary} />
+            </button>
+          ) : <div className="w-10" />}
           <h2 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>
-            {viewMode === 'month' ? `${MOIS[month]} ${year}` : viewMode === 'day' ? date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+            {viewMode === 'month' ? `${MOIS[month]} ${year}` : viewMode === 'day' ? date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : viewMode === 'agenda' ? 'Agenda' : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
           </h2>
-          <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
-            <ChevronRight size={24} className={textPrimary} />
-          </button>
+          {viewMode !== 'agenda' ? (
+            <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+              <ChevronRight size={24} className={textPrimary} />
+            </button>
+          ) : <div className="w-10" />}
         </div>
 
         {viewMode === 'month' ? (
@@ -638,7 +644,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               </div>
             );
           })()
-        ) : (
+        ) : viewMode === 'day' ? (
           // Day view with hourly slots
           (() => {
             const dayStr = formatLocalDate(date);
@@ -715,7 +721,66 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               </div>
             );
           })()
-        )}
+        ) : viewMode === 'agenda' ? (
+          // Agenda view — chronological scrollable list
+          (() => {
+            const startDate = new Date();
+            startDate.setHours(0, 0, 0, 0);
+            const agendaDays = [];
+            for (let i = 0; i < agendaRange; i++) {
+              const d = new Date(startDate);
+              d.setDate(d.getDate() + i);
+              const dateStr = formatLocalDate(d);
+              const dayEvts = getEventsForDay(dateStr).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+              agendaDays.push({ date: d, dateStr, events: dayEvts });
+            }
+            return (
+              <div>
+                {agendaDays.map(({ date: dayDate, dateStr, events: dayEvts }) => {
+                  const isToday = dateStr === formatLocalDate(new Date());
+                  return (
+                    <div key={dateStr}>
+                      <div className={`sticky top-0 z-10 px-4 py-2 text-xs font-semibold uppercase tracking-wider ${isToday ? (isDark ? 'bg-slate-700' : 'bg-orange-50') : isDark ? 'bg-slate-900' : 'bg-slate-50'}`} style={isToday ? { color: couleur } : {}}>
+                        {isToday ? "Aujourd'hui — " : ''}{dayDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </div>
+                      {dayEvts.length === 0 ? (
+                        <div className={`px-4 py-3 text-sm ${textMuted} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>Aucun événement</div>
+                      ) : (
+                        dayEvts.map(ev => {
+                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                          const eventColor = getEventColor(ev);
+                          const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
+                          return (
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
+                              className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b min-h-[56px] ${isDark ? 'border-slate-700/50 hover:bg-slate-800' : 'border-slate-100 hover:bg-slate-50'}`}>
+                              <div className="flex flex-col items-center w-14 flex-shrink-0">
+                                <span className={`text-sm font-bold ${textPrimary}`}>{ev.time || '--:--'}</span>
+                                {ev.duration && <span className={`text-[10px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
+                              </div>
+                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: eventColor }} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-medium text-sm truncate ${textPrimary}`}>{ev.title}</p>
+                                {client && <p className={`text-xs ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
+                              </div>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ background: eventColor }}>
+                                {TYPE_LABELS[ev.type] || 'Autre'}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={() => setAgendaRange(r => r + 30)}
+                  className={`w-full py-4 text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-50'}`}>
+                  Charger 30 jours de plus...
+                </button>
+              </div>
+            );
+          })()
+        ) : null}
       </div>
 
       {/* Tooltip popover for month view */}
