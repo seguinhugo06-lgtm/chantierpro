@@ -51,7 +51,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [priceFlash, setPriceFlash] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  const [coefSaved, setCoefSaved] = useState(false);
+  const [coefSaved, setCoefSaved] = useState(false); // 'saving' | 'saved' | false
+  const [coefDirty, setCoefDirty] = useState(false);
+  const coefSaveTimeoutRef = useRef(null);
   const [editId, setEditId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -66,6 +68,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [onlyFavoris, setOnlyFavoris] = useState(false);
   const [onlyLowStock, setOnlyLowStock] = useState(false);
   const [articleDetail, setArticleDetail] = useState(null);
+  // #9: Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [showImport, setShowImport] = useState(false);
   const [importData, setImportData] = useState(null);
   const [importMapping, setImportMapping] = useState({});
@@ -158,6 +163,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   useEffect(() => { try { localStorage.setItem('chantierpro_packs', JSON.stringify(packs)); } catch {} }, [packs]);
   useEffect(() => { try { localStorage.setItem('chantierpro_price_history', JSON.stringify(priceHistory)); } catch {} }, [priceHistory]);
   useEffect(() => { try { localStorage.setItem('chantierpro_coefficients', JSON.stringify(coefficients)); } catch {} }, [coefficients]);
+
+  // #9: Reset page on search/filter change
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, catFilter, onlyInStock, onlyFavoris, onlyLowStock, sortBy]);
 
   // ====== ESCAPE KEY HANDLER ======
   useEffect(() => {
@@ -444,13 +452,18 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     return ((p - a) / p) * 100;
   };
 
+  // #3: Centralized margin badge — reusable in Devis/Factures
+  const getMargeBadge = (marge) => {
+    if (marge === null || marge === undefined) return { label: '—', color: '#94a3b8', textClass: textMuted };
+    if (marge >= 60) return { label: 'Excellente', color: '#8b5cf6', textClass: 'text-purple-500 font-bold' };
+    if (marge >= 40) return { label: 'Bonne', color: '#16a34a', textClass: 'text-emerald-600 font-bold' };
+    if (marge >= 25) return { label: 'Correcte', color: '#22c55e', textClass: 'text-emerald-500' };
+    if (marge >= 0) return { label: 'Faible', color: '#f59e0b', textClass: 'text-orange-500' };
+    return { label: 'Négative', color: '#ef4444', textClass: 'text-red-500' };
+  };
+
   const getMargeColor = (marge) => {
-    if (marge === null) return textMuted;
-    if (marge >= 60) return 'text-emerald-600 font-bold';
-    if (marge >= 40) return 'text-emerald-500';
-    if (marge >= 25) return 'text-orange-500';
-    if (marge >= 10) return 'text-yellow-600';
-    return 'text-red-500';
+    return getMargeBadge(marge).textClass;
   };
 
   const handleAddFromPicker = async (item) => {
@@ -1103,17 +1116,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             const margePercent = getMargeBrute(pv, pa);
             const margeEuro = pv - pa;
             const coefReel = pa > 0 ? (pv / pa).toFixed(2) : '—';
-            const margeColor = margePercent >= 40 ? '#22c55e' : margePercent >= 25 ? '#f59e0b' : '#ef4444';
-            const margeLabel = margePercent >= 40 ? 'Excellente' : margePercent >= 25 ? 'Correcte' : 'Faible';
+            const badge = getMargeBadge(margePercent);
             return (
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-semibold ${textPrimary}`}>Marge live</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: margeColor }}>{margeLabel}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: badge.color }}>{badge.label}</span>
                 </div>
                 <div className="flex items-end gap-4 mb-2">
                   <div>
-                    <p className="text-2xl font-bold" style={{ color: margeColor }}>{margePercent?.toFixed(1)}%</p>
+                    <p className="text-2xl font-bold" style={{ color: badge.color }}>{margePercent?.toFixed(1)}%</p>
                     <p className={`text-xs ${textMuted}`}>{modeDiscret ? '·····' : `${margeEuro.toFixed(2)}€ par ${form.unite}`}</p>
                   </div>
                   <div className={`text-xs ${textMuted}`}>
@@ -1121,9 +1133,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <p>TTC: <strong className={textPrimary}>{modeDiscret ? '·····' : `${(pv * (1 + parseFloat(form.tva_rate || 20) / 100)).toFixed(2)}€`}</strong></p>
                   </div>
                 </div>
-                {/* Progress bar */}
-                <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(margePercent, 100)}%`, background: margeColor }} />
+                {/* Progress bar — #11: aria-progressbar */}
+                <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`} role="progressbar" aria-valuenow={Math.round(margePercent)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={`Marge ${badge.label} : ${margePercent?.toFixed(1)}%`}>
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(margePercent, 100)}%`, background: badge.color }} />
                 </div>
                 {/* Benchmarks */}
                 <div className={`flex justify-between mt-1 text-[10px] ${textMuted}`}>
@@ -1341,13 +1353,30 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         <div className="flex gap-2 flex-wrap">
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           {/* Desktop: 3 icon buttons */}
-          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer des articles (CSV/Excel)">
+          {/* #2: Header icons with enhanced tooltips */}
+          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Importer des articles (CSV)" aria-label="Importer des articles depuis un fichier CSV">
             <Upload size={16} />
           </button>
-          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV)">
+          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">
             <Download size={16} />
           </button>
-          <button onClick={startScanner} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Scanner un article / Code-barres">
+          <button
+            onClick={() => {
+              // #2: Desktop feedback for scan
+              if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+                showToast('Scan de code-barres — disponible sur mobile uniquement', 'info');
+              } else {
+                startScanner();
+              }
+            }}
+            className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${
+              /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+                ? isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
+                : isDark ? 'bg-slate-700 text-slate-500 opacity-50' : 'bg-slate-100 text-slate-400 opacity-50'
+            }`}
+            title={/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Scanner un code-barres article' : 'Disponible sur l\'application mobile'}
+            aria-label="Scanner un code-barres article"
+          >
             <Camera size={16} />
           </button>
           {/* Mobile: overflow menu */}
@@ -1516,10 +1545,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input type="text" placeholder="Rechercher un article, référence, catégorie..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
               </div>
-              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés" className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
+              {/* #8: Enhanced tooltips on filter icons */}
+              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés (prix, marge, stock)" aria-label="Filtres avancés" aria-expanded={showFilters} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
                 <Filter size={16} /> {activeFilters > 0 && `(${activeFilters})`}
               </button>
-              <button onClick={() => setShowStock(!showStock)} title="Afficher/masquer la colonne stock" className={`px-4 py-2.5 rounded-xl flex items-center gap-2 ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>
+              <button onClick={() => setShowStock(!showStock)} title={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-label={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-pressed={showStock} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>
                 <Box size={16} />
               </button>
             </div>
@@ -1557,17 +1587,39 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               )}
             </AnimatePresence>
 
-            {/* Category chips */}
-            <div className="relative">
-            <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 bg-gradient-to-l sm:hidden ${isDark ? 'from-slate-900' : 'from-white'}`} />
-            <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setCatFilter(cat)} className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={catFilter === cat ? {background: couleur} : {}}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-            </div>
+            {/* #4: Category chips with scroll indicators */}
+            {(() => {
+              const scrollRef = React.createRef();
+              return (
+                <div className="relative group">
+                  {/* Right fade gradient — visible when more content to scroll */}
+                  <div className={`absolute right-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-l rounded-r-lg ${isDark ? 'from-slate-900' : 'from-white'}`} />
+                  {/* Left fade gradient */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r rounded-l-lg opacity-0 ${isDark ? 'from-slate-900' : 'from-white'}`} id="catScrollLeftFade" />
+                  <div
+                    ref={scrollRef}
+                    className="flex gap-2 overflow-x-auto pb-2"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    role="tablist"
+                    aria-label="Filtrer par catégorie"
+                  >
+                    <style>{`#catFilterBar::-webkit-scrollbar { display: none; }`}</style>
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setCatFilter(cat)}
+                        role="tab"
+                        aria-selected={catFilter === cat}
+                        className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                        style={catFilter === cat ? {background: couleur} : {}}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Sort */}
@@ -1601,26 +1653,42 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </div>
           ) : (
             <>
-            {/* CTA Référentiel BTP when catalogue has few items */}
-            {catalogue.length > 0 && catalogue.length < 5 && !search && catFilter === 'Tous' && (
-              <div className={`mb-4 p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-3 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                    <Sparkles size={20} style={{ color: couleur }} />
-                  </div>
-                  <div>
-                    <p className={`text-sm font-semibold ${textPrimary}`}>Enrichissez votre catalogue</p>
-                    <p className={`text-xs ${textMuted}`}>Importez parmi <strong style={{ color: couleur }}>2 000+</strong> articles du référentiel BTP</p>
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      {['Prix à jour', 'Catégories BTP', 'Unités standards'].map(tag => (
-                        <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-white/80 text-slate-600 border border-slate-200'}`}>{tag}</span>
-                      ))}
+            {/* #10: Onboarding banner — dismissable, auto-hides at 10+ articles */}
+            {catalogue.length > 0 && catalogue.length < 10 && !search && catFilter === 'Tous' && !onboardingDismissed && (
+              <div className={`mb-4 p-4 rounded-xl border relative ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
+                <button
+                  onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch {} }}
+                  className={`absolute top-2 right-2 p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-white/80 text-slate-400'}`}
+                  aria-label="Fermer le bandeau"
+                >
+                  <X size={14} />
+                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: `${couleur}15` }}>
+                      📦
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>Votre catalogue est presque vide</p>
+                      <p className={`text-xs ${textMuted} max-w-sm`}>
+                        Importez des articles depuis notre référentiel BTP (2 000+ articles) ou ajoutez vos propres fournitures pour créer vos devis rapidement.
+                      </p>
+                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                        {['Prix à jour', 'Catégories BTP', 'Unités standards'].map(tag => (
+                          <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-white/80 text-slate-600 border border-slate-200'}`}>{tag}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
+                      <Sparkles size={14} /> Référentiel BTP
+                    </button>
+                    <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border ${isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                      <Upload size={14} /> Importer CSV
+                    </button>
+                  </div>
                 </div>
-                <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 text-white rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all" style={{ background: couleur }}>
-                  <Sparkles size={14} /> Référentiel BTP
-                </button>
               </div>
             )}
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -1637,7 +1705,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(item => {
+                    {/* #9: Paginated list */}
+                    {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
                       const marge = getMargeBrute(item.prix, item.prixAchat);
                       const stockVal = item.stock_actuel ?? item.stock;
                       const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
@@ -1646,7 +1715,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         <tr key={item.id} className={`group border-b last:border-0 transition-colors cursor-pointer ${isDark ? 'hover:bg-slate-700/70' : 'hover:bg-slate-100'}`} onClick={() => setArticleDetail(item.id)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
+                              <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-label={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} aria-pressed={!!item.favori} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-100'}`}>
                                 <Star size={18} className={`${item.favori ? 'text-amber-500' : `${textMuted} hover:text-amber-400`} transition-colors`} fill={item.favori ? 'currentColor' : 'none'} />
                               </button>
                               <div>
@@ -1696,6 +1765,44 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 </table>
               </div>
             </div>
+
+            {/* #9: Pagination controls */}
+            {filtered.length > itemsPerPage && (
+              <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${textMuted}`}>Afficher</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                    className={`px-2 py-1 border rounded-lg text-sm ${inputBg}`}
+                    aria-label="Nombre d'articles par page"
+                  >
+                    {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  <span className={`text-sm ${textMuted}`}>par page</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    Précédent
+                  </button>
+                  <span className={`text-sm font-medium ${textPrimary}`}>
+                    Page {currentPage} sur {Math.ceil(filtered.length / itemsPerPage)}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filtered.length / itemsPerPage), p + 1))}
+                    disabled={currentPage >= Math.ceil(filtered.length / itemsPerPage)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-50'}`}
+                  >
+                    Suivant
+                  </button>
+                </div>
+                <span className={`text-xs ${textMuted}`}>{filtered.length} article{filtered.length > 1 ? 's' : ''} au total</span>
+              </div>
+            )}
             </>
           )}
         </>
@@ -2171,7 +2278,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{item.categorie}</span>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
-                        <button onClick={() => toggleFavori(item.id)} title="Retirer des favoris"
+                        <button onClick={() => toggleFavori(item.id)} title="Retirer des favoris" aria-label="Retirer des favoris" aria-pressed="true"
                           className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                           <Star size={16} fill="currentColor" />
                         </button>
@@ -2249,14 +2356,40 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <p className={`text-[11px] ${textMuted}`}>Stock bas</p>
                   <p className={`text-xl font-bold ${alertesStock.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{alertesStock.length}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Valeur totale du stock au prix d'achat">
-                  <p className={`text-[11px] ${textMuted}`}>Valeur stock</p>
-                  <p className="text-xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0) / 1000).toFixed(1)}k€`}</p>
-                </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Date du dernier comptage physique">
-                  <p className={`text-[11px] ${textMuted}`}>Dernier inventaire</p>
-                  <p className={`text-sm font-bold ${lastInventaire ? textPrimary : 'text-amber-500'}`}>{lastInventaire ? new Date(lastInventaire.date).toLocaleDateString('fr-FR') : 'Jamais effectué'}</p>
-                </div>
+                {/* #6: Valeur stock — conditional color */}
+                {(() => {
+                  const stockValue = stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0);
+                  const hasLowStock = alertesStock.length > 0;
+                  const stockColor = stockValue > 0 ? (hasLowStock ? '#f59e0b' : '#22c55e') : '#94a3b8';
+                  return (
+                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Valeur totale du stock au prix d'achat">
+                      <p className={`text-[11px] ${textMuted}`}>Valeur stock</p>
+                      <p className="text-xl font-bold" style={{ color: stockColor }}>{modeDiscret ? '·····' : `${(stockValue / 1000).toFixed(1)}k€`}</p>
+                    </div>
+                  );
+                })()}
+                {/* #7: Dernier inventaire — contextual color */}
+                {(() => {
+                  // If never done and account is new (< 30 days), show neutral gray
+                  const accountAge = 31; // Default: assume >30 days since we can't know account creation date
+                  const inventaireColor = lastInventaire
+                    ? textPrimary
+                    : accountAge <= 30 ? textMuted : 'text-amber-500';
+                  return (
+                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Date du dernier comptage physique">
+                      <p className={`text-[11px] ${textMuted}`}>Dernier inventaire</p>
+                      <p className={`text-sm font-bold ${inventaireColor} flex items-center gap-1`}>
+                        {lastInventaire
+                          ? new Date(lastInventaire.date).toLocaleDateString('fr-FR')
+                          : <>
+                              {accountAge > 30 && <AlertCircle size={12} className="text-amber-500" />}
+                              Jamais effectué
+                            </>
+                        }
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -2274,10 +2407,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 </div>
               ) : (
                 <button onClick={async () => {
-                  const confirmed = await confirm({ title: 'Démarrer un inventaire', message: `Vous allez compter ${stockItems.length} article${stockItems.length > 1 ? 's' : ''}. Les écarts seront enregistrés comme ajustements de stock.` });
+                  const confirmed = await confirm({ title: 'Démarrer un inventaire', message: `Vous allez compter ${stockItems.length} article${stockItems.length !== 1 ? 's' : ''}. Les écarts seront enregistrés comme ajustements de stock.` });
                   if (confirmed) startInventaire();
                 }} className="px-8 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg" style={{ background: couleur }}>
-                  <RefreshCw size={18} /> Démarrer l'inventaire ({stockItems.length} articles)
+                  <RefreshCw size={18} /> Démarrer l'inventaire ({stockItems.length} article{stockItems.length > 1 ? 's' : ''})
                 </button>
               )}
             </div>
@@ -2312,11 +2445,20 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           <div className={`${cardBg} rounded-2xl border p-5`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Percent size={16} style={{ color: couleur }} /> Coefficients par catégorie</h3>
-              {coefSaved && (
-                <span className="text-xs text-emerald-500 flex items-center gap-1">
-                  <Check size={12} /> Sauvegardé
-                </span>
-              )}
+              {/* #1: Auto-save feedback */}
+              <div className="flex items-center gap-2" role="status" aria-live="polite">
+                {coefSaved === 'saving' && (
+                  <span className={`text-xs flex items-center gap-1.5 ${textMuted}`}>
+                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
+                    Sauvegarde...
+                  </span>
+                )}
+                {coefSaved === 'saved' && (
+                  <span className="text-xs text-emerald-500 flex items-center gap-1">
+                    <Check size={12} /> Coefficients sauvegardés
+                  </span>
+                )}
+              </div>
             </div>
             <p className={`text-sm ${textMuted} mb-4`}>Le prix de vente sera automatiquement calculé: Prix achat × Coefficient</p>
             <div className="space-y-3">
@@ -2325,14 +2467,40 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <span className={`font-medium flex-1 min-w-0 truncate ${textPrimary}`}>{cat}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-sm ${textMuted}`}>×</span>
-                    <input type="number" step="0.1" min="1" max="5" className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`} value={coefficients[cat] || 1.5} onChange={e => { const val = Math.max(1, Math.min(5, parseFloat(e.target.value) || 1.5)); setCoefficients(prev => ({...prev, [cat]: val})); setCoefSaved(true); setTimeout(() => setCoefSaved(false), 2000); }} />
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="10"
+                      aria-label={`Coefficient pour ${cat}`}
+                      className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`}
+                      value={coefficients[cat] || 1.5}
+                      onChange={e => {
+                        const val = Math.max(1, Math.min(10, parseFloat(e.target.value) || 1.5));
+                        setCoefficients(prev => ({...prev, [cat]: val}));
+                        setCoefDirty(true);
+                        setCoefSaved('saving');
+                        // #1: Debounced auto-save (600ms)
+                        if (coefSaveTimeoutRef.current) clearTimeout(coefSaveTimeoutRef.current);
+                        coefSaveTimeoutRef.current = setTimeout(() => {
+                          try {
+                            // localStorage persistence is already handled by useEffect
+                            setCoefSaved('saved');
+                            setCoefDirty(false);
+                            setTimeout(() => setCoefSaved(false), 2000);
+                          } catch (err) {
+                            showToast('Erreur — vos modifications n\'ont pas été sauvegardées', 'error');
+                          }
+                        }, 600);
+                      }}
+                    />
                   </div>
                   <span className={`text-xs ${textMuted} w-48 text-right flex-shrink-0 hidden sm:block`}>100€ → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} <span className="font-medium" style={{ color: couleur }}>(+{(((coefficients[cat] || 1.5) - 1) * 100).toFixed(0)}%)</span></span>
                 </div>
               ))}
             </div>
           </div>
-          <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             <RefreshCw size={14} /> Réinitialiser les coefficients par défaut
           </button>
         </div>
