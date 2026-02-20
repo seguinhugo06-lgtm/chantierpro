@@ -135,6 +135,11 @@ export default function QuickClientModal({
       newErrors.nom = 'Le nom est requis';
     }
 
+    // Require at least phone OR email
+    if (!form.telephone.trim() && !form.email.trim()) {
+      newErrors.telephone = 'Téléphone ou email requis';
+    }
+
     if (form.email && !validateEmail(form.email)) {
       newErrors.email = isTestDomain(form.email)
         ? 'Domaine email non autorisé (@test.com, @example.com…)'

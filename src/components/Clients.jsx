@@ -232,6 +232,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     setViewId(targetId);
   };
 
+  // Avatar initials — handles professionals with entreprise
+  const getInitials = (c) => {
+    if (c.prenom) return `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase();
+    if (c.entreprise && c.categorie === 'Professionnel') {
+      // For professionals: first 2 letters of entreprise
+      return c.entreprise.replace(/[^a-zA-ZÀ-ÿ]/g, '').slice(0, 2).toUpperCase() || c.nom?.[0]?.toUpperCase() || '?';
+    }
+    // Fallback: split nom by spaces
+    return c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  };
+
   // Status tooltip explanation
   const STATUS_TOOLTIPS = {
     actif: 'A des chantiers ou devis en cours',
@@ -748,8 +759,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           }));
           timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-          const statusLabel = (s) => ({ brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', refuse: 'Refusé', payee: 'Payée', en_cours: 'En cours', termine: 'Terminé', prospect: 'Prospect' }[s] || s || '');
-          const statusColor = (s) => ({ accepte: 'text-emerald-500', payee: 'text-emerald-500', termine: 'text-emerald-500', refuse: 'text-red-500', envoye: 'text-blue-500', en_cours: 'text-amber-500' }[s] || textMuted);
+          const statusLabel = (s) => ({
+            brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
+            refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
+            acompte_facture: 'Acompte facturé', en_cours: 'En cours',
+            termine: 'Terminé', archive: 'Archivé', prospect: 'Prospect',
+            abandonne: 'Abandonné'
+          }[s] || s || '');
+          const statusColor = (s) => ({
+            accepte: 'text-emerald-500', payee: 'text-emerald-500', termine: 'text-emerald-500',
+            facturee: 'text-purple-500', acompte_facture: 'text-purple-400',
+            refuse: 'text-red-500', abandonne: 'text-red-400',
+            envoye: 'text-blue-500', vu: 'text-blue-400',
+            en_cours: 'text-amber-500', brouillon: textMuted,
+            archive: textMuted
+          }[s] || textMuted);
 
           return (
             <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
@@ -1391,9 +1415,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
         const kpiItems = [
           { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${displayClients.length}` },
-          { key: 'ca', icon: Euro, color: '#10b981', iconBg: 'rgba(16,185,129,0.1)', value: formatMoney(caFacture), label: 'CA encaissé', sub: modeDiscret ? '' : (caEnAttente > 0 ? `${formatMoney(caEnAttente)} en cours` : '') },
-          { key: 'top', icon: Briefcase, color: '#8b5cf6', iconBg: 'rgba(139,92,246,0.1)', value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
-          { key: 'devis_attente', icon: Send, color: '#3b82f6', iconBg: 'rgba(59,130,246,0.1)', value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
+          { key: 'ca', icon: Euro, color: couleur, iconBg: `${couleur}15`, value: formatMoney(caFacture), label: 'CA encaissé', sub: modeDiscret ? '' : (caEnAttente > 0 ? `${formatMoney(caEnAttente)} en cours` : '') },
+          { key: 'top', icon: Briefcase, color: couleur, iconBg: `${couleur}15`, value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
+          { key: 'devis_attente', icon: Send, color: couleur, iconBg: `${couleur}15`, value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
         ];
 
         return (
@@ -1752,7 +1776,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const statusLabel = CLIENT_STATUS_LABELS[status];
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
             const avatarBg = typeColor?.color || couleur;
-            const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+            const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
 
             return (
@@ -1859,11 +1883,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         /* Vue Liste compacte */
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>
           {/* Header row - desktop only */}
-          <div className={`hidden sm:grid grid-cols-[40px_1fr_100px_100px_80px_80px_70px] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+          <div className={`hidden sm:grid grid-cols-[40px_1fr_100px_100px_140px_80px_80px_70px] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
             <span></span>
             <span>Client</span>
             <span>{showTypeColumn ? 'Type' : 'Activité'}</span>
             <span>Téléphone</span>
+            <span>Email</span>
             <span className="text-right">CA</span>
             <span className="text-center">Stats</span>
             <span></span>
@@ -1874,7 +1899,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const statusColor = CLIENT_STATUS_COLORS[status];
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
             const avatarBg = typeColor?.color || couleur;
-            const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+            const initials = getInitials(c);
             const hasDuplicates = duplicateMap.has(c.id);
 
             return (
@@ -1884,7 +1909,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 onClick={() => setViewId(c.id)}
               >
                 {/* Desktop row */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_100px_100px_80px_80px_70px] gap-3 px-4 py-2.5 items-center">
+                <div className="hidden sm:grid grid-cols-[40px_1fr_100px_100px_140px_80px_80px_70px] gap-3 px-4 py-2.5 items-center">
                   {/* Avatar */}
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg }}>
                     {initials}
@@ -1933,6 +1958,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   {/* Phone */}
                   {c.telephone ? <HighlightText text={c.telephone} query={debouncedSearch} className={`text-xs ${textSecondary} truncate`} /> : <span className={`text-xs ${textMuted}`}>—</span>}
+                  {/* Email */}
+                  {c.email ? <HighlightText text={c.email} query={debouncedSearch} className={`text-xs ${textMuted} truncate`} /> : <span className={`text-xs ${textMuted}`}>—</span>}
                   {/* CA */}
                   <span className={`text-xs font-bold text-right ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                   {/* Stats */}
