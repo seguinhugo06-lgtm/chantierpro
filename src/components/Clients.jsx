@@ -7,6 +7,45 @@ import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
 
+// Skeleton loader for client cards
+function ClientSkeleton({ isDark, count = 6 }) {
+  const bg = isDark ? 'bg-slate-700' : 'bg-slate-200';
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden animate-pulse`}>
+          <div className="p-4">
+            <div className="flex gap-3">
+              <div className={`w-12 h-12 rounded-full ${bg}`} />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className={`h-4 ${bg} rounded w-3/4`} />
+                <div className={`h-3 ${bg} rounded w-1/2`} />
+                <div className="flex gap-1.5">
+                  <div className={`h-5 ${bg} rounded-full w-14`} />
+                  <div className={`h-5 ${bg} rounded-full w-16`} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+            <div className={`h-4 ${bg} rounded w-2/3`} />
+          </div>
+          <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+            <div className="flex justify-between">
+              <div className="flex gap-3">
+                <div className={`h-4 ${bg} rounded w-8`} />
+                <div className={`h-4 ${bg} rounded w-8`} />
+              </div>
+              <div className={`h-4 ${bg} rounded w-16`} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // P2.2: Highlight matching search terms
 function HighlightText({ text, query, className = '' }) {
   if (!text || !query || query.length < 2) return <span className={className}>{text}</span>;
@@ -1657,6 +1696,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         )}
       </div>
 
+      {/* Skeleton loader while data is loading */}
+      {!clients && <ClientSkeleton isDark={isDark} />}
+
       {/* Global duplicate banner */}
       {duplicateMap.size > 0 && !kpiFilter && (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
@@ -1780,7 +1822,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const hasDuplicates = duplicateMap.has(c.id);
 
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)}>
+              <article key={c.id} role="article" aria-label={`Client ${c.nom} ${c.prenom || ''}`.trim()} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewId(c.id); } }}>
                 {/* Header */}
                 <div className="p-4 relative">
                   <div className="flex gap-3">
@@ -1875,7 +1917,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
