@@ -33,7 +33,7 @@ import { useExportComptable } from '../../hooks/useExportComptable';
 // Constants
 // ---------------------------------------------------------------------------
 
-const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 /** Period filter options shown in the header */
 const PERIOD_OPTIONS = [

@@ -7,7 +7,7 @@
 
 import { useMemo } from 'react';
 
-const MONTHS = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 const ACCEPTED_STATUTS = ['accepte', 'signe', 'payee', 'paye'];
 const SENT_STATUTS = ['envoye', 'vu', 'accepte', 'signe', 'payee', 'paye', 'refuse', 'facture'];
 

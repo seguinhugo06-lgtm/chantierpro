@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   TrendingUp, FileText, Target, Wallet,
-  ArrowLeft, Users, HardHat, CreditCard,
+  Users, HardHat, CreditCard,
   Building2, ArrowUpRight, ArrowDownRight, Percent,
   PieChart as PieChartIcon, BarChart3,
   Calendar, Info, FileEdit,
@@ -122,6 +122,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
   const topClientMax = topClients.length > 0 ? topClients[0].montant : 1;
   const topClientTotal = topClients.reduce((s, c) => s + c.montant, 0) || 1;
   const cashFlowMax = Math.max(cashFlow.totalPaiements, cashFlow.totalDepenses, 1);
+  const hasMarginData = rentabiliteChantiers.some(r => r.ca > 0);
   const rentaMaxCA = rentabiliteChantiers.length > 0 ? Math.max(...rentabiliteChantiers.map(r => r.ca), 1) : 1;
 
   // Devis par statut for chart
@@ -185,20 +186,12 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
 
       {/* Header + Period Selector */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setPage('accueil')}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex-1">
-            <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord analytique</h1>
-            <p className={`text-sm ${textSecondary}`}>
-              Vue d'ensemble {period !== 'all' ? `— ${PERIOD_LABELS[period] || period}` : ''}
-              {period !== 'all' && totalDevis > 0 && <span className="ml-2">({totalDevis} devis)</span>}
-            </p>
-          </div>
+        <div>
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord analytique</h1>
+          <p className={`text-sm ${textSecondary}`}>
+            Vue d'ensemble {period !== 'all' ? `— ${PERIOD_LABELS[period] || period}` : ''}
+            {period !== 'all' && totalDevis > 0 && <span className="ml-2">({totalDevis} devis)</span>}
+          </p>
         </div>
 
         {/* Period filter pills */}
@@ -247,8 +240,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
         <div className={cardClass}>
           <div className="flex items-center justify-between mb-3">
             <span className={`text-sm font-medium ${textSecondary}`}>Devis en attente</span>
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <FileText size={18} className="text-blue-500" />
+            <div className="p-2 rounded-lg" style={{ backgroundColor: `${couleur}20` }}>
+              <FileText size={18} style={{ color: couleur }} />
             </div>
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.devisEnAttente}</p>
@@ -271,8 +264,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 </div>
               </div>
             </div>
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <Target size={18} className="text-green-500" />
+            <div className="p-2 rounded-lg" style={{ backgroundColor: `${couleur}20` }}>
+              <Target size={18} style={{ color: couleur }} />
             </div>
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.tauxConversion.toFixed(1)}%</p>
@@ -304,12 +297,23 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
 
       {/* ────── Brouillons banner (if any) ────── */}
       {kpis.brouillonsCount > 0 && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
-          <FileEdit size={16} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
-          <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-            <span className="font-semibold">{kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''}</span>
-            {' '}({formatEUR(kpis.brouillonsMontant)} TTC) non comptabilisé{kpis.brouillonsCount > 1 ? 's' : ''} dans les statistiques
-          </p>
+        <div className={`${cardClass} flex items-center gap-4`}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}15` }}>
+            <FileEdit size={20} style={{ color: couleur }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${textPrimary}`}>
+              Potentiel non comptabilisé : <span style={{ color: couleur }}>{formatEUR(kpis.brouillonsMontant)} TTC</span>
+            </p>
+            <p className={`text-xs mt-0.5 ${textSecondary}`}>
+              {kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''} non inclus dans les statistiques — convertissez-les en devis envoyés
+            </p>
+          </div>
+          <button onClick={() => setPage('devis')}
+            className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 shadow-sm"
+            style={{ backgroundColor: couleur }}>
+            Voir les brouillons
+          </button>
         </div>
       )}
 
@@ -317,8 +321,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
       {(kpis.pipelineValue > 0 || kpis.avgDevisValue > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className={`${cardClass} flex items-center gap-4`}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10">
-              <BarChart3 size={18} className="text-purple-500" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+              <BarChart3 size={18} style={{ color: couleur }} />
             </div>
             <div>
               <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Pipeline devis</p>
@@ -326,8 +330,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             </div>
           </div>
           <div className={`${cardClass} flex items-center gap-4`}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-cyan-500/10">
-              <FileText size={18} className="text-cyan-500" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+              <FileText size={18} style={{ color: couleur }} />
             </div>
             <div>
               <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Devis moyen</p>
@@ -340,8 +344,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             </div>
             <div>
               <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Marge moy. chantiers</p>
-              <p className={`text-lg font-bold ${avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? isDark ? 'text-amber-400' : 'text-amber-600' : 'text-red-500'}`}>
-                {avgMargin.toFixed(1)}%
+              <p className={`text-lg font-bold ${!hasMarginData ? textSecondary : avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? isDark ? 'text-amber-400' : 'text-amber-600' : 'text-red-500'}`}>
+                {hasMarginData ? `${avgMargin.toFixed(1)}%` : '—'}
               </p>
             </div>
           </div>
@@ -571,7 +575,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 );
               })}
               <p className={`text-xs ${textSecondary} pt-2`}>
-                Marge moyenne : <strong className={avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? isDark ? 'text-amber-400' : 'text-amber-600' : 'text-red-500'}>{avgMargin.toFixed(1)}%</strong>
+                Marge moyenne : <strong className={!hasMarginData ? textSecondary : avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? isDark ? 'text-amber-400' : 'text-amber-600' : 'text-red-500'}>{hasMarginData ? `${avgMargin.toFixed(1)}%` : '—'}</strong>
               </p>
             </div>
           </div>
@@ -613,7 +617,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                         }`}>{r.statut === 'termine' ? 'Terminé' : 'En cours'}{r.avancement > 0 ? ` — ${r.avancement}%` : ''}</span>
                       </td>
                       <td className={`py-3 pr-4 text-right font-semibold whitespace-nowrap ${textPrimary}`}>{formatEUR(r.ca)}</td>
-                      <td className={`py-3 pr-4 text-right whitespace-nowrap text-red-500`}>{formatEUR(r.depenses)}</td>
+                      <td className={`py-3 pr-4 text-right whitespace-nowrap ${r.depenses > 0 ? 'text-red-500' : textSecondary}`}>{formatEUR(r.depenses)}</td>
                       <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>{formatEUR(r.marge)}</td>
                       <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>
                         <span className="inline-flex items-center gap-1">
@@ -645,8 +649,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                 CA total : <strong className={textPrimary}>{formatEUR(rentabiliteChantiers.reduce((s, r) => s + r.ca, 0))}</strong>
               </span>
               <span className={textSecondary}>
-                Marge moy. : <strong className={avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? (isDark ? 'text-amber-400' : 'text-amber-600') : 'text-red-500'}>
-                  {avgMargin.toFixed(1)}%
+                Marge moy. : <strong className={!hasMarginData ? textSecondary : avgMargin >= 20 ? 'text-green-500' : avgMargin >= 10 ? (isDark ? 'text-amber-400' : 'text-amber-600') : 'text-red-500'}>
+                  {hasMarginData ? `${avgMargin.toFixed(1)}%` : '—'}
                 </strong>
               </span>
             </div>
@@ -680,7 +684,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
               <p className={`text-sm ${textSecondary}`}>Dépenses totales</p>
               <ComparisonBadge value={comparisons.depenses} isDark={isDark} invert />
             </div>
-            <p className={`text-xl font-bold text-red-500 mb-2`}>{formatEUR(cashFlow.totalDepenses)}</p>
+            <p className={`text-xl font-bold ${cashFlow.totalDepenses > 0 ? 'text-red-500' : textSecondary} mb-2`}>{formatEUR(cashFlow.totalDepenses)}</p>
             <div className={`h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div
                 className="h-3 rounded-full bg-red-500 transition-all"
@@ -692,12 +696,12 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           {/* Solde */}
           <div>
             <p className={`text-sm mb-2 ${textSecondary}`}>Solde net</p>
-            <p className={`text-xl font-bold mb-2 ${cashFlow.solde >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <p className={`text-xl font-bold mb-2 ${cashFlow.solde === 0 ? textSecondary : cashFlow.solde > 0 ? 'text-green-500' : 'text-red-500'}`}>
               {formatEUR(cashFlow.solde)}
             </p>
             <div className={`h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div
-                className={`h-3 rounded-full transition-all ${cashFlow.solde >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                className={`h-3 rounded-full transition-all ${cashFlow.solde === 0 ? (isDark ? 'bg-slate-600' : 'bg-slate-300') : cashFlow.solde > 0 ? 'bg-green-500' : 'bg-red-500'}`}
                 style={{ width: `${Math.abs(cashFlow.solde) / cashFlowMax * 100}%` }}
               />
             </div>

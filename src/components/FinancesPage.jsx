@@ -21,7 +21,7 @@ const TAB_CONFIG = [
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
 ];
 
-export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, isDark, couleur, setPage, modeDiscret }) {
+export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, isDark, couleur = '#F97316', setPage, modeDiscret }) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const [activeTab, setActiveTab] = useState('tresorerie');
@@ -31,11 +31,11 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       {/* Header */}
       <div className="mb-5">
         <h1 className={`text-2xl font-bold ${textPrimary}`}>Finances</h1>
-        <p className={`text-sm ${textMuted}`}>Trésorerie, export comptable et statistiques</p>
+        <p className={`text-sm ${textMuted}`}>Pilotez votre trésorerie, anticipez vos flux et exportez pour votre expert-comptable</p>
       </div>
 
       {/* Tab buttons */}
-      <div className="inline-flex items-center gap-2 mb-6">
+      <div className={`inline-flex items-center gap-1 p-1 rounded-2xl mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         {TAB_CONFIG.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
@@ -43,14 +43,15 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-medium transition-all duration-200 rounded-full ${
+              className={`inline-flex items-center justify-center whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-all duration-200 rounded-xl ${
                 isActive
-                  ? 'bg-primary-500 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'
+                  ? 'text-white shadow-sm'
+                  : isDark ? 'text-slate-300 hover:text-white hover:bg-slate-700' : 'text-slate-600 hover:text-slate-900 hover:bg-white'
               }`}
+              style={isActive ? { backgroundColor: couleur } : undefined}
             >
               <Icon size={16} className="mr-1.5" />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           );
         })}
