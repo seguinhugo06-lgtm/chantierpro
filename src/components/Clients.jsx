@@ -59,7 +59,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [activeTab, setActiveTab] = useState('historique');
   const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
   const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
+  const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
   const [filterCategorie, setFilterCategorie] = useState('');
+  const [filterStatus, setFilterStatus] = useState(''); // '' | 'actif' | 'en_devis' | 'prospect' | 'inactif'
   const [kpiFilter, setKpiFilter] = useState(null); // null | 'actifs' | 'ca' | 'devis_attente'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
   const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
@@ -230,6 +232,14 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     setViewId(targetId);
   };
 
+  // Status tooltip explanation
+  const STATUS_TOOLTIPS = {
+    actif: 'A des chantiers ou devis en cours',
+    en_devis: 'A des devis actifs, pas de chantier en cours',
+    prospect: 'Créé il y a moins de 90 jours, sans documents',
+    inactif: 'Aucun chantier ni devis en cours'
+  };
+
   // P3.1: Test data detection — hide in prod, badge in dev
   const isTestClient = (c) => {
     if (c.isTestData) return true;
@@ -264,6 +274,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       c.email?.toLowerCase().includes(q) ||
       c.adresse?.toLowerCase().includes(q);
     const matchCat = !filterCategorie || c.categorie === filterCategorie;
+    const matchStatus = !filterStatus || getClientStatus(c.id) === filterStatus;
     // KPI filter
     let matchKpi = true;
     if (kpiFilter === 'actifs') {
@@ -273,7 +284,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     } else if (kpiFilter === 'devis_attente') {
       matchKpi = getClientStats(c.id).devisActifs > 0;
     }
-    return matchSearch && matchCat && matchKpi;
+    return matchSearch && matchCat && matchStatus && matchKpi;
   });
 
   // Get last activity date for a client (for sorting and display)
@@ -306,18 +317,29 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     return latest;
   };
 
+  const handleSortChange = (key) => {
+    if (sortBy === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortBy(key);
+      // Default directions: name → asc, others → desc
+      setSortDir(key === 'name' ? 'asc' : 'desc');
+    }
+  };
+
   const getSortedClients = () => {
     const sorted = [...filtered];
+    const mult = sortDir === 'asc' ? 1 : -1;
     switch (sortBy) {
       case 'name':
-        return sorted.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+        return sorted.sort((a, b) => mult * (a.nom || '').localeCompare(b.nom || ''));
       case 'ca':
-        return sorted.sort((a, b) => getClientStats(b.id).ca - getClientStats(a.id).ca);
+        return sorted.sort((a, b) => mult * (getClientStats(a.id).ca - getClientStats(b.id).ca));
       case 'activite':
-        return sorted.sort((a, b) => getLastActivity(b.id) - getLastActivity(a.id));
+        return sorted.sort((a, b) => mult * (getLastActivity(a.id) - getLastActivity(b.id)));
       case 'recent':
       default:
-        return sorted.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        return sorted.sort((a, b) => mult * (parseInt(a.id) - parseInt(b.id)));
     }
   };
 
@@ -459,11 +481,23 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             {/* GPS first on mobile via order */}
             <button
               onClick={() => client.adresse ? openGPS(client.adresse) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md hover:shadow-lg order-first sm:order-last ${!client.adresse ? 'opacity-50' : ''}`}
-              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)' }}
+              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
+              style={client.adresse
+                ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
+                : { background: isDark ? '#1e293b' : '#f1f5f9', border: '1px dashed', borderColor: isDark ? '#475569' : '#cbd5e1' }
+              }
             >
-              <MapPin size={20} />
-              <span className="text-xs font-medium">Itinéraire</span>
+              {client.adresse ? (
+                <>
+                  <MapPin size={20} />
+                  <span className="text-xs font-medium">Itinéraire</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
+                </>
+              )}
             </button>
             <button
               onClick={() => client.telephone ? callPhone(client.telephone) : null}
@@ -1373,6 +1407,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   onClick={() => {
                     if (kpi.key === 'top' && topClient) {
                       setViewId(topClient.id);
+                    } else if (kpi.key === 'devis_attente' && !isActive && setPage) {
+                      setPage('devis');
                     } else {
                       setKpiFilter(isActive ? null : kpi.key);
                     }
@@ -1524,7 +1560,26 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               )}
             </div>
 
-            {/* Sort buttons */}
+            {/* Status filter pills */}
+            <div className="flex items-center gap-1.5">
+              {[
+                { key: '', label: 'Tous' },
+                { key: 'actif', label: 'Actifs' },
+                { key: 'prospect', label: 'Prospects' },
+                { key: 'inactif', label: 'Inactifs' },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => setFilterStatus(opt.key)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  style={filterStatus === opt.key ? { background: couleur } : {}}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort buttons with ASC/DESC toggle */}
             <div className="flex items-center gap-1.5 ml-auto">
               <ArrowUpDown size={14} className={textMuted} />
               {[
@@ -1535,11 +1590,14 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               ].map(opt => (
                 <button
                   key={opt.key}
-                  onClick={() => setSortBy(opt.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  onClick={() => handleSortChange(opt.key)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors flex items-center gap-1 ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                   style={sortBy === opt.key ? { background: couleur } : {}}
                 >
                   {opt.label}
+                  {sortBy === opt.key && (
+                    <span className="text-[10px] opacity-80">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -1547,13 +1605,19 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         )}
 
         {/* Active filter indicator */}
-        {(kpiFilter || filterCategorie) && (
-          <div className="flex items-center gap-2">
+        {(kpiFilter || filterCategorie || filterStatus) && (
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs ${textMuted}`}>Filtres actifs :</span>
             {kpiFilter && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white" style={{ background: couleur }}>
                 {kpiFilter === 'actifs' ? 'Clients actifs' : kpiFilter === 'ca' ? 'CA > 0' : kpiFilter === 'devis_attente' ? 'Devis en attente' : kpiFilter}
                 <button onClick={() => setKpiFilter(null)} className="ml-0.5 hover:opacity-80">×</button>
+              </span>
+            )}
+            {filterStatus && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white" style={{ background: couleur }}>
+                {CLIENT_STATUS_LABELS[filterStatus] || filterStatus}
+                <button onClick={() => setFilterStatus('')} className="ml-0.5 hover:opacity-80">×</button>
               </span>
             )}
             {filterCategorie && (
@@ -1562,12 +1626,27 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                 <button onClick={() => setFilterCategorie('')} className="ml-0.5 hover:opacity-80">×</button>
               </span>
             )}
-            <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); }} className={`text-xs underline ${textMuted} hover:${textPrimary}`}>
+            <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); }} className={`text-xs underline ${textMuted} hover:${textPrimary}`}>
               Tout effacer
             </button>
           </div>
         )}
       </div>
+
+      {/* Global duplicate banner */}
+      {duplicateMap.size > 0 && !kpiFilter && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
+          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
+          <div className="flex-1">
+            <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+              {Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''}
+            </p>
+            <p className={`text-xs ${isDark ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
+              Clients avec le même téléphone ou email. Cliquez sur un client pour fusionner.
+            </p>
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -1677,7 +1756,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const hasDuplicates = duplicateMap.has(c.id);
 
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-red-800/50' : 'border-red-200' : ''}`} onClick={() => setViewId(c.id)}>
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)}>
                 {/* Header */}
                 <div className="p-4 relative">
                   <div className="flex gap-3">
@@ -1696,8 +1775,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       )}
                       {/* Badges row — Order: Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status badge (always first) */}
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
+                        {/* Status badge (always first) with tooltip */}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
+                          title={STATUS_TOOLTIPS[status] || ''}
+                        >
                           <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                           {statusLabel}
                         </span>
@@ -1709,7 +1791,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         )}
                         {/* Duplicate warning badge (last) */}
                         {hasDuplicates && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
                             <AlertTriangle size={10} /> Doublon
                           </span>
                         )}
@@ -1811,12 +1893,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
                       </span>
                       {hasDuplicates && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
                           <AlertTriangle size={9} /> Doublon
                         </span>
                       )}

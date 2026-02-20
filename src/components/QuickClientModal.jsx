@@ -24,7 +24,8 @@ export default function QuickClientModal({
     telephone: '',
     email: '',
     entreprise: '',
-    adresse: ''
+    adresse: '',
+    categorie: 'Particulier'
   });
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,7 +119,7 @@ export default function QuickClientModal({
   // Reset form on close
   useEffect(() => {
     if (!isOpen) {
-      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '' });
+      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier' });
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
@@ -166,7 +167,8 @@ export default function QuickClientModal({
       telephone: form.telephone.trim(),
       email: form.email.trim(),
       entreprise: form.entreprise.trim(),
-      adresse: form.adresse.trim()
+      adresse: form.adresse.trim(),
+      categorie: form.categorie || ''
     });
 
     onClose();
@@ -320,6 +322,51 @@ export default function QuickClientModal({
             </div>
           </div>
 
+          {/* Type toggle — Particulier / Professionnel */}
+          <div className="flex gap-2">
+            {['Particulier', 'Professionnel'].map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setForm(p => ({ ...p, categorie: type }))}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.categorie === type
+                  ? 'text-white border-transparent shadow-sm'
+                  : isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+                style={form.categorie === type ? { background: couleur } : {}}
+              >
+                {type === 'Particulier' ? '👤' : '🏢'} {type}
+              </button>
+            ))}
+          </div>
+
+          {/* Email field — promoted out of accordion */}
+          <div>
+            <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <Mail size={14} style={{ color: couleur }} />
+              Email
+            </label>
+            <input
+              id="qc-email"
+              type="email"
+              value={form.email}
+              onChange={e => {
+                setForm(p => ({ ...p, email: e.target.value }));
+                if (errors.email) setErrors(p => ({ ...p, email: null }));
+              }}
+              onBlur={() => {
+                if (form.email && !validateEmail(form.email)) {
+                  setErrors(p => ({ ...p, email: isTestDomain(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' }));
+                }
+              }}
+              placeholder="ex. nom@email.fr"
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'qc-email-error' : undefined}
+              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
+            />
+            <FormError id="qc-email-error" message={errors.email} />
+          </div>
+
           {/* Duplicate detection warning */}
           {duplicates.length > 0 && (
             <div className={`rounded-xl p-3 ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
@@ -358,7 +405,7 @@ export default function QuickClientModal({
               className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
             >
               <span className={`text-sm font-medium ${textSecondary}`}>
-                Ajouter plus de détails
+                {form.categorie === 'Professionnel' ? 'Entreprise, adresse…' : 'Adresse, entreprise…'}
               </span>
               <motion.div
                 animate={{ rotate: showDetails ? 180 : 0 }}
@@ -379,42 +426,16 @@ export default function QuickClientModal({
                 >
                   <div className="px-4 pb-4 pt-3 space-y-3">
                     <div>
-                      <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                        <Mail size={14} className={textMuted} />
-                        Email
-                      </label>
-                      <input
-                        id="qc-email"
-                        type="email"
-                        value={form.email}
-                        onChange={e => {
-                          setForm(p => ({ ...p, email: e.target.value }));
-                          if (errors.email) setErrors(p => ({ ...p, email: null }));
-                        }}
-                        onBlur={() => {
-                          if (form.email && !validateEmail(form.email)) {
-                            setErrors(p => ({ ...p, email: isTestDomain(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' }));
-                          }
-                        }}
-                        placeholder="ex. nom@email.fr"
-                        aria-invalid={!!errors.email}
-                        aria-describedby={errors.email ? 'qc-email-error' : undefined}
-                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
-                      />
-                      <FormError id="qc-email-error" message={errors.email} />
-                    </div>
-
-                    <div>
                       <label htmlFor="qc-entreprise" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                         <Building2 size={14} className={textMuted} />
-                        Entreprise
+                        {form.categorie === 'Professionnel' ? 'Raison sociale' : 'Entreprise'}
                       </label>
                       <input
                         id="qc-entreprise"
                         type="text"
                         value={form.entreprise}
                         onChange={e => setForm(p => ({ ...p, entreprise: e.target.value }))}
-                        placeholder="SCI Martin (optionnel)"
+                        placeholder={form.categorie === 'Professionnel' ? 'ex. SCI Martin' : 'Optionnel'}
                         className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                       />
                     </div>
