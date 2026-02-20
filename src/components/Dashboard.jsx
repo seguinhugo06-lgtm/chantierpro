@@ -645,13 +645,15 @@ export default function Dashboard({
     const devisEnAttente = devisPipeline.envoye.length;
     const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
 
-    // Conversion rate
-    const devisTotalEnvoyes =
-      devisPipeline.envoye.length + devisPipeline.accepte.length + devisPipeline.refuse.length;
+    // Conversion rate — exclude brouillons from denominator
+    // Numerator: signed/invoiced (accepte + acompte_facture + facture + signe)
+    const devisSignes = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
+    // Denominator: all sent devis (envoye + vu + accepte + signe + facture + payee + refuse), NOT brouillons
+    const devisTotalEnvoyes = devisOnly.filter(d => d.statut !== 'brouillon').length;
     const tauxConversion =
-      devisTotalEnvoyes > 0 ? (devisPipeline.accepte.length / devisTotalEnvoyes) * 100 : 0;
+      devisTotalEnvoyes > 0 ? (devisSignes / devisTotalEnvoyes) * 100 : -1; // -1 = no data
 
-    // CA trend (compare last 2 months)
+    // CA trend (compare last 2 months) — includes factures + devis acceptés
     const getMonthCA = (monthOffset) => {
       const targetMonth = new Date(thisYear, thisMonth - monthOffset, 1);
       return safeDevis
@@ -673,29 +675,21 @@ export default function Dashboard({
     const dayOfMonth = now.getDate();
     const isEarlyMonth = dayOfMonth <= 5;
 
-    // Calculate percentage change with proper handling
-    // - In early month (days 1-5): show null to display "Début de mois" instead of misleading %
-    // - If no previous month data: return null (will show "—")
-    // - Cap at ±200% for realistic business metrics display
+    // Calculate percentage change (N-1 comparison)
     let tendance = null;
     let tendanceLabel = 'vs mois dernier';
 
     if (isEarlyMonth) {
-      // Early in month - don't compare, it's misleading
       tendance = null;
-      tendanceLabel = 'Début de mois';
+      tendanceLabel = 'D\u00e9but de mois';
     } else if (lastMonthCA > 0) {
-      // Normal comparison
       if (thisMonthCA === 0) {
-        // No activity this month yet
         tendance = -100;
       } else {
         const rawChange = ((thisMonthCA - lastMonthCA) / lastMonthCA) * 100;
-        // Cap between -99% and +200% for sane display
         if (Math.abs(rawChange) <= 200) {
           tendance = Math.round(rawChange);
         }
-        // If > 200%, leave as null to show "—"
       }
     }
 
@@ -746,6 +740,8 @@ export default function Dashboard({
       devisEnAttente,
       montantDevisEnAttente,
       tauxConversion,
+      devisSignes,
+      devisTotalEnvoyes,
       tendance,
       tendanceLabel,
       isEarlyMonth,
@@ -907,6 +903,24 @@ export default function Dashboard({
       .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))
       .slice(0, 5);
   }, [memos]);
+
+  // ============ CHANTIERS EN COURS (top 3 with progress) ============
+
+  const chantiersEnCours = useMemo(() => {
+    return safeChantiers
+      .filter(c => c.statut === 'en_cours')
+      .map(c => {
+        const client = safeClients.find(cl => cl.id === (c.client_id || c.clientId));
+        const avancement = c.avancement || 0;
+        // Next deadline: date_fin_prevue or fallback
+        const prochEch = c.date_fin_prevue
+          ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+          : null;
+        return { ...c, clientNom: client?.nom || client?.prenom || '', avancement, prochEch };
+      })
+      .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))
+      .slice(0, 3);
+  }, [safeChantiers, safeClients]);
 
   // ============ HANDLERS ============
 
@@ -1147,15 +1161,22 @@ export default function Dashboard({
               className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={15} className="text-emerald-500" />
+                <TrendingUp size={15} className={stats.tendance != null ? (stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
                 <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
               </div>
-              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatMoney(stats.thisMonthCA, modeDiscret)}
-              </p>
-              {stats.tendance != null && (
-                <p className={`text-[11px] font-medium mt-0.5 ${stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {stats.tendance >= 0 ? '↑' : '↓'} {Math.abs(stats.tendance)}% vs mois dernier
+              <div className="flex items-baseline gap-1.5">
+                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatMoney(stats.thisMonthCA, modeDiscret)}
+                </p>
+                {stats.tendance != null && (
+                  <span className={`text-[11px] font-bold ${stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {stats.tendance >= 0 ? '\u2197' : '\u2198'} {stats.tendance >= 0 ? '+' : ''}{stats.tendance}%
+                  </span>
+                )}
+              </div>
+              {stats.tendance == null && stats.tendanceLabel && (
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {stats.tendanceLabel}
                 </p>
               )}
             </button>
@@ -1170,12 +1191,15 @@ export default function Dashboard({
           staleDevis.slice(0, 4).forEach(d => {
             const client = safeClients.find(c => c.id === d.client_id);
             const days = daysSince(d.date);
+            // Short devis number: take last 6 chars or use "Devis"
+            const shortNum = d.numero ? (d.numero.length > 10 ? d.numero.slice(-6) : d.numero) : '';
+            const clientNom = client?.nom || client?.prenom || 'Client';
             actions.push({
               id: `devis-${d.id}`,
               priority: days > 14 ? 1 : 2,
               color: days > 14 ? 'red' : 'amber',
-              title: `Relancer ${d.numero || 'devis'}`,
-              subtitle: `${client?.nom || 'Client'} · ${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j`,
+              title: clientNom,
+              subtitle: `${shortNum ? shortNum + ' · ' : ''}${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · ${days}j sans r\u00e9ponse`,
               action: () => handleOpenRelance(d),
               actionLabel: 'Relancer',
             });
@@ -1239,16 +1263,16 @@ export default function Dashboard({
                     >
                       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} />
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
                           {item.title}
                         </p>
-                        <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           {item.subtitle}
                         </p>
                       </div>
                       <button
                         onClick={item.action}
-                        className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                        className="flex-shrink-0 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95"
                         style={{ backgroundColor: couleur }}
                       >
                         {item.actionLabel}
@@ -1285,6 +1309,60 @@ export default function Dashboard({
             ))}
           </div>
         </section>
+
+        {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
+        {chantiersEnCours.length > 0 && (
+          <section className="px-4 sm:px-6 pb-4">
+            <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <HardHat size={16} style={{ color: couleur }} />
+                  <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Chantiers en cours
+                  </h2>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                    {stats.chantiersActifs}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setPage?.('chantiers')}
+                  className={`text-xs font-medium flex items-center gap-1 min-h-[44px] px-2 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Voir tous <ChevronRight size={14} />
+                </button>
+              </div>
+              <div className="space-y-3">
+                {chantiersEnCours.map(ch => (
+                  <button
+                    key={ch.id}
+                    onClick={() => { setSelectedChantier?.(ch); setPage?.('chantiers'); }}
+                    className={`w-full text-left p-3 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                          {ch.nom}
+                        </p>
+                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {ch.clientNom}{ch.prochEch ? ` \u00b7 \u00c9ch. ${ch.prochEch}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: couleur }}>
+                        {ch.avancement}%
+                      </span>
+                    </div>
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(100, ch.avancement)}%`, backgroundColor: couleur }}
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
         <section className="px-4 sm:px-6 pb-4">
@@ -1429,8 +1507,8 @@ export default function Dashboard({
               />
             )}
 
-            {/* Chantiers Widget - Upcoming */}
-            {isWidgetVisible('chantiers') && (
+            {/* Chantiers Widget - Upcoming — hidden if no chantiers to reduce scroll */}
+            {isWidgetVisible('chantiers') && safeChantiers.length > 0 && (
               <ChantiersWidget
                 setPage={setPage}
                 setSelectedChantier={setSelectedChantier}
@@ -1454,8 +1532,8 @@ export default function Dashboard({
               />
             )}
 
-            {/* Recent Activity */}
-            {isWidgetVisible('activity') && (
+            {/* Recent Activity — hidden if empty to reduce scroll */}
+            {isWidgetVisible('activity') && recentActivity.length > 0 && (
               <RecentActivityWidget
                 activities={recentActivity}
                 isDark={isDark}
@@ -1660,12 +1738,14 @@ export default function Dashboard({
               );
             })()}
 
-            {/* Bank Widget */}
-            <BankWidget
-              isDark={isDark}
-              onConnectBank={() => setPage('settings')}
-              onViewTransactions={() => setPage('finances')}
-            />
+            {/* Bank Widget — hidden if no bank connected to reduce scroll */}
+            {(entreprise?.iban || entreprise?.banque) && (
+              <BankWidget
+                isDark={isDark}
+                onConnectBank={() => setPage('settings')}
+                onViewTransactions={() => setPage('finances')}
+              />
+            )}
           </div>
         </section>
       </div>

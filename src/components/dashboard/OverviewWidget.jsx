@@ -320,10 +320,12 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
 
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;
 
-    // Conversion rate
-    const devisSent = devisOnly.filter(d => ['envoye', 'vu', 'accepte', 'refuse'].includes(d.statut)).length;
-    const devisAcceptes = devisOnly.filter(d => d.statut === 'accepte').length;
-    const tauxConversion = devisSent > 0 ? Math.round((devisAcceptes / devisSent) * 100) : 0;
+    // Conversion rate — exclude brouillons from denominator
+    // Numerator: signed/invoiced (accepte, signe, acompte_facture, facture, payee)
+    const devisSignesOv = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
+    // Denominator: all non-brouillon devis
+    const devisSent = devisOnly.filter(d => d.statut !== 'brouillon').length;
+    const tauxConversion = devisSent > 0 ? Math.round((devisSignesOv / devisSent) * 100) : -1;
 
     // Factures
     const facturesImpayees = factures.filter(f => f.statut !== 'payee');
@@ -399,6 +401,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
       devisBrouillon,
       montantEnAttente,
       tauxConversion,
+      devisSignesOv,
+      devisSent,
       // Factures
       facturesImpayees: facturesImpayees.length,
       montantImpaye,
@@ -496,7 +500,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
           <StatCard
             icon={Percent}
             title="Conversion"
-            mainValue={`${stats.tauxConversion}%`}
+            mainValue={stats.tauxConversion < 0 ? '\u2014' : `${stats.tauxConversion}%`}
+            secondaryValue={stats.tauxConversion >= 0 ? `${stats.devisSent} envoy\u00e9s \u2192 ${stats.devisSignesOv} sign\u00e9s` : undefined}
             color={stats.tauxConversion >= 50 ? '#10b981' : stats.tauxConversion >= 30 ? '#f59e0b' : '#ef4444'}
             gradient={stats.tauxConversion >= 50
               ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
@@ -506,11 +511,11 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             }
             onClick={() => setPage?.('devis')}
             isDark={isDark}
-            progress={{
+            progress={stats.tauxConversion >= 0 ? {
               value: stats.tauxConversion,
               max: 100,
-              label: stats.tauxConversion >= 50 ? 'Excellent' : stats.tauxConversion >= 30 ? 'Bon' : 'À améliorer',
-            }}
+              label: stats.tauxConversion >= 50 ? 'Excellent' : stats.tauxConversion >= 30 ? 'Bon' : '\u00c0 am\u00e9liorer',
+            } : undefined}
           />
 
           {/* Équipe */}
