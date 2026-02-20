@@ -95,6 +95,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [taskFilter, setTaskFilter] = useState('all'); // all, pending, critical
   const [fabOpen, setFabOpen] = useState(false); // FAB chantier flottant
   const [showMoreTabs, setShowMoreTabs] = useState(false); // Dropdown "Plus" onglets
+  const [finExpanded, setFinExpanded] = useState({}); // Finance accordion sections
+  const [animatedTaskId, setAnimatedTaskId] = useState(null);
+  const [counterPulse, setCounterPulse] = useState(false);
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -134,8 +137,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const handlePhotoAdd = (e, cat = 'pendant') => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: [...(ch.photos || []), { id: generateId(), src: reader.result, categorie: cat, date: new Date().toISOString() }] }); }; reader.readAsDataURL(file); };
   const deletePhoto = (id) => { const ch = chantiers.find(c => c.id === view); if (ch) updateChantier(view, { photos: ch.photos.filter(p => p.id !== id) }); };
   const addTache = (phase = 'second-oeuvre') => { if (!newTache.trim()) return; const ch = chantiers.find(c => c.id === view); if (ch) { updateChantier(view, { taches: [...(ch.taches || []), { id: generateId(), text: newTache, done: false, critical: newTaskCritical, phase }] }); setNewTache(''); setNewTaskCritical(false); } };
-  const [animatedTaskId, setAnimatedTaskId] = useState(null);
-  const [counterPulse, setCounterPulse] = useState(false);
   const toggleTache = (id) => {
     const ch = chantiers.find(c => c.id === view);
     if (!ch) return;
@@ -358,6 +359,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   >
                     <Copy size={16} className={textMuted} />
                   </button>
+                  {ch.statut === 'en_cours' && (
+                    <button
+                      onClick={async () => {
+                        const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` });
+                        if (confirmed) {
+                          updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] });
+                          showToast('Chantier marqué comme terminé ✅', 'success');
+                        }
+                      }}
+                      className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}
+                      title="Marquer comme terminé"
+                    >
+                      <CheckCircle size={16} className="text-emerald-500" />
+                    </button>
+                  )}
                   {ch.statut !== 'archive' && (
                     <button
                       onClick={async () => {
@@ -848,7 +864,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {(() => {
           const healthColor = bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
           const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
-          const [finExpanded, setFinExpanded] = React.useState({});
           const toggleFin = (k) => setFinExpanded(p => ({ ...p, [k]: !p[k] }));
 
           return (
@@ -2279,10 +2294,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div key={c.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.nom}</p>
-                        <p className={`text-xs ${textMuted}`}>
+                        <p className={`text-xs ${textMuted} truncate`}>
                           {cl ? `${cl.nom} ${cl.prenom || ''}`.trim() : ''}
-                          {c.ville ? ` · ${c.ville}` : ''}
                         </p>
+                        {(c.adresse || c.ville) && (
+                          <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
+                            <MapPin size={10} className="flex-shrink-0" />
+                            {[c.adresse, c.ville].filter(Boolean).join(', ')}
+                          </p>
+                        )}
                       </div>
                       {(c.adresse || c.ville) && (
                         <button
@@ -2506,12 +2526,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       )}
                     </div>
                   ) : tasksTotal === 0 ? (
-                    <button
+                    <div
                       onClick={(e) => { e.stopPropagation(); setView(current.id); }}
-                      className={`w-full py-3 rounded-lg border-2 border-solid text-sm ${isDark ? 'border-slate-600 text-slate-400' : 'border-slate-200 text-slate-500'}`}
+                      className={`p-4 rounded-xl cursor-pointer transition-all ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 border border-slate-600' : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border border-orange-200'}`}
                     >
-                      + Ajouter des tâches
-                    </button>
+                      <p className={`text-sm font-medium mb-1 ${textPrimary}`}>📋 Aucune tâche planifiée</p>
+                      <p className={`text-xs ${textMuted} mb-3`}>Ajoutez les étapes du chantier pour suivre l'avancement et coordonner votre équipe</p>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ background: couleur }}>
+                        <Plus size={14} /> Première tâche
+                      </span>
+                    </div>
                   ) : (
                     <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
                       <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Toutes les tâches terminées</p>
@@ -2713,6 +2737,17 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     )}
                   </div>
                 </div>
+
+                {/* CTA for Prospect: create devis */}
+                {ch.statut === 'prospect' && setPage && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
+                    className="w-full mt-2 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 text-white transition-all hover:shadow-md active:scale-[0.98]"
+                    style={{ background: couleur }}
+                  >
+                    <FileText size={14} /> + Créer un devis
+                  </button>
+                )}
 
                 {/* Unarchive button for archived chantiers */}
                 {ch.statut === 'archive' && (
