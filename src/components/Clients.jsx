@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic } from 'lucide-react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -22,6 +22,18 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
+  // Channel config for échanges multi-canal
+  const CHANNEL_CONFIG = useMemo(() => ({
+    email: { label: 'Email', icon: Mail, color: '#3b82f6', bg: isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600', btnBg: isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+    sms: { label: 'SMS', icon: MessageCircle, color: '#22c55e', bg: isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600', btnBg: isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100' },
+    whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: '#25d366', bg: isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600', btnBg: isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
+    appel: { label: 'Appel', icon: Phone, color: '#8b5cf6', bg: isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-600', btnBg: isDark ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
+    visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600', btnBg: isDark ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50' : 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
+  }), [isDark]);
+
+  // Type icons for categories
+  const TYPE_ICONS = { 'Particulier': '👤', 'Professionnel': '🏢', 'Architecte': '🏗️', 'Promoteur': '🏘️', 'Syndic': '🏛️' };
+
   const [show, setShow] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -34,6 +46,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [filterCategorie, setFilterCategorie] = useState('');
   const [kpiFilter, setKpiFilter] = useState(null); // null | 'actifs' | 'ca' | 'devis_attente'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
+  const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
+  const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
@@ -41,14 +56,17 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
-        if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); }
+        if (selectedEchange) { setSelectedEchange(null); }
+        else if (showTypePicker) { setShowTypePicker(false); }
+        else if (showFormTypePicker) { setShowFormTypePicker(false); }
+        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); }
         else if (viewId) { setViewId(null); }
         else if (showQuickModal) { setShowQuickModal(false); }
       }
     };
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [show, viewId, showQuickModal]);
+  }, [show, viewId, showQuickModal, selectedEchange, showTypePicker, showFormTypePicker]);
 
   // Client stats map — MUST be defined before filtered/getClientStatus/getClientStats
   const clientStatsMap = useMemo(() => {
@@ -195,6 +213,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     showToast(`Client fusionné avec succès`, 'success');
     setViewId(targetId);
   };
+
+  // P1.3: show TYPE column only if >= 20% of clients have a category
+  const showTypeColumn = useMemo(() => {
+    if (clients.length === 0) return false;
+    const withType = clients.filter(c => c.categorie && c.categorie.trim()).length;
+    return (withType / clients.length) >= 0.2;
+  }, [clients]);
 
   const filtered = clients.filter(c => {
     const q = debouncedSearch?.toLowerCase() || '';
@@ -797,13 +822,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {activeTab === 'echanges' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
-              const CHANNEL_CONFIG = {
-                email: { label: 'Email', icon: Mail, color: '#3b82f6', bg: isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600', btnBg: isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
-                sms: { label: 'SMS', icon: MessageCircle, color: '#22c55e', bg: isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600', btnBg: isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100' },
-                whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: '#25d366', bg: isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600', btnBg: isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
-                appel: { label: 'Appel', icon: Phone, color: '#8b5cf6', bg: isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-600', btnBg: isDark ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
-                visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600', btnBg: isDark ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50' : 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
-              };
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
 
               // Quick action buttons for contacting
@@ -852,8 +870,16 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {clientEchanges.map(e => {
                     const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
                     const ChannelIcon = channel.icon;
+                    const dirIn = e.direction === 'in' || e.direction === 'entrant';
+                    const dirOut = e.direction === 'out' || e.direction === 'sortant';
+                    const hasContent = e.contenu || e.body || e.message;
+                    const preview = hasContent ? (hasContent.length > 60 ? hasContent.slice(0, 60) + '…' : hasContent) : null;
                     return (
-                      <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <button
+                        key={e.id}
+                        onClick={() => setSelectedEchange(e)}
+                        className={`w-full text-left flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600/80 active:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100 active:bg-slate-200'}`}
+                      >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${channel.bg}`}>
                           <ChannelIcon size={18} />
                         </div>
@@ -861,9 +887,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <p className={`font-medium text-sm ${textPrimary}`}>{channel.label}</p>
-                              {e.direction && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${e.direction === 'sortant' ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
-                                  {e.direction === 'sortant' ? '↗ Envoyé' : '↙ Reçu'}
+                              {(dirIn || dirOut) && (
+                                <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                                  {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
                                 </span>
                               )}
                               {e.document && <span className={`text-xs ${textMuted} truncate`}>· {e.document}</span>}
@@ -872,11 +898,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                               {new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          {e.objet && <p className={`text-sm ${textSecondary} mt-1 line-clamp-2`}>{e.objet}</p>}
-                          {e.duree && <p className={`text-xs ${textMuted} mt-1 flex items-center gap-1`}><Clock size={10} /> {e.duree} min</p>}
-                          {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{formatMoney(e.montant)}</p>}
+                          {/* Subject or (Sans objet) */}
+                          <p className={`text-sm mt-1 ${e.objet ? textSecondary : `${textMuted} italic`}`}>
+                            {e.objet || '(Sans objet)'}
+                          </p>
+                          {/* Content preview truncated to 60 chars */}
+                          {preview && (
+                            <p className={`text-xs ${textMuted} mt-0.5 truncate`}>{preview}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1">
+                            {e.duree && <span className={`text-xs ${textMuted} flex items-center gap-1`}><Clock size={10} /> {e.duree} min</span>}
+                            {e.montant && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
+                          </div>
                         </div>
-                      </div>
+                        <ChevronRight size={14} className={`${textMuted} flex-shrink-0 mt-3`} />
+                      </button>
                     );
                   })}
                 </div>
@@ -884,6 +920,96 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             })()}
           </div>
         )}
+
+        {/* P1.1 — Échange detail drawer/modal */}
+        {selectedEchange && (() => {
+          const e = selectedEchange;
+          const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
+          const ChannelIcon = channel.icon;
+          const dirIn = e.direction === 'in' || e.direction === 'entrant';
+          const dirOut = e.direction === 'out' || e.direction === 'sortant';
+          const fullContent = e.contenu || e.body || e.message;
+          return (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedEchange(null)}>
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+              <div
+                className={`relative w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl animate-in slide-in-from-bottom`}
+                onClick={ev => ev.stopPropagation()}
+              >
+                {/* Drawer handle on mobile */}
+                <div className="sm:hidden flex justify-center pt-3 pb-1">
+                  <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+                </div>
+                {/* Header */}
+                <div className={`flex items-center gap-3 p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${channel.bg}`}>
+                    <ChannelIcon size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`font-semibold ${textPrimary}`}>{channel.label}</p>
+                      {(dirIn || dirOut) && (
+                        <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                          {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs ${textMuted}`}>
+                      {new Date(e.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <button onClick={() => setSelectedEchange(null)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <X size={18} className={textMuted} />
+                  </button>
+                </div>
+                {/* Body */}
+                <div className="p-4 space-y-4">
+                  {/* Subject */}
+                  <div>
+                    <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Objet</p>
+                    <p className={`text-sm ${e.objet ? textPrimary : `${textMuted} italic`}`}>
+                      {e.objet || '(Sans objet)'}
+                    </p>
+                  </div>
+                  {/* Document linked */}
+                  {e.document && (
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Document lié</p>
+                      <p className={`text-sm ${textPrimary}`}>{e.document}</p>
+                    </div>
+                  )}
+                  {/* Duration */}
+                  {e.duree && (
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Durée</p>
+                      <p className={`text-sm ${textPrimary} flex items-center gap-1.5`}><Clock size={14} /> {e.duree} minutes</p>
+                    </div>
+                  )}
+                  {/* Amount */}
+                  {e.montant && (
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Montant</p>
+                      <p className="text-sm font-semibold" style={{color: couleur}}>{formatMoney(e.montant)}</p>
+                    </div>
+                  )}
+                  {/* Content */}
+                  {fullContent ? (
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Contenu</p>
+                      <div className={`text-sm ${textSecondary} whitespace-pre-line p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                        {fullContent}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`text-center py-6 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'} rounded-xl`}>
+                      <p className={`text-sm ${textMuted} italic`}>Aucun contenu enregistré pour cet échange</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {activeTab === 'memos' && (
           <div className="space-y-4">
@@ -1087,7 +1213,47 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div><label htmlFor="client-entreprise" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input id="client-entreprise" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
           <div><label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input id="client-telephone" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /><FormError id="client-telephone-error" message={errors.telephone} /></div>
           <div><label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} /><FormError id="client-email-error" message={errors.email} /></div>
-          <div><label htmlFor="client-categorie" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label><select id="client-categorie" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.categorie} onChange={e => setForm(p => ({...p, categorie: e.target.value}))}><option value="">— Sélectionner —</option>{CLIENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+          <div className="relative">
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
+            <button
+              type="button"
+              onClick={() => setShowFormTypePicker(!showFormTypePicker)}
+              className={`w-full px-4 py-2.5 border rounded-xl text-left flex items-center justify-between ${inputBg}`}
+            >
+              {form.categorie ? (
+                <span className="flex items-center gap-2"><span>{TYPE_ICONS[form.categorie] || '📋'}</span> {form.categorie}</span>
+              ) : (
+                <span className={textMuted}>— Sélectionner —</span>
+              )}
+              <ChevronDown size={16} className={`${textMuted} transition-transform ${showFormTypePicker ? 'rotate-180' : ''}`} />
+            </button>
+            {showFormTypePicker && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowFormTypePicker(false)} />
+                <div className={`absolute top-full left-0 right-0 mt-1 z-40 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <button
+                    type="button"
+                    onClick={() => { setForm(p => ({...p, categorie: ''})); setShowFormTypePicker(false); }}
+                    className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${!form.categorie ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <span className="w-5 text-center">—</span> Non défini
+                    {!form.categorie && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                  </button>
+                  {CLIENT_TYPES.map(t => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => { setForm(p => ({...p, categorie: t})); setShowFormTypePicker(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${form.categorie === t ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className="w-5 text-center">{TYPE_ICONS[t] || '📋'}</span> {t}
+                      {form.categorie === t && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <div className="sm:col-span-2"><label htmlFor="client-adresse" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea id="client-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
           <div className="sm:col-span-2"><label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea id="client-notes" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
         </div>
@@ -1260,17 +1426,44 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               </button>
             </div>
 
-            {/* Type filter */}
-            <select
-              value={filterCategorie}
-              onChange={e => setFilterCategorie(e.target.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm border min-h-[36px] ${inputBg}`}
-            >
-              <option value="">Type : Tous</option>
-              {CLIENT_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            {/* Type filter — custom picker */}
+            <div className="relative">
+              <button
+                onClick={() => setShowTypePicker(!showTypePicker)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border min-h-[36px] transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50'} ${inputBg}`}
+              >
+                {filterCategorie ? (
+                  <><span>{TYPE_ICONS[filterCategorie] || '📋'}</span> <span className={textPrimary}>{filterCategorie}</span></>
+                ) : (
+                  <span className={textMuted}>Type : Tous</span>
+                )}
+                <ChevronDown size={14} className={`${textMuted} transition-transform ${showTypePicker ? 'rotate-180' : ''}`} />
+              </button>
+              {showTypePicker && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setShowTypePicker(false)} />
+                  <div className={`absolute top-full left-0 mt-1 z-40 w-56 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <button
+                      onClick={() => { setFilterCategorie(''); setShowTypePicker(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${!filterCategorie ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span className="w-5 text-center">📋</span> Tous
+                      {!filterCategorie && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                    </button>
+                    {CLIENT_TYPES.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => { setFilterCategorie(t); setShowTypePicker(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${filterCategorie === t ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <span className="w-5 text-center">{TYPE_ICONS[t] || '📋'}</span> {t}
+                        {filterCategorie === t && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Sort buttons */}
             <div className="flex items-center gap-1.5 ml-auto">
@@ -1427,23 +1620,23 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           <Building2 size={11} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row */}
+                      {/* Badges row — Order: Status → Type → Doublon */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Duplicate warning badge */}
-                        {hasDuplicates && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
-                            <AlertTriangle size={10} /> Doublon
-                          </span>
-                        )}
-                        {/* Status badge */}
+                        {/* Status badge (always first) */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                           {statusLabel}
                         </span>
                         {/* Type badge */}
                         {c.categorie && typeColor && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                            {c.categorie}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
+                            <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
+                          </span>
+                        )}
+                        {/* Duplicate warning badge (last) */}
+                        {hasDuplicates && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                            <AlertTriangle size={10} /> Doublon
                           </span>
                         )}
                       </div>
@@ -1507,7 +1700,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div className={`hidden sm:grid grid-cols-[40px_1fr_100px_100px_80px_80px_70px] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
             <span></span>
             <span>Client</span>
-            <span>Type</span>
+            <span>{showTypeColumn ? 'Type' : 'Activité'}</span>
             <span>Téléphone</span>
             <span className="text-right">CA</span>
             <span className="text-center">Stats</span>
@@ -1550,14 +1743,25 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                     {c.entreprise && <p className={`text-xs ${textMuted} truncate`}>{c.entreprise}</p>}
                   </div>
-                  {/* Type */}
+                  {/* Type or Last Activity */}
                   <div>
-                    {c.categorie && typeColor ? (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                        {c.categorie}
-                      </span>
+                    {showTypeColumn ? (
+                      c.categorie && typeColor ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
+                          <span>{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
+                        </span>
+                      ) : (
+                        <span className={`text-xs ${textMuted}`}>—</span>
+                      )
                     ) : (
-                      <span className={`text-xs ${textMuted}`}>—</span>
+                      (() => {
+                        const lastAct = getLastActivity(c.id);
+                        if (!lastAct) return <span className={`text-xs ${textMuted}`}>—</span>;
+                        const days = Math.floor((Date.now() - lastAct) / (1000 * 60 * 60 * 24));
+                        const label = days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : days < 30 ? `${days}j` : days < 365 ? `${Math.floor(days / 30)}m` : `${Math.floor(days / 365)}a`;
+                        const colorCls = days < 30 ? 'text-emerald-500' : days < 90 ? textSecondary : days < 180 ? 'text-amber-500' : 'text-red-400';
+                        return <span className={`text-xs font-medium ${colorCls}`}>{label}</span>;
+                      })()
                     )}
                   </div>
                   {/* Phone */}
