@@ -2,6 +2,22 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 
+const DURATIONS = [
+  { label: '30min', value: 30 },
+  { label: '1h', value: 60 },
+  { label: '2h', value: 120 },
+  { label: '4h', value: 240 },
+  { label: 'Journée', value: 480 },
+];
+
+const formatDuration = (mins) => {
+  if (!mins) return '';
+  if (mins >= 480) return 'Journée';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
+};
+
 export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
   const { confirm } = useConfirm();
 
@@ -112,22 +128,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return couleur;
   };
 
-  // Duration presets & formatting
-  const DURATIONS = [
-    { label: '30min', value: 30 },
-    { label: '1h', value: 60 },
-    { label: '2h', value: 120 },
-    { label: '4h', value: 240 },
-    { label: 'Journée', value: 480 },
-  ];
-  const formatDuration = (mins) => {
-    if (!mins) return '';
-    if (mins >= 480) return 'Journée';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
-  };
-
   const getChantierEvents = () => chantiers.filter(ch => ch.date_debut).map(ch => ({
     id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier',
     chantierId: ch.id, color: getChantierColor(ch), isChantier: true, description: ch.adresse || ''
@@ -168,7 +168,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return expanded;
   };
 
-  const allEvents = [...expandRecurringEvents(events), ...getChantierEvents(), ...getMemoEvents()];
+  const allEvents = useMemo(() => [...expandRecurringEvents(events), ...getChantierEvents(), ...getMemoEvents()], [events, chantiers, memos]);
 
   const getEventsForDay = (day) => {
     if (!day) return [];
