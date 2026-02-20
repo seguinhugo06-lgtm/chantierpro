@@ -8,7 +8,7 @@ export const INTEGRATION_TYPES = {
   PENNYLANE: {
     id: 'pennylane',
     name: 'Pennylane',
-    description: 'Comptabilite automatisee pour TPE/PME',
+    description: 'Comptabilité automatisée pour TPE/PME',
     color: '#6366f1',
     icon: 'receipt',
     features: ['sync_factures', 'sync_depenses', 'rapprochement'],
@@ -18,7 +18,7 @@ export const INTEGRATION_TYPES = {
   INDY: {
     id: 'indy',
     name: 'Indy',
-    description: 'Comptabilite simplifiee pour independants',
+    description: 'Comptabilité simplifiée pour indépendants',
     color: '#10b981',
     icon: 'calculator',
     features: ['sync_factures', 'declarations'],

@@ -24,45 +24,45 @@ import MultiEntreprise from './settings/MultiEntreprise';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
-  { id: 'entreprise', label: '\u26a1 Mon entreprise', tabs: [
-    { key: 'identite', label: '\ud83c\udfe2 Identit\u00e9' },
-    { key: 'legal', label: '\ud83d\udccb L\u00e9gal' },
-    { key: 'assurances', label: '\ud83d\udee1\ufe0f Assurances' },
-    { key: 'banque', label: '\ud83c\udfe6 Banque' },
+  { id: 'entreprise', label: '⚡ Mon entreprise', tabs: [
+    { key: 'identite', label: '🏢 Identité' },
+    { key: 'legal', label: '📋 Légal' },
+    { key: 'assurances', label: '🛡️ Assurances' },
+    { key: 'banque', label: '🏦 Banque' },
   ]},
-  { id: 'documents', label: '\ud83d\udcc4 Documents', tabs: [
-    { key: 'documents', label: '\ud83d\udcc4 Documents' },
-    { key: 'facture2026', label: '\ud83e\uddfe Facture 2026' },
-    { key: 'relances', label: '\ud83d\udce8 Relances' },
+  { id: 'documents', label: '📄 Documents', tabs: [
+    { key: 'documents', label: '📄 Documents' },
+    { key: 'facture2026', label: '🧾 Facture 2026' },
+    { key: 'relances', label: '📨 Relances' },
   ]},
-  { id: 'finance', label: '\ud83d\udcb6 Finance', tabs: [
-    { key: 'comptabilite', label: '\ud83e\uddee Comptabilit\u00e9' },
-    { key: 'rentabilite', label: '\ud83d\udcca Rentabilit\u00e9' },
+  { id: 'finance', label: '💶 Finance', tabs: [
+    { key: 'comptabilite', label: '🧮 Comptabilité' },
+    { key: 'rentabilite', label: '📊 Rentabilité' },
   ]},
-  { id: 'avance', label: '\u2699\ufe0f Avanc\u00e9', tabs: [
-    { key: 'donnees', label: '\ud83d\udcbe Donn\u00e9es' },
-    { key: 'administratif', label: '\ud83d\udcc1 Administratif' },
-    { key: 'multi', label: '\ud83c\udfd7\ufe0f Multi-entreprise' },
+  { id: 'avance', label: '⚙️ Avancé', tabs: [
+    { key: 'donnees', label: '💾 Données' },
+    { key: 'administratif', label: '📁 Administratif' },
+    { key: 'multi', label: '🏗️ Multi-entreprise' },
   ]},
 ];
 
 // ── Wizard step definitions ─────────────────────────────────────────────────
 const WIZARD_STEPS_DEF = [
-  { id: 'identite', title: 'Identit\u00e9', desc: 'Votre entreprise en un coup d\u2019\u0153il', icon: Palette },
-  { id: 'siret', title: 'Informations l\u00e9gales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
+  { id: 'identite', title: 'Identité', desc: 'Votre entreprise en un coup d’œil', icon: Palette },
+  { id: 'siret', title: 'Informations légales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
   { id: 'documents', title: 'Documents', desc: 'TVA, acompte et mentions', icon: FileCheck },
-  { id: 'relances', title: 'Relances', desc: '85% des relances auto sont pay\u00e9es dans 7 jours', icon: BellRing },
-  { id: 'catalogue', title: 'Catalogue', desc: 'Importez le r\u00e9f\u00e9rentiel BTP', icon: Package },
+  { id: 'relances', title: 'Relances', desc: '85% des relances auto sont payées dans 7 jours', icon: BellRing },
+  { id: 'catalogue', title: 'Catalogue', desc: 'Importez le référentiel BTP', icon: Package },
 ];
 
 // ── Frais de structure charge items ─────────────────────────────────────────
 const FRAIS_ITEMS = [
-  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '\ud83c\udfe0' },
-  { key: 'assurances', label: 'Assurances (RC + D\u00e9cennale)', placeholder: '800', icon: '\ud83d\udee1\ufe0f' },
-  { key: 'telephone', label: 'T\u00e9l\u00e9phone / Internet', placeholder: '100', icon: '\ud83d\udcf1' },
-  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '\ud83e\uddee' },
-  { key: 'carburant', label: 'Carburant / D\u00e9placements', placeholder: '400', icon: '\u26fd' },
-  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '\ud83d\udce6' },
+  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '🏠' },
+  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: '🛡️' },
+  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: '📱' },
+  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '🧮' },
+  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: '⛽' },
+  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '📦' },
 ];
 
 // Villes RCS principales France
@@ -156,9 +156,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         ...(codeNaf ? { codeApe: codeNaf } : {}),
       }));
 
-      showToast(`SIRENE : ${fullNom || 'Entreprise trouv\u00e9e'}`, 'success');
+      showToast(`SIRENE : ${fullNom || 'Entreprise trouvée'}`, 'success');
     } catch (err) {
-      showToast('Impossible de r\u00e9cup\u00e9rer les donn\u00e9es SIRENE. V\u00e9rifiez le SIRET.', 'error');
+      showToast('Impossible de récupérer les données SIRENE. Vérifiez le SIRET.', 'error');
     }
     setSireneLoading(false);
   }, [entreprise.siret, updateEntreprise, showToast]);
@@ -582,25 +582,31 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* Tabs — Desktop: pills with separators, Mobile: accordion groups */}
       {/* Desktop tabs (hidden on mobile) */}
-      <div className={`hidden sm:flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      <div className={`hidden sm:flex gap-1.5 border-b pb-0 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {[
-          ['identite', '\ud83c\udfe2 Identit\u00e9'],
-          ['legal', '\ud83d\udccb L\u00e9gal'],
-          ['assurances', `\ud83d\udee1\ufe0f Assurances${hasAssuranceAlerts ? ' \u26a0\ufe0f' : ''}`],
-          ['banque', '\ud83c\udfe6 Banque'],
+          ['identite', '🏢 Identité'],
+          ['legal', '📋 Légal'],
+          ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
+          ['banque', '🏦 Banque'],
           ['_sep1', ''],
-          ['documents', '\ud83d\udcc4 Documents'],
-          ['facture2026', '\ud83e\uddfe Facture 2026'],
-          ['relances', '\ud83d\udce8 Relances'],
+          ['documents', '📄 Documents'],
+          ['facture2026', '🧾 Facture 2026'],
+          ['relances', '📨 Relances'],
           ['_sep2', ''],
-          ['comptabilite', '\ud83e\uddee Comptabilit\u00e9'],
-          ['rentabilite', '\ud83d\udcca Rentabilit\u00e9'],
-          ['donnees', '\ud83d\udcbe Donn\u00e9es'],
-          ['administratif', '\ud83d\udcc1 Administratif'],
-          ['multi', '\ud83c\udfd7\ufe0f Multi-entreprise'],
+          ['comptabilite', '🧮 Comptabilité'],
+          ['rentabilite', '📊 Rentabilité'],
+          ['donnees', '💾 Données'],
+          ['administratif', '📁 Administratif'],
+          ['multi', '🏗️ Multi-entreprise'],
         ].filter(([k]) => k).map(([k, v]) => (
           k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
+          <button key={k} data-tab={k} onClick={() => {
+            setTab(k);
+            setTimeout(() => document.querySelector(`[data-tab="${k}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 50);
+          }} className={`relative px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm transition-colors ${tab === k ? `${isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200'} -mb-[1px] font-semibold` : `${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>
+            {v}
+            {tab === k && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full" style={{ backgroundColor: entreprise.couleur }} />}
+          </button>
         ))}
       </div>
 
@@ -1077,7 +1083,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className={`font-semibold mb-4 ${textPrimary}`}>{'\ud83d\udcca'} Calcul de Rentabilit{'\u00e9'}</h3>
+          <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div className="flex items-end gap-3 flex-wrap">
               <div>
@@ -1096,7 +1102,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {/* Mini-wizard frais de structure */}
             {showFraisCalc && (
               <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-semibold ${textPrimary}`}>{'\ud83e\uddee'} Calculez votre taux r{'\u00e9'}el</p>
+                <p className={`text-sm font-semibold ${textPrimary}`}>🧮 Calculez votre taux réel</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {FRAIS_ITEMS.map(item => (
                     <div key={item.key}>
@@ -1121,7 +1127,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <p className={`text-sm font-medium ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(caEstime)}</p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-xs ${textSecondary}`}>Taux sugg{'\u00e9'}r{'\u00e9'}</p>
+                    <p className={`text-xs ${textSecondary}`}>Taux suggéré</p>
                     <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere}%</p>
                   </div>
                 </div>
@@ -1129,7 +1135,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   onClick={() => {
                     updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
                     setShowFraisCalc(false);
-                    showToast(`Taux mis \u00e0 jour : ${tauxSuggere}%`, 'success');
+                    showToast(`Taux mis à jour : ${tauxSuggere}%`, 'success');
                   }}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                   style={{ backgroundColor: couleur }}
@@ -1140,15 +1146,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             )}
 
             <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm ${textPrimary}`}>
-              <p><strong>Marge R{'\u00e9'}elle</strong> = CA HT + Ajustements Revenus</p>
-              <p className="ml-4">- Mat{'\u00e9'}riaux (achats)</p>
-              <p className="ml-4">- Main d{'\u2019'}{'\u0153'}uvre (heures {'\u00d7'} co{'\u00fb'}t charg{'\u00e9'})</p>
+              <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
+              <p className="ml-4">- Matériaux (achats)</p>
+              <p className="ml-4">- Main d’œuvre (heures × coût chargé)</p>
               <p className="ml-4">- Frais structure ({entreprise.tauxFraisStructure || 15}% du CA)</p>
-              <p className="ml-4">- Ajustements D{'\u00e9'}penses</p>
+              <p className="ml-4">- Ajustements Dépenses</p>
             </div>
             <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
               <p><strong>Code couleur marge:</strong></p>
-              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge n{'\u00e9'}gative ({'<'}0%)</p>
+              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge négative ({'<'}0%)</p>
               <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-500"></span> Orange: Marge faible (0-15%)</p>
               <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine ({'>'}15%)</p>
             </div>
@@ -1886,7 +1892,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               {/* Header */}
               <div className="px-5 pb-2 pt-2">
                 <div className="flex items-center justify-between mb-1">
-                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{'\u00c9'}tape {safeStep + 1}/{totalSteps}</p>
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {safeStep + 1}/{totalSteps}</p>
                   <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                     <X size={16} />
                   </button>
@@ -1902,9 +1908,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {safeStep === 0 && (
                   <>
                     <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l{'\u2019'}entreprise *</label>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l’entreprise *</label>
                       <input type="text" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({ ...p, nom: e.target.value }))}
-                        placeholder="Ex : Martin R\u00e9novation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+                        placeholder="Ex : Martin Rénovation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
                     </div>
                     <div>
                       <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Logo</label>
@@ -1939,7 +1945,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {safeStep === 1 && (
                   <>
                     <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N{'\u00b0'} SIRET *</label>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° SIRET *</label>
                       <div className="flex gap-2">
                         <input type="text" value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({ ...p, siret: e.target.value }))}
                           placeholder="123 456 789 00012" className={`flex-1 px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
@@ -1953,14 +1959,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                           Auto-remplir
                         </button>
                       </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l{'\u2019'}API SIRENE</p>
+                      <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l’API SIRENE</p>
                     </div>
                     {[
                       { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
                       { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
-                      { key: 'tvaIntra', label: 'N\u00b0 TVA Intracommunautaire', placeholder: 'FR12345678901' },
-                      { key: 'adresse', label: 'Adresse compl\u00e8te *', placeholder: '12 rue des Artisans, 75011 Paris' },
-                      { key: 'tel', label: 'T\u00e9l\u00e9phone *', placeholder: '06 12 34 56 78' },
+                      { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
+                      { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris' },
+                      { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
                       { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
                     ].map(f => (
                       <div key={f.key}>
@@ -1976,7 +1982,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {safeStep === 2 && (
                   <>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par d{'\u00e9'}faut : <strong>{entreprise.tauxTva || 10}%</strong></label>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par défaut : <strong>{entreprise.tauxTva || 10}%</strong></label>
                       <input type="range" min="0" max="20" step="0.5"
                         value={entreprise.tauxTva || 10}
                         onChange={e => updateEntreprise(p => ({ ...p, tauxTva: parseFloat(e.target.value) }))}
@@ -1985,7 +1991,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>5.5%</span><span>10%</span><span>20%</span></div>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par d{'\u00e9'}faut : <strong>{entreprise.acompte || 30}%</strong></label>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompte || 30}%</strong></label>
                       <input type="range" min="0" max="50" step="5"
                         value={entreprise.acompte || 30}
                         onChange={e => updateEntreprise(p => ({ ...p, acompte: parseInt(e.target.value) }))}
@@ -1996,7 +2002,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     <div className="space-y-2">
                       {[
                         { key: 'mentionRGE', label: 'Mention RGE sur les documents' },
-                        { key: 'mentionDecennale', label: 'Mentions assurance d\u00e9cennale' },
+                        { key: 'mentionDecennale', label: 'Mentions assurance décennale' },
                       ].map(toggle => (
                         <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
                           <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
@@ -2016,15 +2022,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <>
                     <div className={`p-4 rounded-xl border ${isDark ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-200'}`}>
                       <p className={`text-2xl font-bold mb-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>85%</p>
-                      <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>des relances automatiques sont pay{'\u00e9'}es dans les 7 jours</p>
+                      <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>des relances automatiques sont payées dans les 7 jours</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                      <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Sc{'\u00e9'}nario de relance type :</p>
+                      <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Scénario de relance type :</p>
                       <div className="space-y-2">
                         {[
                           { jour: 'J+7', type: 'Email', desc: 'Rappel de consultation' },
                           { jour: 'J+15', type: 'Email + SMS', desc: 'Relance douce' },
-                          { jour: 'J+30', type: 'Email', desc: 'Derni\u00e8re relance' },
+                          { jour: 'J+30', type: 'Email', desc: 'Dernière relance' },
                         ].map(r => (
                           <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
                             <span className="font-mono font-bold w-10" style={{ color: couleur }}>{r.jour}</span>
@@ -2041,7 +2047,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     }`}>
                       <div>
                         <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
-                        <p className={`text-xs ${textMuted}`}>(recommand{'\u00e9'})</p>
+                        <p className={`text-xs ${textMuted}`}>(recommandé)</p>
                       </div>
                       <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
                         style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
@@ -2057,8 +2063,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <>
                     <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
                       <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
-                      <p className={`text-sm font-semibold ${textPrimary}`}>Importez le R{'\u00e9'}f{'\u00e9'}rentiel BTP</p>
-                      <p className={`text-xs mt-1 ${textMuted}`}>S{'\u00e9'}lectionnez votre m{'\u00e9'}tier pour importer automatiquement les articles courants dans votre catalogue.</p>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>Importez le Référentiel BTP</p>
+                      <p className={`text-xs mt-1 ${textMuted}`}>Sélectionnez votre métier pour importer automatiquement les articles courants dans votre catalogue.</p>
                     </div>
                     <button
                       onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}
@@ -2079,7 +2085,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     onClick={() => setWizardStep(s => Math.max(0, s - 1))}
                     className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
                   >
-                    {'\u2190'} Pr{'\u00e9'}c{'\u00e9'}dent
+                    ← Précédent
                   </button>
                 )}
                 <div className="flex-1">
@@ -2091,14 +2097,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
                     style={{ background: couleur }}
                   >
-                    Suivant {'\u2192'}
+                    Suivant →
                   </button>
                 ) : (
                   <button
                     onClick={() => {
                       setShowSetupWizard(false);
                       try { localStorage.setItem('cp_wizard_done', '1'); } catch {}
-                      showToast('Configuration termin\u00e9e !', 'success');
+                      showToast('Configuration terminée !', 'success');
                     }}
                     className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
                     style={{ background: '#22c55e' }}

@@ -274,7 +274,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
           logo: form.logo
         }));
       }
-      showToast('Entreprise modifiee');
+      showToast('Entreprise modifiée');
     } else {
       // Create
       const newEnt = {
@@ -295,7 +295,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
       };
       const updated = [...entreprises, newEnt];
       persistAndSet(updated);
-      showToast('Entreprise ajoutee');
+      showToast('Entreprise ajoutée');
     }
 
     setView('list');
@@ -320,7 +320,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
     const updated = entreprises.filter(e => e.id !== confirmDelete.id);
     persistAndSet(updated);
     setConfirmDelete(null);
-    showToast(`"${confirmDelete.nom}" supprimee`);
+    showToast(`"${confirmDelete.nom}" supprimée`);
   }, [confirmDelete, entreprises, persistAndSet, showToast]);
 
   // -- Form field updater --
@@ -371,12 +371,12 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
             </div>
             <div>
               <h3 className={`font-semibold ${textPrimary}`}>Supprimer l'entreprise</h3>
-              <p className={`text-sm ${textMuted}`}>Cette action est irreversible</p>
+              <p className={`text-sm ${textMuted}`}>Cette action est irréversible</p>
             </div>
           </div>
           <p className={`text-sm mb-6 ${textMuted}`}>
             Voulez-vous vraiment supprimer <strong className={textPrimary}>"{confirmDelete.nom}"</strong> ?
-            Les donnees associees ne seront pas supprimees.
+            Les données associées ne seront pas supprimées.
           </p>
           <div className="flex gap-3 justify-end">
             <button
@@ -764,7 +764,7 @@ export default function MultiEntreprise({ entreprise = {}, setEntreprise, isDark
         {/* Info box */}
         <div className={`rounded-xl p-3 border text-xs ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
           <p>
-            <strong>Astuce :</strong> Cliquez sur une entreprise pour la rendre active. L'entreprise active est utilisee pour generer vos devis, factures et documents.
+            <strong>Astuce :</strong> Cliquez sur une entreprise pour la rendre active. L'entreprise active est utilisée pour générer vos devis, factures et documents.
           </p>
         </div>
       </div>

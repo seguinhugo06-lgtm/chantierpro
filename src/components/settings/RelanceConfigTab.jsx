@@ -1,7 +1,7 @@
 /**
- * RelanceConfigTab - Settings panel for configuring smart follow-up scenarios
+ * RelanceConfigTab - Settings panel for configuring smart follow-up scénarios
  *
- * Allows the user to configure automatic relance (follow-up) scenarios for
+ * Allows the user to configure automatic relance (follow-up) scénarios for
  * devis (quotes) and factures (invoices), including per-step delays, channels,
  * message templates with variable interpolation, and preview capabilities.
  *
@@ -40,14 +40,14 @@ const DEFAULT_DEVIS_STEPS = [
     id: 'devis_step_1',
     enabled: true,
     delay: 7,
-    delayLabel: 'J+7 apres envoi',
+    delayLabel: 'J+7 après envoi',
     name: 'Rappel de consultation',
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je reviens vers vous concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR que je vous ai adresse recemment.
+Je reviens vers vous concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR que je vous ai adressé récemment.
 
-Avez-vous pu en prendre connaissance ? Je reste a votre disposition pour toute question ou pour organiser un rendez-vous.
+Avez-vous pu en prendre connaissance ? Je reste à votre disposition pour toute question ou pour organiser un rendez-vous.
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -56,16 +56,16 @@ Cordialement,
     id: 'devis_step_2',
     enabled: true,
     delay: 15,
-    delayLabel: 'J+15 apres envoi',
+    delayLabel: 'J+15 après envoi',
     name: 'Relance douce',
     channel: 'email_sms',
     template: `Bonjour {{client_nom}},
 
 Je me permets de revenir vers vous une nouvelle fois au sujet du devis n{{devis_numero}} ({{montant}} EUR).
 
-Si vous avez des questions ou souhaitez discuter de certains points, je suis disponible pour en echanger.
+Si vous avez des questions ou souhaitez discuter de certains points, je suis disponible pour en échanger.
 
-N'hesitez pas a me contacter.
+N'hésitez pas à me contacter.
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -74,14 +74,14 @@ Cordialement,
     id: 'devis_step_3',
     enabled: true,
     delay: 30,
-    delayLabel: 'J+30 apres envoi',
-    name: 'Derniere relance',
+    delayLabel: 'J+30 après envoi',
+    name: 'Dernière relance',
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je vous contacte une derniere fois concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR.
+Je vous contacte une dernière fois concernant le devis n{{devis_numero}} d'un montant de {{montant}} EUR.
 
-Si ce projet ne correspond plus a vos attentes, je comprendrai tout a fait. Dans le cas contraire, je reste disponible pour finaliser les details.
+Si ce projet ne correspond plus à vos attentes, je comprendrai tout à fait. Dans le cas contraire, je reste disponible pour finaliser les details.
 
 Bien cordialement,
 {{entreprise_nom}}`,
@@ -93,14 +93,14 @@ const DEFAULT_FACTURE_STEPS = [
     id: 'facture_step_1',
     enabled: true,
     delay: 3,
-    delayLabel: 'J+3 apres echeance',
+    delayLabel: 'J+3 après échéance',
     name: 'Rappel de paiement',
     channel: 'email',
     template: `Bonjour {{client_nom}},
 
-Je me permets de vous rappeler que la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC est arrivee a echeance le {{date_echeance}}.
+Je me permets de vous rappeler que la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC est arrivée à échéance le {{date_échéance}}.
 
-Merci de proceder au reglement dans les meilleurs delais.
+Merci de procéder au règlement dans les meilleurs délais.
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -109,16 +109,16 @@ Cordialement,
     id: 'facture_step_2',
     enabled: true,
     delay: 15,
-    delayLabel: 'J+15 apres echeance',
-    name: '2eme relance',
+    delayLabel: 'J+15 après échéance',
+    name: '2ème relance',
     channel: 'email_sms',
     template: `Bonjour {{client_nom}},
 
-Sauf erreur de notre part, la facture n{{facture_numero}} de {{montant_ttc}} EUR TTC, echue depuis {{jours_retard}} jours, reste impayee.
+Sauf erreur de notre part, la facture n{{facture_numero}} de {{montant_ttc}} EUR TTC, échue depuis {{jours_retard}} jours, reste impayée.
 
-Nous vous remercions de bien vouloir proceder au reglement sous 8 jours.
+Nous vous remercions de bien vouloir procéder au règlement sous 8 jours.
 
-En cas de difficulte, n'hesitez pas a nous contacter.
+En cas de difficulté, n'hésitez pas à nous contacter.
 
 Cordialement,
 {{entreprise_nom}}`,
@@ -127,14 +127,14 @@ Cordialement,
     id: 'facture_step_3',
     enabled: true,
     delay: 30,
-    delayLabel: 'J+30 apres echeance',
+    delayLabel: 'J+30 après échéance',
     name: 'Mise en demeure',
     channel: 'email',
     template: `{{client_nom}},
 
-Par la presente, nous vous mettons en demeure de regler sous 8 jours la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC, impayee depuis {{jours_retard}} jours.
+Par la présente, nous vous mettons en demeure de régler sous 8 jours la facture n{{facture_numero}} d'un montant de {{montant_ttc}} EUR TTC, impayée depuis {{jours_retard}} jours.
 
-Passe ce delai, nous transmettrons le dossier a notre service contentieux, ce qui entrainera des frais supplementaires a votre charge.
+Passé ce délai, nous transmettrons le dossier à notre service contentieux, ce qui entrainera des frais supplémentaires à votre charge.
 
 {{entreprise_nom}}`,
   },
@@ -142,16 +142,16 @@ Passe ce delai, nous transmettrons le dossier a notre service contentieux, ce qu
     id: 'facture_step_4',
     enabled: true,
     delay: 45,
-    delayLabel: 'J+45 apres echeance',
-    name: 'Pre-contentieux',
+    delayLabel: 'J+45 après échéance',
+    name: 'Pré-contentieux',
     channel: 'email',
     template: `{{client_nom}},
 
 Dernier avis avant transmission au contentieux.
 
-La facture n{{facture_numero}} de {{montant_ttc}} EUR TTC reste impayee malgre nos multiples relances ({{jours_retard}} jours de retard).
+La facture n{{facture_numero}} de {{montant_ttc}} EUR TTC reste impayée malgré nos multiples relances ({{jours_retard}} jours de retard).
 
-Sans reglement sous 48h, le dossier sera transmis a notre cabinet de recouvrement.
+Sans règlement sous 48h, le dossier sera transmis a notre cabinet de recouvrement.
 
 {{entreprise_nom}}`,
   },
@@ -171,7 +171,7 @@ const AVAILABLE_VARIABLES = [
   { key: '{{facture_numero}}', description: 'Numéro de la facture' },
   { key: '{{montant_ttc}}', description: 'Montant TTC' },
   { key: '{{montant}}', description: 'Montant' },
-  { key: '{{date_echeance}}', description: 'Date d\'echeance' },
+  { key: '{{date_échéance}}', description: 'Date d\'échéance' },
   { key: '{{entreprise_nom}}', description: 'Nom de l\'entreprise' },
   { key: '{{jours_retard}}', description: 'Jours de retard' },
 ];
@@ -337,7 +337,7 @@ function ScenarioStep({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className={cn('block text-xs font-medium mb-1', textMuted)}>
-                  Nom de l'etape
+                  Nom de l'étape
                 </label>
                 <input
                   type="text"
@@ -352,7 +352,7 @@ function ScenarioStep({
               </div>
               <div>
                 <label className={cn('block text-xs font-medium mb-1', textMuted)}>
-                  Delai (jours)
+                  Délai (jours)
                 </label>
                 <div className="flex items-center gap-2">
                   <Clock className={cn('w-4 h-4 flex-shrink-0', textMuted)} />
@@ -397,7 +397,7 @@ function ScenarioStep({
             {/* Template textarea */}
             <div>
               <label className={cn('block text-xs font-medium mb-1', textMuted)}>
-                Modele de message
+                Modèle de message
               </label>
               <textarea
                 value={step.template}
@@ -446,7 +446,7 @@ function ScenarioStep({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Supprimer cette etape
+                Supprimer cette étape
               </button>
             </div>
           </div>
@@ -467,7 +467,7 @@ function TemplatePreview({ template, isDark, onClose }) {
     '{{facture_numero}}': 'FAC-2025-018',
     '{{montant_ttc}}': '3 500,00',
     '{{montant}}': '3 500,00',
-    '{{date_echeance}}': '15/01/2025',
+    '{{date_échéance}}': '15/01/2025',
     '{{entreprise_nom}}': 'Mon Entreprise',
     '{{jours_retard}}': '12',
   };
@@ -561,7 +561,7 @@ function ScenarioCard({
       enabled: true,
       delay: newDelay,
       delayLabel: `J+${newDelay}`,
-      name: 'Nouvelle etape',
+      name: 'Nouvelle étape',
       channel: 'email',
       template: `Bonjour {{client_nom}},\n\n[Votre message ici]\n\nCordialement,\n{{entreprise_nom}}`,
     };
@@ -584,7 +584,7 @@ function ScenarioCard({
           <div>
             <h3 className={cn('text-base font-semibold', textPrimary)}>{title}</h3>
             <p className={cn('text-xs', textMuted)}>
-              {activeCount} etape{activeCount !== 1 ? 's' : ''} active{activeCount !== 1 ? 's' : ''}
+              {activeCount} étape{activeCount !== 1 ? 's' : ''} active{activeCount !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -632,7 +632,7 @@ function ScenarioCard({
           )}
         >
           <Plus className="w-3.5 h-3.5" />
-          Ajouter une etape
+          Ajouter une étape
         </button>
 
         {/* Preview button for the first active step */}
@@ -688,7 +688,7 @@ function VariablesCard({ isDark, couleur }) {
           <div className="text-left">
             <h3 className={cn('text-base font-semibold', textPrimary)}>Variables disponibles</h3>
             <p className={cn('text-xs', textMuted)}>
-              Variables dynamiques pour personnaliser vos modeles
+              Variables dynamiques pour personnaliser vos modèles
             </p>
           </div>
         </div>
@@ -737,19 +737,19 @@ function StatsCard({ isDark, couleur }) {
 
   const stats = [
     {
-      label: 'Taux de conversion apres relance',
+      label: 'Taux de conversion après relance',
       value: '--%',
       icon: TrendingUp,
       color: '#22c55e',
     },
     {
-      label: 'Delai moyen de paiement',
+      label: 'Délai moyen de paiement',
       value: '-- jours',
       icon: CalendarClock,
       color: '#3b82f6',
     },
     {
-      label: 'Montant recupere grace aux relances',
+      label: 'Montant récupéré grâce aux relances',
       value: '--\u00A0\u20AC',
       icon: Euro,
       color: '#f59e0b',
@@ -859,12 +859,12 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
             Relances automatiques
           </h2>
           <p className={cn('text-sm mt-1', textMuted)}>
-            Configurez vos scenarios de relance pour ne plus jamais oublier un impaye
+            Configurez vos scénarios de relance pour ne plus jamais oublier un impaye
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className={cn('text-sm font-medium', textMuted)}>
-            {relanceConfig.enabled ? 'Active' : 'Desactive'}
+            {relanceConfig.enabled ? 'Active' : 'Désactivé'}
           </span>
           <Toggle
             enabled={relanceConfig.enabled}
@@ -904,7 +904,7 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
             style={{ color: '#22c55e' }}
           />
           <p className={cn('text-sm', isDark ? 'text-green-300' : 'text-green-800')}>
-            Les relances automatiques sont actives. Vos clients seront relances selon les scenarios ci-dessous.
+            Les relances automatiques sont actives. Vos clients seront relancés selon les scénarios ci-dessous.
           </p>
         </div>
       )}
@@ -922,7 +922,7 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
 
       {/* Facture scenario card */}
       <ScenarioCard
-        title="Relance Factures impayees"
+        title="Relance Factures impayées"
         icon={Receipt}
         steps={relanceConfig.factureSteps || DEFAULT_FACTURE_STEPS}
         onStepsChange={handleFactureStepsChange}
