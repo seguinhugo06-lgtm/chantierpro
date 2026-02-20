@@ -219,6 +219,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return true;
   }));
 
+  // Nettoyage affichage données test
+  const cleanNumero = (numero) => {
+    if (!numero) return '—';
+    const match = numero.match(/^(DEV|FAC)-(\d{10,})$/);
+    if (match) return `${match[1]}-···${match[2].slice(-4)}`;
+    return numero;
+  };
+  const cleanClientName = (client) => {
+    if (!client) return '';
+    const nom = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    if (/^(ClientPersist|Test_|test_)/i.test(client.nom || '')) return client.prenom || 'Client';
+    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) return nom || 'Client';
+    return nom || client.entreprise || 'Client';
+  };
+
   // Helper: compute line total robustly (handles montant, camelCase, snake_case)
   const getLineTotal = (l) => {
     if (l.montant != null && l.montant !== 0) return parseFloat(l.montant);
@@ -1461,8 +1476,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
               </div>
-              <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{selected.numero}</h2>
-              <p className={`text-sm ${textMuted}`}>{client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
+              <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h2>
+              <p className={`text-sm ${textMuted}`}>{cleanClientName(client) || (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
 
             {/* Header actions - with labels for better accessibility */}
@@ -1658,6 +1673,33 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                               <span className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><Mail size={14} /></span>
                               Email
                             </button>
+                            {['envoye', 'vu'].includes(selected.statut) && (
+                              <>
+                                <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />
+                                <button onClick={() => {
+                                  const d = new Date(); d.setDate(d.getDate() + 3);
+                                  const relanceDate = d.toISOString().split('T')[0];
+                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
+                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
+                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+3)`, 'success');
+                                  setShowChannelDropdown(false);
+                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                  <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center"><Clock size={14} /></span>
+                                  Relance J+3
+                                </button>
+                                <button onClick={() => {
+                                  const d = new Date(); d.setDate(d.getDate() + 7);
+                                  const relanceDate = d.toISOString().split('T')[0];
+                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
+                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
+                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+7)`, 'success');
+                                  setShowChannelDropdown(false);
+                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                                  <span className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center"><Clock size={14} /></span>
+                                  Relance J+7
+                                </button>
+                              </>
+                            )}
                           </div>
                           </>
                         )}
@@ -2279,34 +2321,51 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
             {isDevis && facturesLiees.length > 0 && (
               <TabsContent value="historique" className="mt-0 p-4 sm:p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <div>
-                      <p className={`text-sm ${textPrimary}`}>{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p>
-                    </div>
-                  </div>
-                  {selected.signatureDate && (
-                    <div className="flex items-center gap-3">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                      <div>
-                        <p className={`text-sm ${textPrimary}`}>{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepté</p>
+                {(() => {
+                  // Build full chronological timeline
+                  const events = [];
+                  events.push({ date: selected.created_at || selected.date, label: `${selected.type === 'facture' ? 'Facture' : 'Devis'} créé`, color: 'bg-blue-500', icon: '📝' });
+                  if (selected.statut !== 'brouillon' && selected.date !== (selected.created_at || selected.date)) {
+                    events.push({ date: selected.sent_at || selected.date, label: 'Envoyé au client', color: 'bg-amber-500', icon: '📤' });
+                  }
+                  if (selected.viewed_at || selected.vu_date) {
+                    events.push({ date: selected.viewed_at || selected.vu_date, label: 'Vu par le client', color: 'bg-purple-500', icon: '👁️' });
+                  }
+                  if (selected.signatureDate) {
+                    events.push({ date: selected.signatureDate, label: 'Signé / Accepté', color: 'bg-emerald-500', icon: '✍️' });
+                  }
+                  if (selected.relance_planifiee) {
+                    const isPast = new Date(selected.relance_planifiee) < new Date();
+                    events.push({ date: selected.relance_planifiee, label: isPast ? 'Relance prévue (échue)' : 'Relance planifiée', color: isPast ? 'bg-red-500' : 'bg-amber-500', icon: '⏰' });
+                  }
+                  facturesLiees.forEach(f => {
+                    events.push({ date: f.date, label: `${f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'} créé${f.facture_type === 'acompte' ? '' : 'e'}`, color: f.statut === 'payee' ? 'bg-emerald-500' : 'bg-indigo-500', icon: f.statut === 'payee' ? '✅' : '🧾', sub: `${f.numero} · ${formatMoney(f.total_ttc)}`, clickFn: () => setSelected(f) });
+                  });
+                  events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                  return (
+                    <div className="relative">
+                      {/* Vertical line */}
+                      <div className={`absolute left-[5px] top-3 bottom-3 w-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                      <div className="space-y-4">
+                        {events.map((ev, i) => (
+                          <div key={i} className={`flex items-start gap-3 relative ${ev.clickFn ? `cursor-pointer rounded-lg p-2 -mx-2 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}` : ''}`} onClick={ev.clickFn}>
+                            <span className={`w-3 h-3 rounded-full flex-shrink-0 mt-0.5 z-10 ${ev.color}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${textPrimary}`}>
+                                <span className="mr-1.5">{ev.icon}</span>
+                                {ev.label}
+                              </p>
+                              <p className={`text-xs ${textMuted}`}>{new Date(ev.date).toLocaleDateString('fr-FR')}</p>
+                              {ev.sub && <p className={`text-xs ${textMuted}`}>{ev.sub}</p>}
+                            </div>
+                            {ev.clickFn && <ChevronRight size={16} className={`${textMuted} mt-0.5`} />}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  )}
-                  {facturesLiees.map(f => (
-                    <div key={f.id} className={`flex items-center gap-3 cursor-pointer rounded-lg p-2 -mx-2 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`} onClick={() => setSelected(f)}>
-                      <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                      <div className="flex-1">
-                        <p className={`text-sm ${textPrimary}`}>
-                          {new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}
-                        </p>
-                        <p className={`text-xs ${textMuted}`}>{f.numero} · {formatMoney(f.total_ttc)}</p>
-                      </div>
-                      <ChevronRight size={16} className={textMuted} />
-                    </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </TabsContent>
             )}
 
@@ -3207,7 +3266,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           return true;
         });
         const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
-        const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'acompte_facture', 'facture'].includes(d.statut));
+        const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut));
         const devisRefuse = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'refuse');
         const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
         const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
@@ -3419,7 +3478,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <p className={`font-semibold text-sm ${textPrimary}`}>{d.numero}</p>
+                    <p className={`font-semibold text-sm ${textPrimary}`}>{cleanNumero(d.numero)}</p>
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
                     {hasAcompte && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
                     {d.is_avenant && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
@@ -3429,7 +3488,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {isExpired(d) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
                   </div>
                   <p className={`text-xs ${textMuted} truncate`}>
-                    {client ? `${client.prenom || ''} ${client.nom}`.trim() : (d.client_nom || 'Client')}
+                    {cleanClientName(client) || (d.client_nom || 'Client')}
                     {chantier ? ` · ${chantier.nom}` : ''}
                     {` · ${new Date(d.date).toLocaleDateString('fr-FR')}`}
                   </p>
@@ -3437,6 +3496,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
                 {/* Quick action OR PDF */}
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {d.signature_token && (
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      const url = `${window.location.origin}/devis/signer/${d.signature_token}`;
+                      navigator.clipboard?.writeText(url).then(() => showToast('Lien copié !', 'success')).catch(() => showToast('Copie échouée', 'error'));
+                    }} className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
+                      <Link2 size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                    </button>
+                  )}
                   {qa ? (
                     <button onClick={qa.fn} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 min-h-[36px] transition-all ${qa.cls}`}>
                       <qa.Icon size={14} />
