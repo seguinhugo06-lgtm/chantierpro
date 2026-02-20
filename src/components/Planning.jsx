@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
 
@@ -22,6 +22,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
   const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
   const [showTips, setShowTips] = useState(() => { try { return !localStorage.getItem('cp_planning_tips_dismissed'); } catch { return true; } });
+  const [mobileWeekDay, setMobileWeekDay] = useState(0); // index into weekDays for mobile week grid
+  const weekGridRef = useRef(null);
   const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
@@ -60,6 +62,21 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return weekDays;
   };
   const weekDays = getWeekDays();
+
+  // Auto-scroll week grid to current time
+  useEffect(() => {
+    if (viewMode === 'week' && weekGridRef.current) {
+      const now = new Date();
+      const scrollTo = Math.max(0, ((now.getHours() - 7) * 60 + now.getMinutes()) - 60);
+      setTimeout(() => weekGridRef.current?.scrollTo({ top: scrollTo, behavior: 'smooth' }), 100);
+    }
+  }, [viewMode]);
+
+  // Reset mobileWeekDay to today when navigating weeks
+  useEffect(() => {
+    const todayIdx = weekDays.findIndex(d => formatLocalDate(d) === formatLocalDate(new Date()));
+    if (todayIdx >= 0) setMobileWeekDay(todayIdx);
+  }, [date]);
 
   const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -460,51 +477,167 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </div>
           </>
         ) : viewMode === 'week' ? (
-          // Week view with drag & drop
-          <div className="divide-y divide-slate-200 dark:divide-slate-700">
-            {weekDays.map((dayDate, i) => {
-              const dayEvents = getEventsForDate(dayDate);
-              const isToday = dayDate.toDateString() === new Date().toDateString();
+          // Week view — hourly grid (Google Calendar style)
+          (() => {
+            const HOUR_START = 7;
+            const HOUR_END = 20;
+            const HOURS = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
+            const HOUR_HEIGHT = 60; // px per hour slot
+            const TOTAL_HEIGHT = HOURS.length * HOUR_HEIGHT;
+            const todayStr = formatLocalDate(new Date());
+
+            const getEventPos = (ev) => {
+              if (!ev.time) return null;
+              const [h, m] = ev.time.split(':').map(Number);
+              const topMins = (h - HOUR_START) * 60 + (m || 0);
+              if (topMins < 0) return null;
+              const top = (topMins / 60) * HOUR_HEIGHT;
+              const dur = ev.duration || 60;
+              const height = Math.max((dur / 60) * HOUR_HEIGHT, 22);
+              return { top, height };
+            };
+
+            // Current time indicator
+            const now = new Date();
+            const nowMins = (now.getHours() - HOUR_START) * 60 + now.getMinutes();
+            const nowTop = nowMins >= 0 && nowMins <= (HOUR_END - HOUR_START + 1) * 60 ? (nowMins / 60) * HOUR_HEIGHT : null;
+
+            // Render a single day column
+            const renderDayColumn = (dayDate, dayIdx, style = {}) => {
+              const dayEvts = getEventsForDate(dayDate);
+              const isToday = formatLocalDate(dayDate) === todayStr;
               const dateStr = formatLocalDate(dayDate);
+              const allDayEvts = dayEvts.filter(ev => !ev.time);
+              const timedEvts = dayEvts.filter(ev => ev.time);
+
               return (
-                <div key={i} className={`flex ${isToday ? (isDark ? 'bg-slate-700/30' : 'bg-blue-50/50') : ''}`}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id) moveEvent(id, dateStr); }}
-                >
-                  <div className={`w-20 sm:w-28 p-3 flex-shrink-0 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <p className={`text-xs ${textMuted}`}>{JOURS_FULL[i].slice(0, 3)}</p>
-                    <p className={`text-lg sm:text-xl font-bold cursor-pointer hover:underline ${isToday ? '' : textPrimary}`} style={isToday ? { color: couleur } : {}} onClick={() => { setDate(dayDate); setViewMode('day'); }}>{dayDate.getDate()}</p>
-                  </div>
-                  <div className="flex-1 p-2 min-h-[80px]" onClick={() => handleQuickAdd(dateStr)}>
-                    {dayEvents.length === 0 ? (
-                      <p className={`text-xs ${textMuted} py-2`}>Aucun événement</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {dayEvents.map(ev => {
-                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-                          const eventColor = getEventColor(ev);
-                          return (
-                            <div key={ev.id} draggable={!ev.isChantier} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all border-l-4 ${isDark ? 'hover:bg-slate-700 bg-slate-800/50' : 'hover:bg-slate-100 bg-slate-50'}`} style={{ borderLeftColor: eventColor }}>
-                              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${eventColor}20` }}>
-                                <TypeIcon size={18} style={{ color: eventColor }} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-medium" style={{ color: eventColor }}>{TYPE_LABELS[ev.type] || 'Événement'}</span>
-                                  {ev.time && <span className={`text-xs ${textMuted}`}>• {ev.time}</span>}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                <div key={dayIdx} className={`relative border-l ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ height: TOTAL_HEIGHT, ...style }}>
+                  {/* Hour grid lines */}
+                  {HOURS.map(h => (
+                    <div key={h} className={`absolute left-0 right-0 border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                      onClick={() => { setForm(f => ({ ...f, date: dateStr, time: `${String(h).padStart(2, '0')}:00` })); setShowAdd(true); }} />
+                  ))}
+                  {/* Current time indicator */}
+                  {isToday && nowTop !== null && (
+                    <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center" style={{ top: nowTop }}>
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1.5 flex-shrink-0" />
+                      <div className="flex-1 h-0.5 bg-red-500" />
+                    </div>
+                  )}
+                  {/* Timed event blocks */}
+                  {timedEvts.map(ev => {
+                    const pos = getEventPos(ev);
+                    if (!pos) return null;
+                    return (
+                      <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleEventClick(e, ev); }}
+                        draggable={!ev.isChantier} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                        className="absolute left-1 right-1 rounded-lg px-2 py-0.5 text-white text-xs cursor-pointer overflow-hidden hover:shadow-lg hover:brightness-110 transition-all z-10"
+                        style={{ top: pos.top, height: pos.height, background: getEventColor(ev), minHeight: 22 }}>
+                        <p className="font-semibold truncate leading-tight">{ev.title}</p>
+                        {pos.height > 32 && <p className="opacity-80 text-[10px] leading-tight">{ev.time}{ev.duration ? ` · ${formatDuration(ev.duration)}` : ''}</p>}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               );
-            })}
-          </div>
+            };
+
+            return (
+              <div>
+                {/* All-day events row */}
+                {(() => {
+                  const allDayMap = weekDays.map(d => getEventsForDate(d).filter(ev => !ev.time));
+                  const hasAnyAllDay = allDayMap.some(arr => arr.length > 0);
+                  if (!hasAnyAllDay) return null;
+                  return (
+                    <div className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      {/* Desktop all-day */}
+                      <div className="hidden sm:flex">
+                        <div className={`w-14 flex-shrink-0 text-[10px] text-center py-1 ${textMuted}`}>Journée</div>
+                        {weekDays.map((d, i) => (
+                          <div key={i} className={`flex-1 p-1 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[28px]`}>
+                            {allDayMap[i].map(ev => (
+                              <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="text-[10px] px-1.5 py-0.5 rounded text-white cursor-pointer truncate mb-0.5" style={{ background: getEventColor(ev) }}>{ev.title}</div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Mobile all-day */}
+                      <div className="sm:hidden p-2">
+                        {allDayMap[mobileWeekDay]?.map(ev => (
+                          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="text-xs px-2 py-1 rounded-lg text-white cursor-pointer truncate mb-1" style={{ background: getEventColor(ev) }}>{ev.title}</div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Desktop: 7-column grid */}
+                <div className="hidden sm:block">
+                  {/* Day headers */}
+                  <div className="flex border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                    <div className="w-14 flex-shrink-0" />
+                    {weekDays.map((d, i) => {
+                      const isToday = formatLocalDate(d) === todayStr;
+                      return (
+                        <div key={i} className={`flex-1 text-center py-2 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                          <p className={`text-xs ${textMuted}`}>{JOURS[i]}</p>
+                          <p className={`text-sm font-bold ${isToday ? 'text-white w-7 h-7 rounded-full flex items-center justify-center mx-auto' : textPrimary}`} style={isToday ? { background: couleur } : {}}>{d.getDate()}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Scrollable grid */}
+                  <div ref={weekGridRef} className="overflow-y-auto" style={{ maxHeight: 'min(600px, 60vh)' }}>
+                    <div className="flex" style={{ height: TOTAL_HEIGHT }}>
+                      {/* Hour gutter */}
+                      <div className="w-14 flex-shrink-0 relative">
+                        {HOURS.map(h => (
+                          <div key={h} className={`absolute right-2 text-[11px] font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 6 }}>
+                            {String(h).padStart(2, '0')}h
+                          </div>
+                        ))}
+                      </div>
+                      {/* Day columns */}
+                      {weekDays.map((d, i) => renderDayColumn(d, i, { flex: '1 1 0%' }))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile: day tabs + single column */}
+                <div className="sm:hidden">
+                  {/* Day tab selector */}
+                  <div className={`flex overflow-x-auto gap-1 p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                    {weekDays.map((d, i) => {
+                      const isToday = formatLocalDate(d) === todayStr;
+                      const isActive = mobileWeekDay === i;
+                      return (
+                        <button key={i} onClick={() => setMobileWeekDay(i)}
+                          className={`flex-shrink-0 w-11 py-2 rounded-xl text-center transition-all ${isActive ? 'text-white shadow-md' : isToday ? '' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+                          style={isActive ? { background: couleur } : isToday ? { color: couleur } : {}}>
+                          <p className="text-[10px] font-medium">{JOURS[i]}</p>
+                          <p className="text-base font-bold">{d.getDate()}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Single day hourly grid */}
+                  <div className="overflow-y-auto" style={{ maxHeight: 'min(500px, 55vh)' }}>
+                    <div className="flex" style={{ height: TOTAL_HEIGHT }}>
+                      <div className="w-12 flex-shrink-0 relative">
+                        {HOURS.map(h => (
+                          <div key={h} className={`absolute right-1.5 text-[10px] font-medium ${textMuted}`} style={{ top: (h - HOUR_START) * HOUR_HEIGHT - 5 }}>
+                            {String(h).padStart(2, '0')}h
+                          </div>
+                        ))}
+                      </div>
+                      {renderDayColumn(weekDays[mobileWeekDay], mobileWeekDay, { flex: '1 1 0%' })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
         ) : (
           // Day view with hourly slots
           (() => {
