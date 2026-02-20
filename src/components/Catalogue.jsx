@@ -1513,12 +1513,12 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input type="text" placeholder="Rechercher (fuzzy)..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
+                <input type="text" placeholder="Rechercher un article, référence, catégorie..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`} />
               </div>
-              <button onClick={() => setShowFilters(!showFilters)} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
+              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés" className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium transition-all ${showFilters ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={showFilters ? { background: couleur } : {}}>
                 <Filter size={16} /> {activeFilters > 0 && `(${activeFilters})`}
               </button>
-              <button onClick={() => setShowStock(!showStock)} className={`px-4 py-2.5 rounded-xl flex items-center gap-2 ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>
+              <button onClick={() => setShowStock(!showStock)} title="Afficher/masquer la colonne stock" className={`px-4 py-2.5 rounded-xl flex items-center gap-2 ${showStock ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={showStock ? {background: couleur} : {}}>
                 <Box size={16} />
               </button>
             </div>
@@ -1702,9 +1702,19 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {fournisseurs.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <Truck size={40} className={`mx-auto mb-3 ${textMuted}`} />
-              <p className={`font-medium ${textPrimary}`}>Aucun fournisseur</p>
-              <p className={`text-sm ${textMuted} mt-1`}>Ajoutez vos fournisseurs pour comparer les prix</p>
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <Truck size={32} style={{ color: couleur }} />
+              </div>
+              <p className={`text-lg font-bold ${textPrimary}`}>Gérez vos fournisseurs</p>
+              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Centralisez vos contacts fournisseurs, comparez les prix et suivez les délais de livraison.</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+                <button onClick={() => setShowFournisseurForm(true)} className="px-5 py-2.5 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+                  <Plus size={16} /> Ajouter un fournisseur
+                </button>
+                <button onClick={() => fileInputRef.current?.click()} className={`px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border-2 transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                  <Upload size={16} /> Importer depuis CSV
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid gap-3">
@@ -1880,9 +1890,24 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {mouvements.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <ArrowRightLeft size={40} className={`mx-auto mb-3 ${textMuted}`} />
-              <p className={`font-medium ${textPrimary}`}>Aucun mouvement de stock</p>
-              <p className={`text-sm ${textMuted} mt-1`}>Enregistrez les entrées/sorties pour tracer vos stocks</p>
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <ArrowRightLeft size={32} style={{ color: couleur }} />
+              </div>
+              <p className={`text-lg font-bold ${textPrimary}`}>Tracez vos mouvements de stock</p>
+              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Enregistrez les entrées et sorties pour un suivi précis de vos stocks en temps réel.</p>
+              <div className="flex items-center justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>↗</span>
+                  <span className={`text-xs ${textMuted}`}>Entrées</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-700'}`}>↘</span>
+                  <span className={`text-xs ${textMuted}`}>Sorties</span>
+                </div>
+              </div>
+              <button onClick={() => setShowMouvementForm(true)} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+                <Plus size={16} /> Enregistrer un mouvement
+              </button>
             </div>
           ) : filteredMouvements.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
@@ -1978,9 +2003,19 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {packs.length === 0 ? (
             <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <Layers size={40} className={`mx-auto mb-3 ${textMuted}`} />
-              <p className={`font-medium ${textPrimary}`}>Aucun pack/kit</p>
-              <p className={`text-sm ${textMuted} mt-1`}>Combinez des articles en packs pour ajout rapide aux devis</p>
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <Layers size={32} style={{ color: couleur }} />
+              </div>
+              <p className={`text-lg font-bold ${textPrimary}`}>Créez des packs / kits</p>
+              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Regroupez plusieurs articles fréquemment utilisés ensemble pour les ajouter d'un clic à vos devis.</p>
+              <div className={`flex flex-wrap justify-center gap-2 mt-4`}>
+                {['Kit salle de bain', 'Pack électricité cuisine', 'Pack peinture complète'].map(ex => (
+                  <span key={ex} className={`text-[11px] px-2.5 py-1 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{ex}</span>
+                ))}
+              </div>
+              <button onClick={() => setShowPackForm(true)} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+                <PackagePlus size={16} /> Créer un pack
+              </button>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -2194,21 +2229,21 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             {/* Stats */}
             {stockItems.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Nombre d'articles avec gestion de stock activée">
                   <p className={`text-[11px] ${textMuted}`}>Articles suivis</p>
                   <p className="text-xl font-bold" style={{ color: couleur }}>{stockItems.length}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Articles dont le stock actuel est inférieur au minimum défini">
                   <p className={`text-[11px] ${textMuted}`}>Stock bas</p>
                   <p className={`text-xl font-bold ${alertesStock.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{alertesStock.length}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Valeur totale du stock au prix d'achat">
                   <p className={`text-[11px] ${textMuted}`}>Valeur stock</p>
-                  <p className="text-xl font-bold text-blue-500">{modeDiscret ? '·····' : `${(stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0) / 1000).toFixed(1)}k€`}</p>
+                  <p className="text-xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0) / 1000).toFixed(1)}k€`}</p>
                 </div>
-                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Date du dernier comptage physique">
                   <p className={`text-[11px] ${textMuted}`}>Dernier inventaire</p>
-                  <p className={`text-sm font-bold ${textPrimary}`}>{lastInventaire ? new Date(lastInventaire.date).toLocaleDateString('fr-FR') : '—'}</p>
+                  <p className={`text-sm font-bold ${lastInventaire ? textPrimary : 'text-amber-500'}`}>{lastInventaire ? new Date(lastInventaire.date).toLocaleDateString('fr-FR') : 'Jamais effectué'}</p>
                 </div>
               </div>
             )}
@@ -2226,7 +2261,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <button onClick={() => setActiveTab('catalogue')} className="mt-2 text-sm font-medium" style={{ color: couleur }}>Aller au catalogue</button>
                 </div>
               ) : (
-                <button onClick={startInventaire} className="px-8 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg" style={{ background: couleur }}>
+                <button onClick={async () => {
+                  const confirmed = await confirm({ title: 'Démarrer un inventaire', message: `Vous allez compter ${stockItems.length} article${stockItems.length > 1 ? 's' : ''}. Les écarts seront enregistrés comme ajustements de stock.` });
+                  if (confirmed) startInventaire();
+                }} className="px-8 py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg" style={{ background: couleur }}>
                   <RefreshCw size={18} /> Démarrer l'inventaire ({stockItems.length} articles)
                 </button>
               )}
@@ -2260,7 +2298,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       {activeTab === 'parametres' && (
         <div className="space-y-4">
           <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Percent size={16} style={{ color: couleur }} /> Coefficients par catégorie</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Percent size={16} style={{ color: couleur }} /> Coefficients par catégorie</h3>
+              {coefSaved && (
+                <span className="text-xs text-emerald-500 flex items-center gap-1">
+                  <Check size={12} /> Sauvegardé
+                </span>
+              )}
+            </div>
             <p className={`text-sm ${textMuted} mb-4`}>Le prix de vente sera automatiquement calculé: Prix achat × Coefficient</p>
             <div className="space-y-3">
               {CATEGORIES.filter(c => c !== 'Tous').map(cat => (
@@ -2268,9 +2313,9 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <span className={`font-medium flex-1 min-w-0 truncate ${textPrimary}`}>{cat}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-sm ${textMuted}`}>×</span>
-                    <input type="number" step="0.1" min="1" className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`} value={coefficients[cat] || 1.5} onChange={e => setCoefficients(prev => ({...prev, [cat]: parseFloat(e.target.value) || 1.5}))} />
+                    <input type="number" step="0.1" min="1" max="5" className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`} value={coefficients[cat] || 1.5} onChange={e => { const val = Math.max(1, Math.min(5, parseFloat(e.target.value) || 1.5)); setCoefficients(prev => ({...prev, [cat]: val})); setCoefSaved(true); setTimeout(() => setCoefSaved(false), 2000); }} />
                   </div>
-                  <span className={`text-xs ${textMuted} w-36 text-right flex-shrink-0 hidden sm:block`}>100€ achat → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} vente</span>
+                  <span className={`text-xs ${textMuted} w-48 text-right flex-shrink-0 hidden sm:block`}>100€ → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} <span className="font-medium" style={{ color: couleur }}>(+{(((coefficients[cat] || 1.5) - 1) * 100).toFixed(0)}%)</span></span>
                 </div>
               ))}
             </div>
