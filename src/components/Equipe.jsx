@@ -35,6 +35,14 @@ const useSmartClockingStub = () => ({
 // Storage key for timer persistence
 const TIMER_STORAGE_KEY = 'chantierpro_equipe_timer';
 
+// #6: Filter out test/demo chantiers from quick pointage
+const FILTERED_TEST_NAMES = ['test', 'demo', 'essai', 'test1', 'test2', 'brouillon'];
+const isTestChantier = (ch) => {
+  if (!ch?.nom) return false;
+  const lower = ch.nom.toLowerCase().trim();
+  return FILTERED_TEST_NAMES.some(t => lower === t || lower.startsWith(t + ' '));
+};
+
 // Local date helper — avoids toISOString() UTC timezone shift (J-1 bug)
 const formatLocalDate = (dateObj) => {
   const y = dateObj.getFullYear();
@@ -43,7 +51,7 @@ const formatLocalDate = (dateObj) => {
   return `${y}-${m}-${d}`;
 };
 
-export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp, updateEmployee: updateEmployeeProp, deleteEmployee: deleteEmployeeProp, pointages, setPointages, addPointage: addPointageProp, chantiers, couleur, isDark, modeDiscret, setPage }) {
+export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp, updateEmployee: updateEmployeeProp, deleteEmployee: deleteEmployeeProp, pointages, setPointages, addPointage: addPointageProp, chantiers, planningEvents = [], couleur, isDark, modeDiscret, setPage }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -137,6 +145,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   // Vue Terrain mode
   const [showTerrainView, setShowTerrainView] = useState(false);
+  // #4: Quick Pointer modal
+  const [showPointerModal, setShowPointerModal] = useState(false);
+  const [pointerForm, setPointerForm] = useState({ employeId: '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' });
   // Per-chantier active timers tracking (for Vue Terrain)
   const [terrainTimers, setTerrainTimers] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_terrain_timers') || '{}'); } catch { return {}; }
@@ -283,6 +294,25 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const totalWeekHours = weekPointages.reduce((s, p) => s + (p.heures || 0), 0);
   const approvedWeekHours = weekPointages.filter(p => p.approuve).reduce((s, p) => s + (p.heures || 0), 0);
   const pointagesEnAttente = pointages.filter(p => !p.approuve && !p.verrouille);
+
+  // #1 Fix: heuresCible = nombre d'employés actifs × heures contractuelles hebdo (35h par défaut)
+  const activeEmployeeCount = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length;
+  const heuresCible = activeEmployeeCount * 35;
+  const progressPercent = heuresCible > 0 ? Math.min((totalWeekHours / heuresCible) * 100, 100) : 0;
+  const approvedPercent = heuresCible > 0 ? Math.min((approvedWeekHours / heuresCible) * 100, 100) : 0;
+  // Progressive color: <50% red, 50-80% orange, >80% green
+  const progressColor = progressPercent === 0 ? '#94a3b8' : progressPercent < 50 ? '#ef4444' : progressPercent < 80 ? '#f59e0b' : '#22c55e';
+
+  // #2 Fix: Conditional banner color based on week state
+  const getBannerGradient = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon
+    const allValidated = totalWeekHours > 0 && approvedWeekHours >= totalWeekHours;
+    if (weekOffset !== 0) return 'linear-gradient(135deg, #64748b, #475569)'; // past weeks: neutral
+    if (allValidated && totalWeekHours > 0) return 'linear-gradient(135deg, #059669, #047857)'; // all validated: green
+    if (dayOfWeek >= 1 && dayOfWeek <= 2 && totalWeekHours === 0) return 'linear-gradient(135deg, #3b82f6, #2563eb)'; // Mon-Tue at 0h: blue
+    return 'linear-gradient(135deg, #ea580c, #c2410c)'; // mid-week default: orange
+  };
 
   // Today's activity
   const today = formatLocalDate(new Date());
@@ -1165,7 +1195,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier *</label>
-            <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={bulkForm.chantierId} onChange={e => setBulkForm(p => ({...p, chantierId: e.target.value}))}>
+            <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={bulkForm.chantierId} onChange={e => setBulkForm(p => ({...p, chantierId: e.target.value}))} aria-label="Sélectionner un chantier pour la saisie groupée">
               <option value="">Sélectionner...</option>
               {chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
@@ -1178,13 +1208,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Heures *</label>
             <div className="flex gap-2">
               <input type="number" step="0.5" className={`flex-1 px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={bulkForm.heures} onChange={e => setBulkForm(p => ({...p, heures: e.target.value}))} placeholder="8" />
-              {/* Quick hour buttons */}
-              <div className="flex gap-1">
-                {[7, 8, 10].map(h => (
+              {/* Quick hour buttons — #5: added 6h, 12h, flex-wrap */}
+              <div className="flex flex-wrap gap-1">
+                {[6, 7, 8, 10, 12].map(h => (
                   <button
                     key={h}
                     onClick={() => setBulkForm(p => ({ ...p, heures: h.toString() }))}
-                    className={`px-2 py-1 rounded-lg text-xs font-medium min-h-[44px] transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium min-h-[44px] transition-all ${
                       bulkForm.heures === h.toString()
                         ? 'text-white'
                         : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
@@ -1240,9 +1270,22 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
         <div className={`flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <button onClick={() => setShowBulkEntry(false)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
-          <button onClick={addBulkPointages} disabled={!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50" style={{background: couleur}}>
-            <Plus size={16} /> Ajouter {bulkForm.selectedEmployees.length} pointage{bulkForm.selectedEmployees.length > 1 ? 's' : ''}
-          </button>
+          <div className="relative group">
+            <button
+              onClick={addBulkPointages}
+              disabled={!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0 || !bulkForm.heures}
+              className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              style={{ background: couleur }}
+              title={!bulkForm.chantierId ? 'Sélectionnez un chantier' : bulkForm.selectedEmployees.length === 0 ? 'Sélectionnez au moins un employé' : !bulkForm.heures ? 'Indiquez les heures' : ''}
+            >
+              <Plus size={16} /> Ajouter {bulkForm.selectedEmployees.length} pointage{bulkForm.selectedEmployees.length > 1 ? 's' : ''}
+            </button>
+            {(!bulkForm.chantierId || bulkForm.selectedEmployees.length === 0 || !bulkForm.heures) && (
+              <p className={`text-xs mt-1 ${isDark ? 'text-amber-400' : 'text-amber-600'} text-right`}>
+                {!bulkForm.chantierId ? 'Chantier requis' : bulkForm.selectedEmployees.length === 0 ? 'Sélectionnez des employés' : 'Heures requises'}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1376,12 +1419,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </button>
           )}
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{isSousTraitants ? 'Sous-traitants' : 'Équipe & Heures'}</h1>
-          {/* Online indicator */}
-          <span className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${
-            isOnline
-              ? isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-              : isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'
-          }`}>
+          {/* Online indicator — #9: tooltip explaining sync status */}
+          <span
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs cursor-help ${
+              isOnline
+                ? isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                : isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'
+            }`}
+            title={isOnline ? 'Synchronisation active — les pointages sont sauvegardés en temps réel' : 'Mode hors ligne — les pointages seront synchronisés à la reconnexion'}
+            role="status"
+            aria-label={isOnline ? 'En ligne : synchronisation active' : 'Hors ligne : synchronisation en attente'}
+          >
             {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
             {isOnline ? 'En ligne' : 'Hors ligne'}
           </span>
@@ -1414,7 +1462,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
           {!isSousTraitants && (
             <>
-              <button onClick={() => setShowTerrainView(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg">
+              <button onClick={() => { setPointerForm({ employeId: equipe.length === 1 ? equipe[0].id : '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' }); setShowPointerModal(true); }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg" aria-label="Pointer des heures">
                 <HardHat size={16} /> <span className="hidden sm:inline">Pointer</span>
               </button>
               <button onClick={() => setShowBulkEntry(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
@@ -1433,7 +1481,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         {/* Week Hero Card with Navigation */}
         <motion.div
           className="col-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden shadow-lg"
-          style={{ background: `linear-gradient(135deg, #ea580c, #c2410c)` }}
+          style={{ background: getBannerGradient() }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -1484,19 +1532,25 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar — fixed: heuresPointées / heuresCible */}
             <div className="relative">
               <div className="h-4 bg-black/20 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-white rounded-full"
+                  className="h-full rounded-full"
+                  style={{ background: progressColor }}
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((approvedWeekHours / totalWeekHours) * 100, 100) || 0}%` }}
+                  animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               </div>
-              <p className="text-sm mt-2 text-white text-right font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                {totalWeekHours > 0 ? `${Math.round((approvedWeekHours / totalWeekHours) * 100)}% des heures validées` : 'Aucune heure cette semaine'}
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-white/70" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                  {heuresCible > 0 ? `Objectif : ${heuresCible}h` : 'Aucun employé actif'}
+                </p>
+                <p className="text-sm text-white font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                  {heuresCible > 0 ? `${Math.round(progressPercent)}% pointé` : 'Aucune heure cette semaine'}
+                </p>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1704,7 +1758,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       )}
 
       {/* Enhanced Tab Navigation */}
-      <div className={`p-1.5 rounded-2xl relative ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+      {/* #12: Accessible tab navigation */}
+      <div className={`p-1.5 rounded-2xl relative ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} role="tablist" aria-label="Navigation des onglets Équipe">
         <div className="flex gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
           {(isSousTraitants ? [
@@ -1724,6 +1779,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <button
               key={key}
               onClick={() => setTab(key)}
+              role="tab"
+              aria-selected={tab === key}
+              aria-controls={`panel-${key}`}
+              id={`tab-${key}`}
+              tabIndex={tab === key ? 0 : -1}
+              onKeyDown={(e) => {
+                const tabKeys = (isSousTraitants ? ['overview', 'couts'] : ['overview', 'planning', 'pointage', 'validation', 'conges', 'chat', 'competences', 'productivite', 'historique']);
+                const idx = tabKeys.indexOf(key);
+                if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
+              }}
               className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
                 tab === key
                   ? 'text-white shadow-lg'
@@ -1948,6 +2014,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
                       whileHover={{ y: -2 }}
+                      tabIndex={0}
+                      aria-label={`Fiche de ${e.prenom || ''} ${e.nom} — ${e.role || 'Employé'}`}
                     >
                       {/* Card Header with gradient */}
                       <div
@@ -2148,12 +2216,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
                                 </p>
                               </div>
-                              <div className="p-3 rounded-xl text-center" style={{ background: `${couleur}15` }}>
-                                <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
-                                <p className="text-xl font-bold" style={{ color: couleur }}>
-                                  {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
-                                </p>
-                              </div>
+                              {/* #8: KPI Ce mois — conditional color */}
+                              {(() => {
+                                const dayOfMonth = new Date().getDate();
+                                const kpiColor = monthHours > 0 ? couleur : dayOfMonth <= 5 ? '#94a3b8' : '#f59e0b';
+                                const kpiBg = monthHours > 0 ? `${couleur}15` : dayOfMonth <= 5 ? 'rgba(148,163,184,0.1)' : 'rgba(245,158,11,0.1)';
+                                return (
+                                  <div className="p-3 rounded-xl text-center" style={{ background: kpiBg }}>
+                                    <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
+                                    <p className="text-xl font-bold" style={{ color: kpiColor }}>
+                                      {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
+                                    </p>
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             {/* Margin indicator */}
@@ -2168,12 +2244,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           </>
                         )}
 
-                        {/* Mobile quick pointage: one-tap start on active chantiers */}
-                        {!isSousTraitants && chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                        {/* Mobile quick pointage: one-tap start on active chantiers — #6: filter test names */}
+                        {!isSousTraitants && chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
                           <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>Pointage rapide</p>
                             <div className="flex flex-wrap gap-1.5">
-                              {chantiers.filter(c => c.statut === 'en_cours').slice(0, 4).map(ch => {
+                              {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 4).map(ch => {
                                 const isRunningHere = chrono.running && chrono.chantierId === ch.id && chrono.employeId === e.id;
                                 // Discriminant: if duplicate names, add start date
                                 const dupes = chantiers.filter(c2 => c2.statut === 'en_cours' && c2.nom === ch.nom);
@@ -2720,6 +2796,82 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </button>
               </div>
             </div>
+
+            {/* #3: Pointage history table */}
+            {(() => {
+              const recentPointages = pointages
+                .filter(p => {
+                  const d = new Date(p.date);
+                  return d >= weekStart && d <= weekEnd;
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              if (recentPointages.length === 0) return (
+                <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
+                  <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                    <Timer size={28} style={{ color: couleur }} />
+                  </div>
+                  <p className={`font-semibold ${textPrimary} mb-1`}>Aucun pointage cette semaine</p>
+                  <p className={`text-sm ${textMuted} max-w-sm mx-auto`}>
+                    Utilisez le chronomètre ci-dessus ou la saisie manuelle pour enregistrer les heures travaillées.
+                  </p>
+                </div>
+              );
+
+              return (
+                <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
+                  <div className="p-4 flex items-center justify-between">
+                    <h3 className={`font-semibold ${textPrimary} flex items-center gap-2`}>
+                      <History size={18} style={{ color: couleur }} />
+                      Pointages de la semaine
+                    </h3>
+                    <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                      {recentPointages.length} entrée{recentPointages.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px]">
+                      <thead>
+                        <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                          <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Employé</th>
+                          <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Chantier</th>
+                          <th className={`text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Date</th>
+                          <th className={`text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Heures</th>
+                          <th className={`text-center px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${textMuted}`}>Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentPointages.map(p => {
+                          const emp = equipe.find(e => e.id === p.employeId);
+                          const ch = chantiers.find(c => c.id === p.chantierId);
+                          return (
+                            <tr key={p.id} className={`border-t ${isDark ? 'border-slate-700 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
+                              <td className={`px-4 py-3 text-sm font-medium ${textPrimary}`}>
+                                {emp ? `${emp.prenom || ''} ${emp.nom}`.trim() : 'Inconnu'}
+                              </td>
+                              <td className={`px-4 py-3 text-sm ${textMuted}`}>{ch?.nom || '—'}</td>
+                              <td className={`px-4 py-3 text-sm ${textMuted}`}>
+                                {new Date(p.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                              </td>
+                              <td className={`px-4 py-3 text-sm text-right font-bold ${textPrimary}`}>{p.heures}h</td>
+                              <td className="px-4 py-3 text-center">
+                                {p.verrouille ? (
+                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Verrouillé</span>
+                                ) : p.approuve ? (
+                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Validé</span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">En attente</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
@@ -3654,6 +3806,141 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         )}
       </AnimatePresence>
 
+      {/* ============ #4: POINTER MODAL ============ */}
+      <AnimatePresence>
+        {showPointerModal && (
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowPointerModal(false)} />
+            <motion.div
+              className={`relative w-full max-w-md rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl overflow-hidden`}
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+            >
+              <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><HardHat size={20} /></div>
+                    <div>
+                      <h2 className="text-lg font-bold">Pointer</h2>
+                      <p className="text-sm text-white/70">Saisie rapide de pointage</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowPointerModal(false)} className="p-2 rounded-lg bg-white/20 hover:bg-white/30"><X size={18} /></button>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Employé *</label>
+                  <select
+                    className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    value={pointerForm.employeId}
+                    onChange={e => setPointerForm(p => ({ ...p, employeId: e.target.value }))}
+                    aria-label="Sélectionner un employé"
+                  >
+                    <option value="">Sélectionner...</option>
+                    {equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').map(e => (
+                      <option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Chantier *</label>
+                  <select
+                    className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    value={pointerForm.chantierId}
+                    onChange={e => setPointerForm(p => ({ ...p, chantierId: e.target.value }))}
+                    aria-label="Sélectionner un chantier"
+                  >
+                    <option value="">Sélectionner...</option>
+                    {chantiers.filter(c => c.statut === 'en_cours').map(c => (
+                      <option key={c.id} value={c.id}>{c.nom}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Date</label>
+                  <input
+                    type="date"
+                    className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    value={pointerForm.date}
+                    onChange={e => setPointerForm(p => ({ ...p, date: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Durée</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {[7, 8, 9, 10].map(h => (
+                      <button
+                        key={h}
+                        onClick={() => setPointerForm(p => ({ ...p, heures: h.toString() }))}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] transition-all ${
+                          pointerForm.heures === h.toString()
+                            ? 'text-white shadow-md'
+                            : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                        style={pointerForm.heures === h.toString() ? { background: '#059669' } : {}}
+                      >
+                        {h}h
+                      </button>
+                    ))}
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        max="24"
+                        placeholder="Autre"
+                        className={`w-20 px-3 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                        value={![7, 8, 9, 10].map(String).includes(pointerForm.heures) ? pointerForm.heures : ''}
+                        onChange={e => setPointerForm(p => ({ ...p, heures: e.target.value }))}
+                      />
+                      <span className={`text-sm ${textMuted}`}>h</span>
+                    </div>
+                  </div>
+                </div>
+                <div className={`flex gap-3 pt-2 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <button onClick={() => setShowPointerModal(false)} className={`flex-1 px-4 py-3 rounded-xl min-h-[44px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures) {
+                        showToast('Remplissez tous les champs obligatoires', 'error');
+                        return;
+                      }
+                      const existing = pointages.find(p => p.employeId === pointerForm.employeId && p.date === pointerForm.date && p.chantierId === pointerForm.chantierId);
+                      if (existing) {
+                        showToast('Pointage déjà existant pour cet employé/chantier/date', 'error');
+                        return;
+                      }
+                      setPointages([...pointages, {
+                        id: generateId(),
+                        employeId: pointerForm.employeId,
+                        chantierId: pointerForm.chantierId,
+                        date: pointerForm.date,
+                        heures: parseFloat(pointerForm.heures),
+                        approuve: false,
+                        manuel: true,
+                        verrouille: false,
+                        note: 'Pointage rapide'
+                      }]);
+                      const emp = equipe.find(e => e.id === pointerForm.employeId);
+                      showToast(`${parseFloat(pointerForm.heures)}h ajoutées pour ${emp?.prenom || emp?.nom || 'employé'}`, 'success');
+                      setShowPointerModal(false);
+                    }}
+                    disabled={!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures}
+                    className="flex-1 px-4 py-3 rounded-xl min-h-[44px] text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+                    style={{ background: '#059669' }}
+                  >
+                    <Check size={18} />
+                    Pointer
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ============ VUE TERRAIN MODAL ============ */}
       <AnimatePresence>
         {showTerrainView && (
@@ -3806,6 +4093,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 initial={{ scale: 0.9, y: 40 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 40 }}
+                role="dialog"
+                aria-label={`Fiche employé : ${emp.prenom} ${emp.nom}`}
+                aria-modal="true"
               >
                 {/* Header with gradient */}
                 <div className="relative p-6 text-white" style={{ background: `linear-gradient(135deg, ${config.color}, ${config.color}cc)` }}>
@@ -3847,12 +4137,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     )}
                   </div>
 
-                  {/* POINTAGE RAPIDE — Mobile-first, visible sans scroll */}
-                  {chantiers.filter(c => c.statut === 'en_cours').length > 0 && (
+                  {/* POINTAGE RAPIDE — Mobile-first, visible sans scroll — #6: filter test names */}
+                  {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
                     <div className={`p-3 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800/50' : 'bg-emerald-50 border border-emerald-200'}`}>
                       <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>⚡ Pointage rapide</p>
                       <div className="flex flex-wrap gap-2">
-                        {chantiers.filter(c => c.statut === 'en_cours').slice(0, 4).map(ch => {
+                        {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 3).map(ch => {
                           const isRunning = chrono.running && chrono.chantierId === ch.id && chrono.employeId === emp.id;
                           return (
                             <button
@@ -4121,6 +4411,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               const palette = ['#f97316','#3b82f6','#22c55e','#8b5cf6','#ec4899','#eab308','#14b8a6','#ef4444'];
               activeChantiers.forEach((c, i) => { chantierColors[c.id] = palette[i % palette.length]; });
 
+              // #11: Planning events for this week (filter by type 'chantier' or any with chantierId)
+              const weekPlanningEvents = planningEvents.filter(ev => {
+                if (!ev.date) return false;
+                const evDate = new Date(ev.date + 'T00:00:00');
+                return evDate >= weekStart && evDate <= weekEnd && (ev.type === 'chantier' || ev.chantierId);
+              });
+
               // Get pointages for each employee/day
               const getCellPointage = (empId, day) => {
                 const dayStr = formatLocalDate(day);
@@ -4182,6 +4479,40 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     ))}
                     {activeChantiers.length === 0 && <p className={`text-sm ${textMuted}`}>Aucun chantier en cours</p>}
                   </div>
+
+                  {/* #11: Planning events from Planning module */}
+                  {weekPlanningEvents.length > 0 && (
+                    <div className={`rounded-2xl border ${cardBg} p-4`}>
+                      <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
+                        <CalendarDays size={16} style={{ color: couleur }} />
+                        Événements planning ({weekPlanningEvents.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {weekPlanningEvents.map(ev => {
+                          const ch = chantiers.find(c => c.id === ev.chantierId);
+                          return (
+                            <div key={ev.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                              <div className="w-2 h-2 rounded-full" style={{ background: ev.chantierId ? (chantierColors[ev.chantierId] || couleur) : couleur }} />
+                              <span className={`font-medium ${textPrimary}`}>{ev.title || ch?.nom || 'Événement'}</span>
+                              <span className={textMuted}>
+                                {new Date(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {weekPlanningEvents.length === 0 && equipe.length > 0 && activeChantiers.length > 0 && (
+                    <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
+                      <p className={`text-sm ${textMuted}`}>
+                        Aucun événement planning cette semaine.{' '}
+                        <button onClick={() => setPage('planning')} className="underline font-medium" style={{ color: couleur }}>
+                          Aller au planning
+                        </button>
+                      </p>
+                    </div>
+                  )}
 
                   {/* Planning grid */}
                   <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
@@ -4451,75 +4782,111 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     )}
                   </div>
 
-                  {/* Matching suggestions for active chantiers */}
-                  {activeChantiers.length > 0 && equipe.length > 0 && (
-                    <div className={`rounded-2xl border ${cardBg} p-4`}>
-                      <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Sparkles size={20} style={{color: couleur}} /> Suggestions d'affectation</h3>
-                      <div className="space-y-5">
-                        {activeChantiers.slice(0, 3).map(chantier => {
-                          const matches = equipe.filter(emp => emp.actif !== false && emp.contrat !== 'sous_traitant').map(emp => ({ emp, ...getMatchScore(emp, chantier) })).sort((a, b) => b.score - a.score);
-                          const bestMatches = matches.filter(m => m.score > 0);
-                          const noQualified = bestMatches.length === 0 || bestMatches[0].score === 0;
-                          return (
-                            <div key={chantier.id} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
-                              <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>
-                                <Building2 size={14} className="inline mr-1" />{chantier.nom}
-                              </p>
-                              {/* No qualified employees alert */}
-                              {noQualified && (
-                                <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${isDark ? 'bg-amber-900/30 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
-                                  <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
-                                  <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                                    Aucun membre qualifié — <button onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }} className="underline font-medium">Sous-traitant ?</button>
-                                  </p>
-                                </div>
-                              )}
-                              <div className="space-y-2">
-                                {matches.slice(0, 4).map(({ emp, score, matching, missing }) => (
-                                  <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'} ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getRoleConfig(emp.role).color }}>
-                                      {emp.prenom?.[0]}{emp.nom?.[0]}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom} {emp.nom?.[0]}.</p>
-                                        <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444', background: score >= 75 ? '#22c55e15' : score >= 50 ? '#f59e0b15' : '#ef444415' }}>
-                                          {score}%
-                                        </span>
-                                      </div>
-                                      {/* Reasoning: matching + missing skills */}
-                                      <div className="flex flex-wrap gap-1 mt-0.5">
-                                        {matching.map(s => (
-                                          <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>✅ {s}</span>
-                                        ))}
-                                        {missing.map(s => (
-                                          <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-500'}`}>❌ {s}</span>
-                                        ))}
-                                        {matching.length === 0 && missing.length === 0 && (
-                                          <span className={`text-[10px] ${textMuted}`}>Pas de compétences requises détectées</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {/* Affecter button */}
-                                    <button
-                                      onClick={() => {
-                                        quickStartTimer(emp.id, chantier.id);
-                                        showToast(`${emp.prenom} affecté à ${chantier.nom}`, 'success');
-                                      }}
-                                      className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[36px]"
-                                      style={{ backgroundColor: couleur }}
-                                    >
-                                      Affecter
-                                    </button>
+                  {/* Matching suggestions for active chantiers — #7: dedup by chantierId, full skill names, progress bars */}
+                  {(() => {
+                    // Deduplicate chantiers by id using Map
+                    const uniqueChantiers = [...new Map(activeChantiers.map(c => [c.id, c])).values()].slice(0, 3);
+                    if (uniqueChantiers.length === 0 || equipe.length === 0) return null;
+
+                    // Capitalize skill name helper
+                    const capitalizeSkill = (s) => {
+                      if (!s) return s;
+                      const full = s.replace(/électri/i, 'Électricité').replace(/plomb/i, 'Plomberie').replace(/carrel/i, 'Carrelage')
+                        .replace(/peintr/i, 'Peinture').replace(/maçon/i, 'Maçonnerie').replace(/menuise/i, 'Menuiserie')
+                        .replace(/plaqu/i, 'Plaquiste').replace(/isol/i, 'Isolation').replace(/charpent/i, 'Charpente')
+                        .replace(/couver/i, 'Couverture').replace(/cuisin/i, 'Cuisine').replace(/salle de bain/i, 'Salle de bain');
+                      return full.charAt(0).toUpperCase() + full.slice(1);
+                    };
+
+                    return (
+                      <div className={`rounded-2xl border ${cardBg} p-4`}>
+                        <h3 className={`text-lg font-bold ${textPrimary} mb-3 flex items-center gap-2`}><Sparkles size={20} style={{color: couleur}} /> Suggestions d'affectation</h3>
+                        <div className="space-y-5">
+                          {uniqueChantiers.map(chantier => {
+                            const matches = equipe.filter(emp => emp.actif !== false && emp.contrat !== 'sous_traitant').map(emp => ({ emp, ...getMatchScore(emp, chantier) })).sort((a, b) => b.score - a.score);
+                            const bestMatches = matches.filter(m => m.score > 0);
+                            const noQualified = bestMatches.length === 0 || bestMatches[0].score === 0;
+                            return (
+                              <div key={chantier.id} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+                                <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>
+                                  <Building2 size={14} className="inline mr-1" />{chantier.nom}
+                                </p>
+                                {noQualified && (
+                                  <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${isDark ? 'bg-amber-900/30 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
+                                    <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
+                                    <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                                      Aucun membre qualifié — <button onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }} className="underline font-medium">Sous-traitant ?</button>
+                                    </p>
                                   </div>
-                                ))}
+                                )}
+                                <div className="space-y-2">
+                                  {matches.slice(0, 4).map(({ emp, score, matching, missing }) => (
+                                    <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'} ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getRoleConfig(emp.role).color }}>
+                                        {emp.prenom?.[0]}{emp.nom?.[0]}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <p className={`text-sm font-medium ${textPrimary}`}>{emp.prenom} {emp.nom?.[0]}.</p>
+                                          {/* #7: Mini progress bar for compatibility score */}
+                                          <div className="flex items-center gap-1.5 flex-1 max-w-[120px]">
+                                            <div className={`flex-1 h-1.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                                              <div
+                                                className="h-full rounded-full transition-all"
+                                                style={{ width: `${score}%`, background: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}
+                                              />
+                                            </div>
+                                            <span className="text-[10px] font-bold" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                              {score}%
+                                            </span>
+                                          </div>
+                                        </div>
+                                        {/* #7: Full capitalized skill names */}
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                          {matching.map(s => (
+                                            <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                                              <Check size={8} className="inline mr-0.5" />{capitalizeSkill(s)}
+                                            </span>
+                                          ))}
+                                          {missing.map(s => (
+                                            <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-500'}`}>
+                                              <X size={8} className="inline mr-0.5" />{capitalizeSkill(s)}
+                                            </span>
+                                          ))}
+                                          {matching.length === 0 && missing.length === 0 && (
+                                            <span className={`text-[10px] ${textMuted}`}>Pas de compétences requises détectées</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* #10: Affecter button — now with confirmation */}
+                                      <button
+                                        onClick={async () => {
+                                          const missingNames = missing.map(s => capitalizeSkill(s)).join(', ');
+                                          const confirmed = await confirm({
+                                            title: 'Confirmer l\'affectation',
+                                            message: `Affecter ${emp.prenom} ${emp.nom} à ${chantier.nom} ?${missing.length > 0 ? `\n\n⚠️ Compétences manquantes : ${missingNames}` : ''}`,
+                                            confirmText: 'Affecter',
+                                            confirmColor: couleur
+                                          });
+                                          if (!confirmed) return;
+                                          quickStartTimer(emp.id, chantier.id);
+                                          showToast(`${emp.prenom} affecté à ${chantier.nom}`, 'success');
+                                        }}
+                                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white min-h-[36px]"
+                                        style={{ backgroundColor: couleur }}
+                                      >
+                                        Affecter
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* All certifications */}
                   <div className={`rounded-2xl border ${cardBg} p-4`}>
