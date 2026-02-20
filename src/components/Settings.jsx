@@ -474,7 +474,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowExportModal(true)}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm flex items-center gap-2 transition-colors"
+            className={`px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
             title="Exporter vos devis et factures au format CSV pour votre comptable"
           >
             📊 Export comptable
@@ -482,8 +482,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="relative">
             <button
               onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md hover:border-opacity-80' : ''}`}
-              style={completude < 100 ? { borderColor: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' } : undefined}
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
               title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
             >
               <div className="text-right">
@@ -667,7 +666,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <p className="text-sm font-medium mb-2">Logo entreprise</p>
                 <div className="flex items-center gap-4">
-                  <div className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <div
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2'); e.currentTarget.style.borderColor = entreprise.couleur; e.currentTarget.style.ringColor = entreprise.couleur; }}
+                  onDragLeave={e => { e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; }}
+                  onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; const file = e.dataTransfer.files?.[0]; if (file) { const fakeEvent = { target: { files: [file] } }; handleLogoUpload(fakeEvent); } }}
+                  className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
                     ) : entreprise.nom ? (
@@ -793,9 +796,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
+          {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">RCS - Registre du Commerce</h3>
-            <p className="text-sm text-slate-500 mb-4">Format légal: RCS [Ville] [Type] [Numéro]</p>
+            <p className={`text-sm mb-4 ${textMuted}`}>Format légal: RCS [Ville] [Type] [Numéro] — ex: RCS Paris B 123 456 789</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ville du greffe</label>
@@ -820,10 +824,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             {getRCSComplet() && (
               <div className="mt-4 p-3 bg-green-50 rounded-xl">
-                <p className="text-sm text-green-700">“ Sera affiché: <strong>{getRCSComplet()}</strong></p>
+                <p className="text-sm text-green-700">" Sera affiché: <strong>{getRCSComplet()}</strong></p>
               </div>
             )}
           </div>
+          ) : (
+          <div className={`rounded-xl p-4 border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>ℹ️ Auto-entrepreneur / Micro-entreprise</p>
+            <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Le RCS n'est pas requis pour votre statut juridique.</p>
+          </div>
+          )}
 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
@@ -901,9 +911,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
-              {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
-              )}
+              {entreprise.rcProValidite && (() => {
+                const d = new Date(entreprise.rcProValidite);
+                const now = new Date();
+                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
+                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
+                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
+                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
+              })()}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -919,6 +934,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
               </div>
               <div>
+                <label className="block text-sm font-medium mb-1">Montant de garantie</label>
+                <div className="flex">
+                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={e => updateEntreprise(p => ({...p, rcProMontantGarantie: e.target.value}))} />
+                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Zone géographique</label>
                 <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={e => updateEntreprise(p => ({...p, rcProZone: e.target.value}))} />
               </div>
@@ -928,9 +950,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Garantie Décennale</h3>
-              {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
-              )}
+              {entreprise.decennaleValidite && (() => {
+                const d = new Date(entreprise.decennaleValidite);
+                const now = new Date();
+                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
+                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
+                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
+                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
+              })()}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -970,12 +997,21 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
+              <input id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.iban && !/^FR\d{2}\s?([A-Z0-9]{4}\s?){5}[A-Z0-9]{3}$/.test(entreprise.iban.replace(/\s/g, '').match(/^FR\d{2}/) ? entreprise.iban : '') && entreprise.iban.replace(/\s/g, '').length > 4 ? 'border-amber-300' : ''} ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
+              {entreprise.iban && entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR') && (
+                <p className="text-xs text-green-600 mt-1">✓ Format IBAN valide</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
               <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
             </div>
+          </div>
+          <div className={`mt-4 rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+            <Shield size={16} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+            <p className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+              Vos coordonnées bancaires apparaîtront sur vos factures pour faciliter les virements. Elles sont stockées localement et ne sont jamais partagées avec des tiers.
+            </p>
           </div>
         </div>
       )}
@@ -1805,8 +1841,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* APERÇU DOCUMENT */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+      {/* APERÇU DOCUMENT — only visible on identite tab */}
+      {tab === 'identite' && <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
         <div className={`border rounded-xl p-6 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
           <div className="flex justify-between items-start mb-4">
@@ -1826,7 +1862,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {entreprise.formeJuridique && (
                   <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` · Capital: ${entreprise.capital} €`}</p>
                 )}
-                <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse non renseignée'}</p>
+                {entreprise.adresse ? (
+                  <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse}</p>
+                ) : (
+                  <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">⚠️ Adresse manquante — vos documents ne seront pas conformes</p>
+                )}
               </div>
             </div>
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
@@ -1845,7 +1885,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             )}
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* ── Setup Wizard Modal (5 steps) ─────────────────────────── */}
       {showSetupWizard && (() => {
