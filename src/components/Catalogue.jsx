@@ -1,16 +1,18 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Minus, ArrowLeft, Star, Search, Edit3, Trash2, Package, AlertTriangle, Box,
   ChevronUp, ChevronDown, ArrowUpDown, Sparkles, Filter, X, Download, Upload,
   TrendingUp, TrendingDown, BarChart3, Layers, ClipboardList, ShoppingCart,
   Truck, History, DollarSign, Percent, Check, ChevronRight, Eye, Hash,
-  PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw
+  PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw,
+  Camera, ScanBarcode, FileText, Bell, BellOff, Zap
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import ArticlePicker from './ArticlePicker';
+import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie } from '../lib/data';
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -28,7 +30,7 @@ const DEFAULT_COEFFICIENTS = {
   'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5
 };
 
-export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret }) {
+export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -64,6 +66,28 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [importData, setImportData] = useState(null);
   const [importMapping, setImportMapping] = useState({});
   const fileInputRef = React.useRef(null);
+
+  // ====== ONBOARDING STATE ======
+  const [onboardingStep, setOnboardingStep] = useState(null); // null | 'metiers' | 'importing' | 'done'
+  const [selectedMetiers, setSelectedMetiers] = useState([]);
+  const [importProgress, setImportProgress] = useState(0);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try { return localStorage.getItem('cp_catalogue_onboarding_dismissed') === 'true'; } catch { return false; }
+  });
+
+  // ====== BARCODE SCANNER STATE ======
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const scanStreamRef = useRef(null);
+
+  // ====== STOCK ALERT NOTIFICATIONS ======
+  const [stockAlertsEnabled, setStockAlertsEnabled] = useState(() => {
+    try { return localStorage.getItem('cp_stock_alerts_enabled') !== 'false'; } catch { return true; }
+  });
+  const [stockAlertsDismissed, setStockAlertsDismissed] = useState(false);
 
   // ====== FOURNISSEURS STATE ======
   const [fournisseurs, setFournisseurs] = useState(() => {
@@ -198,9 +222,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         const mb = b.prixAchat ? ((b.prix - b.prixAchat) / b.prix) * 100 : -1;
         return mb - ma;
       });
+      case 'usage': return items.sort((a, b) => (devisUsageMap[b.id] || 0) - (devisUsageMap[a.id] || 0));
       default: return items.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
     }
-  }, [catalogue, catFilter, debouncedSearch, sortBy, fuzzyMatch, onlyInStock, onlyFavoris, onlyLowStock, priceRange]);
+  }, [catalogue, catFilter, debouncedSearch, sortBy, fuzzyMatch, onlyInStock, onlyFavoris, onlyLowStock, priceRange, devisUsageMap]);
 
   const favoris = catalogue.filter(c => c.favori);
   const alertesStock = catalogue.filter(c => {
@@ -209,6 +234,201 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     return stock != null && seuil != null && seuil > 0 && stock < seuil;
   });
   const activeFilters = (catFilter !== 'Tous' ? 1 : 0) + (onlyInStock ? 1 : 0) + (onlyFavoris ? 1 : 0) + (onlyLowStock ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 10000 ? 1 : 0);
+
+  // ====== DEVIS USAGE: count how many devis use each article ======
+  const devisUsageMap = useMemo(() => {
+    const map = {};
+    (devis || []).forEach(d => {
+      const lignes = d.lignes || d.items || d.articles || [];
+      lignes.forEach(l => {
+        const artId = l.catalogueId || l.articleId || l.article_id;
+        const artNom = (l.designation || l.nom || '').toLowerCase();
+        if (artId) {
+          map[artId] = (map[artId] || 0) + 1;
+        } else if (artNom) {
+          // fuzzy match by name
+          const match = catalogue.find(c => (c.nom || '').toLowerCase() === artNom);
+          if (match) map[match.id] = (map[match.id] || 0) + 1;
+        }
+      });
+    });
+    return map;
+  }, [devis, catalogue]);
+
+  // ====== AUTO-FAVORITES: top 5 most used in devis ======
+  const trendingArticles = useMemo(() => {
+    return Object.entries(devisUsageMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([id, count]) => ({ id, count, article: catalogue.find(c => c.id === id) }))
+      .filter(t => t.article);
+  }, [devisUsageMap, catalogue]);
+
+  // ====== ONBOARDING BULK IMPORT ======
+  const handleBulkImport = useCallback(async (metierIds) => {
+    setOnboardingStep('importing');
+    setImportProgress(0);
+    let totalArticles = [];
+    metierIds.forEach(catId => {
+      const cat = ALL_ARTICLES_BTP[catId];
+      if (!cat) return;
+      const catMeta = CATEGORIES_METIERS.find(c => c.id === catId);
+      Object.entries(cat.sousCategories).forEach(([, sousCat]) => {
+        sousCat.articles.forEach(article => {
+          const coef = coefficients[catMeta?.nom] || coefficients[cat.nom] || 1.5;
+          totalArticles.push({
+            nom: article.nom,
+            prix: article.prixDefaut,
+            prixAchat: Math.round(article.prixDefaut / coef * 100) / 100,
+            unite: article.unite,
+            categorie: catMeta?.nom || 'Autre',
+            favori: false,
+            coefAuto: true,
+            reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
+          });
+        });
+      });
+    });
+    // Import in batches with progress animation
+    for (let i = 0; i < totalArticles.length; i++) {
+      const item = totalArticles[i];
+      if (addCatalogueItemProp) {
+        await addCatalogueItemProp(item);
+      } else {
+        setCatalogue(prev => [...prev, { id: generateId(), ...item }]);
+      }
+      if (i % 3 === 0 || i === totalArticles.length - 1) {
+        setImportProgress(Math.round(((i + 1) / totalArticles.length) * 100));
+      }
+    }
+    setOnboardingStep('done');
+    localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true');
+    setOnboardingDismissed(true);
+    showToast(`${totalArticles.length} articles importés depuis le Référentiel BTP`, 'success');
+    setTimeout(() => setOnboardingStep(null), 2000);
+  }, [addCatalogueItemProp, setCatalogue, coefficients, showToast]);
+
+  // ====== BARCODE SCANNER ======
+  const startScanner = useCallback(async () => {
+    setShowScanner(true);
+    setScanResult(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      scanStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      showToast('Impossible d\'accéder à la caméra', 'error');
+      setShowScanner(false);
+    }
+  }, [showToast]);
+
+  const stopScanner = useCallback(() => {
+    if (scanStreamRef.current) {
+      scanStreamRef.current.getTracks().forEach(t => t.stop());
+      scanStreamRef.current = null;
+    }
+    setShowScanner(false);
+    setScanResult(null);
+  }, []);
+
+  const handleBarcodeDetected = useCallback(async (barcode) => {
+    setScanLoading(true);
+    // Try to match barcode in catalogue first (by reference)
+    const localMatch = catalogue.find(c =>
+      (c.reference || '').toLowerCase() === barcode.toLowerCase() ||
+      (c.ean || c.barcode || '').toLowerCase() === barcode.toLowerCase()
+    );
+    if (localMatch) {
+      setScanResult({ found: true, local: true, article: localMatch });
+      setScanLoading(false);
+      return;
+    }
+    // Try Open Food Facts / Open Product API for EAN codes
+    try {
+      const resp = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 1 && data.product) {
+          setScanResult({
+            found: true, local: false,
+            product: {
+              nom: data.product.product_name || data.product.product_name_fr || barcode,
+              marque: data.product.brands || '',
+              barcode: barcode,
+              image: data.product.image_front_small_url,
+            }
+          });
+          setScanLoading(false);
+          return;
+        }
+      }
+    } catch {}
+    setScanResult({ found: false, barcode });
+    setScanLoading(false);
+  }, [catalogue]);
+
+  // BarcodeDetector API (available in Chrome/Edge)
+  useEffect(() => {
+    if (!showScanner || !videoRef.current) return;
+    let running = true;
+    const detectBarcode = async () => {
+      if (!running || !videoRef.current) return;
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code'] });
+          const detect = async () => {
+            if (!running || !videoRef.current || videoRef.current.readyState < 2) {
+              if (running) requestAnimationFrame(detect);
+              return;
+            }
+            try {
+              const barcodes = await detector.detect(videoRef.current);
+              if (barcodes.length > 0 && running) {
+                running = false;
+                handleBarcodeDetected(barcodes[0].rawValue);
+              } else if (running) {
+                requestAnimationFrame(detect);
+              }
+            } catch {
+              if (running) setTimeout(detect, 500);
+            }
+          };
+          detect();
+        } catch {}
+      } else {
+        // Fallback: prompt user to enter barcode manually
+        setScanResult({ noBarcodeAPI: true });
+      }
+    };
+    const timer = setTimeout(detectBarcode, 500);
+    return () => { running = false; clearTimeout(timer); };
+  }, [showScanner, handleBarcodeDetected]);
+
+  // ====== STOCK ALERTS NOTIFICATION EFFECT ======
+  useEffect(() => {
+    if (stockAlertsEnabled && alertesStock.length > 0 && !stockAlertsDismissed && 'Notification' in window && Notification.permission === 'granted') {
+      const lastAlert = localStorage.getItem('cp_stock_alert_last');
+      const now = Date.now();
+      if (!lastAlert || now - parseInt(lastAlert) > 24 * 60 * 60 * 1000) {
+        localStorage.setItem('cp_stock_alert_last', now.toString());
+        try {
+          new Notification('ChantierPro — Stock bas', {
+            body: `${alertesStock.length} article${alertesStock.length > 1 ? 's' : ''} en dessous du seuil d'alerte`,
+            icon: '/icons/icon-192.png',
+          });
+        } catch {}
+      }
+    }
+  }, [alertesStock, stockAlertsEnabled, stockAlertsDismissed]);
+
+  useEffect(() => {
+    localStorage.setItem('cp_stock_alerts_enabled', stockAlertsEnabled.toString());
+  }, [stockAlertsEnabled]);
 
   // ====== HELPERS ======
   const getMargeBrute = (prix, prixAchat) => {
@@ -620,7 +840,14 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </p>
             {item.description && <p className={`text-sm ${textMuted} mt-1`}>{item.description}</p>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Devis usage badge */}
+            {devisUsageMap[item.id] > 0 && (
+              <span className={`px-2.5 py-1.5 rounded-lg text-xs font-bold ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                <FileText size={12} className="inline mr-1" />
+                {devisUsageMap[item.id]} devis
+              </span>
+            )}
             <button onClick={async () => {
               const clone = { ...item, nom: `${item.nom} (copie)`, favori: false };
               delete clone.id; delete clone.createdAt;
@@ -640,6 +867,16 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ background: `${couleur}15`, color: couleur }}>
               <Edit3 size={14} className="inline mr-1" /> Modifier
             </button>
+            {/* Créer devis button */}
+            {setPage && (
+              <button onClick={() => {
+                // Navigate to devis with this article prefilled
+                if (setPage) setPage('devis');
+                showToast(`Article "${item.nom}" prêt pour ajout au devis`, 'success');
+              }} className="px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-1.5 shadow-md" style={{ background: '#22c55e' }}>
+                <FileText size={14} /> Créer devis
+              </button>
+            )}
           </div>
         </div>
 
@@ -839,13 +1076,42 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             }} className="rounded" />
             <Percent size={14} /> Prix de vente auto (coefficient ×{coefficients[form.categorie] || 1.5} pour {form.categorie})
           </label>
-          {/* Marge preview */}
-          {form.prix && form.prixAchat && parseFloat(form.prixAchat) > 0 && (
-            <div className={`p-3 rounded-xl text-sm ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-              <span className="text-emerald-600 font-semibold">Marge: {getMargeBrute(form.prix, form.prixAchat)?.toFixed(1)}%</span>
-              <span className={` ml-2 ${textMuted}`}>({(parseFloat(form.prix) - parseFloat(form.prixAchat)).toFixed(2)}€ par {form.unite})</span>
-            </div>
-          )}
+          {/* Enhanced Marge Preview */}
+          {form.prix && form.prixAchat && parseFloat(form.prixAchat) > 0 && (() => {
+            const pv = parseFloat(form.prix);
+            const pa = parseFloat(form.prixAchat);
+            const margePercent = getMargeBrute(pv, pa);
+            const margeEuro = pv - pa;
+            const coefReel = pa > 0 ? (pv / pa).toFixed(2) : '—';
+            const margeColor = margePercent >= 40 ? '#22c55e' : margePercent >= 25 ? '#f59e0b' : '#ef4444';
+            const margeLabel = margePercent >= 40 ? 'Excellente' : margePercent >= 25 ? 'Correcte' : 'Faible';
+            return (
+              <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-semibold ${textPrimary}`}>Marge live</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: margeColor }}>{margeLabel}</span>
+                </div>
+                <div className="flex items-end gap-4 mb-2">
+                  <div>
+                    <p className="text-2xl font-bold" style={{ color: margeColor }}>{margePercent?.toFixed(1)}%</p>
+                    <p className={`text-xs ${textMuted}`}>{modeDiscret ? '·····' : `${margeEuro.toFixed(2)}€ par ${form.unite}`}</p>
+                  </div>
+                  <div className={`text-xs ${textMuted}`}>
+                    <p>Coef réel: <strong className={textPrimary}>×{coefReel}</strong></p>
+                    <p>TTC: <strong className={textPrimary}>{modeDiscret ? '·····' : `${(pv * (1 + parseFloat(form.tva_rate || 20) / 100)).toFixed(2)}€`}</strong></p>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(margePercent, 100)}%`, background: margeColor }} />
+                </div>
+                {/* Benchmarks */}
+                <div className={`flex justify-between mt-1 text-[10px] ${textMuted}`}>
+                  <span>0%</span><span>25% min</span><span>40% bon</span><span>60%+</span>
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid grid-cols-2 gap-4">
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Stock actuel</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.stock_actuel} onChange={e => setForm(p => ({...p, stock_actuel: e.target.value}))} placeholder="Optionnel" /></div>
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Stock minimum</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.stock_seuil_alerte} onChange={e => setForm(p => ({...p, stock_seuil_alerte: e.target.value}))} placeholder="Optionnel" /></div>
@@ -923,6 +1189,122 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
     );
   }
 
+  // ====== ONBOARDING: Catalogue vide + import BTP ======
+  if (catalogue.length === 0 && !onboardingDismissed && !show && !showArticlePicker) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button onClick={() => setPage('dashboard')} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+              <ArrowLeft size={20} />
+            </button>
+          )}
+          <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue</h1>
+        </div>
+
+        {!onboardingStep && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${cardBg} rounded-2xl border p-8 text-center`}>
+            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-xl" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+              <Package size={48} className="text-white" />
+            </div>
+            <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>Bienvenue dans votre Catalogue</h2>
+            <p className={`text-sm ${textMuted} mb-8 max-w-md mx-auto`}>
+              Centralisez vos matériaux, tarifs et marges. Commencez en important des articles depuis notre référentiel BTP ou ajoutez-les manuellement.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 text-white rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg" style={{ background: couleur }}>
+                <Sparkles size={22} /> Importer le Référentiel BTP
+              </button>
+              <button onClick={() => setShow(true)} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all ${isDark ? 'text-slate-300 border-slate-600 hover:bg-slate-700' : 'text-slate-700 border-slate-200 hover:bg-slate-50'}`}>
+                <Plus size={18} /> Ajouter manuellement
+              </button>
+            </div>
+            <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); }} className={`mt-4 text-xs ${textMuted} hover:underline`}>
+              Passer l'onboarding
+            </button>
+          </motion.div>
+        )}
+
+        {onboardingStep === 'metiers' && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${cardBg} rounded-2xl border p-6`}>
+            <div className="flex items-center gap-3 mb-2">
+              <button onClick={() => setOnboardingStep(null)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <ArrowLeft size={18} className={textMuted} />
+              </button>
+              <h2 className={`text-xl font-bold ${textPrimary}`}>Choisissez vos métiers</h2>
+            </div>
+            <p className={`text-sm ${textMuted} mb-6`}>Sélectionnez un ou plusieurs métiers pour importer les articles correspondants.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+              {CATEGORIES_METIERS.map(cat => {
+                const isSelected = selectedMetiers.includes(cat.id);
+                const sousCount = getSousCategories(cat.id).reduce((s, sc) => s + sc.articlesCount, 0);
+                return (
+                  <button key={cat.id} onClick={() => setSelectedMetiers(prev => isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id])}
+                    className={`relative p-4 rounded-xl border-2 text-center transition-all hover:scale-[1.02] ${isSelected ? 'shadow-lg' : isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300'}`}
+                    style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}>
+                    {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white" style={{ background: couleur }}><Check size={12} /></div>}
+                    <div className="text-3xl mb-2">{cat.icon}</div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>{cat.nom}</p>
+                    <p className={`text-[10px] ${textMuted}`}>{sousCount} articles</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between">
+              <p className={`text-sm ${textMuted}`}>
+                {selectedMetiers.length > 0 ? `${selectedMetiers.length} métier${selectedMetiers.length > 1 ? 's' : ''} sélectionné${selectedMetiers.length > 1 ? 's' : ''}` : 'Aucun métier sélectionné'}
+              </p>
+              <button onClick={() => handleBulkImport(selectedMetiers)} disabled={selectedMetiers.length === 0}
+                className="px-6 py-3 text-white rounded-xl font-semibold flex items-center gap-2 shadow-lg disabled:opacity-40 transition-all"
+                style={{ background: couleur }}>
+                <Download size={18} /> Importer {selectedMetiers.length > 0 ? `(${selectedMetiers.reduce((s, id) => s + getSousCategories(id).reduce((ss, sc) => ss + sc.articlesCount, 0), 0)} articles)` : ''}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {onboardingStep === 'importing' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`${cardBg} rounded-2xl border p-12 text-center`}>
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center animate-pulse" style={{ background: `${couleur}20` }}>
+              <Download size={32} style={{ color: couleur }} />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import en cours...</h3>
+            <p className={`text-sm ${textMuted} mb-6`}>Ajout des articles depuis le Référentiel BTP</p>
+            <div className={`w-full max-w-md mx-auto h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+              <motion.div className="h-full rounded-full" style={{ background: couleur }} initial={{ width: 0 }} animate={{ width: `${importProgress}%` }} transition={{ ease: 'easeOut' }} />
+            </div>
+            <p className="text-sm font-bold mt-3" style={{ color: couleur }}>{importProgress}%</p>
+          </motion.div>
+        )}
+
+        {onboardingStep === 'done' && (
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={`${cardBg} rounded-2xl border p-12 text-center`}>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-emerald-500 text-white">
+              <Check size={32} />
+            </div>
+            <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import terminé !</h3>
+            <p className={`text-sm ${textMuted}`}>Votre catalogue est prêt. Vous pouvez maintenant personnaliser les prix et marges.</p>
+          </motion.div>
+        )}
+
+        {/* Quick CSV import option */}
+        <div className={`p-4 rounded-xl border flex items-center justify-between ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <FileSpreadsheet size={20} className={textMuted} />
+            <div>
+              <p className={`text-sm font-medium ${textPrimary}`}>Vous avez déjà un catalogue ?</p>
+              <p className={`text-xs ${textMuted}`}>Importez votre fichier CSV existant</p>
+            </div>
+          </div>
+          <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white border border-slate-200 hover:bg-slate-100'}`}>
+            <Upload size={14} className="inline mr-1.5" /> Import CSV
+          </button>
+          <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
+        </div>
+      </div>
+    );
+  }
+
   // ====== MAIN VIEW ======
   return (
     <div className="space-y-6">
@@ -936,13 +1318,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           )}
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue ({catalogue.length})</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
           <button onClick={() => fileInputRef.current?.click()} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Import CSV">
             <Upload size={16} />
           </button>
           <button onClick={exportCSV} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Export CSV">
             <Download size={16} />
+          </button>
+          {/* Barcode Scanner button */}
+          <button onClick={startScanner} className={`w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`} title="Scanner code-barres">
+            <Camera size={16} />
           </button>
           <button onClick={() => setShowArticlePicker(true)} className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border-2 font-medium ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-white hover:bg-slate-50'}`} style={{borderColor: couleur, color: couleur}}>
             <Sparkles size={16} /><span className="hidden sm:inline">Référentiel BTP</span>
@@ -1011,15 +1397,56 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             </div>
           )}
 
-          {/* Stock alerts */}
-          {alertesStock.length > 0 && (
-            <div className={`rounded-2xl p-4 flex items-center gap-4 flex-wrap ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50'}`}>
-              <span className="text-red-600 dark:text-red-400 font-medium flex items-center gap-2"><AlertTriangle size={18} /> Stock bas:</span>
-              {alertesStock.map(item => (
-                <span key={item.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm ${isDark ? 'bg-slate-700' : 'bg-white'}`}>
-                  <span className="w-2 h-2 rounded-full bg-red-500" /><span className={textPrimary}>{item.nom}</span><span className={textMuted}>({item.stock_actuel}/{item.stock_seuil_alerte})</span>
-                </span>
-              ))}
+          {/* Enhanced Stock alerts with notification toggle */}
+          {alertesStock.length > 0 && !stockAlertsDismissed && (
+            <div className={`rounded-2xl p-4 ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-2"><AlertTriangle size={18} /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => {
+                    if ('Notification' in window && Notification.permission === 'default') {
+                      Notification.requestPermission().then(p => {
+                        if (p === 'granted') { setStockAlertsEnabled(true); showToast('Notifications stock activées', 'success'); }
+                      });
+                    } else {
+                      setStockAlertsEnabled(!stockAlertsEnabled);
+                    }
+                  }} className={`p-1.5 rounded-lg transition-colors ${stockAlertsEnabled ? 'text-red-500' : textMuted}`} title={stockAlertsEnabled ? 'Désactiver alertes' : 'Activer alertes'}>
+                    {stockAlertsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+                  </button>
+                  <button onClick={() => setStockAlertsDismissed(true)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-red-100'}`}>
+                    <X size={14} className={textMuted} />
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {alertesStock.map(item => (
+                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm transition-all hover:shadow-md ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-white hover:bg-slate-50'}`}>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className={`text-sm font-medium ${textPrimary}`}>{item.nom}</span>
+                    <span className="text-xs text-red-500 font-bold">{item.stock_actuel}/{item.stock_seuil_alerte}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Trending articles (auto-favorites based on devis usage) */}
+          {trendingArticles.length > 0 && (
+            <div className={`rounded-2xl p-4 ${isDark ? 'bg-purple-900/20 border border-purple-800' : 'bg-purple-50 border border-purple-100'}`}>
+              <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
+                <Zap size={16} className="text-purple-500" /> Tendances ({trendingArticles.length})
+                <span className={`text-xs font-normal ${textMuted}`}>— les plus utilisés dans vos devis</span>
+              </h3>
+              <div className="flex gap-2 flex-wrap">
+                {trendingArticles.map(({ id, count, article }) => (
+                  <button key={id} onClick={() => setArticleDetail(id)} className={`group flex items-center gap-2 px-3 py-2 rounded-xl shadow-sm border transition-all hover:shadow-md ${isDark ? 'bg-slate-700 border-slate-600 hover:border-purple-500' : 'bg-white border-slate-200 hover:border-purple-300'}`}>
+                    <span className={`font-medium text-sm ${textPrimary}`}>{article.nom}</span>
+                    <span className="text-purple-600 font-bold text-xs">{count}×</span>
+                    <span className="font-semibold text-sm" style={{ color: couleur }}>{article.prix}€</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1101,7 +1528,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           {catalogue.length > 1 && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               <span className={`text-sm ${textMuted} flex items-center gap-1`}><ArrowUpDown size={14} /> Trier:</span>
-              {[{ key: 'name', label: 'Nom' }, { key: 'price', label: 'Prix' }, { key: 'stock', label: 'Stock' }, { key: 'margin', label: 'Marge' }].map(opt => (
+              {[{ key: 'name', label: 'Nom' }, { key: 'price', label: 'Prix' }, { key: 'stock', label: 'Stock' }, { key: 'margin', label: 'Marge' }, { key: 'usage', label: 'Plus utilisé' }].map(opt => (
                 <button key={opt.key} onClick={() => setSortBy(opt.key)} className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={sortBy === opt.key ? { background: couleur } : {}}>
                   {opt.label}
                 </button>
@@ -1175,6 +1602,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                                 <div className="flex items-center gap-2">
                                   <p className={`font-medium ${textPrimary}`}>{item.nom}</p>
                                   {stockLow && <span className="w-2 h-2 rounded-full bg-red-500" />}
+                                  {devisUsageMap[item.id] > 0 && (
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                      {devisUsageMap[item.id]} devis
+                                    </span>
+                                  )}
                                   {item.tva_rate && item.tva_rate !== 20 && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>TVA {item.tva_rate}%</span>}
                                 </div>
                                 <p className={`text-xs ${textMuted}`}>
@@ -1852,6 +2284,104 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <Upload size={16} className="inline mr-2" />Importer {importData.rows.length} articles
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Barcode Scanner Modal */}
+      <AnimatePresence>
+        {showScanner && (
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/70" onClick={stopScanner} />
+            <motion.div className={`relative w-full max-w-lg rounded-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+              <div className={`p-4 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <h3 className={`font-bold text-lg flex items-center gap-2 ${textPrimary}`}><Camera size={20} style={{ color: couleur }} /> Scanner un code-barres</h3>
+                <button onClick={stopScanner} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={20} className={textMuted} /></button>
+              </div>
+              {!scanResult ? (
+                <div className="relative">
+                  <video ref={videoRef} className="w-full aspect-video object-cover bg-black" autoPlay playsInline muted />
+                  <canvas ref={canvasRef} className="hidden" />
+                  {/* Scan overlay with aiming guide */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-64 h-32 border-2 border-white/60 rounded-xl">
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white rounded-tl-lg" />
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white rounded-tr-lg" />
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white rounded-bl-lg" />
+                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white rounded-br-lg" />
+                    </div>
+                  </div>
+                  {scanLoading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <p className="absolute bottom-3 left-0 right-0 text-center text-white text-sm font-medium bg-black/40 py-2">
+                    Placez le code-barres dans le cadre
+                  </p>
+                </div>
+              ) : (
+                <div className="p-6">
+                  {scanResult.noBarcodeAPI && (
+                    <div className="text-center">
+                      <p className={`text-sm ${textMuted} mb-4`}>Scanner non supporté. Entrez le code manuellement :</p>
+                      <form onSubmit={(e) => { e.preventDefault(); const v = e.target.barcode.value; if (v) handleBarcodeDetected(v); }}>
+                        <input name="barcode" type="text" placeholder="Code-barres (EAN)" className={`w-full px-4 py-3 border rounded-xl text-center text-lg font-mono ${inputBg}`} autoFocus />
+                        <button type="submit" className="mt-3 w-full py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Rechercher</button>
+                      </form>
+                    </div>
+                  )}
+                  {scanResult.found && scanResult.local && (
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
+                        <Check size={24} />
+                      </div>
+                      <p className={`font-bold text-lg mb-1 ${textPrimary}`}>{scanResult.article.nom}</p>
+                      <p className={`text-sm ${textMuted} mb-4`}>Trouvé dans votre catalogue</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => { stopScanner(); setArticleDetail(scanResult.article.id); }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Voir la fiche</button>
+                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Scanner encore</button>
+                      </div>
+                    </div>
+                  )}
+                  {scanResult.found && !scanResult.local && scanResult.product && (
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
+                        <Package size={24} />
+                      </div>
+                      {scanResult.product.image && <img src={scanResult.product.image} alt="" className="w-20 h-20 mx-auto mb-3 object-contain rounded-lg" />}
+                      <p className={`font-bold text-lg mb-1 ${textPrimary}`}>{scanResult.product.nom}</p>
+                      {scanResult.product.marque && <p className={`text-sm ${textMuted}`}>{scanResult.product.marque}</p>}
+                      <p className={`text-xs ${textMuted} mb-4`}>Code: {scanResult.product.barcode}</p>
+                      <button onClick={() => {
+                        stopScanner();
+                        setForm(prev => ({ ...prev, nom: scanResult.product.nom, reference: scanResult.product.barcode }));
+                        setShow(true);
+                      }} className="w-full py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2" style={{ background: couleur }}>
+                        <Plus size={18} /> Ajouter au catalogue
+                      </button>
+                    </div>
+                  )}
+                  {!scanResult.found && !scanResult.noBarcodeAPI && (
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-amber-100 text-amber-600">
+                        <Search size={24} />
+                      </div>
+                      <p className={`font-bold mb-1 ${textPrimary}`}>Produit non trouvé</p>
+                      <p className={`text-sm ${textMuted} mb-4`}>Code: {scanResult.barcode}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => {
+                          stopScanner();
+                          setForm(prev => ({ ...prev, reference: scanResult.barcode }));
+                          setShow(true);
+                        }} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Créer l'article</button>
+                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Réessayer</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
