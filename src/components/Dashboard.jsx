@@ -1299,6 +1299,51 @@ export default function Dashboard({
           />
         </section>
 
+        {/* Facture 2026 Countdown Card */}
+        {(() => {
+          const f26target = new Date('2026-09-01');
+          const now = new Date();
+          const daysLeft = Math.max(0, Math.ceil((f26target - now) / (1000 * 60 * 60 * 24)));
+          const f26checks = [
+            entreprise?.siret, entreprise?.tvaIntra,
+            entreprise?.rcsVille && entreprise?.rcsNumero,
+            entreprise?.banque || entreprise?.iban,
+            entreprise?.adresse, entreprise?.rcProAssureur, true,
+          ];
+          const f26score = Math.round((f26checks.filter(Boolean).length / f26checks.length) * 100);
+          if (f26score >= 100 || daysLeft <= 0) return null;
+          return (
+            <section className="px-4 sm:px-6 pb-4">
+              <div className={`rounded-xl border p-4 flex items-center gap-4 ${
+                f26score < 50
+                  ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
+                  : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+              }`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
+                  f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
+                }`}>
+                  {f26score}%
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    Facture {'\u00e9'}lectronique obligatoire dans <strong>J-{daysLeft}</strong>
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Votre conformit{'\u00e9'} : {f26score}% {'\u2014'} {7 - f26checks.filter(Boolean).length} crit{'\u00e8'}re{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''} manquant{7 - f26checks.filter(Boolean).length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPage('settings')}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
+                >
+                  Compl{'\u00e9'}ter
+                </button>
+              </div>
+            </section>
+          );
+        })()}
+
         {/* Dashboard Customization Button */}
         <section className="px-4 sm:px-6 pb-4 flex items-center justify-end">
           <button

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield } from 'lucide-react';
+import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
 import { auth } from '../supabaseClient';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -22,6 +22,49 @@ import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import MultiEntreprise from './settings/MultiEntreprise';
 
+// ── Tab groups for mobile navigation ────────────────────────────────────────
+const TAB_GROUPS = [
+  { id: 'entreprise', label: '\u26a1 Mon entreprise', tabs: [
+    { key: 'identite', label: '\ud83c\udfe2 Identit\u00e9' },
+    { key: 'legal', label: '\ud83d\udccb L\u00e9gal' },
+    { key: 'assurances', label: '\ud83d\udee1\ufe0f Assurances' },
+    { key: 'banque', label: '\ud83c\udfe6 Banque' },
+  ]},
+  { id: 'documents', label: '\ud83d\udcc4 Documents', tabs: [
+    { key: 'documents', label: '\ud83d\udcc4 Documents' },
+    { key: 'facture2026', label: '\ud83e\uddfe Facture 2026' },
+    { key: 'relances', label: '\ud83d\udce8 Relances' },
+  ]},
+  { id: 'finance', label: '\ud83d\udcb6 Finance', tabs: [
+    { key: 'comptabilite', label: '\ud83e\uddee Comptabilit\u00e9' },
+    { key: 'rentabilite', label: '\ud83d\udcca Rentabilit\u00e9' },
+  ]},
+  { id: 'avance', label: '\u2699\ufe0f Avanc\u00e9', tabs: [
+    { key: 'donnees', label: '\ud83d\udcbe Donn\u00e9es' },
+    { key: 'administratif', label: '\ud83d\udcc1 Administratif' },
+    { key: 'multi', label: '\ud83c\udfd7\ufe0f Multi-entreprise' },
+  ]},
+];
+
+// ── Wizard step definitions ─────────────────────────────────────────────────
+const WIZARD_STEPS_DEF = [
+  { id: 'identite', title: 'Identit\u00e9', desc: 'Votre entreprise en un coup d\u2019\u0153il', icon: Palette },
+  { id: 'siret', title: 'Informations l\u00e9gales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
+  { id: 'documents', title: 'Documents', desc: 'TVA, acompte et mentions', icon: FileCheck },
+  { id: 'relances', title: 'Relances', desc: '85% des relances auto sont pay\u00e9es dans 7 jours', icon: BellRing },
+  { id: 'catalogue', title: 'Catalogue', desc: 'Importez le r\u00e9f\u00e9rentiel BTP', icon: Package },
+];
+
+// ── Frais de structure charge items ─────────────────────────────────────────
+const FRAIS_ITEMS = [
+  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '\ud83c\udfe0' },
+  { key: 'assurances', label: 'Assurances (RC + D\u00e9cennale)', placeholder: '800', icon: '\ud83d\udee1\ufe0f' },
+  { key: 'telephone', label: 'T\u00e9l\u00e9phone / Internet', placeholder: '100', icon: '\ud83d\udcf1' },
+  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '\ud83e\uddee' },
+  { key: 'carburant', label: 'Carburant / D\u00e9placements', placeholder: '400', icon: '\u26fd' },
+  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '\ud83d\udce6' },
+];
+
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
@@ -39,8 +82,83 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [showSetupWizard, setShowSetupWizard] = useState(false);
-  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardStep, setWizardStep] = useState(() => {
+    try { return parseInt(localStorage.getItem('cp_wizard_step')) || 0; } catch { return 0; }
+  });
   const [showProfileDetail, setShowProfileDetail] = useState(false);
+  const [sireneLoading, setSireneLoading] = useState(false);
+  const [mobileGroupOpen, setMobileGroupOpen] = useState('entreprise');
+  const [showFraisCalc, setShowFraisCalc] = useState(false);
+  const [fraisCharges, setFraisCharges] = useState({});
+
+  // Persist wizard step
+  useEffect(() => {
+    if (showSetupWizard) {
+      try { localStorage.setItem('cp_wizard_step', String(wizardStep)); } catch {}
+    }
+  }, [wizardStep, showSetupWizard]);
+
+  // SIRENE API lookup
+  const lookupSIRENE = useCallback(async () => {
+    const siret = (entreprise.siret || '').replace(/\s/g, '');
+    if (siret.length !== 14) {
+      showToast('SIRET invalide (14 chiffres requis)', 'error');
+      return;
+    }
+    setSireneLoading(true);
+    try {
+      // Use open data API (no key required)
+      const resp = await fetch(`https://api.insee.fr/entreprises/sirene/V3.11/siret/${siret}`, {
+        headers: { Accept: 'application/json' },
+      }).catch(() => null);
+
+      // Fallback to open data API
+      const resp2 = resp?.ok ? resp : await fetch(`https://entreprise.data.gouv.fr/api/sirene/v3/etablissements/${siret}`);
+      if (!resp2?.ok) throw new Error('API indisponible');
+      const data = await resp2.json();
+      const etab = data.etablissement || data;
+      const unite = etab.uniteLegale || etab.unite_legale || {};
+      const adresse = etab.adresseEtablissement || etab.adresse || {};
+
+      const nom = unite.denominationUniteLegale || unite.denomination || unite.nomUniteLegale || '';
+      const prenom = unite.prenomUsuelUniteLegale || '';
+      const fullNom = nom || (prenom ? `${prenom} ${unite.nomUniteLegale || ''}`.trim() : '');
+      const codeNaf = etab.periodesEtablissement?.[0]?.activitePrincipaleEtablissement || unite.activitePrincipaleUniteLegale || '';
+      const formeJur = unite.categorieJuridiqueUniteLegale || '';
+      const adresseStr = [
+        adresse.numeroVoieEtablissement,
+        adresse.typeVoieEtablissement,
+        adresse.libelleVoieEtablissement,
+        adresse.codePostalEtablissement,
+        adresse.libelleCommuneEtablissement,
+      ].filter(Boolean).join(' ');
+
+      updateEntreprise(prev => ({
+        ...prev,
+        ...(fullNom && !prev.nom ? { nom: fullNom } : {}),
+        ...(adresseStr && !prev.adresse ? { adresse: adresseStr } : {}),
+        ...(codeNaf ? { codeApe: codeNaf } : {}),
+      }));
+
+      showToast(`SIRENE : ${fullNom || 'Entreprise trouv\u00e9e'}`, 'success');
+    } catch (err) {
+      showToast('Impossible de r\u00e9cup\u00e9rer les donn\u00e9es SIRENE. V\u00e9rifiez le SIRET.', 'error');
+    }
+    setSireneLoading(false);
+  }, [entreprise.siret, updateEntreprise, showToast]);
+
+  // Frais de structure calculator
+  const fraisTotal = useMemo(() => Object.values(fraisCharges).reduce((s, v) => s + (parseFloat(v) || 0), 0), [fraisCharges]);
+  const caEstime = useMemo(() => {
+    // rough estimate: sum of accepte/signe devis monthly avg
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    const recentCA = devis
+      .filter(d => ['accepte', 'signe', 'payee', 'paye'].includes(d.statut) && new Date(d.date) >= sixMonthsAgo)
+      .reduce((s, d) => s + (d.total_ht || 0), 0);
+    return recentCA / 6 || 1;
+  }, [devis]);
+  const tauxSuggere = useMemo(() => caEstime > 0 ? Math.round((fraisTotal / caEstime) * 100) : 15, [fraisTotal, caEstime]);
 
   // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
   useEffect(() => {
@@ -462,30 +580,76 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Tabs */}
-      <div className={`flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+      {/* Tabs — Desktop: pills with separators, Mobile: accordion groups */}
+      {/* Desktop tabs (hidden on mobile) */}
+      <div className={`hidden sm:flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         {[
-          // Mon entreprise
-          ['identite', '🏢 Identité'],
-          ['legal', '📋 Légal'],
-          ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
-          ['banque', '🏦 Banque'],
+          ['identite', '\ud83c\udfe2 Identit\u00e9'],
+          ['legal', '\ud83d\udccb L\u00e9gal'],
+          ['assurances', `\ud83d\udee1\ufe0f Assurances${hasAssuranceAlerts ? ' \u26a0\ufe0f' : ''}`],
+          ['banque', '\ud83c\udfe6 Banque'],
           ['_sep1', ''],
-          // Documents & Facturation
-          ['documents', '📄 Documents'],
-          ['facture2026', '🧾 Facture 2026'],
-          ['relances', '📨 Relances'],
+          ['documents', '\ud83d\udcc4 Documents'],
+          ['facture2026', '\ud83e\uddfe Facture 2026'],
+          ['relances', '\ud83d\udce8 Relances'],
           ['_sep2', ''],
-          // Gestion
-          ['comptabilite', '🧮 Comptabilité'],
-          ['rentabilite', '📊 Rentabilité'],
-          ['donnees', '💾 Données'],
-          ['administratif', '📁 Administratif'],
-          ['multi', '🏗️ Multi-entreprise'],
+          ['comptabilite', '\ud83e\uddee Comptabilit\u00e9'],
+          ['rentabilite', '\ud83d\udcca Rentabilit\u00e9'],
+          ['donnees', '\ud83d\udcbe Donn\u00e9es'],
+          ['administratif', '\ud83d\udcc1 Administratif'],
+          ['multi', '\ud83c\udfd7\ufe0f Multi-entreprise'],
         ].filter(([k]) => k).map(([k, v]) => (
           k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
-          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
         ))}
+      </div>
+
+      {/* Mobile tabs — grouped accordion (visible < 640px) */}
+      <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        {TAB_GROUPS.map(group => {
+          const isOpen = mobileGroupOpen === group.id;
+          const activeInGroup = group.tabs.some(t => t.key === tab);
+          return (
+            <div key={group.id}>
+              <button
+                onClick={() => setMobileGroupOpen(isOpen ? '' : group.id)}
+                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors ${
+                  activeInGroup
+                    ? isDark ? 'bg-slate-700/60 text-white' : 'bg-slate-50 text-slate-900'
+                    : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>{group.label}</span>
+                <div className="flex items-center gap-2">
+                  {activeInGroup && !isOpen && (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                      {group.tabs.find(t => t.key === tab)?.label}
+                    </span>
+                  )}
+                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </div>
+              </button>
+              {isOpen && (
+                <div className={`px-2 pb-2 flex flex-wrap gap-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
+                  {group.tabs.map(t => (
+                    <button
+                      key={t.key}
+                      onClick={() => setTab(t.key)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
+                        tab === t.key
+                          ? 'text-white shadow-sm'
+                          : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-700/40' : 'text-slate-500 hover:text-slate-700 bg-slate-100'
+                      } ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
+                      style={tab === t.key ? { backgroundColor: couleur } : {}}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* IDENTITÉ */}
@@ -913,25 +1077,80 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
+          <h3 className={`font-semibold mb-4 ${textPrimary}`}>{'\ud83d\udcca'} Calcul de Rentabilit{'\u00e9'}</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
-              <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
-              <p className="text-sm text-slate-500 mt-2">Loyer, assurances, carburant, comptable, téléphone...</p>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux de frais de structure (%)</label>
+                <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+              </div>
+              <button
+                onClick={() => setShowFraisCalc(!showFraisCalc)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ backgroundColor: couleur }}
+              >
+                <Calculator size={16} /> {showFraisCalc ? 'Masquer' : 'Calculer mes frais'}
+              </button>
             </div>
-            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm`}>
-              <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
-              <p className="ml-4">- Matériaux (achats)</p>
-              <p className="ml-4">- Main d'œuvre (heures × coût chargé)</p>
+
+            {/* Mini-wizard frais de structure */}
+            {showFraisCalc && (
+              <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
+                <p className={`text-sm font-semibold ${textPrimary}`}>{'\ud83e\uddee'} Calculez votre taux r{'\u00e9'}el</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {FRAIS_ITEMS.map(item => (
+                    <div key={item.key}>
+                      <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>{item.icon} {item.label}</label>
+                      <input
+                        type="number"
+                        placeholder={item.placeholder}
+                        value={fraisCharges[item.key] || ''}
+                        onChange={e => setFraisCharges(prev => ({ ...prev, [item.key]: e.target.value }))}
+                        className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-800 border border-slate-600' : 'bg-white border border-blue-200'}`}>
+                  <div>
+                    <p className={`text-xs ${textSecondary}`}>Total charges mensuelles</p>
+                    <p className={`text-lg font-bold ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(fraisTotal)}</p>
+                  </div>
+                  <div className="text-center px-4">
+                    <p className={`text-xs ${textSecondary}`}>CA moyen mensuel</p>
+                    <p className={`text-sm font-medium ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(caEstime)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-xs ${textSecondary}`}>Taux sugg{'\u00e9'}r{'\u00e9'}</p>
+                    <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere}%</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
+                    setShowFraisCalc(false);
+                    showToast(`Taux mis \u00e0 jour : ${tauxSuggere}%`, 'success');
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Appliquer {tauxSuggere}% comme taux de frais de structure
+                </button>
+              </div>
+            )}
+
+            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm ${textPrimary}`}>
+              <p><strong>Marge R{'\u00e9'}elle</strong> = CA HT + Ajustements Revenus</p>
+              <p className="ml-4">- Mat{'\u00e9'}riaux (achats)</p>
+              <p className="ml-4">- Main d{'\u2019'}{'\u0153'}uvre (heures {'\u00d7'} co{'\u00fb'}t charg{'\u00e9'})</p>
               <p className="ml-4">- Frais structure ({entreprise.tauxFraisStructure || 15}% du CA)</p>
-              <p className="ml-4">- Ajustements Dépenses</p>
+              <p className="ml-4">- Ajustements D{'\u00e9'}penses</p>
             </div>
-            <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
+            <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
               <p><strong>Code couleur marge:</strong></p>
-              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge négative (&lt;0%)</p>
+              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge n{'\u00e9'}gative ({'<'}0%)</p>
               <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-500"></span> Orange: Marge faible (0-15%)</p>
-              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine (&gt;15%)</p>
+              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine ({'>'}15%)</p>
             </div>
           </div>
         </div>
@@ -1622,131 +1841,269 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       </div>
 
-      {/* Setup Wizard Modal */}
+      {/* ── Setup Wizard Modal (5 steps) ─────────────────────────── */}
       {showSetupWizard && (() => {
-        const WIZARD_STEPS = [
-          {
-            title: 'Identité de l\'entreprise',
-            desc: 'Informations essentielles pour vos documents',
-            fields: [
-              { key: 'nom', label: 'Nom de l\'entreprise *', placeholder: 'Ex : Martin Rénovation' },
-              { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris', multiline: true },
-              { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
-              { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
-            ],
-          },
-          {
-            title: 'Informations légales',
-            desc: 'Numéros obligatoires sur vos devis et factures',
-            fields: [
-              { key: 'siret', label: 'N° SIRET *', placeholder: '123 456 789 00012' },
-              { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
-              { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
-              { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
-            ],
-          },
-          {
-            title: 'Assurances',
-            desc: 'Obligatoires pour les entreprises du BTP',
-            fields: [
-              { key: 'rcProAssureur', label: 'Assureur RC Pro', placeholder: 'AXA, MAAF, Allianz...' },
-              { key: 'rcProNumero', label: 'N° Police RC Pro', placeholder: 'N° de contrat' },
-              { key: 'decennaleAssureur', label: 'Assureur Décennale', placeholder: 'AXA, MAAF, Allianz...' },
-              { key: 'decennaleNumero', label: 'N° Police Décennale', placeholder: 'N° de contrat' },
-            ],
-          },
-          {
-            title: 'Banque & Paiements',
-            desc: 'Coordonnées bancaires pour vos factures',
-            fields: [
-              { key: 'banque', label: 'Nom de la banque', placeholder: 'Crédit Agricole, BNP...' },
-              { key: 'iban', label: 'IBAN', placeholder: 'FR76 1234 5678 9012 3456 7890 123' },
-              { key: 'bic', label: 'BIC', placeholder: 'BNPAFRPP' },
-              { key: 'conditionsPaiement', label: 'Conditions de paiement', placeholder: 'Paiement à 30 jours fin de mois' },
-            ],
-          },
-        ];
-
-        const currentStep = WIZARD_STEPS[wizardStep];
-        const isLast = wizardStep === WIZARD_STEPS.length - 1;
-        const filledInStep = currentStep.fields.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '').length;
-        const progress = ((wizardStep + 1) / WIZARD_STEPS.length) * 100;
+        const totalSteps = WIZARD_STEPS_DEF.length;
+        const safeStep = Math.min(wizardStep, totalSteps - 1);
+        const stepDef = WIZARD_STEPS_DEF[safeStep];
+        const progress = ((safeStep + 1) / totalSteps) * 100;
+        const StepIcon = stepDef.icon;
 
         return (
-          <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
             <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
-              {/* Progress */}
+              {/* Progress bar */}
               <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
                 <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
               </div>
 
-              {/* Header */}
-              <div className="p-5 pb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {wizardStep + 1}/{WIZARD_STEPS.length}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
-                </div>
-                <h3 className={`text-lg font-bold ${textPrimary}`}>{currentStep.title}</h3>
-                <p className={`text-sm ${textMuted}`}>{currentStep.desc}</p>
+              {/* Step dots */}
+              <div className="flex items-center justify-center gap-3 px-5 pt-4 pb-1">
+                {WIZARD_STEPS_DEF.map((s, i) => {
+                  const SIcon = s.icon;
+                  const isDone = i < safeStep;
+                  const isCurrent = i === safeStep;
+                  return (
+                    <React.Fragment key={s.id}>
+                      <button
+                        onClick={() => i <= safeStep && setWizardStep(i)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          isDone ? 'text-white' : isCurrent ? 'text-white shadow-lg scale-110' : isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
+                        }`}
+                        style={(isDone || isCurrent) ? { backgroundColor: couleur } : undefined}
+                        title={s.title}
+                      >
+                        {isDone ? <Check size={14} /> : <SIcon size={14} />}
+                      </button>
+                      {i < totalSteps - 1 && (
+                        <div className={`flex-1 h-0.5 rounded max-w-[40px] ${isDone ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`} style={isDone ? { backgroundColor: couleur } : undefined} />
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </div>
 
-              {/* Fields */}
+              {/* Header */}
+              <div className="px-5 pb-2 pt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{'\u00c9'}tape {safeStep + 1}/{totalSteps}</p>
+                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                    <X size={16} />
+                  </button>
+                </div>
+                <h3 className={`text-lg font-bold ${textPrimary}`}>{stepDef.title}</h3>
+                <p className={`text-sm ${textMuted}`}>{stepDef.desc}</p>
+              </div>
+
+              {/* Step content */}
               <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-3">
-                {currentStep.fields.map(field => (
-                  <div key={field.key}>
-                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{field.label}</label>
-                    {field.multiline ? (
-                      <textarea
-                        value={entreprise[field.key] || ''}
-                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
-                        placeholder={field.placeholder}
-                        rows={2}
-                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+
+                {/* Step 1: Identité */}
+                {safeStep === 0 && (
+                  <>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l{'\u2019'}entreprise *</label>
+                      <input type="text" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({ ...p, nom: e.target.value }))}
+                        placeholder="Ex : Martin R\u00e9novation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Logo</label>
+                      <div className="flex items-center gap-3">
+                        {entreprise.logo ? (
+                          <img src={entreprise.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain border" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: entreprise.couleur || couleur }}>
+                            {(entreprise.nom || 'E').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <label className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                          {entreprise.logo ? 'Changer' : 'Uploader'} un logo
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Couleur principale</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {COULEURS.map(c => (
+                          <button key={c} onClick={() => updateEntreprise(p => ({ ...p, couleur: c }))}
+                            className={`w-9 h-9 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                            style={{ backgroundColor: c, ringColor: c }} />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 2: SIRET + SIRENE */}
+                {safeStep === 1 && (
+                  <>
+                    <div>
+                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N{'\u00b0'} SIRET *</label>
+                      <div className="flex gap-2">
+                        <input type="text" value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({ ...p, siret: e.target.value }))}
+                          placeholder="123 456 789 00012" className={`flex-1 px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+                        <button
+                          onClick={lookupSIRENE}
+                          disabled={sireneLoading}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                          style={{ backgroundColor: couleur }}
+                        >
+                          {sireneLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                          Auto-remplir
+                        </button>
+                      </div>
+                      <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l{'\u2019'}API SIRENE</p>
+                    </div>
+                    {[
+                      { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
+                      { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
+                      { key: 'tvaIntra', label: 'N\u00b0 TVA Intracommunautaire', placeholder: 'FR12345678901' },
+                      { key: 'adresse', label: 'Adresse compl\u00e8te *', placeholder: '12 rue des Artisans, 75011 Paris' },
+                      { key: 'tel', label: 'T\u00e9l\u00e9phone *', placeholder: '06 12 34 56 78' },
+                      { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
+                        <input type="text" value={entreprise[f.key] || ''} onChange={e => updateEntreprise(p => ({ ...p, [f.key]: e.target.value }))}
+                          placeholder={f.placeholder} className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Step 3: Documents */}
+                {safeStep === 2 && (
+                  <>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par d{'\u00e9'}faut : <strong>{entreprise.tauxTva || 10}%</strong></label>
+                      <input type="range" min="0" max="20" step="0.5"
+                        value={entreprise.tauxTva || 10}
+                        onChange={e => updateEntreprise(p => ({ ...p, tauxTva: parseFloat(e.target.value) }))}
+                        className="w-full accent-current" style={{ accentColor: couleur }}
                       />
-                    ) : (
-                      <input
-                        type="text"
-                        value={entreprise[field.key] || ''}
-                        onChange={e => updateEntreprise(p => ({ ...p, [field.key]: e.target.value }))}
-                        placeholder={field.placeholder}
-                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
+                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>5.5%</span><span>10%</span><span>20%</span></div>
+                    </div>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par d{'\u00e9'}faut : <strong>{entreprise.acompte || 30}%</strong></label>
+                      <input type="range" min="0" max="50" step="5"
+                        value={entreprise.acompte || 30}
+                        onChange={e => updateEntreprise(p => ({ ...p, acompte: parseInt(e.target.value) }))}
+                        className="w-full" style={{ accentColor: couleur }}
                       />
-                    )}
-                  </div>
-                ))}
-                {filledInStep === currentStep.fields.length && (
-                  <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                    <CheckCircle size={16} /> Tous les champs de cette étape sont remplis
-                  </div>
+                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>30%</span><span>50%</span></div>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { key: 'mentionRGE', label: 'Mention RGE sur les documents' },
+                        { key: 'mentionDecennale', label: 'Mentions assurance d\u00e9cennale' },
+                      ].map(toggle => (
+                        <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                          <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
+                          <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                            style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
+                            onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] })); }}>
+                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Step 4: Relances */}
+                {safeStep === 3 && (
+                  <>
+                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-200'}`}>
+                      <p className={`text-2xl font-bold mb-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>85%</p>
+                      <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>des relances automatiques sont pay{'\u00e9'}es dans les 7 jours</p>
+                    </div>
+                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                      <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Sc{'\u00e9'}nario de relance type :</p>
+                      <div className="space-y-2">
+                        {[
+                          { jour: 'J+7', type: 'Email', desc: 'Rappel de consultation' },
+                          { jour: 'J+15', type: 'Email + SMS', desc: 'Relance douce' },
+                          { jour: 'J+30', type: 'Email', desc: 'Derni\u00e8re relance' },
+                        ].map(r => (
+                          <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
+                            <span className="font-mono font-bold w-10" style={{ color: couleur }}>{r.jour}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{r.type}</span>
+                            <span className={textPrimary}>{r.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                      entreprise.relancesActives
+                        ? isDark ? 'border-emerald-700 bg-emerald-900/20' : 'border-emerald-300 bg-emerald-50'
+                        : isDark ? 'border-slate-600' : 'border-slate-200'
+                    }`}>
+                      <div>
+                        <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
+                        <p className={`text-xs ${textMuted}`}>(recommand{'\u00e9'})</p>
+                      </div>
+                      <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                        style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
+                        onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives })); }}>
+                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
+                      </div>
+                    </label>
+                  </>
+                )}
+
+                {/* Step 5: Catalogue */}
+                {safeStep === 4 && (
+                  <>
+                    <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                      <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
+                      <p className={`text-sm font-semibold ${textPrimary}`}>Importez le R{'\u00e9'}f{'\u00e9'}rentiel BTP</p>
+                      <p className={`text-xs mt-1 ${textMuted}`}>S{'\u00e9'}lectionnez votre m{'\u00e9'}tier pour importer automatiquement les articles courants dans votre catalogue.</p>
+                    </div>
+                    <button
+                      onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}
+                      className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      <Package size={16} className="inline mr-2" />Ouvrir le Catalogue pour importer
+                    </button>
+                    <p className={`text-xs text-center ${textMuted}`}>Vous pourrez toujours le faire plus tard depuis le module Catalogue.</p>
+                  </>
                 )}
               </div>
 
               {/* Footer Navigation */}
               <div className={`p-5 pt-3 border-t flex items-center gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                {wizardStep > 0 && (
+                {safeStep > 0 && (
                   <button
-                    onClick={() => setWizardStep(s => s - 1)}
+                    onClick={() => setWizardStep(s => Math.max(0, s - 1))}
                     className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
                   >
-                    ← Précédent
+                    {'\u2190'} Pr{'\u00e9'}c{'\u00e9'}dent
                   </button>
                 )}
-                <div className="flex-1" />
-                {!isLast ? (
+                <div className="flex-1">
+                  <p className={`text-xs text-center ${textMuted}`}>Profil {completude}%</p>
+                </div>
+                {safeStep < totalSteps - 1 ? (
                   <button
                     onClick={() => setWizardStep(s => s + 1)}
                     className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
                     style={{ background: couleur }}
                   >
-                    Suivant →
+                    Suivant {'\u2192'}
                   </button>
                 ) : (
                   <button
-                    onClick={() => { setShowSetupWizard(false); showToast('Configuration terminée !', 'success'); }}
+                    onClick={() => {
+                      setShowSetupWizard(false);
+                      try { localStorage.setItem('cp_wizard_done', '1'); } catch {}
+                      showToast('Configuration termin\u00e9e !', 'success');
+                    }}
                     className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
                     style={{ background: '#22c55e' }}
                   >
-                    ✓ Terminer
+                    <Check size={16} className="inline mr-1" /> Terminer
                   </button>
                 )}
               </div>

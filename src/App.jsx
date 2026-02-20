@@ -969,7 +969,27 @@ export default function App() {
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
-    { id: 'settings', icon: SettingsIcon, label: 'Paramètres' }
+    (() => {
+      // Compute Facture 2026 compliance score for badge
+      const f26checks = [
+        entreprise.siret, entreprise.tvaIntra,
+        entreprise.rcsVille && entreprise.rcsNumero,
+        entreprise.banque || entreprise.iban,
+        entreprise.adresse, entreprise.rcProAssureur, true, // Factur-X always true
+      ];
+      const f26score = Math.round((f26checks.filter(Boolean).length / f26checks.length) * 100);
+      // Also check profile completeness
+      const profileFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
+      const profileFilled = profileFields.filter(k => entreprise[k] && String(entreprise[k]).trim()).length;
+      const profileScore = Math.round((profileFilled / profileFields.length) * 100);
+      const showBadge = f26score < 100 || profileScore < 100;
+      return {
+        id: 'settings', icon: SettingsIcon, label: 'Param\u00e8tres',
+        badge: showBadge ? '!' : 0,
+        badgeColor: f26score < 50 ? '#ef4444' : f26score < 100 ? '#f59e0b' : undefined,
+        badgeTitle: f26score < 100 ? `Conformit\u00e9 Facture 2026 : ${f26score}%` : `Profil : ${profileScore}%`
+      };
+    })(),
   ];
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
