@@ -87,7 +87,7 @@ const DEMO_CHANTIER = {
 const DEMO_CLIENT = {
   id: 'demo-client-1',
   nom: 'M. Jean Dupont',
-  email: 'jean.dupont@email.com',
+  email: 'j.dupont@exemple.fr',
 };
 
 const DEMO_PHOTOS = [

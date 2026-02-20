@@ -1042,11 +1042,26 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           ];
           const isRareTabActive = rareTabs.some(t => t.key === activeTab);
 
+          // Keyboard navigation for tabs
+          const handleTabKeyDown = (e, tabKeys) => {
+            const currentIdx = tabKeys.indexOf(activeTab);
+            if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              const next = tabKeys[(currentIdx + 1) % tabKeys.length];
+              setActiveTab(next);
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              const prev = tabKeys[(currentIdx - 1 + tabKeys.length) % tabKeys.length];
+              setActiveTab(prev);
+            }
+          };
+          const allTabKeys = [...allTabs.map(t => t.key), ...rareTabs.map(t => t.key)];
+
           return (
             <div className="relative">
-              <div className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div role="tablist" aria-label="Détails du chantier" className={`flex gap-1 border-b overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }} onKeyDown={(e) => handleTabKeyDown(e, allTabKeys)}>
                 {allTabs.map(({ key, label, icon: Icon, badge }) => (
-                  <button key={key} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
+                  <button key={key} role="tab" id={`tab-${key}`} aria-selected={activeTab === key} aria-controls={`panel-${key}`} tabIndex={activeTab === key ? 0 : -1} onClick={() => { setActiveTab(key); setShowMoreTabs(false); }} className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium min-h-[40px] transition-colors relative ${activeTab === key ? 'text-white' : isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`} style={activeTab === key ? { background: couleur } : {}}>
                     <Icon size={15} />
                     <span className="hidden sm:inline">{label}</span>
                     {badge && (
@@ -1088,7 +1103,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         })()}
 
         {activeTab === 'finances' && (
-          <div className="space-y-4">
+          <div role="tabpanel" id="panel-finances" aria-labelledby="tab-finances" className="space-y-4">
             {adjRevenus.length === 0 && adjDepenses.length === 0 && chDepenses.length === 0 && (
               <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
                 <Wallet size={32} className={`mx-auto mb-3 ${textMuted}`} />
@@ -1142,7 +1157,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'photos' && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-photos" aria-labelledby="tab-photos" className={`${cardBg} rounded-2xl border p-5`}>
             {/* Header with bigger touch targets for photo buttons */}
             <div className="flex justify-between items-start mb-4 flex-wrap gap-3">
               <div>
@@ -1227,7 +1242,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'documents' && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-documents" aria-labelledby="tab-documents" className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><Paperclip size={18} style={{ color: couleur }} /> Documents</h3>
             <p className={`text-sm ${textMuted} mb-4`}>Plans, permis, attestations, contrats... Stockez tous vos documents liés au chantier.</p>
 
@@ -1347,14 +1362,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'notes' && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-notes" aria-labelledby="tab-notes" className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><StickyNote size={18} /> Notes</h3>
             <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Contraintes d'accès, contacts sur site, détails importants..." />
           </div>
         )}
 
         {activeTab === 'memos' && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-memos" aria-labelledby="tab-memos" className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} style={{ color: couleur }} /> Mémos</h3>
             {(() => {
               const chantierMemos = memos.filter(m => m.chantier_id === ch.id);
@@ -1442,7 +1457,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'messages' && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-messages" aria-labelledby="tab-messages" className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><MessageSquare size={18} style={{ color: couleur }} /> Historique des échanges</h3>
             <p className={`text-sm ${textMuted} mb-4`}>Centralisez ici tous vos échanges avec le client (emails, SMS, appels...).</p>
 

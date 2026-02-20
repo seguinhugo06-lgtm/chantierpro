@@ -226,7 +226,7 @@ const DEMO_DEVIS = {
     ville: 'Lyon',
     type: 'particulier',
     telephone: '06 12 34 56 78',
-    email: 'jean.dupont@email.fr',
+    email: 'j.dupont@exemple.fr',
     revenus_fiscaux: 35000,
     nb_personnes_foyer: 3,
     logement_anciennete: 25,
