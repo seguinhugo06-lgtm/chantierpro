@@ -419,7 +419,16 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 return (
                   <div key={i} className={`min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 border-r border-b ${isDark ? 'border-slate-700' : 'border-slate-100'} ${!day ? (isDark ? 'bg-slate-900/50' : 'bg-slate-50') : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }} onClick={() => day && handleQuickAdd(dateStr)}>
                     {day && (<>
-                      <p className={`text-xs sm:text-sm font-medium mb-1 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className={`text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                        {(() => {
+                          const totalMins = dayEvents.reduce((s, ev) => s + (ev.duration || 60), 0);
+                          if (totalMins === 0) return null;
+                          const hrs = totalMins / 60;
+                          const color = hrs < 4 ? '#22c55e' : hrs <= 7 ? '#f97316' : '#ef4444';
+                          return <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />;
+                        })()}
+                      </div>
                       <div className="space-y-0.5 sm:space-y-1">
                         {dayEvents.slice(0, 2).map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
