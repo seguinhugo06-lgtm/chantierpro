@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -8,6 +8,7 @@ import {
   ArrowLeft, Users, HardHat, CreditCard,
   Building2, ArrowUpRight, ArrowDownRight, Percent,
   PieChart as PieChartIcon, BarChart3,
+  Calendar, Info, FileEdit,
 } from 'lucide-react';
 import { useAnalytique } from '../hooks/useAnalytique';
 
@@ -55,22 +56,66 @@ const DEPENSE_CAT_COLORS = [
   '#3b82f6', '#ef4444', '#f59e0b', '#22c55e', '#8b5cf6', '#06b6d4', '#f97316', '#ec4899', '#84cc16', '#6366f1',
 ];
 
+const PERIOD_OPTIONS = [
+  { key: 'month', label: 'Ce mois' },
+  { key: 'quarter', label: 'Trimestre' },
+  { key: 'year', label: 'Année' },
+  { key: '12m', label: '12 mois' },
+  { key: 'all', label: 'Tout' },
+];
+
+const PERIOD_LABELS = {
+  month: 'ce mois',
+  quarter: 'ce trimestre',
+  year: 'cette année',
+  '12m': 'les 12 derniers mois',
+  all: 'toutes périodes',
+};
+
+/** Small badge showing N-1 comparison */
+function ComparisonBadge({ value, isDark, suffix = '%', invert = false }) {
+  if (value === null || value === undefined || !isFinite(value)) return null;
+  const isPositive = invert ? value < 0 : value >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+      isPositive
+        ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+        : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
+    }`}>
+      {value >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+      {value >= 0 ? '+' : ''}{Math.round(value)}{suffix}
+      <span className="opacity-60 ml-0.5">vs N-1</span>
+    </span>
+  );
+}
+
 export default function AnalyticsPage({ devis = [], clients = [], chantiers = [], depenses = [], equipe = [], paiements = [], isDark, couleur, setPage }) {
+
+  // ─── Period state (persisted to localStorage) ──────────────────────
+  const [period, setPeriod] = useState(() => {
+    try { return localStorage.getItem('cp_analytics_period') || 'all'; } catch { return 'all'; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('cp_analytics_period', period); } catch {}
+  }, [period]);
 
   // ─── All analytics from hook ─────────────────────────────────────
   const {
     kpis,
+    comparisons,
     monthlyRevenue,
     topClients,
     devisParStatut,
     chantiersParStatut,
     totalChantiers,
+    totalDevis,
     cashFlow,
     rentabiliteChantiers,
     avgMargin,
     marginDistribution,
     depensesParCategorie,
-  } = useAnalytique({ devis, clients, chantiers, depenses, paiements, equipe });
+  } = useAnalytique({ devis, clients, chantiers, depenses, paiements, equipe, period });
 
   const topClientMax = topClients.length > 0 ? topClients[0].montant : 1;
   const cashFlowMax = Math.max(cashFlow.totalPaiements, cashFlow.totalDepenses, 1);
@@ -135,17 +180,46 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
   return (
     <div className={`min-h-screen ${bgPage} p-4 md:p-6 space-y-6`}>
 
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setPage('accueil')}
-          className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord analytique</h1>
-          <p className={`text-sm ${textSecondary}`}>Vue d'ensemble de la performance</p>
+      {/* Header + Period Selector */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setPage('accueil')}
+            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex-1">
+            <h1 className={`text-2xl font-bold ${textPrimary}`}>Tableau de bord analytique</h1>
+            <p className={`text-sm ${textSecondary}`}>
+              Vue d'ensemble {period !== 'all' ? `\u2014 ${PERIOD_LABELS[period] || period}` : ''}
+              {period !== 'all' && totalDevis > 0 && <span className="ml-2">({totalDevis} devis)</span>}
+            </p>
+          </div>
+        </div>
+
+        {/* Period filter pills */}
+        <div className={`sticky top-0 z-10 flex items-center gap-2 py-2 px-1 -mx-1 ${isDark ? 'bg-slate-900/95' : 'bg-slate-50/95'} backdrop-blur-sm`}>
+          <Calendar size={16} className={textSecondary} />
+          <div className={`inline-flex rounded-xl p-1 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200 shadow-sm'}`}>
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setPeriod(opt.key)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  period === opt.key
+                    ? 'text-white shadow-sm'
+                    : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+                }`}
+                style={period === opt.key ? { backgroundColor: couleur } : undefined}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {period !== 'all' && comparisons.ca !== null && (
+            <span className={`text-xs ${textSecondary} hidden sm:inline`}>Comparaison N-1 active</span>
+          )}
         </div>
       </div>
 
@@ -160,14 +234,9 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
             </div>
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{formatEUR(kpis.ca)}</p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className={`text-xs ${textSecondary}`}>Devis accept{'\u00e9'}s / sign{'\u00e9'}s TTC</p>
-            {kpis.caTrend !== null && isFinite(kpis.caTrend) && (
-              <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${kpis.caTrend >= 0 ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>
-                {kpis.caTrend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                {kpis.caTrend >= 0 ? '+' : ''}{Math.round(kpis.caTrend)}%
-              </span>
-            )}
+            <ComparisonBadge value={comparisons.ca} isDark={isDark} />
           </div>
         </div>
 
@@ -185,16 +254,29 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           </p>
         </div>
 
-        {/* Taux de conversion */}
-        <div className={cardClass}>
+        {/* Taux de conversion (FIXED: excludes brouillons + tooltip) */}
+        <div className={cardClass + ' group relative'}>
           <div className="flex items-center justify-between mb-3">
-            <span className={`text-sm font-medium ${textSecondary}`}>Taux de conversion</span>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-sm font-medium ${textSecondary}`}>Taux de conversion</span>
+              <div className="relative">
+                <Info size={13} className={`${textSecondary} opacity-60 cursor-help`} />
+                <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 border border-slate-600' : 'bg-gray-800 text-white'}`}>
+                  <p className="font-semibold mb-1">Calcul :</p>
+                  <p>Devis sign{'\u00e9'}s ({kpis.signedCount}) / Devis envoy{'\u00e9'}s ({kpis.totalDevisEnvoyes})</p>
+                  <p className="mt-1 opacity-70">Brouillons exclus du calcul ({kpis.brouillonsCount})</p>
+                </div>
+              </div>
+            </div>
             <div className="p-2 rounded-lg bg-green-500/10">
               <Target size={18} className="text-green-500" />
             </div>
           </div>
           <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.tauxConversion.toFixed(1)}%</p>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Devis sign{'\u00e9'}s / total</p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className={`text-xs ${textSecondary}`}>{kpis.signedCount}/{kpis.totalDevisEnvoyes} sign{'\u00e9'}s</p>
+            <ComparisonBadge value={comparisons.tauxConversion} isDark={isDark} suffix="pts" />
+          </div>
         </div>
 
         {/* Marge brute */}
@@ -208,11 +290,25 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           <p className={`text-2xl font-bold ${kpis.margeBrute >= 0 ? 'text-green-500' : 'text-red-500'}`}>
             {formatEUR(kpis.margeBrute)}
           </p>
-          <p className={`text-xs mt-1 ${textSecondary}`}>
-            {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - D\u00e9penses'}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className={`text-xs ${textSecondary}`}>
+              {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - D\u00e9penses'}
+            </p>
+            <ComparisonBadge value={comparisons.marge} isDark={isDark} />
+          </div>
         </div>
       </div>
+
+      {/* ────── Brouillons banner (if any) ────── */}
+      {kpis.brouillonsCount > 0 && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-amber-50 border-amber-200'}`}>
+          <FileEdit size={16} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
+          <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+            <span className="font-semibold">{kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''}</span>
+            {' '}({formatEUR(kpis.brouillonsMontant)} TTC) non comptabilis{'\u00e9'}{kpis.brouillonsCount > 1 ? 's' : ''} dans les statistiques
+          </p>
+        </div>
+      )}
 
       {/* ────── Pipeline & Key Metrics ────── */}
       {(kpis.pipelineValue > 0 || kpis.avgDevisValue > 0) && (
@@ -572,7 +668,10 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
 
           {/* Depenses */}
           <div>
-            <p className={`text-sm mb-2 ${textSecondary}`}>D{'\u00e9'}penses totales</p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className={`text-sm ${textSecondary}`}>D{'\u00e9'}penses totales</p>
+              <ComparisonBadge value={comparisons.depenses} isDark={isDark} invert />
+            </div>
             <p className={`text-xl font-bold text-red-500 mb-2`}>{formatEUR(cashFlow.totalDepenses)}</p>
             <div className={`h-3 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
               <div

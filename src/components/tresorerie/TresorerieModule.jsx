@@ -23,6 +23,7 @@ import {
   AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings, Filter,
   Check, Edit3, Trash2, RotateCcw, Zap, RefreshCw, CalendarDays,
   FileText, Receipt, Percent, Link2, Sliders, Target, TrendingDown, Activity,
+  MessageCircle, ChevronDown, ChevronUp, HardHat, Banknote,
 } from 'lucide-react';
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
@@ -86,6 +87,35 @@ const CATEGORY_COLORS = {
   'Sous-traitance': { bg: 'bg-indigo-100 text-indigo-700', dark: 'bg-indigo-900/30 text-indigo-400' },
   Divers: { bg: 'bg-gray-100 text-gray-600', dark: 'bg-gray-700 text-gray-300' },
 };
+
+/** Charges courantes BTP (Feature 6) */
+const BTP_CHARGES = [
+  { categorie: 'Assurance', items: [
+    { label: 'Responsabilit\u00e9 civile pro (RC)', montantMoyen: 250, recurrence: 'mensuel' },
+    { label: 'D\u00e9cennale', montantMoyen: 800, recurrence: 'mensuel' },
+    { label: 'Multirisque local', montantMoyen: 180, recurrence: 'mensuel' },
+  ]},
+  { categorie: 'V\u00e9hicules', items: [
+    { label: 'Leasing v\u00e9hicule utilitaire', montantMoyen: 650, recurrence: 'mensuel' },
+    { label: 'Carburant / Gasoil', montantMoyen: 500, recurrence: 'mensuel' },
+    { label: 'Entretien / CT v\u00e9hicules', montantMoyen: 120, recurrence: 'mensuel' },
+  ]},
+  { categorie: 'Local / D\u00e9p\u00f4t', items: [
+    { label: 'Loyer local / d\u00e9p\u00f4t', montantMoyen: 1800, recurrence: 'mensuel' },
+    { label: '\u00c9lectricit\u00e9 / Eau', montantMoyen: 200, recurrence: 'mensuel' },
+    { label: 'T\u00e9l\u00e9com / Internet', montantMoyen: 80, recurrence: 'mensuel' },
+  ]},
+  { categorie: 'Personnel', items: [
+    { label: 'Salaires + charges', montantMoyen: 3500, recurrence: 'mensuel' },
+    { label: 'Mutuelle / Pr\u00e9voyance', montantMoyen: 150, recurrence: 'mensuel' },
+    { label: 'Formation', montantMoyen: 200, recurrence: 'trimestriel' },
+  ]},
+  { categorie: 'Divers', items: [
+    { label: 'Comptable / Expert', montantMoyen: 300, recurrence: 'mensuel' },
+    { label: 'Logiciels / Abonnements', montantMoyen: 100, recurrence: 'mensuel' },
+    { label: 'Fournitures de bureau', montantMoyen: 60, recurrence: 'mensuel' },
+  ]},
+];
 
 /** Template recurring charges for first-time setup */
 const STARTER_TEMPLATES = [
@@ -622,6 +652,82 @@ export default function TresorerieModule({
   const [mouvFilter, setMouvFilter] = useState('all'); // all | entree | sortie
   const [mouvStatutFilter, setMouvStatutFilter] = useState('all'); // all | prevu | paye
   const [showPrefillConfirm, setShowPrefillConfirm] = useState(false);
+  const [showEncaisserWidget, setShowEncaisserWidget] = useState(true);
+  const [showChargesBTP, setShowChargesBTP] = useState(false);
+
+  // Wizard bootstrapping state
+  const [wizardDismissed] = useState(() => {
+    try { return localStorage.getItem('cp_treso_wizard_done') === '1'; } catch { return false; }
+  });
+  const [wizardStep, setWizardStep] = useState(0); // 0=solde, 1=charges, 2=done
+  const [wizardCharges, setWizardCharges] = useState({}); // { chargeLabel: montant }
+  const showWizard = !wizardDismissed && previsions.length === 0 && !tresorerieLoading;
+
+  const handleWizardFinish = useCallback(async () => {
+    // Step 0: save solde initial (already handled by updateSettings in the form)
+    // Step 1: add selected charges
+    const now = new Date();
+    const baseDate = new Date(now.getFullYear(), now.getMonth(), 5);
+    let i = 0;
+    for (const [label, montant] of Object.entries(wizardCharges)) {
+      if (!montant || montant <= 0) continue;
+      const date = new Date(baseDate);
+      date.setDate(date.getDate() + i * 2);
+      await addPrevision({
+        id: genId(),
+        type: 'sortie',
+        description: label,
+        montant: Number(montant),
+        date: date.toISOString().slice(0, 10),
+        categorie: 'Divers',
+        recurrence: 'mensuel',
+        statut: 'prevu',
+        source: 'wizard',
+        createdAt: new Date().toISOString(),
+      });
+      i++;
+    }
+    try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch {}
+    setWizardStep(2);
+  }, [wizardCharges, addPrevision]);
+
+  // ── "À encaisser maintenant" computation ───────────────────────────
+  const encaisserData = useMemo(() => {
+    const now = new Date();
+    const facturesImpayees = devis.filter(d =>
+      (d.type === 'facture' || (d.statut === 'accepte' || d.statut === 'signe')) &&
+      !['payee', 'paye', 'refuse', 'brouillon'].includes(d.statut)
+    );
+
+    const items = facturesImpayees.map(f => {
+      const echeance = f.date_echeance || f.date_validite || f.date;
+      const echeanceDate = echeance ? new Date(echeance) : null;
+      const reste = (f.total_ttc || 0) - (f.montant_paye || 0);
+      const joursRetard = echeanceDate ? Math.floor((now - echeanceDate) / (1000 * 60 * 60 * 24)) : 0;
+      const client = clients.find(c => c.id === f.client_id);
+      const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : `Client #${f.client_id || '?'}`;
+      const clientTel = client?.telephone || client?.tel || '';
+
+      return {
+        id: f.id,
+        numero: f.numero || f.id?.slice(-6) || '—',
+        clientNom,
+        clientTel,
+        montant: reste,
+        echeance: echeance || '',
+        joursRetard,
+        isOverdue: joursRetard > 0,
+        statut: f.statut,
+        type: f.type || 'devis',
+      };
+    }).filter(i => i.montant > 0).sort((a, b) => b.joursRetard - a.joursRetard);
+
+    const totalAEncaisser = items.reduce((s, i) => s + i.montant, 0);
+    const overdueItems = items.filter(i => i.isOverdue);
+    const overdueTotal = overdueItems.reduce((s, i) => s + i.montant, 0);
+
+    return { items, totalAEncaisser, overdueItems, overdueTotal };
+  }, [devis, clients]);
 
   // ── Escape key handler: close all modals/panels ──────────────────
   useEffect(() => {
@@ -941,6 +1047,42 @@ export default function TresorerieModule({
       }
     }
   }, [hookMarkAsPaid, previsions, addPrevision]);
+
+  // WhatsApp relance for overdue invoices
+  const handleWhatsAppRelance = useCallback((item) => {
+    const msg = encodeURIComponent(
+      `Bonjour ${item.clientNom},\n\nJe me permets de vous relancer concernant la facture n\u00b0${item.numero} d'un montant de ${formatCurrency(item.montant)} \u20ac.\n\n${item.joursRetard > 0 ? `Cette facture est en retard de ${item.joursRetard} jour${item.joursRetard > 1 ? 's' : ''}. ` : ''}Pourriez-vous proc\u00e9der au r\u00e8glement ?\n\nMerci d'avance,\nCordialement`
+    );
+    const tel = (item.clientTel || '').replace(/\s/g, '').replace(/^0/, '+33');
+    window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+  }, []);
+
+  // Mark an invoice as paid from the encaisser widget
+  const handleEncaisserMarkPaid = useCallback(async (item) => {
+    // Find the matching prevision and mark it paid
+    const match = previsions.find(p => p.linkedId === item.id && p.type === 'entree' && p.statut === 'prevu');
+    if (match) {
+      await hookMarkAsPaid(match.id);
+    }
+  }, [previsions, hookMarkAsPaid]);
+
+  // Add BTP charge as prevision
+  const handleAddBTPCharge = useCallback(async (charge) => {
+    const now = new Date();
+    const date = new Date(now.getFullYear(), now.getMonth(), 5);
+    await addPrevision({
+      id: genId(),
+      type: 'sortie',
+      description: charge.label,
+      montant: charge.montantMoyen,
+      date: date.toISOString().slice(0, 10),
+      categorie: charge.categorie || 'Divers',
+      recurrence: charge.recurrence || 'mensuel',
+      statut: 'prevu',
+      source: 'btp_charge',
+      createdAt: new Date().toISOString(),
+    });
+  }, [addPrevision]);
 
   const handleEditPrevision = useCallback((item) => {
     setEditingItem(item);
@@ -1520,6 +1662,212 @@ export default function TresorerieModule({
         </div>
       )}
 
+      {/* ── Wizard bootstrapping (Feature 4) ─────────────────────── */}
+      {showWizard && wizardStep < 2 && (
+        <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80 border-slate-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-blue-200'}`}>
+          {/* Progress */}
+          <div className="flex items-center gap-0 px-5 pt-4 pb-2">
+            {[0, 1].map(s => (
+              <React.Fragment key={s}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  wizardStep >= s ? 'text-white' : isDark ? 'bg-slate-700 text-slate-500' : 'bg-gray-200 text-gray-400'
+                }`} style={wizardStep >= s ? { backgroundColor: couleur } : undefined}>
+                  {wizardStep > s ? <Check size={14} /> : s + 1}
+                </div>
+                {s < 1 && <div className={`flex-1 h-0.5 mx-2 rounded ${wizardStep > s ? '' : isDark ? 'bg-slate-700' : 'bg-gray-200'}`} style={wizardStep > s ? { backgroundColor: couleur } : undefined} />}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {wizardStep === 0 && (
+            <div className="px-5 pb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className={`text-base font-bold ${textPrimary}`}>Bienvenue dans la Tr{'\u00e9'}sorerie</h3>
+                  <p className={`text-sm ${textSecondary}`}>{'\u00c9'}tape 1/2 : Votre solde bancaire actuel</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Solde actuel de votre compte ({'\u20ac'})</label>
+                  <input type="number" placeholder="ex: 15000"
+                    value={settings.soldeInitial || ''}
+                    onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
+                    className={`w-full px-4 py-3 rounded-xl border text-lg font-bold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
+                  />
+                  <p className={`text-[10px] mt-1 ${textSecondary}`}>Ce sera votre point de d{'\u00e9'}part pour les projections</p>
+                </div>
+                <button onClick={() => setWizardStep(1)}
+                  className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: couleur }}>
+                  Suivant {'\u2192'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 1 && (
+            <div className="px-5 pb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h3 className={`text-base font-bold ${textPrimary}`}>Vos charges mensuelles</h3>
+                  <p className={`text-sm ${textSecondary}`}>{'\u00c9'}tape 2/2 : S{'\u00e9'}lectionnez et ajustez</p>
+                </div>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {STARTER_TEMPLATES.map((tmpl) => {
+                  const isSelected = wizardCharges[tmpl.description] !== undefined;
+                  return (
+                    <div key={tmpl.description}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
+                        isSelected
+                          ? isDark ? 'border-blue-500/50 bg-blue-500/10' : 'border-blue-300 bg-blue-50'
+                          : isDark ? 'border-slate-600 bg-slate-700/40 hover:bg-slate-700/60' : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setWizardCharges(prev => { const n = { ...prev }; delete n[tmpl.description]; return n; });
+                        } else {
+                          setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
+                        }
+                      }}>
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isSelected ? 'border-blue-500 bg-blue-500' : isDark ? 'border-slate-500' : 'border-gray-300'
+                      }`}>
+                        {isSelected && <Check size={12} className="text-white" />}
+                      </div>
+                      <span className={`flex-1 text-sm ${textPrimary}`}>{tmpl.description}</span>
+                      {isSelected ? (
+                        <input type="number" value={wizardCharges[tmpl.description]}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setWizardCharges(prev => ({ ...prev, [tmpl.description]: Number(e.target.value) || 0 }))}
+                          className={`w-24 px-2 py-1 rounded-lg border text-sm text-right font-semibold ${isDark ? 'bg-slate-600 border-slate-500 text-white' : 'bg-white border-gray-200'}`}
+                        />
+                      ) : (
+                        <span className={`text-xs ${textSecondary}`}>{formatCurrency(tmpl.montant)}/mois</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3 mt-4">
+                <button onClick={() => setWizardStep(0)}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>
+                  {'\u2190'} Retour
+                </button>
+                <button onClick={handleWizardFinish}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ backgroundColor: couleur }}>
+                  {Object.keys(wizardCharges).length > 0
+                    ? `Ajouter ${Object.keys(wizardCharges).length} charge${Object.keys(wizardCharges).length > 1 ? 's' : ''} et commencer`
+                    : 'Commencer sans charges'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Widget "À encaisser maintenant" ──────────────────────── */}
+      {encaisserData.items.length > 0 && showEncaisserWidget && (
+        <div className={`rounded-2xl border overflow-hidden ${encaisserData.overdueItems.length > 0 ? isDark ? 'border-orange-500/40' : 'border-orange-300' : isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between px-5 py-3 ${encaisserData.overdueItems.length > 0 ? isDark ? 'bg-orange-500/10' : 'bg-orange-50' : isDark ? 'bg-slate-800' : 'bg-white'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${encaisserData.overdueItems.length > 0 ? 'bg-orange-500/20' : isDark ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                <Banknote size={18} className={encaisserData.overdueItems.length > 0 ? 'text-orange-500' : 'text-emerald-500'} />
+              </div>
+              <div>
+                <h3 className={`text-sm font-bold ${textPrimary}`}>
+                  {'\u00c0'} encaisser maintenant
+                </h3>
+                <p className={`text-xs ${textSecondary}`}>
+                  {encaisserData.items.length} facture{encaisserData.items.length > 1 ? 's' : ''} {'\u2022'} {formatMoney(encaisserData.totalAEncaisser)} TTC
+                  {encaisserData.overdueItems.length > 0 && (
+                    <span className={`ml-2 font-semibold ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                      dont {formatMoney(encaisserData.overdueTotal)} en retard
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button onClick={() => setShowEncaisserWidget(false)}
+              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+              title="Masquer">
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Items list */}
+          <div className={`divide-y ${isDark ? 'divide-slate-700/50 bg-slate-800/60' : 'divide-gray-100 bg-white'}`}>
+            {encaisserData.items.slice(0, 5).map((item) => (
+              <div key={item.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}>
+                {/* Overdue indicator */}
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${item.isOverdue ? item.joursRetard > 30 ? 'bg-red-500' : 'bg-orange-400' : 'bg-emerald-400'}`} />
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium truncate ${textPrimary}`}>{item.clientNom}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${item.type === 'facture' ? isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700' : isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                      {item.type === 'facture' ? `F-${item.numero}` : `D-${item.numero}`}
+                    </span>
+                  </div>
+                  <p className={`text-xs ${textSecondary}`}>
+                    {item.isOverdue ? (
+                      <span className={isDark ? 'text-orange-400' : 'text-orange-600'}>
+                        {item.joursRetard}j de retard
+                      </span>
+                    ) : item.echeance ? (
+                      `\u00c9ch. ${new Date(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+                    ) : 'En attente'}
+                  </p>
+                </div>
+
+                {/* Amount */}
+                <span className={`text-sm font-bold whitespace-nowrap ${item.isOverdue ? isDark ? 'text-orange-400' : 'text-orange-600' : isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  {formatMoney(item.montant)}
+                </span>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {item.clientTel && (
+                    <button
+                      onClick={() => handleWhatsAppRelance(item)}
+                      className="p-1.5 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors"
+                      title="Relancer par WhatsApp"
+                    >
+                      <MessageCircle size={14} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleEncaisserMarkPaid(item)}
+                    className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-emerald-400' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600'}`}
+                    title="Marquer comme encaiss\u00e9"
+                  >
+                    <Check size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {encaisserData.items.length > 5 && (
+              <div className={`px-5 py-2 text-center`}>
+                <button onClick={() => setActiveTab('previsions')}
+                  className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+                  Voir les {encaisserData.items.length - 5} autres factures {'\u2192'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── KPI Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Solde actuel" value={formatMoney(soldeActuel)} icon={Wallet}
@@ -1531,6 +1879,95 @@ export default function TresorerieModule({
         <KpiCard label="Projection fin de mois" value={formatMoney(projectionFinMois)} icon={TrendingUp}
           color={projectionFinMois >= 0 ? '#10b981' : '#ef4444'} trendLabel="Solde + entrées - sorties" isDark={isDark} />
       </div>
+
+      {/* ── TVA déductible auto-calculée (Feature 5 — Aperçu only) ──── */}
+      {activeTab === 'apercu' && (settings.regimeTva || 'trimestriel') !== 'franchise' && (tvaTotal.collectee > 0 || tvaTotal.deductible > 0) && (
+        <div className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-colors ${isDark ? 'bg-slate-800/60 border-slate-700 hover:bg-slate-700/40' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+          onClick={() => setActiveTab('tva')}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10">
+            <Percent size={20} className="text-purple-500" />
+          </div>
+          <div className="flex-1">
+            <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>TVA {'\u2014'} Auto-calcul\u00e9e depuis vos d\u00e9penses</p>
+            <div className="flex flex-wrap items-center gap-4 mt-1">
+              <span className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                Collect\u00e9e : <strong>{formatMoney(tvaTotal.collectee)}</strong>
+              </span>
+              <span className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                D\u00e9ductible : <strong>{formatMoney(tvaTotal.deductible)}</strong>
+              </span>
+              <span className={`text-sm font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {tvaTotal.net >= 0 ? '\u00c0 reverser' : 'Cr\u00e9dit'} : {formatMoney(Math.abs(tvaTotal.net))}
+              </span>
+            </div>
+          </div>
+          <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
+            D\u00e9tail TVA {'\u2192'}
+          </span>
+        </div>
+      )}
+
+      {/* ── Widget Charges courantes BTP (Feature 6) ────────────────── */}
+      {activeTab === 'apercu' && (
+        <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
+          <button
+            onClick={() => setShowChargesBTP(!showChargesBTP)}
+            className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20` }}>
+                <HardHat size={18} style={{ color: couleur }} />
+              </div>
+              <div className="text-left">
+                <p className={`text-sm font-bold ${textPrimary}`}>Charges courantes BTP</p>
+                <p className={`text-xs ${textSecondary}`}>Ajoutez rapidement vos charges r{'\u00e9'}currentes</p>
+              </div>
+            </div>
+            {showChargesBTP ? <ChevronUp size={18} className={textSecondary} /> : <ChevronDown size={18} className={textSecondary} />}
+          </button>
+
+          {showChargesBTP && (
+            <div className={`px-5 pb-4 space-y-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
+              {BTP_CHARGES.map((group) => (
+                <div key={group.categorie} className="pt-3">
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-2 ${textSecondary}`}>{group.categorie}</p>
+                  <div className="space-y-1.5">
+                    {group.items.map((charge) => {
+                      const exists = previsions.some(p =>
+                        p.description?.toLowerCase().trim() === charge.label.toLowerCase().trim() && p.statut === 'prevu'
+                      );
+                      return (
+                        <div key={charge.label}
+                          className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${isDark ? 'bg-slate-700/40 hover:bg-slate-700/60' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm ${textPrimary}`}>{charge.label}</span>
+                            <span className={`text-xs ml-2 ${textSecondary}`}>
+                              ~{formatCurrency(charge.montantMoyen)}/{charge.recurrence === 'mensuel' ? 'mois' : charge.recurrence === 'trimestriel' ? 'trim.' : 'an'}
+                            </span>
+                          </div>
+                          {exists ? (
+                            <span className={`text-[10px] px-2 py-1 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                              <Check size={10} className="inline mr-0.5" />D{'\u00e9'}j{'\u00e0'} ajout{'\u00e9'}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleAddBTPCharge({ ...charge, categorie: group.categorie })}
+                              className="text-xs font-medium px-2.5 py-1 rounded-lg text-white transition-colors"
+                              style={{ backgroundColor: couleur }}
+                            >
+                              <Plus size={12} className="inline mr-0.5" />Ajouter
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Mouvements ce mois (Aperçu) ─────────────────────────────── */}
       {activeTab === 'apercu' && mouvements.length > 0 && (
