@@ -4,10 +4,11 @@ import {
   ClipboardList, Trash2, AlertCircle, CheckCircle2, Star,
   Building2, Users, Tag, StickyNote, ChevronLeft, Filter,
   ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square,
-  Mic, MicOff, Send, Share2, Copy, ExternalLink
+  Mic, MicOff, Send, Share2, Copy, ExternalLink, PartyPopper
 } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import { useConfirm, useToast } from '../context/AppContext';
+import EmptyState from './ui/EmptyState';
 import MemoCalendarView from './MemoCalendarView';
 
 // ── Catégories disponibles ──
@@ -305,7 +306,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
       </div>
 
       {/* Add subtask input */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <input
           type="text"
           value={newText}
@@ -314,12 +315,15 @@ function SubtaskList({ subtasks = [], onUpdate, couleur, isDark }) {
           placeholder="Ajouter une sous-tâche..."
           className={`flex-1 px-2 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 ${tc.input}`}
           style={{ '--tw-ring-color': couleur }}
+          aria-label="Ajouter une sous-tâche"
         />
+        <span className={`text-[10px] flex-shrink-0 ${tc.muted}`}>↵ pour ajouter</span>
         <button
           onClick={addSubtask}
           disabled={!newText.trim()}
           className="px-2 py-1.5 rounded-lg text-xs text-white disabled:opacity-40"
           style={{ backgroundColor: couleur }}
+          aria-label="Ajouter la sous-tâche"
         >
           <Plus size={12} />
         </button>
@@ -339,9 +343,32 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const isFirstRender = useRef(true);
-  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const saveTimerRef = useRef(null);
+  const panelRef = useRef(null);
+
+  // Focus trap + Escape to close
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusable = panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length > 0) focusable[0].focus();
+
+    const trap = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    panel.addEventListener('keydown', trap);
+    return () => panel.removeEventListener('keydown', trap);
+  }, [memo.id, onClose]);
 
   // Sync local state when memo changes
   useEffect(() => {
@@ -366,24 +393,46 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
       return;
     }
     if (debouncedText !== memo.text) {
-      onUpdate(memo.id, { text: debouncedText });
-      setSaveStatus('saved');
-      setLastSavedAt(Date.now());
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+      try {
+        onUpdate(memo.id, { text: debouncedText });
+        setSaveStatus('saved');
+        setLastSavedAt(Date.now());
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch {
+        setSaveStatus('error');
+      }
     }
   }, [debouncedText]);
 
   // Auto-save notes
   useEffect(() => {
     if (debouncedNotes !== (memo.notes || '')) {
-      onUpdate(memo.id, { notes: debouncedNotes });
-      setSaveStatus('saved');
-      setLastSavedAt(Date.now());
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+      try {
+        onUpdate(memo.id, { notes: debouncedNotes });
+        setSaveStatus('saved');
+        setLastSavedAt(Date.now());
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch {
+        setSaveStatus('error');
+      }
     }
   }, [debouncedNotes]);
+
+  // Retry save on error
+  const retrySave = () => {
+    setSaveStatus('saving');
+    try {
+      if (text !== memo.text) onUpdate(memo.id, { text });
+      if (notes !== (memo.notes || '')) onUpdate(memo.id, { notes });
+      setSaveStatus('saved');
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+    }
+  };
 
   // Cleanup timer
   useEffect(() => () => clearTimeout(saveTimerRef.current), []);
@@ -420,27 +469,37 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
     }
   };
 
-  // ── WhatsApp / clipboard share ──
-  const handleShare = () => {
+  // ── Share menu ──
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const hasNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+
+  const getShareMessage = () => {
     const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
     const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
     const parts = ['[Mémo ChantierPro]', memo.text];
     if (memo.due_date) parts.push(`📅 ${formatDateFR(memo.due_date)}${memo.due_time ? ' à ' + formatTimeFR(memo.due_time) : ''}`);
     if (chantier) parts.push(`🏗️ ${chantier.nom}`);
     if (client) parts.push(`👤 ${client.nom || ''} ${client.prenom || ''}`);
-    const message = parts.join('\n');
+    return parts.join('\n');
+  };
 
-    // Mobile: open WhatsApp. Desktop: copy to clipboard
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.open(`whatsapp://send?text=${encodeURIComponent(message)}`, '_blank');
-    } else {
-      navigator.clipboard.writeText(message).then(() => {
-        showToast('Copié dans le presse-papiers', 'success');
-      }).catch(() => {
-        showToast('Erreur de copie', 'error');
-      });
+  const handleCopyShare = () => {
+    const message = getShareMessage();
+    navigator.clipboard.writeText(message).then(() => {
+      showToast('Lien copié', 'success');
+    }).catch(() => {
+      showToast('Erreur de copie', 'error');
+    });
+    setShowShareMenu(false);
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      await navigator.share({ title: 'Mémo ChantierPro', text: getShareMessage() });
+    } catch (err) {
+      if (err.name !== 'AbortError') showToast('Partage annulé', 'info');
     }
+    setShowShareMenu(false);
   };
 
   const recType = memo.recurrence?.type || memo.recurrence || '';
@@ -462,15 +521,19 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
       {/* Panel */}
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Détail du mémo"
         className={`fixed top-0 right-0 h-full w-full md:max-w-md ${tc.bg} shadow-2xl z-50 flex flex-col animate-slide-in-right`}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-3 border-b ${tc.border}`}>
-          <button onClick={onClose} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} aria-label="Fermer le panneau de détail">
             <ChevronLeft size={20} className={tc.muted} />
           </button>
           {/* Auto-save indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" role="status" aria-live="polite">
             {saveStatus === 'saving' && (
               <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-500'}`}>
                 <RefreshCw size={11} className="animate-spin" /> Sauvegarde...
@@ -478,7 +541,13 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
             )}
             {saveStatus === 'saved' && (
               <span className={`text-xs flex items-center gap-1 ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                <CheckCircle2 size={11} /> Sauvegardé
+                <CheckCircle2 size={11} /> ✓ Sauvegardé
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="text-xs flex items-center gap-1 text-orange-500">
+                <AlertCircle size={11} /> Erreur
+                <button onClick={retrySave} className="underline hover:text-orange-600 ml-0.5">Réessayer</button>
               </span>
             )}
             {saveStatus === 'idle' && (
@@ -486,18 +555,45 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
             )}
           </div>
           <div className="flex items-center gap-1">
-            <button
-              onClick={handleShare}
-              className={`p-1.5 rounded-lg ${isDark ? 'text-green-400 hover:bg-green-500/10' : 'text-green-600 hover:bg-green-50'}`}
-              aria-label="Partager via WhatsApp"
-              title="Partager via WhatsApp"
-            >
-              <Share2 size={18} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowShareMenu(!showShareMenu)}
+                className={`p-1.5 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                aria-label="Partager le mémo"
+                title="Partager"
+              >
+                <Share2 size={18} />
+              </button>
+              {showShareMenu && (
+                <>
+                  <div className="fixed inset-0 z-50" onClick={() => setShowShareMenu(false)} />
+                  <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[200px] py-1 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-white border-slate-200'}`}>
+                    <button
+                      onClick={handleCopyShare}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${isDark ? 'text-white hover:bg-slate-600' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <Copy size={14} /> Copier le contenu
+                    </button>
+                    <button
+                      onClick={hasNativeShare ? handleNativeShare : undefined}
+                      disabled={!hasNativeShare}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                        hasNativeShare
+                          ? isDark ? 'text-white hover:bg-slate-600' : 'text-slate-700 hover:bg-slate-50'
+                          : 'opacity-40 cursor-not-allowed'
+                      } ${isDark ? 'text-white' : 'text-slate-700'}`}
+                    >
+                      <ExternalLink size={14} /> Partager par SMS/Email
+                      {!hasNativeShare && <span className={`text-[10px] ml-auto ${tc.muted}`}>Non disponible</span>}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             <button
               onClick={handleDelete}
               className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-              aria-label="Supprimer le mémo"
+              aria-label="Supprimer ce mémo définitivement"
             >
               <Trash2 size={18} />
             </button>
@@ -506,9 +602,9 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Text */}
+          {/* Mémo */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Texte</label>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Mémo</label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -701,24 +797,48 @@ function StatsBar({ memos, isDark, couleur }) {
       m.is_done && m.done_at && new Date(m.done_at) >= monthStart
     ).length;
 
-    return { completedThisWeek, completionRate, overdueCount, completedThisMonth };
+    return { completedThisWeek, completionRate, overdueCount, completedThisMonth, completed, total };
   }, [memos]);
 
-  const cards = [
-    { value: stats.completedThisWeek, label: 'Cette semaine', bg: isDark ? 'bg-orange-900/30' : 'bg-orange-50', color: 'text-orange-600' },
-    { value: `${stats.completionRate}%`, label: 'Complétion', bg: isDark ? 'bg-green-900/30' : 'bg-green-50', color: 'text-green-600' },
-    { value: stats.overdueCount, label: 'En retard', bg: isDark ? 'bg-red-900/30' : 'bg-red-50', color: 'text-red-600' },
-    { value: `✅ ${stats.completedThisMonth}`, label: 'Ce mois', bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50', color: 'text-blue-600' },
-  ];
+  // #2: Completion color progressive
+  const completionColor = stats.completionRate <= 30 ? '#EF4444' : stats.completionRate <= 70 ? '#F97316' : '#22C55E';
+
+  // #1: Overdue conditional styling
+  const overdueNeutral = stats.overdueCount === 0;
 
   return (
     <div className="grid grid-cols-4 gap-2 mb-4">
-      {cards.map((c, i) => (
-        <div key={i} className={`${c.bg} rounded-lg px-3 py-2 text-center`}>
-          <div className={`text-lg font-bold ${c.color}`}>{c.value}</div>
-          <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{c.label}</div>
+      {/* Cette semaine */}
+      <div className={`${isDark ? 'bg-orange-900/30' : 'bg-orange-50'} rounded-lg px-3 py-2 text-center`}>
+        <div className="text-lg font-bold text-orange-600">{stats.completedThisWeek}</div>
+        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cette semaine</div>
+      </div>
+
+      {/* #2: Complétion — color + subline + progress bar */}
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-50'} rounded-lg px-3 py-2 text-center`}>
+        <div className="text-lg font-bold" style={{ color: completionColor }}>{stats.completionRate}%</div>
+        <div className={`h-1 rounded-full mt-1 mb-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, backgroundColor: completionColor }} />
         </div>
-      ))}
+        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {stats.completed} / {stats.total} ce mois
+        </div>
+      </div>
+
+      {/* #1: En retard — conditional color */}
+      <div className={`${overdueNeutral ? (isDark ? 'bg-slate-800' : 'bg-slate-50') : (isDark ? 'bg-red-900/30' : 'bg-red-50')} rounded-lg px-3 py-2 text-center`}>
+        <div className={`text-lg font-bold ${overdueNeutral ? (isDark ? 'text-slate-500' : 'text-slate-400') : 'text-red-600'}`}>{stats.overdueCount}</div>
+        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>En retard</div>
+      </div>
+
+      {/* #3: Ce mois — Lucide CheckCircle2 icon */}
+      <div className={`${isDark ? 'bg-blue-900/30' : 'bg-blue-50'} rounded-lg px-3 py-2 text-center`}>
+        <div className="text-lg font-bold text-blue-600 flex items-center justify-center gap-1">
+          <CheckCircle2 size={16} className="text-green-500" />
+          {stats.completedThisMonth}
+        </div>
+        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</div>
+      </div>
     </div>
   );
 }
@@ -829,7 +949,11 @@ export default function MemosPage({
 
   // ── Voice dictation ──
   const startListening = useCallback(() => {
-    if (!hasSpeechAPI || isListening) return;
+    if (!hasSpeechAPI) {
+      showToast("La saisie vocale n'est pas disponible sur ce navigateur", 'warning');
+      return;
+    }
+    if (isListening) return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'fr-FR';
@@ -863,7 +987,11 @@ export default function MemosPage({
       console.warn('Speech recognition error:', e.error);
       setIsListening(false);
       if (e.error === 'not-allowed') {
-        showToast('Micro non autorisé', 'error');
+        showToast('Accès au microphone refusé. Vérifiez les paramètres de votre navigateur.', 'warning');
+      } else if (e.error === 'no-speech') {
+        showToast('Aucune voix détectée. Réessayez.', 'info');
+      } else {
+        showToast('Erreur de reconnaissance vocale', 'error');
       }
     };
 
@@ -939,9 +1067,19 @@ export default function MemosPage({
   const handleQuickAdd = useCallback(async () => {
     const trimmed = newMemoText.trim();
     if (!trimmed) return;
-    await addMemo({ text: trimmed });
+    const result = await addMemo({ text: trimmed });
+    const newId = result?.id;
     setNewMemoText('');
-    showToast('Mémo ajouté', 'success');
+    // #9: Toast with link to open detail for setting a date
+    showToast(
+      newId ? 'Mémo ajouté · Cliquez ici pour définir une date' : 'Mémo ajouté',
+      'success',
+      newId ? 4000 : 3000
+    );
+    if (newId) {
+      // Auto-open detail panel after a short delay so user sees the toast
+      setTimeout(() => setSelectedMemoId(newId), 300);
+    }
     inputRef.current?.focus();
   }, [newMemoText, addMemo, showToast]);
 
@@ -1094,23 +1232,29 @@ export default function MemosPage({
   }, [memos, debouncedSearch, filterCategory, filterCategoryChip, filterPriority, chantiers, clients]);
 
   // ── Sorting ──
+  // #11: Priority always applied as primary sort within each section,
+  // then secondary sort by user-selected criteria
   const sortMemos = useCallback((list) => {
     const sorted = [...list];
-    switch (sortBy) {
-      case 'oldest':
-        sorted.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
-        break;
-      case 'priority':
-        sorted.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
-        break;
-      case 'alpha':
-        sorted.sort((a, b) => (a.text || '').localeCompare(b.text || '', 'fr'));
-        break;
-      case 'recent':
-      default:
-        sorted.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-        break;
-    }
+    sorted.sort((a, b) => {
+      // Primary: priority (haute first)
+      const pa = PRIORITY_ORDER[a.priority] ?? 3;
+      const pb = PRIORITY_ORDER[b.priority] ?? 3;
+      if (pa !== pb) return pa - pb;
+
+      // Secondary: user-selected sort
+      switch (sortBy) {
+        case 'oldest':
+          return (a.created_at || '').localeCompare(b.created_at || '');
+        case 'priority':
+          return 0; // already sorted by priority
+        case 'alpha':
+          return (a.text || '').localeCompare(b.text || '', 'fr');
+        case 'recent':
+        default:
+          return (b.created_at || '').localeCompare(a.created_at || '');
+      }
+    });
     return sorted;
   }, [sortBy]);
 
@@ -1158,19 +1302,36 @@ export default function MemosPage({
 
     return (
       <div key={key} className="mb-3">
-        <button
-          onClick={() => toggleSection(key)}
-          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide ${
-            isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
-          }`}
-        >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-          {Icon && <Icon size={13} style={{ color }} />}
-          <span style={{ color }}>{title}</span>
-          <span className={`ml-auto text-xs font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            {items.length}
-          </span>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => toggleSection(key)}
+            className={`flex items-center gap-2 flex-1 text-left px-2 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wide ${
+              isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            {Icon && <Icon size={13} style={{ color }} />}
+            <span style={{ color }}>{title}</span>
+            <span className={`ml-auto text-xs font-normal ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              {items.length}
+            </span>
+          </button>
+          {/* #12: "Tout planifier" CTA for unsorted section */}
+          {key === 'undated' && items.length > 0 && (
+            <button
+              onClick={() => { setFocusSortIndex(0); setActiveTab('inbox'); }}
+              className={`text-[10px] px-2 py-1 rounded-md font-medium whitespace-nowrap ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+            >
+              Tout planifier →
+            </button>
+          )}
+        </div>
+        {/* #12: Info line for unsorted section */}
+        {key === 'undated' && !isCollapsed && (
+          <p className={`text-[10px] px-2 mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            💡 Ces mémos n'ont pas de date. Cliquez pour les planifier.
+          </p>
+        )}
         {!isCollapsed && (
           <div className="space-y-0.5 mt-1">
             {items.map((m, idx) => (
@@ -1250,21 +1411,20 @@ export default function MemosPage({
       {/* Quick capture — with voice + always-visible add button */}
       <div className={`${tc.card} rounded-xl border ${tc.border} p-3 mb-4`}>
         <div className="flex items-center gap-2">
-          {/* Voice dictation button */}
-          {hasSpeechAPI && (
-            <button
-              onClick={isListening ? stopListening : startListening}
-              className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
-                isListening
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-              }`}
-              aria-label={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
-              title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
-            >
-              {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-          )}
+          {/* Voice dictation button — shows always, error toast if unsupported */}
+          <button
+            onClick={isListening ? stopListening : startListening}
+            className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+              isListening
+                ? 'text-white'
+                : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+            }`}
+            style={isListening ? { backgroundColor: couleur, animation: 'pulse 1.5s infinite' } : {}}
+            aria-label={isListening ? 'Arrêter la dictée vocale' : 'Démarrer la dictée vocale'}
+            title={isListening ? 'Arrêter la dictée' : 'Dictée vocale'}
+          >
+            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
           {/* Text input */}
           <input
             ref={inputRef}
@@ -1272,9 +1432,12 @@ export default function MemosPage({
             value={newMemoText}
             onChange={(e) => setNewMemoText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? '🎤 Parlez maintenant...' : 'Nouveau mémo...'}
+            placeholder={isListening ? 'En écoute... parlez maintenant' : 'Nouveau mémo...'}
             className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+            aria-label="Créer un nouveau mémo"
+            aria-describedby="memo-input-hint"
           />
+          <span id="memo-input-hint" className="sr-only">Appuyez sur Entrée pour créer le mémo, ou utilisez le bouton microphone pour la dictée vocale</span>
           {/* Always-visible add button (44px touch target) */}
           <button
             onClick={handleQuickAdd}
@@ -1294,8 +1457,8 @@ export default function MemosPage({
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className={`text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-              Écoute en cours... (auto-submit après 2s de silence)
+            <span className={`text-xs ${isDark ? 'text-orange-400' : 'text-orange-500'}`}>
+              En écoute... (envoi automatique après 2s de silence)
             </span>
           </div>
         )}
@@ -1604,11 +1767,14 @@ export default function MemosPage({
                   ))}
                 </div>
               ) : (
-                <div className={`text-center py-12 ${tc.muted}`}>
-                  <span className="text-4xl block mb-3">🎉</span>
-                  <p className="font-medium">Rien de prévu !</p>
-                  <p className="text-xs mt-1">Aucun mémo pour aujourd'hui</p>
-                </div>
+                <EmptyState
+                  icon={PartyPopper}
+                  title="Tout est à jour pour aujourd'hui !"
+                  description="Ajoutez une tâche ou consultez votre inbox."
+                  actionLabel="+ Nouveau mémo"
+                  onAction={() => inputRef.current?.focus()}
+                  isDark={isDark}
+                />
               )}
             </>
           )}
