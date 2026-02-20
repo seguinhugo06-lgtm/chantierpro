@@ -1455,7 +1455,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className="flex items-center gap-2 px-5 py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
                 <Calendar size={16} className="text-white" />
                 <p className="text-sm text-white font-bold">
-                  {weekOffset === 0 ? 'Cette semaine' : `Semaine du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                  {weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
                 </p>
               </div>
               <button
@@ -1470,10 +1470,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
             <div className="flex items-end justify-between mb-4">
               <div>
-                <p className="text-5xl sm:text-6xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
-                <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>{equipe.length} membre{equipe.length > 1 ? 's' : ''} dans l'équipe</p>
+                <p className={`text-5xl sm:text-6xl font-black text-white ${totalWeekHours === 0 ? 'opacity-50' : ''}`} style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
+                <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                  {totalWeekHours === 0 ? 'Aucune heure pointée' : `${equipe.length} membre${equipe.length > 1 ? 's' : ''} dans l'équipe`}
+                </p>
               </div>
-              <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm">
+              <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm" title="Heures validées par un responsable cette semaine">
                 <div className="flex items-center gap-2 justify-end">
                   <Check size={16} className="text-white" />
                   <span className="text-sm text-white font-semibold">Validées</span>
@@ -1493,7 +1495,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 />
               </div>
               <p className="text-sm mt-2 text-white text-right font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                {totalWeekHours > 0 ? Math.round((approvedWeekHours / totalWeekHours) * 100) : 0}% validé
+                {totalWeekHours > 0 ? `${Math.round((approvedWeekHours / totalWeekHours) * 100)}% des heures validées` : 'Aucune heure cette semaine'}
               </p>
             </div>
           </div>
@@ -1778,7 +1780,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={isSousTraitants ? "Rechercher un sous-traitant..." : "Rechercher un employé..."}
+                  placeholder={isSousTraitants ? "Rechercher par nom, métier, SIRET..." : "Rechercher par nom, métier, compétence..."}
                   aria-label={isSousTraitants ? "Rechercher un sous-traitant" : "Rechercher un employé"}
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
@@ -1787,6 +1789,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               {/* Filter toggle */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
+                title="Filtrer par métier"
                 className={`px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 min-h-[44px] transition-all ${
                   showFilters || filterRole
                     ? 'text-white'
@@ -2602,6 +2605,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {!chrono.running ? (
                       <motion.button
                         onClick={startChrono}
+                        title="Démarrer le chronomètre"
                         className="px-8 py-4 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
                         style={{ background: chrono.employeId ? couleur : '#94a3b8' }}
                         whileHover={chrono.employeId ? { scale: 1.02 } : {}}
@@ -2615,6 +2619,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <>
                         <motion.button
                           onClick={togglePause}
+                          title={chrono.paused ? 'Reprendre le chronomètre' : 'Mettre en pause'}
                           className={`px-6 py-4 rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg ${
                             chrono.paused
                               ? 'bg-emerald-500 text-white'
