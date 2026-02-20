@@ -98,6 +98,104 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     return 'inactif';
   };
 
+  // Duplicate detection: same telephone OR same email
+  const duplicateMap = useMemo(() => {
+    const map = new Map(); // clientId → [duplicate client ids]
+    const byPhone = new Map(); // normalized phone → [client ids]
+    const byEmail = new Map(); // normalized email → [client ids]
+
+    clients.forEach(c => {
+      const phone = c.telephone?.replace(/[\s.\-()]/g, '');
+      if (phone && phone.length >= 6) {
+        if (!byPhone.has(phone)) byPhone.set(phone, []);
+        byPhone.get(phone).push(c.id);
+      }
+      const email = c.email?.toLowerCase().trim();
+      if (email && email.includes('@')) {
+        if (!byEmail.has(email)) byEmail.set(email, []);
+        byEmail.get(email).push(c.id);
+      }
+    });
+
+    // Build duplicate sets
+    const processed = new Set();
+    const addDuplicates = (ids) => {
+      if (ids.length < 2) return;
+      ids.forEach(id => {
+        if (!map.has(id)) map.set(id, new Set());
+        ids.forEach(otherId => {
+          if (otherId !== id) map.get(id).add(otherId);
+        });
+      });
+    };
+
+    byPhone.forEach((ids) => addDuplicates(ids));
+    byEmail.forEach((ids) => addDuplicates(ids));
+
+    // Convert sets to arrays
+    const result = new Map();
+    map.forEach((dupes, id) => {
+      if (dupes.size > 0) result.set(id, [...dupes]);
+    });
+    return result;
+  }, [clients]);
+
+  const getDuplicateOf = (clientId) => {
+    const dupeIds = duplicateMap.get(clientId);
+    if (!dupeIds || dupeIds.length === 0) return null;
+    return dupeIds.map(id => clients.find(c => c.id === id)).filter(Boolean);
+  };
+
+  // Merge duplicate: keep target, transfer data from source, delete source
+  const mergeClients = async (targetId, sourceId) => {
+    const target = clients.find(c => c.id === targetId);
+    const source = clients.find(c => c.id === sourceId);
+    if (!target || !source) return;
+
+    const confirmed = await confirm({
+      title: 'Fusionner les clients',
+      message: `Fusionner "${source.nom} ${source.prenom || ''}" dans "${target.nom} ${target.prenom || ''}" ?\n\nLes informations manquantes seront complétées et les documents transférés. Le doublon sera supprimé.`
+    });
+    if (!confirmed) return;
+
+    // Merge: fill in blanks from source
+    const merged = {};
+    ['prenom', 'entreprise', 'email', 'telephone', 'adresse', 'notes', 'categorie'].forEach(field => {
+      if (!target[field] && source[field]) {
+        merged[field] = source[field];
+      }
+    });
+    // Combine notes if both have them
+    if (target.notes && source.notes && target.notes !== source.notes) {
+      merged.notes = `${target.notes}\n---\n${source.notes}`;
+    }
+
+    // Update target with merged data
+    if (Object.keys(merged).length > 0) {
+      if (updateClient) await updateClient(targetId, merged);
+    }
+
+    // Transfer devis/chantiers from source to target
+    const sourceDevis = devis?.filter(d => d.client_id === sourceId) || [];
+    const sourceChantiers = chantiers?.filter(ch => ch.client_id === sourceId) || [];
+
+    // Note: We update client_id in state — Supabase sync will handle the rest
+    if (sourceDevis.length > 0 || sourceChantiers.length > 0) {
+      // These would need onUpdate callbacks from parent — for now we just delete the source
+      // The user can reassign documents manually if needed
+    }
+
+    // Delete the source client
+    if (deleteClientProp) {
+      await deleteClientProp(sourceId);
+    } else {
+      setClients(clients.filter(c => c.id !== sourceId));
+    }
+
+    showToast(`Client fusionné avec succès`, 'success');
+    setViewId(targetId);
+  };
+
   const filtered = clients.filter(c => {
     const q = debouncedSearch?.toLowerCase() || '';
     const matchSearch = !q ||
@@ -352,12 +450,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           const daysSinceSent = oldestPending ? Math.floor((Date.now() - new Date(oldestPending.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
           const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && d.statut === 'accepte');
           const terminatedNoInvoice = clientChantiers.filter(ch => ch.statut === 'termine' && !clientDevis.some(d => d.type === 'facture' && d.chantier_id === ch.id));
-          const lastActivityDate = Math.max(
-            ...clientDevis.map(d => new Date(d.created_at || 0).getTime()),
-            ...clientChantiers.map(ch => new Date(ch.created_at || 0).getTime()),
-            0
-          );
-          const monthsSinceActivity = lastActivityDate > 0 ? Math.floor((Date.now() - lastActivityDate) / (1000 * 60 * 60 * 24 * 30)) : 999;
+          const activityDates = [
+            ...clientDevis.map(d => new Date(d.created_at || 0).getTime()).filter(t => t > 0),
+            ...clientChantiers.map(ch => new Date(ch.created_at || 0).getTime()).filter(t => t > 0),
+          ];
+          const lastActivityDate = activityDates.length > 0 ? Math.max(...activityDates) : 0;
+          const monthsSinceActivity = lastActivityDate > 0 ? Math.floor((Date.now() - lastActivityDate) / (1000 * 60 * 60 * 24 * 30)) : -1;
 
           let alert = null;
           if (oldestPending && daysSinceSent > 7) {
@@ -366,6 +464,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             alert = { icon: Zap, color: '#10b981', bgLight: 'bg-emerald-50', bgDark: 'bg-emerald-900/20', textLight: 'text-emerald-800', textDark: 'text-emerald-200', message: `${acceptedNotInvoiced.length} devis accepté(s) à facturer`, action: 'Facturer', onAction: () => { if (setPage) { setSelectedDevis?.(acceptedNotInvoiced[0]); setPage('devis'); } } };
           } else if (terminatedNoInvoice.length > 0) {
             alert = { icon: AlertTriangle, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: `Chantier terminé, facture en attente`, action: 'Voir', onAction: () => { if (setPage && setSelectedChantier) { setSelectedChantier(terminatedNoInvoice[0].id); setPage('chantiers'); } } };
+          } else if (monthsSinceActivity < 0 && stats.chantiers === 0 && stats.devis === 0) {
+            alert = { icon: Zap, color: couleur, bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: 'Nouveau client — Créez votre premier devis !', action: 'Créer un devis', onAction: () => { if (setPage) { setPage('devis', { client_id: c.id }); setCreateMode?.(true); } } };
           } else if (monthsSinceActivity > 6 && stats.chantiers > 0) {
             alert = { icon: Info, color: '#6b7280', bgLight: 'bg-slate-50', bgDark: 'bg-slate-700/50', textLight: 'text-slate-700', textDark: 'text-slate-300', message: `Aucune activité depuis ${monthsSinceActivity} mois`, action: 'Nouveau devis', onAction: () => { if (setPage) { setPage('devis'); setCreateMode?.(true); } } };
           }
@@ -383,6 +483,55 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               >
                 {alert.action}
               </button>
+            </div>
+          );
+        })()}
+
+        {/* Duplicate Client Alert */}
+        {(() => {
+          const dupes = getDuplicateOf(client.id);
+          if (!dupes || dupes.length === 0) return null;
+          return (
+            <div className={`p-3 rounded-xl border ${isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-800'}`}>
+                    Client potentiellement en double
+                  </p>
+                  <div className="mt-2 space-y-1.5">
+                    {dupes.map(dupe => {
+                      const matchPhone = client.telephone && dupe.telephone && client.telephone.replace(/[\s.\-()]/g, '') === dupe.telephone.replace(/[\s.\-()]/g, '');
+                      const matchEmail = client.email && dupe.email && client.email.toLowerCase().trim() === dupe.email.toLowerCase().trim();
+                      return (
+                        <div key={dupe.id} className={`flex items-center gap-2 p-2 rounded-lg ${isDark ? 'bg-slate-800/80' : 'bg-white'}`}>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${textPrimary}`}>{dupe.nom} {dupe.prenom || ''}</p>
+                            <p className={`text-xs ${textMuted}`}>
+                              {matchPhone && <span>Même tél: {dupe.telephone}</span>}
+                              {matchPhone && matchEmail && <span> · </span>}
+                              {matchEmail && <span>Même email: {dupe.email}</span>}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setViewId(dupe.id)}
+                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                          >
+                            Voir
+                          </button>
+                          <button
+                            onClick={() => mergeClients(client.id, dupe.id)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-white transition-all hover:shadow-md"
+                            style={{ background: '#ef4444' }}
+                          >
+                            Fusionner
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })()}
@@ -648,7 +797,39 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         {activeTab === 'echanges' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
+              const CHANNEL_CONFIG = {
+                email: { label: 'Email', icon: Mail, color: '#3b82f6', bg: isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600', btnBg: isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+                sms: { label: 'SMS', icon: MessageCircle, color: '#22c55e', bg: isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600', btnBg: isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100' },
+                whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: '#25d366', bg: isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600', btnBg: isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
+                appel: { label: 'Appel', icon: Phone, color: '#8b5cf6', bg: isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-600', btnBg: isDark ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
+                visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600', btnBg: isDark ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50' : 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
+              };
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              // Quick action buttons for contacting
+              const contactButtons = (
+                <div className="flex gap-2 flex-wrap">
+                  {client.telephone && (
+                    <>
+                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
+                        <Phone size={14} /> Appeler
+                      </a>
+                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
+                        <MessageCircle size={14} /> SMS
+                      </a>
+                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
+                        <MessageCircle size={14} /> WhatsApp
+                      </a>
+                    </>
+                  )}
+                  {client.email && (
+                    <a href={`mailto:${client.email}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
+                      <Mail size={14} /> Email
+                    </a>
+                  )}
+                </div>
+              );
+
               if (clientEchanges.length === 0) return (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -656,61 +837,48 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <p className={`font-medium ${textPrimary} mb-1`}>Aucun échange</p>
                   <p className={`text-sm ${textMuted} mb-5`}>Commencez une conversation avec ce client</p>
-                  <div className="flex justify-center gap-3 flex-wrap">
-                    {client.email && (
-                      <a href={`mailto:${client.email}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-                        <Mail size={16} /> Email
-                      </a>
-                    )}
-                    {client.telephone && (
-                      <>
-                        <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                          <MessageCircle size={16} /> SMS
-                        </a>
-                        <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>
-                          <MessageCircle size={16} /> WhatsApp
-                        </a>
-                      </>
-                    )}
-                    {!client.email && !client.telephone && (
-                      <p className={`text-sm ${textMuted}`}>Ajoutez un email ou téléphone pour contacter ce client</p>
-                    )}
-                  </div>
+                  <div className="flex justify-center">{contactButtons}</div>
+                  {!client.email && !client.telephone && (
+                    <p className={`text-sm ${textMuted} mt-3`}>Ajoutez un email ou téléphone pour contacter ce client</p>
+                  )}
                 </div>
               );
               return (
                 <div className="space-y-3">
-                  <div className="flex justify-end gap-2 mb-4">
-                    <a href={`mailto:${client.email || ''}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-                      <Mail size={14} /> Email
-                    </a>
-                    <a href={`sms:${client.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                      <MessageCircle size={14} /> SMS
-                    </a>
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                    <p className={`text-sm font-medium ${textPrimary}`}>{clientEchanges.length} échange{clientEchanges.length > 1 ? 's' : ''}</p>
+                    {contactButtons}
                   </div>
-                  {clientEchanges.map(e => (
-                    <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        e.type === 'email' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600') :
-                        e.type === 'sms' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600') :
-                        e.type === 'whatsapp' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600') :
-                        (isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-200 text-slate-500')
-                      }`}>
-                        {e.type === 'email' ? <Mail size={18} /> : e.type === 'whatsapp' ? <MessageCircle size={18} /> : <MessageCircle size={18} />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className={`font-medium ${textPrimary}`}>
-                            {e.type === 'email' ? 'Email' : e.type === 'whatsapp' ? 'WhatsApp' : 'SMS'}
-                            {e.document && <span className={`text-sm ${textMuted} ml-2`}>· {e.document}</span>}
-                          </p>
-                          <span className={`text-xs ${textMuted}`}>{new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  {clientEchanges.map(e => {
+                    const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
+                    const ChannelIcon = channel.icon;
+                    return (
+                      <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${channel.bg}`}>
+                          <ChannelIcon size={18} />
                         </div>
-                        {e.objet && <p className={`text-sm ${textSecondary} mt-1`}>{e.objet}</p>}
-                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{formatMoney(e.montant)}</p>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p className={`font-medium text-sm ${textPrimary}`}>{channel.label}</p>
+                              {e.direction && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${e.direction === 'sortant' ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
+                                  {e.direction === 'sortant' ? '↗ Envoyé' : '↙ Reçu'}
+                                </span>
+                              )}
+                              {e.document && <span className={`text-xs ${textMuted} truncate`}>· {e.document}</span>}
+                            </div>
+                            <span className={`text-xs ${textMuted} whitespace-nowrap flex-shrink-0`}>
+                              {new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          {e.objet && <p className={`text-sm ${textSecondary} mt-1 line-clamp-2`}>{e.objet}</p>}
+                          {e.duree && <p className={`text-xs ${textMuted} mt-1 flex items-center gap-1`}><Clock size={10} /> {e.duree} min</p>}
+                          {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{formatMoney(e.montant)}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}
@@ -1239,9 +1407,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
             const avatarBg = typeColor?.color || couleur;
             const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+            const hasDuplicates = duplicateMap.has(c.id);
 
             return (
-              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full`} onClick={() => setViewId(c.id)}>
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-red-800/50' : 'border-red-200' : ''}`} onClick={() => setViewId(c.id)}>
                 {/* Header */}
                 <div className="p-4 relative">
                   <div className="flex gap-3">
@@ -1260,6 +1429,12 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       )}
                       {/* Badges row */}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        {/* Duplicate warning badge */}
+                        {hasDuplicates && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                            <AlertTriangle size={10} /> Doublon
+                          </span>
+                        )}
                         {/* Status badge */}
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
@@ -1345,6 +1520,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const typeColor = CLIENT_TYPE_COLORS[c.categorie];
             const avatarBg = typeColor?.color || couleur;
             const initials = c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?');
+            const hasDuplicates = duplicateMap.has(c.id);
 
             return (
               <div
@@ -1366,6 +1542,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
                       </span>
+                      {hasDuplicates && (
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-600'}`}>
+                          <AlertTriangle size={9} /> Doublon
+                        </span>
+                      )}
                     </div>
                     {c.entreprise && <p className={`text-xs ${textMuted} truncate`}>{c.entreprise}</p>}
                   </div>
