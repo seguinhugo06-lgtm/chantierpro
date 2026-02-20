@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
-import { useConfirm } from '../context/AppContext';
+import { useConfirm, useToast } from '../context/AppContext';
+import EmptyState from './ui/EmptyState';
 
 const DURATIONS = [
   { label: '30min', value: 30 },
@@ -19,8 +20,20 @@ const formatDuration = (mins) => {
   return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
 };
 
+// Helper: round current time to next half-hour
+const getNextHalfHour = () => {
+  const now = new Date();
+  const mins = now.getMinutes();
+  if (mins <= 30) {
+    return `${String(now.getHours()).padStart(2, '0')}:30`;
+  }
+  const next = new Date(now.getTime() + (60 - mins) * 60000);
+  return `${String(next.getHours()).padStart(2, '0')}:00`;
+};
+
 export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -34,7 +47,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [showAdd, setShowAdd] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [filterEmploye, setFilterEmploye] = useState('');
+  const [filterEmploye, setFilterEmploye] = useState(() => { try { return localStorage.getItem('cp_planning_filter_employe') || ''; } catch { return ''; } });
   const [filterTypes, setFilterTypes] = useState(new Set()); // P1.3: multi-select type filter
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
   const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
@@ -43,6 +56,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [agendaRange, setAgendaRange] = useState(30); // days to show in agenda view
   const [agendaHideEmpty, setAgendaHideEmpty] = useState(true); // P2.6: hide empty days
   const weekGridRef = useRef(null);
+  const detailModalRef = useRef(null);
   const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', dateEnd: '', rappel: '' };
   const [form, setForm] = useState(emptyForm);
 
@@ -53,6 +67,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     const d = String(dateObj.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   };
+
+  // Persist collaborator filter in localStorage
+  useEffect(() => {
+    try { localStorage.setItem('cp_planning_filter_employe', filterEmploye); } catch {}
+  }, [filterEmploye]);
 
   // Escape key handler for form and modal
   useEffect(() => {
@@ -65,6 +84,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showDetail, showAdd, quickAdd]);
+
+  // Focus trap for detail modal
+  useEffect(() => {
+    if (!showDetail || !detailModalRef.current) return;
+    const modal = detailModalRef.current;
+    const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first.focus();
+    const trap = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    modal.addEventListener('keydown', trap);
+    return () => modal.removeEventListener('keydown', trap);
+  }, [showDetail, editMode]);
 
   // Handle prefill from external navigation (e.g. Chantier → Planifier)
   useEffect(() => {
@@ -199,6 +239,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return getEventsForDay(d);
   };
 
+  // Check if any filter is active (for empty state messaging)
+  const hasActiveFilter = filterEmploye || filterTypes.size > 0;
+
   const handleEventClick = (e, ev) => { e.stopPropagation(); setShowDetail(ev); setEditMode(false); };
   const goToChantier = (chantierId) => { if (setSelectedChantier && setPage) { setSelectedChantier(chantierId); setPage('chantiers'); } };
   const goToToday = () => setDate(new Date());
@@ -233,6 +276,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setShowAdd(false);
     setQuickAdd(null);
     setForm(emptyForm);
+    showToast('Événement créé', 'success');
   };
 
   const handleDeleteEvent = async (id) => {
@@ -249,6 +293,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         setEvents(events.filter(e => e.id !== realId));
       }
       setShowDetail(null);
+      showToast('Événement supprimé', 'success');
     }
   };
 
@@ -272,6 +317,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     }
     setShowDetail(null); setEditMode(false);
     setForm(emptyForm);
+    showToast('Événement mis à jour', 'success');
   };
 
   const startEdit = () => {
@@ -282,9 +328,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setEditMode(true);
   };
 
-  // Quick add handler
+  // Quick add handler — pre-fill date + time
   const handleQuickAdd = (dateStr) => {
-    setForm({ ...form, date: dateStr });
+    setForm({ ...emptyForm, date: dateStr, time: getNextHalfHour() });
     setQuickAdd(dateStr);
   };
 
@@ -405,12 +451,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           {/* P2.4: Chantier associé — when type is chantier OR when a client is selected */}
           {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
             <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé</label>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
               <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
                 <option value="">— Aucun —</option>
-                {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
-                  <option key={ch.id} value={ch.id}>{ch.nom}</option>
-                ))}
+                {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => {
+                  const cl = clients.find(c => c.id === ch.client_id);
+                  return <option key={ch.id} value={ch.id}>{ch.nom}{cl ? ` — ${cl.nom}` : ''}</option>;
+                })}
               </select>
             </div>
           )}
@@ -473,7 +520,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
+          <button onClick={() => {
+            setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
+            setShowAdd(true);
+          }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Événement</span>
           </button>
         </div>
@@ -485,45 +535,28 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={goToToday} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
             Aujourd'hui
           </button>
-          {/* P3.3: Team filter pills */}
+          {/* Collaborator filter — separated select */}
           {equipe.length > 0 && (
-            <div className="flex gap-1 items-center">
-              <button
-                onClick={() => setFilterEmploye('')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${!filterEmploye ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                style={!filterEmploye ? { background: couleur } : {}}
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[10px] uppercase tracking-wider font-medium ${textMuted}`}>Afficher pour</span>
+              <select
+                className={`px-3 py-1.5 border rounded-lg text-xs font-medium ${inputBg}`}
+                value={filterEmploye}
+                onChange={e => setFilterEmploye(e.target.value)}
+                aria-label="Filtrer par collaborateur"
               >
-                Tous
-              </button>
-              {equipe.slice(0, 4).map(e => (
-                <button
-                  key={e.id}
-                  onClick={() => setFilterEmploye(filterEmploye === e.id ? '' : e.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all truncate max-w-[80px] ${filterEmploye === e.id ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                  style={filterEmploye === e.id ? { background: couleur } : {}}
-                  title={e.nom}
-                >
-                  {e.nom?.split(' ')[0] || e.nom}
-                </button>
-              ))}
-              {equipe.length > 4 && (
-                <select
-                  className={`px-2 py-1.5 border rounded-lg text-xs ${inputBg}`}
-                  value={filterEmploye}
-                  onChange={e => setFilterEmploye(e.target.value)}
-                >
-                  <option value="">+{equipe.length - 4}</option>
-                  {equipe.slice(4).map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
-                </select>
-              )}
+                <option value="">Tous</option>
+                <option value="__me__">Moi</option>
+                {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+              </select>
             </div>
           )}
           {filterTypes.size > 0 && (
             <button
               onClick={() => setFilterTypes(new Set())}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
             >
-              Tout afficher
+              <X size={12} /> Tout afficher
             </button>
           )}
         </div>
@@ -555,6 +588,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   return next;
                 });
               }}
+              aria-label={`Filtrer par ${label}`}
+              aria-pressed={isFiltering ? isActive : undefined}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
                 isFiltering && isActive
                   ? 'text-white shadow-md'
@@ -566,7 +601,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               }`}
               style={isFiltering && isActive ? { background: typeColors[key] } : {}}
             >
-              <span className={`w-4 h-4 rounded-full shadow-sm ${isFiltering && isActive ? 'bg-white/40' : ''}`} style={!(isFiltering && isActive) ? { background: typeColors[key] } : {}} />
+              <span className={`w-4 h-4 rounded-full shadow-sm ${isFiltering && isActive ? 'bg-white/40' : ''}`} style={!(isFiltering && isActive) ? { background: typeColors[key] } : {}} aria-hidden="true" />
               <span className={`text-sm font-semibold ${isFiltering && isActive ? '' : textPrimary}`}>{label}</span>
             </button>
           );
@@ -585,7 +620,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
         <div className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {viewMode !== 'agenda' ? (
-            <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+            <button
+              onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              aria-label={viewMode === 'month' ? 'Mois précédent' : viewMode === 'day' ? 'Jour précédent' : 'Semaine précédente'}
+            >
               <ChevronLeft size={24} className={textPrimary} />
             </button>
           ) : <div className="w-10" />}
@@ -593,7 +632,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             {viewMode === 'month' ? `${MOIS[month]} ${year}` : viewMode === 'day' ? date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : viewMode === 'agenda' ? 'Agenda' : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
           </h2>
           {viewMode !== 'agenda' ? (
-            <button onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}>
+            <button
+              onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              aria-label={viewMode === 'month' ? 'Mois suivant' : viewMode === 'day' ? 'Jour suivant' : 'Semaine suivante'}
+            >
               <ChevronRight size={24} className={textPrimary} />
             </button>
           ) : <div className="w-10" />}
@@ -615,11 +658,18 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <div className="flex items-center gap-1 mb-1">
                         <p className={`text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
                         {(() => {
-                          const totalMins = dayEvents.reduce((s, ev) => s + (ev.duration || 60), 0);
-                          if (totalMins === 0) return null;
-                          const hrs = totalMins / 60;
-                          const color = hrs < 4 ? '#22c55e' : hrs <= 7 ? '#f97316' : '#ef4444';
-                          return <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />;
+                          if (dayEvents.length === 0) return null;
+                          // Show mini color dots per event type
+                          const types = [...new Set(dayEvents.map(ev => ev.type))];
+                          const tooltipLines = dayEvents.slice(0, 3).map(ev => `${ev.time || '—'} ${ev.title} (${TYPE_LABELS[ev.type] || 'Autre'})`);
+                          if (dayEvents.length > 3) tooltipLines.push(`+${dayEvents.length - 3} autre${dayEvents.length - 3 > 1 ? 's' : ''}`);
+                          return (
+                            <span className="flex gap-0.5 items-center" title={tooltipLines.join('\n')}>
+                              {types.slice(0, 3).map((t, i) => (
+                                <span key={i} className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: typeColors[t] || couleur }} aria-label={TYPE_LABELS[t] || t} />
+                              ))}
+                            </span>
+                          );
                         })()}
                       </div>
                       <div className="space-y-0.5 sm:space-y-1">
@@ -629,6 +679,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                               onMouseEnter={(e) => { if (window.innerWidth >= 640) { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ event: ev, x: r.right + 8, y: r.top }); }}}
                               onMouseLeave={() => setTooltip(null)}
+                              title={ev.title}
                               className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}}>
                               <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
                               <span className="truncate font-medium">{ev.title}</span>
@@ -650,6 +701,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 );
               })}
             </div>
+            {/* Empty state for month view */}
+            {(() => {
+              const monthHasEvents = days.some(day => day && getEventsForDay(day).length > 0);
+              if (monthHasEvents) return null;
+              return hasActiveFilter ? (
+                <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
+                  <Filter size={32} className="mb-2 opacity-40" />
+                  <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
+                  <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Calendar}
+                  title="Aucun événement ce mois"
+                  description="Cliquez sur un jour pour planifier votre premier événement."
+                  actionLabel="+ Créer un événement"
+                  onAction={() => { setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() })); setShowAdd(true); }}
+                  isDark={isDark}
+                />
+              );
+            })()}
           </>
         ) : viewMode === 'week' ? (
           // Week view — hourly grid (Google Calendar style)
@@ -706,6 +778,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     return (
                       <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleEventClick(e, ev); }}
                         draggable={!ev.isChantier} onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
+                        title={`${ev.title}${ev.time ? `\n${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : ''}\n${TYPE_LABELS[ev.type] || 'Événement'}`}
                         className="absolute left-1 right-1 rounded-lg px-2 py-0.5 text-white text-xs cursor-pointer overflow-hidden hover:shadow-lg hover:brightness-110 transition-all z-10"
                         style={{ top: pos.top, height: pos.height, background: getEventColor(ev), minHeight: 22 }}>
                         <p className="font-semibold truncate leading-tight">{ev.title}</p>
@@ -826,6 +899,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                   </div>
                 </div>
+                {/* Empty state for week view */}
+                {(() => {
+                  const weekHasEvents = weekDays.some(d => getEventsForDate(d).length > 0);
+                  if (weekHasEvents) return null;
+                  return hasActiveFilter ? (
+                    <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
+                      <Filter size={32} className="mb-2 opacity-40" />
+                      <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Calendar}
+                      title="Aucun événement cette semaine"
+                      description="Cliquez sur un créneau horaire pour planifier un événement."
+                      actionLabel="+ Créer un événement"
+                      onAction={() => { setForm(f => ({ ...emptyForm, date: formatLocalDate(weekDays[0]), time: getNextHalfHour() })); setShowAdd(true); }}
+                      isDark={isDark}
+                    />
+                  );
+                })()}
               </div>
             );
           })()
@@ -903,6 +997,25 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     );
                   })}
                 </div>
+                {/* Empty state for day view */}
+                {dayEvents.length === 0 && (
+                  hasActiveFilter ? (
+                    <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
+                      <Filter size={32} className="mb-2 opacity-40" />
+                      <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={CalendarDays}
+                      title="Journée libre"
+                      description="Cliquez sur un créneau pour planifier un événement."
+                      actionLabel="+ Créer un événement"
+                      onAction={() => { setForm(f => ({ ...emptyForm, date: dayStr, time: getNextHalfHour() })); setShowAdd(true); }}
+                      isDark={isDark}
+                    />
+                  )
+                )}
               </div>
             );
           })()
@@ -931,7 +1044,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${agendaHideEmpty ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                     style={agendaHideEmpty ? { background: couleur } : {}}
                   >
-                    {agendaHideEmpty ? 'Jours avec événements' : 'Tous les jours'}
+                    <Filter size={12} className="inline mr-1" />{agendaHideEmpty ? 'Jours avec événements' : 'Tous les jours'}
                   </button>
                 </div>
                 {visibleDays.map(({ date: dayDate, dateStr, events: dayEvts }) => {
@@ -974,10 +1087,31 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                   );
                 })}
+                {/* Empty state for agenda when no events at all */}
+                {(() => {
+                  const agendaHasEvents = agendaDays.some(d => d.events.length > 0);
+                  if (agendaHasEvents) return null;
+                  return hasActiveFilter ? (
+                    <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
+                      <Filter size={32} className="mb-2 opacity-40" />
+                      <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
+                      <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={CalendarCheck}
+                      title="Aucun événement à venir"
+                      description="Planifiez vos prochaines interventions, rendez-vous et relances."
+                      actionLabel="+ Créer un événement"
+                      onAction={() => { setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() })); setShowAdd(true); }}
+                      isDark={isDark}
+                    />
+                  );
+                })()}
                 <button
                   onClick={() => setAgendaRange(r => r + 30)}
                   className={`w-full py-4 text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-50'}`}>
-                  Charger 30 jours de plus...
+                  Voir les 30 prochains jours
                 </button>
               </div>
             );
@@ -1051,19 +1185,20 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       </div>
 
       {/* Tips — dismissable, stored in localStorage */}
+      {/* Onboarding banner — shown once, then dismissed via localStorage */}
       {showTips && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-          <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
-          <div className={`text-sm flex-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-            <p className="font-medium mb-1">Astuces</p>
-            <ul className="space-y-1 text-xs opacity-80">
-              <li>Cliquez sur un jour pour créer un événement</li>
-              <li>Glissez-déposez pour déplacer un événement</li>
-              <li>Les chantiers avec dates apparaissent automatiquement</li>
+        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
+          <CalendarDays size={20} className="flex-shrink-0 mt-0.5" style={{ color: couleur }} />
+          <div className={`text-sm flex-1 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+            <p className="font-semibold mb-1">Bienvenue dans votre planning</p>
+            <ul className="space-y-0.5 text-xs opacity-80">
+              <li>📅 Cliquez sur un jour pour créer un événement</li>
+              <li>↕️ Glissez-déposez pour déplacer un événement</li>
+              <li>🏗️ Les chantiers avec dates apparaissent automatiquement</li>
             </ul>
           </div>
-          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch {} }} className={`p-1 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-blue-800' : 'hover:bg-blue-100'}`}>
-            <X size={14} className="text-blue-400" />
+          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch {} }} className={`p-1.5 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-orange-100'}`} aria-label="Fermer les astuces">
+            <X size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
           </button>
         </div>
       )}
@@ -1072,8 +1207,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       {showDetail && (() => {
         const TypeIcon = TYPE_ICONS[showDetail.type] || Calendar;
         return (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={() => setShowDetail(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
+            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
               <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1181,12 +1316,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     {/* P2.4: Chantier associé — when type is chantier OR client selected */}
                     {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
                       <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé</label>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
                         <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
                           <option value="">— Aucun —</option>
-                          {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => (
-                            <option key={ch.id} value={ch.id}>{ch.nom}</option>
-                          ))}
+                          {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => {
+                            const cl = clients.find(c => c.id === ch.client_id);
+                            return <option key={ch.id} value={ch.id}>{ch.nom}{cl ? ` — ${cl.nom}` : ''}</option>;
+                          })}
                         </select>
                       </div>
                     )}
@@ -1250,7 +1386,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <div className={`p-4 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'} rounded-b-2xl flex gap-3`}>
                 {showDetail.isChantier ? (
                   <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>
-                    <Home size={16} /> Voir le chantier
+                    <Home size={16} /> Voir le chantier →
                   </button>
                 ) : editMode ? (
                   <>
@@ -1258,14 +1394,37 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     <button onClick={handleUpdateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{ background: couleur }}>Enregistrer</button>
                   </>
                 ) : (
-                  <>
-                    <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`}>
-                      <Trash2 size={16} />
-                    </button>
-                    <button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>
-                      <Edit3 size={16} /> Modifier
-                    </button>
-                  </>
+                  <div className="flex flex-col gap-2 w-full">
+                    <div className="flex gap-3">
+                      <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`} aria-label="Supprimer l'événement">
+                        <Trash2 size={16} />
+                      </button>
+                      <button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>
+                        <Edit3 size={16} /> Modifier
+                      </button>
+                    </div>
+                    {/* Navigation links: chantier / client */}
+                    {(showDetail.chantierId || showDetail.clientId) && (
+                      <div className="flex gap-2">
+                        {showDetail.chantierId && !showDetail.isChantier && (() => {
+                          const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
+                          return ch ? (
+                            <button onClick={() => goToChantier(ch.id)} className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px] border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                              <Home size={14} style={{ color: couleur }} /> Voir le chantier →
+                            </button>
+                          ) : null;
+                        })()}
+                        {showDetail.clientId && (() => {
+                          const client = clients.find(c => c.id === showDetail.clientId);
+                          return client ? (
+                            <button onClick={() => { if (setPage) { setPage('clients'); } setShowDetail(null); }} className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px] border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                              <User size={14} style={{ color: couleur }} /> Voir le client →
+                            </button>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
