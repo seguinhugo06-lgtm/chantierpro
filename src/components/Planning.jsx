@@ -161,8 +161,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       const endStr = ev.recurrenceEnd || rangeEndStr;
       const srcDate = new Date(ev.date + 'T00:00:00');
       let cur = new Date(srcDate);
-      for (let i = 0; i < 100; i++) { // safety limit
-        if (ev.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
+      const maxIter = ev.recurrence === 'daily' ? 365 : 100; // daily needs more iterations
+      for (let i = 0; i < maxIter; i++) {
+        if (ev.recurrence === 'daily') cur.setDate(cur.getDate() + 1);
+        else if (ev.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
+        else if (ev.recurrence === 'biweekly') cur.setDate(cur.getDate() + 14);
         else cur.setMonth(cur.getMonth() + 1);
         const dateStr = formatLocalDate(cur);
         if (dateStr > endStr) break;
@@ -361,7 +364,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Récurrence</label>
               <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
                 <option value="never">Jamais</option>
+                <option value="daily">Chaque jour</option>
                 <option value="weekly">Chaque semaine</option>
+                <option value="biweekly">Toutes les 2 semaines</option>
                 <option value="monthly">Chaque mois</option>
               </select>
             </div>
@@ -443,7 +448,28 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           )}
           <div>
             <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Planning</h1>
-            <p className={`text-sm ${textMuted}`}>{todayEvents.length === 0 ? "Aucun événement aujourd'hui" : `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`}</p>
+            <p className={`text-sm ${textMuted}`}>{(() => {
+              // P3.2: Dynamic header based on current view
+              if (viewMode === 'month') {
+                const monthEvts = allEvents.filter(e => {
+                  if (filterEmploye && e.employeId !== filterEmploye) return false;
+                  if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
+                  return e.date?.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`);
+                });
+                return monthEvts.length === 0 ? `Aucun événement en ${MOIS[month].toLowerCase()}` : `${monthEvts.length} événement${monthEvts.length > 1 ? 's' : ''} en ${MOIS[month].toLowerCase()}`;
+              }
+              if (viewMode === 'week') {
+                const weekEvts = weekDays.flatMap(d => getEventsForDate(d));
+                return weekEvts.length === 0 ? 'Aucun événement cette semaine' : `${weekEvts.length} événement${weekEvts.length > 1 ? 's' : ''} cette semaine`;
+              }
+              if (viewMode === 'day') {
+                const dayEvts = getEventsForDay(formatLocalDate(date));
+                const dayLabel = formatLocalDate(date) === todayStr ? "aujourd'hui" : date.toLocaleDateString('fr-FR', { weekday: 'long' });
+                return dayEvts.length === 0 ? `Aucun événement ${dayLabel}` : `${dayEvts.length} événement${dayEvts.length > 1 ? 's' : ''} ${dayLabel}`;
+              }
+              // agenda
+              return todayEvents.length === 0 ? "Aucun événement aujourd'hui" : `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`;
+            })()}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -455,14 +481,43 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
       {/* Filters and View Toggle */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <button onClick={goToToday} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
             Aujourd'hui
           </button>
-          <select className={`px-3 py-1.5 border rounded-lg text-sm ${inputBg}`} value={filterEmploye} onChange={e => setFilterEmploye(e.target.value)}>
-            <option value="">Tous</option>
-            {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
-          </select>
+          {/* P3.3: Team filter pills */}
+          {equipe.length > 0 && (
+            <div className="flex gap-1 items-center">
+              <button
+                onClick={() => setFilterEmploye('')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${!filterEmploye ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                style={!filterEmploye ? { background: couleur } : {}}
+              >
+                Tous
+              </button>
+              {equipe.slice(0, 4).map(e => (
+                <button
+                  key={e.id}
+                  onClick={() => setFilterEmploye(filterEmploye === e.id ? '' : e.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all truncate max-w-[80px] ${filterEmploye === e.id ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                  style={filterEmploye === e.id ? { background: couleur } : {}}
+                  title={e.nom}
+                >
+                  {e.nom?.split(' ')[0] || e.nom}
+                </button>
+              ))}
+              {equipe.length > 4 && (
+                <select
+                  className={`px-2 py-1.5 border rounded-lg text-xs ${inputBg}`}
+                  value={filterEmploye}
+                  onChange={e => setFilterEmploye(e.target.value)}
+                >
+                  <option value="">+{equipe.length - 4}</option>
+                  {equipe.slice(4).map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+                </select>
+              )}
+            </div>
+          )}
           {filterTypes.size > 0 && (
             <button
               onClick={() => setFilterTypes(new Set())}
@@ -671,22 +726,38 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   if (!hasAnyAllDay) return null;
                   return (
                     <div className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      {/* Desktop all-day */}
+                      {/* Desktop all-day — P3.4: better visibility */}
                       <div className="hidden sm:flex">
-                        <div className={`w-14 flex-shrink-0 text-[10px] text-center py-1 ${textMuted}`}>Journée</div>
+                        <div className={`w-14 flex-shrink-0 text-[10px] text-center py-2 font-medium ${textMuted}`}>Journée</div>
                         {weekDays.map((d, i) => (
-                          <div key={i} className={`flex-1 p-1 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[28px]`}>
-                            {allDayMap[i].map(ev => (
-                              <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="text-[10px] px-1.5 py-0.5 rounded text-white cursor-pointer truncate mb-0.5" style={{ background: getEventColor(ev) }}>{ev.title}</div>
-                            ))}
+                          <div key={i} className={`flex-1 p-1.5 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[36px]`}>
+                            {allDayMap[i].map(ev => {
+                              const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                              return (
+                                <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
+                                  className="text-[11px] px-2 py-1 rounded-md text-white cursor-pointer truncate mb-0.5 flex items-center gap-1 hover:brightness-110 transition-all shadow-sm"
+                                  style={{ background: getEventColor(ev) }}>
+                                  <TypeIcon size={10} className="opacity-75 flex-shrink-0" />
+                                  <span className="truncate font-medium">{ev.title}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         ))}
                       </div>
-                      {/* Mobile all-day */}
+                      {/* Mobile all-day — P3.4: improved */}
                       <div className="sm:hidden p-2">
-                        {allDayMap[mobileWeekDay]?.map(ev => (
-                          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className="text-xs px-2 py-1 rounded-lg text-white cursor-pointer truncate mb-1" style={{ background: getEventColor(ev) }}>{ev.title}</div>
-                        ))}
+                        {allDayMap[mobileWeekDay]?.map(ev => {
+                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                          return (
+                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
+                              className="text-xs px-2.5 py-1.5 rounded-lg text-white cursor-pointer truncate mb-1 flex items-center gap-1.5 shadow-sm"
+                              style={{ background: getEventColor(ev) }}>
+                              <TypeIcon size={12} className="opacity-75 flex-shrink-0" />
+                              <span className="truncate font-medium">{ev.title}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -914,24 +985,29 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         ) : null}
       </div>
 
-      {/* Tooltip popover for month view */}
+      {/* Tooltip popover for month view — P3.1: full title, assignee, description */}
       {tooltip && (() => {
         const ev = tooltip.event;
         const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
-        // Smart positioning: flip left if overflowing right
-        const tx = tooltip.x + 260 > window.innerWidth ? tooltip.x - 275 : tooltip.x;
-        const ty = tooltip.y + 150 > window.innerHeight ? tooltip.y - 100 : tooltip.y;
+        const employe = ev.employeId ? equipe.find(e => e.id === ev.employeId) : null;
+        // Smart positioning: flip left if overflowing right, flip up if overflowing bottom
+        const tx = tooltip.x + 280 > window.innerWidth ? tooltip.x - 295 : tooltip.x;
+        const ty = tooltip.y + 200 > window.innerHeight ? tooltip.y - 150 : tooltip.y;
         return (
           <div className="fixed z-50 pointer-events-none" style={{ top: ty, left: tx }}>
-            <div className={`${cardBg} rounded-xl border shadow-2xl p-3 w-64`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: getEventColor(ev) }} />
-                <span className={`font-semibold text-sm ${textPrimary} truncate`}>{ev.title}</span>
+            <div className={`${cardBg} rounded-xl border shadow-2xl p-3.5 w-72`}>
+              <div className="flex items-start gap-2 mb-2">
+                <span className="w-3 h-3 rounded-full flex-shrink-0 mt-0.5" style={{ background: getEventColor(ev) }} />
+                <span className={`font-semibold text-sm ${textPrimary} leading-snug`}>{ev.title}</span>
               </div>
-              <p className={`text-xs ${textMuted} mb-1`}>{ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
-              {client && <p className={`text-xs ${textMuted} mb-1`}>{client.nom} {client.prenom || ''}</p>}
-              {(ev.recurrence && ev.recurrence !== 'never') && <p className={`text-xs ${textMuted} mb-1`}>🔁 {ev.recurrence === 'weekly' ? 'Chaque semaine' : 'Chaque mois'}</p>}
-              <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
+              <div className="space-y-1 ml-5">
+                <p className={`text-xs ${textMuted}`}>{ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
+                {client && <p className={`text-xs ${textMuted}`}>{client.nom} {client.prenom || ''}</p>}
+                {employe && <p className={`text-xs ${textMuted}`}>👤 {employe.nom}</p>}
+                {ev.description && <p className={`text-xs ${textMuted} line-clamp-2`}>{ev.description}</p>}
+                {(ev.recurrence && ev.recurrence !== 'never') && <p className={`text-xs ${textMuted}`}>🔁 {ev.recurrence === 'weekly' ? 'Chaque semaine' : ev.recurrence === 'biweekly' ? 'Toutes les 2 sem.' : ev.recurrence === 'daily' ? 'Chaque jour' : 'Chaque mois'}</p>}
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-2 ml-5" style={{ background: getEventColor(ev) }}>
                 {TYPE_LABELS[ev.type] || 'Événement'}
               </span>
             </div>
@@ -1005,7 +1081,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <TypeIcon size={20} />
                     </div>
                     <div>
-                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ' · 🔁 Récurrent' : ''}</p>
+                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁 ${showDetail.recurrence === 'daily' ? 'Quotidien' : showDetail.recurrence === 'weekly' ? 'Hebdo' : showDetail.recurrence === 'biweekly' ? 'Bi-hebdo' : showDetail.recurrence === 'monthly' ? 'Mensuel' : 'Récurrent'}` : ''}</p>
                       <h2 className={`font-bold ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
@@ -1064,7 +1140,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Récurrence</label>
                         <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
                           <option value="never">Jamais</option>
+                          <option value="daily">Chaque jour</option>
                           <option value="weekly">Chaque semaine</option>
+                          <option value="biweekly">Toutes les 2 semaines</option>
                           <option value="monthly">Chaque mois</option>
                         </select>
                       </div>
