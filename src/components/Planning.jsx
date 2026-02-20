@@ -108,7 +108,38 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     time: m.due_time || '', type: 'memo', isMemo: true, description: m.notes || '',
     color: '#f59e0b',
   }));
-  const allEvents = [...events, ...getChantierEvents(), ...getMemoEvents()];
+  // Expand recurring events into virtual instances within visible range
+  const expandRecurringEvents = (evts) => {
+    const expanded = [];
+    // View range: 3 months from now as safety limit
+    const rangeEnd = new Date();
+    rangeEnd.setMonth(rangeEnd.getMonth() + 3);
+    const rangeEndStr = formatLocalDate(rangeEnd);
+
+    evts.forEach(ev => {
+      expanded.push(ev);
+      if (!ev.recurrence || ev.recurrence === 'never' || !ev.date) return;
+      const endStr = ev.recurrenceEnd || rangeEndStr;
+      const srcDate = new Date(ev.date + 'T00:00:00');
+      let cur = new Date(srcDate);
+      for (let i = 0; i < 100; i++) { // safety limit
+        if (ev.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
+        else cur.setMonth(cur.getMonth() + 1);
+        const dateStr = formatLocalDate(cur);
+        if (dateStr > endStr) break;
+        expanded.push({
+          ...ev,
+          id: `${ev.id}_rec_${dateStr}`,
+          date: dateStr,
+          isRecurrence: true,
+          originalId: ev.id,
+        });
+      }
+    });
+    return expanded;
+  };
+
+  const allEvents = [...expandRecurringEvents(events), ...getChantierEvents(), ...getMemoEvents()];
 
   const getEventsForDay = (day) => {
     if (!day) return [];
@@ -162,12 +193,16 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const handleDeleteEvent = async (id) => {
     if (id.startsWith('ch_')) return;
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet événement ?' });
+    // For recurring instances, delete the original event (whole series)
+    const ev = allEvents.find(e => e.id === id);
+    const realId = ev?.isRecurrence ? ev.originalId : id;
+    const msg = ev?.isRecurrence ? 'Supprimer toute la série récurrente ?' : 'Supprimer cet événement ?';
+    const confirmed = await confirm({ title: 'Supprimer', message: msg });
     if (confirmed) {
       if (deleteEventProp) {
-        await deleteEventProp(id);
+        await deleteEventProp(realId);
       } else {
-        setEvents(events.filter(e => e.id !== id));
+        setEvents(events.filter(e => e.id !== realId));
       }
       setShowDetail(null);
     }
@@ -175,10 +210,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const handleUpdateEvent = () => {
     if (!showDetail || showDetail.isChantier) return;
+    const realId = showDetail.isRecurrence ? showDetail.originalId : showDetail.id;
     if (updateEventProp) {
-      updateEventProp(showDetail.id, form);
+      updateEventProp(realId, form);
     } else {
-      setEvents(events.map(e => e.id === showDetail.id ? { ...e, ...form } : e));
+      setEvents(events.map(e => e.id === realId ? { ...e, ...form } : e));
     }
     setShowDetail(null); setEditMode(false);
     setForm(emptyForm);
@@ -240,6 +276,23 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 </button>
               ))}
             </div>
+          </div>
+          {/* Recurrence */}
+          <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Récurrence</label>
+              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
+                <option value="never">Jamais</option>
+                <option value="weekly">Chaque semaine</option>
+                <option value="monthly">Chaque mois</option>
+              </select>
+            </div>
+            {form.recurrence !== 'never' && (
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Jusqu'au</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
@@ -579,7 +632,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <TypeIcon size={20} />
                     </div>
                     <div>
-                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}</p>
+                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ' · 🔁 Récurrent' : ''}</p>
                       <h2 className={`font-bold ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
@@ -608,6 +661,22 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           </button>
                         ))}
                       </div>
+                    </div>
+                    <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Récurrence</label>
+                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
+                          <option value="never">Jamais</option>
+                          <option value="weekly">Chaque semaine</option>
+                          <option value="monthly">Chaque mois</option>
+                        </select>
+                      </div>
+                      {form.recurrence !== 'never' && (
+                        <div>
+                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Jusqu'au</label>
+                          <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
