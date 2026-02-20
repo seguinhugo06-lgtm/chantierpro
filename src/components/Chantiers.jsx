@@ -2511,7 +2511,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Équipe - Full names */}
                 <div className="mb-4">
-                  <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Équipe ({teamMembers.length})</p>
+                  {teamMembers.length > 0 && (
+                    <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Équipe ({teamMembers.length})</p>
+                  )}
                   {teamMembers.length > 0 ? (
                     <div className="space-y-1.5">
                       {teamMembers.slice(0, 3).map(member => (
@@ -2534,7 +2536,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Tasks with quick complete */}
                 <div>
-                  <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Tâches ({tasksDone}/{tasksTotal})</p>
+                  {tasksTotal > 0 && (
+                    <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Tâches ({tasksDone}/{tasksTotal})</p>
+                  )}
                   {pendingTasks.length > 0 ? (
                     <div className="space-y-1">
                       {pendingTasks.slice(0, 4).map(task => (
@@ -2734,7 +2738,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 </div>
 
-                {/* Row 2: Client · Dates */}
+                {/* Row 2: Client · Dates · Address */}
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <span className={`text-xs ${textMuted}`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</span>
                   {dateRange && (
@@ -2743,6 +2747,23 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <span className={`text-xs ${textMuted} flex items-center gap-1`}>
                         <Calendar size={11} />
                         {dateRange}
+                      </span>
+                    </>
+                  )}
+                  {(ch.adresse || ch.ville) ? (
+                    <>
+                      <span className={`text-xs ${textMuted}`}>·</span>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1 truncate max-w-[180px]`} title={[ch.adresse, ch.ville].filter(Boolean).join(', ')}>
+                        <MapPin size={10} className="shrink-0" />
+                        {ch.ville || ch.adresse}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`text-xs ${textMuted}`}>·</span>
+                      <span className={`text-xs italic ${isDark ? 'text-slate-500' : 'text-slate-400'} flex items-center gap-1`}>
+                        <MapPin size={10} className="shrink-0" />
+                        Sans adresse
                       </span>
                     </>
                   )}

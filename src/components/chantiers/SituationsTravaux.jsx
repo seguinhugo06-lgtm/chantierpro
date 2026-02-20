@@ -401,7 +401,8 @@ export default function SituationsTravaux({
             {situations.length === 0 ? (
               <div className="p-6 text-center">
                 <Receipt size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                <p className={`text-sm ${textMuted}`}>Aucune situation créée</p>
+                <p className={`font-medium ${textPrimary} mb-1`}>Aucune situation créée</p>
+                <p className={`text-xs ${textMuted} max-w-xs mx-auto`}>Les situations de travaux permettent de facturer par tranche d'avancement. Idéal pour les gros chantiers.</p>
               </div>
             ) : (
               <ul className="divide-y divide-slate-200 dark:divide-slate-700">
