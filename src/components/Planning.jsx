@@ -21,6 +21,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [filterType, setFilterType] = useState('');
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
   const [tooltip, setTooltip] = useState(null); // { event, x, y } for month view hover
+  const [showTips, setShowTips] = useState(() => { try { return !localStorage.getItem('cp_planning_tips_dismissed'); } catch { return true; } });
   const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
@@ -644,18 +645,23 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         )}
       </div>
 
-      {/* Tips */}
-      <div className={`rounded-xl p-4 flex items-start gap-3 ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-        <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
-        <div className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-          <p className="font-medium mb-1">Astuces</p>
-          <ul className="space-y-1 text-xs opacity-80">
-            <li>Cliquez sur un jour pour créer un événement</li>
-            <li>Glissez-déposez pour déplacer un événement</li>
-            <li>Les chantiers avec dates apparaissent automatiquement</li>
-          </ul>
+      {/* Tips — dismissable, stored in localStorage */}
+      {showTips && (
+        <div className={`rounded-xl p-4 flex items-start gap-3 ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+          <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+          <div className={`text-sm flex-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+            <p className="font-medium mb-1">Astuces</p>
+            <ul className="space-y-1 text-xs opacity-80">
+              <li>Cliquez sur un jour pour créer un événement</li>
+              <li>Glissez-déposez pour déplacer un événement</li>
+              <li>Les chantiers avec dates apparaissent automatiquement</li>
+            </ul>
+          </div>
+          <button onClick={() => { setShowTips(false); try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch {} }} className={`p-1 rounded-lg flex-shrink-0 ${isDark ? 'hover:bg-blue-800' : 'hover:bg-blue-100'}`}>
+            <X size={14} className="text-blue-400" />
+          </button>
         </div>
-      </div>
+      )}
 
       {/* Modal détail/édition - overlays on top of calendar */}
       {showDetail && (() => {
