@@ -20,7 +20,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [filterEmploye, setFilterEmploye] = useState('');
   const [filterType, setFilterType] = useState('');
   const [quickAdd, setQuickAdd] = useState(null); // Date string for quick add
-  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '' };
+  const emptyForm = { title: '', date: '', time: '', type: 'rdv', employeId: '', clientId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '' };
   const [form, setForm] = useState(emptyForm);
 
   // Escape key handler for form and modal
@@ -81,6 +81,22 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     }
     // Fallback uniquement si type invalide/inexistant
     return couleur;
+  };
+
+  // Duration presets & formatting
+  const DURATIONS = [
+    { label: '30min', value: 30 },
+    { label: '1h', value: 60 },
+    { label: '2h', value: 120 },
+    { label: '4h', value: 240 },
+    { label: 'Journée', value: 480 },
+  ];
+  const formatDuration = (mins) => {
+    if (!mins) return '';
+    if (mins >= 480) return 'Journée';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
   };
 
   const getChantierEvents = () => chantiers.filter(ch => ch.date_debut).map(ch => ({
@@ -170,7 +186,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
   const startEdit = () => {
     setForm({ title: showDetail.title || '', date: showDetail.date || '', time: showDetail.time || '',
-      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', description: showDetail.description || '' });
+      type: showDetail.type || 'rdv', employeId: showDetail.employeId || '', clientId: showDetail.clientId || '', description: showDetail.description || '',
+      duration: showDetail.duration || 60, recurrence: showDetail.recurrence || 'never', recurrenceEnd: showDetail.recurrenceEnd || '' });
     setEditMode(true);
   };
 
