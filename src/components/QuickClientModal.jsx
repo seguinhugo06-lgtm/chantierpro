@@ -34,9 +34,18 @@ export default function QuickClientModal({
   const dupeTimeoutRef = useRef(null);
 
   // Validation helpers
+  const TEST_EMAIL_DOMAINS = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
   const validateEmail = (email) => {
     if (!email) return true; // Optional field
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (domain && TEST_EMAIL_DOMAINS.includes(domain)) return false;
+    return true;
+  };
+  const isTestDomain = (email) => {
+    if (!email) return false;
+    const domain = email.split('@')[1]?.toLowerCase();
+    return domain && TEST_EMAIL_DOMAINS.includes(domain);
   };
 
   const validatePhone = (phone) => {
@@ -126,7 +135,9 @@ export default function QuickClientModal({
     }
 
     if (form.email && !validateEmail(form.email)) {
-      newErrors.email = 'Format email invalide (ex: nom@email.fr)';
+      newErrors.email = isTestDomain(form.email)
+        ? 'Domaine email non autorisé (@test.com, @example.com…)'
+        : 'Format email invalide (ex: nom@email.fr)';
     }
 
     if (form.telephone && !validatePhone(form.telephone)) {
@@ -252,7 +263,7 @@ export default function QuickClientModal({
                     setErrors(p => ({ ...p, nom: 'Le nom doit contenir au moins 2 caractères' }));
                   }
                 }}
-                placeholder="Dupont"
+                placeholder="ex. Dupont"
                 aria-required="true"
                 aria-invalid={!!errors.nom}
                 aria-describedby={errors.nom ? 'qc-nom-error' : undefined}
@@ -273,7 +284,7 @@ export default function QuickClientModal({
                 type="text"
                 value={form.prenom}
                 onChange={e => setForm(p => ({ ...p, prenom: e.target.value }))}
-                placeholder="Marie"
+                placeholder="ex. Jean"
                 className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg}`}
               />
             </div>
@@ -382,10 +393,10 @@ export default function QuickClientModal({
                         }}
                         onBlur={() => {
                           if (form.email && !validateEmail(form.email)) {
-                            setErrors(p => ({ ...p, email: 'Format email invalide (ex: nom@email.fr)' }));
+                            setErrors(p => ({ ...p, email: isTestDomain(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' }));
                           }
                         }}
-                        placeholder="marie.dupont@email.fr"
+                        placeholder="ex. nom@email.fr"
                         aria-invalid={!!errors.email}
                         aria-describedby={errors.email ? 'qc-email-error' : undefined}
                         className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}

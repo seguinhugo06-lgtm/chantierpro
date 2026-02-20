@@ -276,21 +276,33 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     return matchSearch && matchCat && matchKpi;
   });
 
-  // Get last activity date for a client (for sorting)
+  // Get last activity date for a client (for sorting and display)
   const getLastActivity = (clientId) => {
     let latest = 0;
+    const checkDate = (dateStr) => {
+      if (!dateStr) return;
+      const t = new Date(dateStr).getTime();
+      if (t > latest && !isNaN(t)) latest = t;
+    };
     (devis || []).forEach(d => {
-      if (d.client_id === clientId && d.created_at) {
-        const t = new Date(d.created_at).getTime();
-        if (t > latest) latest = t;
+      if (d.client_id === clientId) {
+        checkDate(d.created_at);
+        checkDate(d.updated_at);
+        checkDate(d.date);
       }
     });
     (chantiers || []).forEach(ch => {
-      if (ch.client_id === clientId && ch.created_at) {
-        const t = new Date(ch.created_at).getTime();
-        if (t > latest) latest = t;
+      if ((ch.client_id || ch.clientId) === clientId) {
+        checkDate(ch.created_at);
+        checkDate(ch.updated_at);
+        checkDate(ch.date_debut);
       }
     });
+    // Also check client's own updated_at
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      checkDate(client.updated_at);
+    }
     return latest;
   };
 
@@ -1331,8 +1343,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       {/* KPI Cards - Clickable */}
       {displayClients.length > 0 && (() => {
         const totalCA = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
-        const caFacture = (devis || []).filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.montant_ttc || 0), 0);
-        const caDevis = totalCA - caFacture;
+        // CA facturé = factures payées uniquement
+        const caFacture = (devis || []).filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.montant_ttc || d.total_ttc || 0), 0);
+        // CA en attente = total engagé (devis acceptés + factures) - factures payées
+        const caEnAttente = totalCA - caFacture;
         const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
         const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
         let topClient = null;
@@ -1343,7 +1357,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
         const kpiItems = [
           { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${displayClients.length}` },
-          { key: 'ca', icon: Euro, color: '#10b981', iconBg: 'rgba(16,185,129,0.1)', value: formatMoney(totalCA), label: 'CA total', sub: modeDiscret ? '' : `${formatMoney(caFacture)} facturé` },
+          { key: 'ca', icon: Euro, color: '#10b981', iconBg: 'rgba(16,185,129,0.1)', value: formatMoney(caFacture), label: 'CA encaissé', sub: modeDiscret ? '' : (caEnAttente > 0 ? `${formatMoney(caEnAttente)} en cours` : '') },
           { key: 'top', icon: Briefcase, color: '#8b5cf6', iconBg: 'rgba(139,92,246,0.1)', value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
           { key: 'devis_attente', icon: Send, color: '#3b82f6', iconBg: 'rgba(59,130,246,0.1)', value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
         ];
