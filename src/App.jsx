@@ -14,7 +14,17 @@ const Clients = lazy(() => import('./components/Clients'));
 const DevisPage = lazy(() => import('./components/DevisPage'));
 const Equipe = lazy(() => import('./components/Equipe').catch(err => {
   console.error('[LAZY] Failed to load Equipe:', err);
-  return { default: () => <div style={{padding: '2rem', textAlign:'center', color:'#ef4444'}}>Erreur chargement module Équipe: {err?.message || 'inconnu'}</div> };
+  // If chunk loading failed (stale bundle), auto-reload once
+  const msg = err?.message || '';
+  if (msg.includes('Failed to fetch') || msg.includes('ChunkLoadError') || msg.includes('Importing a module script failed')) {
+    const key = 'chantierpro_chunk_reload';
+    const last = sessionStorage.getItem(key);
+    if (!last || Date.now() - parseInt(last, 10) > 30000) {
+      sessionStorage.setItem(key, Date.now().toString());
+      window.location.reload();
+    }
+  }
+  return { default: () => <div style={{padding: '2rem', textAlign:'center', color:'#ef4444'}}>Erreur chargement module Équipe: {msg || 'inconnu'}<br/><button onClick={() => window.location.reload()} style={{marginTop:'1rem', padding:'0.5rem 1rem', background:'#f97316', color:'white', borderRadius:'0.5rem', border:'none', cursor:'pointer'}}>Recharger</button></div> };
 }));
 const Catalogue = lazy(() => import('./components/Catalogue'));
 const Settings = lazy(() => import('./components/Settings'));

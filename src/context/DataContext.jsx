@@ -425,9 +425,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {
-    // Require client_id — reject if missing
+    // Require client_id — reject if missing (ghost devis prevention)
     if (!data.client_id) {
-      console.error('addDevis: rejected — missing client_id');
+      console.warn('addDevis: rejected ghost devis — missing client_id. Data:', { numero: data.numero, type: data.type, statut: data.statut });
       return null;
     }
     // Validate client_id is a proper UUID to prevent ghost data (demo IDs like 'c1')

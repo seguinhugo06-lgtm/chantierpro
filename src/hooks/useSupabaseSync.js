@@ -155,6 +155,16 @@ export const FIELD_MAPPINGS = {
         });
       }
 
+      // Sanitize statut to prevent devis_statut_check constraint violation
+      // DB allowed: brouillon, envoye, vu, accepte, acompte_facture, facture, refuse, payee
+      const VALID_DEVIS_STATUTS = ['brouillon', 'envoye', 'vu', 'accepte', 'acompte_facture', 'facture', 'refuse', 'payee'];
+      const STATUT_ALIASES = { signe: 'accepte', signed: 'accepte', paye: 'payee', paid: 'payee', sent: 'envoye', draft: 'brouillon', refused: 'refuse' };
+      let statut = item.statut || 'brouillon';
+      if (!VALID_DEVIS_STATUTS.includes(statut)) {
+        statut = STATUT_ALIASES[statut] || 'brouillon';
+        console.warn(`⚠️ devis: sanitized invalid statut "${item.statut}" → "${statut}"`);
+      }
+
       return {
         id: item.id,
         client_id: item.client_id,
@@ -162,7 +172,7 @@ export const FIELD_MAPPINGS = {
         chantier_id: item.chantier_id || null,
         numero: item.numero,
         type: item.type,
-        statut: item.statut,
+        statut,
         date: item.date,
         date_validite: item.date_validite,
         date_echeance: item.date_echeance || null,
