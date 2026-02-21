@@ -31,6 +31,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { cn } from '../../lib/utils';
 import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../context/DataContext';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
+import { calcConversion } from '../../lib/statsUtils';
 
 /**
  * Format currency — exact amounts for consistency across Dashboard
@@ -325,12 +326,11 @@ function OverviewWidget({ setPage, isDark = false, className }) {
 
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;
 
-    // Conversion rate — exclude brouillons from denominator
-    // Numerator: signed/invoiced (accepte, signe, acompte_facture, facture, payee)
-    const devisSignesOv = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
-    // Denominator: all non-brouillon devis
-    const devisSent = devisOnly.filter(d => d.statut !== 'brouillon').length;
-    const tauxConversion = devisSent > 0 ? Math.round((devisSignesOv / devisSent) * 100) : -1;
+    // Conversion rate (formule unifiée via calcConversion)
+    const conversionResult = calcConversion(devisOnly);
+    const devisSignesOv = conversionResult.signes;
+    const devisSent = conversionResult.envoyes;
+    const tauxConversion = devisSent > 0 ? Math.round(conversionResult.taux) : -1;
 
     // Factures
     const facturesImpayees = factures.filter(f => f.statut !== 'payee');

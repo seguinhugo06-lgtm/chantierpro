@@ -6,10 +6,10 @@
  */
 
 import { useMemo } from 'react';
+import { calcConversion, CONVERTED_STATUTS, SENT_STATUTS } from '../lib/statsUtils';
 
 const MONTHS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-const ACCEPTED_STATUTS = ['accepte', 'signe', 'payee', 'paye'];
-const SENT_STATUTS = ['envoye', 'vu', 'accepte', 'signe', 'payee', 'paye', 'refuse', 'facture'];
+const ACCEPTED_STATUTS = CONVERTED_STATUTS;
 
 /**
  * Get date range for a period key
@@ -99,12 +99,11 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
       .filter(d => d.statut === 'envoye' || d.statut === 'vu')
       .reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
 
-    // ── FIXED taux conversion: exclude brouillons ─────────────────
-    const devisEnvoyes = devisInPeriod.filter(d => SENT_STATUTS.includes(d.statut));
-    const devisSigned = devisInPeriod.filter(d => ACCEPTED_STATUTS.includes(d.statut));
-    const totalDevisEnvoyes = devisEnvoyes.length;
-    const signedCount = devisSigned.length;
-    const tauxConversion = totalDevisEnvoyes > 0 ? ((signedCount / totalDevisEnvoyes) * 100) : 0;
+    // ── Taux conversion (formule unifiée via calcConversion) ──────
+    const conversionResult = calcConversion(devisInPeriod);
+    const totalDevisEnvoyes = conversionResult.envoyes;
+    const signedCount = conversionResult.signes;
+    const tauxConversion = conversionResult.taux;
 
     // Brouillons count (for UI)
     const brouillonsCount = devisInPeriod.filter(d => d.statut === 'brouillon').length;
@@ -120,9 +119,8 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
     const prevCA = prevAcceptes.reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
     const prevDepenses = depensesPrev.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
     const prevMarge = prevCA - prevDepenses;
-    const prevDevisEnvoyes = devisPrev.filter(d => SENT_STATUTS.includes(d.statut));
-    const prevSignedCount = devisPrev.filter(d => ACCEPTED_STATUTS.includes(d.statut)).length;
-    const prevTauxConversion = prevDevisEnvoyes.length > 0 ? ((prevSignedCount / prevDevisEnvoyes.length) * 100) : 0;
+    const prevConversion = calcConversion(devisPrev);
+    const prevTauxConversion = prevConversion.taux;
 
     const comparisons = {
       ca: prevCA > 0 ? ((ca - prevCA) / prevCA) * 100 : null,

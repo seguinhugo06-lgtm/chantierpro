@@ -141,6 +141,7 @@ export default function KPIFactureWidget({
       icon: Zap,
       label: 'Taux conversion',
       value: `${Math.round(stats.tauxConversion)}%`,
+      sub: stats.conversionSignes != null ? `${stats.conversionSignes}/${stats.conversionEnvoyes} signés` : undefined,
     });
 
     return result;

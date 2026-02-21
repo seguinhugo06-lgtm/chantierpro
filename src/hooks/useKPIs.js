@@ -8,6 +8,7 @@
 
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
+import { calcConversion } from '../lib/statsUtils';
 
 /**
  * @param {Object} [options]
@@ -81,9 +82,9 @@ export function useKPIs({ period = 'month', clientId, chantierId } = {}) {
     const devisRefuses = devisOnly.filter(d => d.statut === 'refuse');
     const montantPipeline = devisEnvoyes.reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
 
-    // Taux de conversion
-    const totalTraites = devisAcceptes.length + devisRefuses.length + devisEnvoyes.length;
-    const tauxConversion = totalTraites > 0 ? Math.round((devisAcceptes.length / totalTraites) * 100) : null;
+    // Taux de conversion (formule unifiée via calcConversion)
+    const conversionResult = calcConversion(devisOnly);
+    const tauxConversion = conversionResult.taux > 0 ? Math.round(conversionResult.taux) : null;
 
     // === CHANTIERS ===
     let scopedChantiers = chantiers;
@@ -136,6 +137,8 @@ export function useKPIs({ period = 'month', clientId, chantierId } = {}) {
       devisEnAttente: devisEnvoyes.length,
       montantPipeline,
       tauxConversion,
+      conversionSignes: conversionResult.signes,
+      conversionEnvoyes: conversionResult.envoyes,
       devisAcceptes: devisAcceptes.length,
 
       // Invoices

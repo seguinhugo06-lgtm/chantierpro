@@ -747,6 +747,8 @@ const KPICard = React.forwardRef(
                   label={detail.label}
                   value={detail.value}
                   highlight={detail.highlight}
+                  subLabel={detail.sub}
+                  badge={detail.badge}
                   isDark={isDark}
                 />
               ))}

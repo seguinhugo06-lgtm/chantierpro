@@ -26,25 +26,10 @@ import {
 import { useData } from '../../context/DataContext';
 import { useApp } from '../../context/AppContext';
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../../lib/constants';
+import { calcConversion, CONVERTED_STATUTS } from '../../lib/statsUtils';
 
 // Statuses that count as "accepted" for revenue purposes
-const ACCEPTED_STATUSES = [
-  DEVIS_STATUS.ACCEPTE,
-  DEVIS_STATUS.ACOMPTE_FACTURE,
-  DEVIS_STATUS.FACTURE,
-  DEVIS_STATUS.PAYEE,
-];
-
-// Statuses that count as "sent" (denominator for conversion rate)
-const SENT_STATUSES = [
-  DEVIS_STATUS.ENVOYE,
-  DEVIS_STATUS.VU,
-  DEVIS_STATUS.ACCEPTE,
-  DEVIS_STATUS.REFUSE,
-  DEVIS_STATUS.ACOMPTE_FACTURE,
-  DEVIS_STATUS.FACTURE,
-  DEVIS_STATUS.PAYEE,
-];
+const ACCEPTED_STATUSES = CONVERTED_STATUTS;
 
 /**
  * Indicator configuration with weights, icons, labels, and contextual advice
@@ -273,17 +258,9 @@ function useHealthScores() {
       ? Math.min(100, pendingAccepted.length * 25)
       : 0;
 
-    // --- 3. Taux de conversion (15%) ---
-    // Ratio of accepted devis vs total sent devis
-    const sentDevis = devis.filter(d =>
-      SENT_STATUSES.includes(d.statut) && d.type === 'devis'
-    );
-    const acceptedCount = devis.filter(d =>
-      ACCEPTED_STATUSES.includes(d.statut) && d.type === 'devis'
-    ).length;
-    const conversion = sentDevis.length > 0
-      ? (acceptedCount / sentDevis.length) * 100
-      : 0;
+    // --- 3. Taux de conversion (15%) — formule unifiée via calcConversion ---
+    const conversionResult = calcConversion(devis);
+    const conversion = conversionResult.taux;
 
     // --- 4. Marge moyenne (15%) ---
     // Average margin across all active/completed chantiers
