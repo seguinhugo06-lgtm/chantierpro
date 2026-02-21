@@ -1622,7 +1622,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           return { label: 'Envoyer', icon: Send, action: () => sendEmail(selected), color: 'bg-amber-500 hover:bg-amber-600' };
         }
         if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
-        if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => canAcompte ? setShowAcompteModal(true) : createSolde(), color: 'bg-emerald-500 hover:bg-emerald-600' };
+        if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
+          if (canAcompte) { setShowAcompteModal(true); return; }
+          const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
+          confirm({ title: 'Créer la facture complète ?', message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.` }).then(ok => ok && createSolde());
+        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
         if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: createSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
         if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
@@ -1917,13 +1921,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {(selected.statut === 'accepte' || selected.statut === 'signe') && (
                     <button
                       onClick={async () => {
-                        const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-                        const confirmed = await confirm({
-                          title: canAcompte ? "Créer une facture d'acompte ?" : 'Créer la facture ?',
-                          message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
-                        });
-                        if (!confirmed) return;
-                        canAcompte ? setShowAcompteModal(true) : createSolde();
+                        if (canAcompte) {
+                          // Go straight to acompte modal — it has its own confirm/cancel
+                          setShowAcompteModal(true);
+                        } else {
+                          // Full invoice — confirm with correct amount
+                          const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
+                          const confirmed = await confirm({
+                            title: 'Créer la facture complète ?',
+                            message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
+                          });
+                          if (!confirmed) return;
+                          createSolde();
+                        }
                       }}
                       className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
                     >
@@ -2644,9 +2654,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               )}
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors">
+                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
                   {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
-                  Créer{acomptePct > 30 ? ' ⚠️' : ''}
+                  Facturer {formatMoney(selected.total_ttc * acomptePct / 100)}
                 </button>
               </div>
             </div>
