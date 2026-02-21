@@ -3,6 +3,7 @@ import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, E
 import QuickClientModal from './QuickClientModal';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
+import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
@@ -66,6 +67,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const [pendingSubmit, setPendingSubmit] = useState(null);
 
   // Format money with modeDiscret support
   const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
@@ -107,6 +110,9 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
   const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
 
+  // Duplicate detection for form fields (telephone, email, nom)
+  const { phoneDuplicates, emailDuplicates, strongDuplicates, checkField: checkDupeField, clearAll: clearDupes } = useDuplicateCheck(clients, editId, 300);
+
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
   // Escape key to close modals/views
@@ -116,7 +122,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         if (selectedEchange) { setSelectedEchange(null); }
         else if (showTypePicker) { setShowTypePicker(false); }
         else if (showFormTypePicker) { setShowFormTypePicker(false); }
-        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); }
+        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); clearDupes(); }
         else if (viewId) { setViewId(null); }
         else if (showQuickModal) { setShowQuickModal(false); }
       }
@@ -395,6 +401,34 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     }
   };
 
+  const doSubmit = async (trimmedForm) => {
+    const wasEditing = editId;
+    try {
+      if (editId) {
+        if (updateClient) {
+          await updateClient(editId, trimmedForm);
+        } else {
+          setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
+        }
+      } else {
+        onSubmit(trimmedForm);
+      }
+    } catch (error) {
+      console.error('Error saving client:', error);
+      showToast('Erreur lors de la sauvegarde du client', 'error');
+      return;
+    }
+    setShow(false);
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
+    clearErrors();
+    clearDupes();
+    showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
+    if (wasEditing) {
+      setViewId(wasEditing);
+    }
+    setEditId(null);
+  };
+
   const submit = async () => {
     // Trim all string fields before validation and save
     const trimmedForm = Object.fromEntries(
@@ -406,33 +440,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       showToast('Veuillez corriger les erreurs du formulaire', 'error');
       return;
     }
-    const wasEditing = editId;
-    try {
-      if (editId) {
-        // Use updateClient which syncs to Supabase
-        if (updateClient) {
-          await updateClient(editId, trimmedForm);
-        } else {
-          // Fallback to direct state update if updateClient not provided
-          setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
-        }
-      } else {
-        onSubmit(trimmedForm);
-      }
-    } catch (error) {
-      console.error('Error saving client:', error);
-      showToast('Erreur lors de la sauvegarde du client', 'error');
-      return; // Don't close form on error so user can retry
+
+    // Check for strong duplicates (phone/email) — only on creation, not edit
+    if (!editId && strongDuplicates.length > 0) {
+      setPendingSubmit(trimmedForm);
+      setShowDupeConfirm(true);
+      return;
     }
-    setShow(false);
-    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
-    clearErrors();
-    showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
-    // Return to detail view if we were editing
-    if (wasEditing) {
-      setViewId(wasEditing);
-    }
-    setEditId(null);
+
+    await doSubmit(trimmedForm);
   };
 
   const startEdit = (client) => {
@@ -1365,8 +1381,34 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div><label htmlFor="client-nom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input id="client-nom" aria-required="true" aria-invalid={!!errors.nom} aria-describedby={errors.nom ? 'client-nom-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => { setForm(p => ({...p, nom: e.target.value})); if (errors.nom) clearFieldError('nom'); }} onBlur={() => validate('nom', form.nom, form)} /><FormError id="client-nom-error" message={errors.nom} /></div>
           <div><label htmlFor="client-prenom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input id="client-prenom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
           <div><label htmlFor="client-entreprise" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input id="client-entreprise" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
-          <div><label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input id="client-telephone" type="tel" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''}`} value={form.telephone} onChange={e => { setForm(p => ({...p, telephone: e.target.value})); if (errors.telephone) clearFieldError('telephone'); }} onBlur={() => validate('telephone', form.telephone, form)} placeholder="06 12 34 56 78" /><FormError id="client-telephone-error" message={errors.telephone} /></div>
-          <div><label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''}`} value={form.email} onChange={e => { setForm(p => ({...p, email: e.target.value})); if (errors.email) clearFieldError('email'); }} onBlur={() => validate('email', form.email, form)} placeholder="client@email.com" /><FormError id="client-email-error" message={errors.email} /></div>
+          <div>
+            <label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
+            <input id="client-telephone" type="tel" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''} ${phoneDuplicates.length > 0 ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`} value={form.telephone} onChange={e => { setForm(p => ({...p, telephone: e.target.value})); if (errors.telephone) clearFieldError('telephone'); checkDupeField('telephone', e.target.value); }} onBlur={() => validate('telephone', form.telephone, form)} placeholder="06 12 34 56 78" />
+            <FormError id="client-telephone-error" message={errors.telephone} />
+            {phoneDuplicates.length > 0 && (
+              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
+                <span>
+                  Un client avec ce téléphone existe déjà : <strong>{phoneDuplicates[0].nom} {phoneDuplicates[0].prenom || ''}</strong>
+                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(phoneDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                </span>
+              </div>
+            )}
+          </div>
+          <div>
+            <label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label>
+            <input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''} ${emailDuplicates.length > 0 ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`} value={form.email} onChange={e => { setForm(p => ({...p, email: e.target.value})); if (errors.email) clearFieldError('email'); checkDupeField('email', e.target.value); }} onBlur={() => validate('email', form.email, form)} placeholder="client@email.com" />
+            <FormError id="client-email-error" message={errors.email} />
+            {emailDuplicates.length > 0 && (
+              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
+                <span>
+                  Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
+                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(emailDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                </span>
+              </div>
+            )}
+          </div>
           <div className="relative">
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
             <button
@@ -1444,6 +1486,62 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         existingClients={clients}
         onViewClient={(id) => { setShowQuickModal(false); setViewId(id); }}
       />
+
+      {/* Duplicate confirmation modal */}
+      {showDupeConfirm && pendingSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); }} />
+          <div className={`relative w-full max-w-md rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
+                  <AlertTriangle size={20} className="text-amber-500" />
+                </div>
+                <h3 className={`text-lg font-bold ${textPrimary}`}>Doublon potentiel détecté</h3>
+              </div>
+              <p className={`text-sm mb-4 ${textSecondary}`}>
+                Ce client semble être un doublon de :
+              </p>
+              <div className="space-y-2 mb-6">
+                {strongDuplicates.map(dup => (
+                  <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                    <div>
+                      <p className={`font-semibold text-sm ${textPrimary}`}>{dup.nom} {dup.prenom || ''}</p>
+                      <p className={`text-xs ${textMuted}`}>
+                        {dup.matchReason}
+                        {dup.matchField === 'telephone' && dup.telephone && ` · ${dup.telephone}`}
+                        {dup.matchField === 'email' && dup.email && ` · ${dup.email}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); setShow(false); setEditId(null); clearDupes(); setViewId(dup.id); }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                    >
+                      Voir la fiche
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); }}
+                  className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={async () => { setShowDupeConfirm(false); await doSubmit(pendingSubmit); setPendingSubmit(null); }}
+                  className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Créer quand même
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards - Clickable */}
       {displayClients.length > 0 && (() => {

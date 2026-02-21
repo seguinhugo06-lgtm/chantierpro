@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
 import FormError from './ui/FormError';
+import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
@@ -31,8 +32,12 @@ export default function QuickClientModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [duplicates, setDuplicates] = useState([]);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
   const inputRef = useRef(null);
   const dupeTimeoutRef = useRef(null);
+
+  // Centralized duplicate check for email
+  const { emailDuplicates, checkField: checkDupeField, clearAll: clearDupeChecks } = useDuplicateCheck(existingClients, null, 300);
 
   // Validation helpers
   const TEST_EMAIL_DOMAINS = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
@@ -124,8 +129,29 @@ export default function QuickClientModal({
       setIsSubmitting(false);
       setErrors({});
       setDuplicates([]);
+      setShowDupeConfirm(false);
+      clearDupeChecks();
     }
   }, [isOpen]);
+
+  const doFinalSubmit = async () => {
+    setErrors({});
+    setIsSubmitting(true);
+
+    await new Promise(r => setTimeout(r, 300));
+
+    onSubmit({
+      nom: form.nom.trim(),
+      prenom: form.prenom.trim(),
+      telephone: form.telephone.trim(),
+      email: form.email.trim(),
+      entreprise: form.entreprise.trim(),
+      adresse: form.adresse.trim(),
+      categorie: form.categorie || ''
+    });
+
+    onClose();
+  };
 
   const handleSubmit = async () => {
     // Validate all fields
@@ -150,33 +176,22 @@ export default function QuickClientModal({
       newErrors.telephone = 'Format téléphone invalide (ex: 06 12 34 56 78)';
     }
 
-    // If errors, show them and focus first error field
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      // Focus on first error field
       if (newErrors.nom) {
         inputRef.current?.focus();
       }
       return;
     }
 
-    setErrors({});
-    setIsSubmitting(true);
+    // Check for strong duplicates (phone or email) before submitting
+    const hasStrongDupes = duplicates.some(d => d.reason === 'Même téléphone') || emailDuplicates.length > 0;
+    if (hasStrongDupes) {
+      setShowDupeConfirm(true);
+      return;
+    }
 
-    // Simulate quick save animation
-    await new Promise(r => setTimeout(r, 300));
-
-    onSubmit({
-      nom: form.nom.trim(),
-      prenom: form.prenom.trim(),
-      telephone: form.telephone.trim(),
-      email: form.email.trim(),
-      entreprise: form.entreprise.trim(),
-      adresse: form.adresse.trim(),
-      categorie: form.categorie || ''
-    });
-
-    onClose();
+    await doFinalSubmit();
   };
 
   const handleKeyDown = (e) => {
@@ -358,6 +373,7 @@ export default function QuickClientModal({
               onChange={e => {
                 setForm(p => ({ ...p, email: e.target.value }));
                 if (errors.email) setErrors(p => ({ ...p, email: null }));
+                checkDupeField('email', e.target.value);
               }}
               onBlur={() => {
                 if (form.email && !validateEmail(form.email)) {
@@ -367,12 +383,23 @@ export default function QuickClientModal({
               placeholder="ex. nom@email.fr"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'qc-email-error' : undefined}
-              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
+              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''} ${emailDuplicates.length > 0 && !errors.email ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`}
             />
             <FormError id="qc-email-error" message={errors.email} />
+            {emailDuplicates.length > 0 && (
+              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
+                <span>
+                  Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
+                  {onViewClient && (
+                    <button type="button" onClick={() => { onClose(); setTimeout(() => onViewClient(emailDuplicates[0].id), 100); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Duplicate detection warning */}
+          {/* Duplicate detection warning (name/phone) */}
           {duplicates.length > 0 && (
             <div className={`rounded-xl p-3 ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
               <div className="flex items-center gap-2 mb-2">
@@ -504,5 +531,72 @@ export default function QuickClientModal({
     </AnimatePresence>
   );
 
-  return createPortal(modalContent, document.body);
+  // Combine all strong duplicates for confirmation
+  const allStrongDupes = (() => {
+    const seen = new Set();
+    const combined = [];
+    [...duplicates.filter(d => d.reason === 'Même téléphone'), ...emailDuplicates].forEach(d => {
+      if (!seen.has(d.id)) { seen.add(d.id); combined.push(d); }
+    });
+    return combined;
+  })();
+
+  const dupeConfirmModal = showDupeConfirm && allStrongDupes.length > 0 ? (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDupeConfirm(false)} />
+      <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <div className="p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
+              <AlertTriangle size={20} className="text-amber-500" />
+            </div>
+            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Doublon potentiel</h3>
+          </div>
+          <p className={`text-sm mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+            Ce client semble être un doublon de :
+          </p>
+          <div className="space-y-2 mb-4">
+            {allStrongDupes.map(dup => (
+              <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                <div>
+                  <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{dup.nom} {dup.prenom || ''}</p>
+                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {dup.matchReason || dup.reason}
+                    {dup.telephone && ` · ${dup.telephone}`}
+                    {dup.email && ` · ${dup.email}`}
+                  </p>
+                </div>
+                {onViewClient && (
+                  <button
+                    onClick={() => { setShowDupeConfirm(false); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
+                    className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
+                    style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                  >
+                    Voir
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowDupeConfirm(false)}
+              className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={async () => { setShowDupeConfirm(false); await doFinalSubmit(); }}
+              className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
+              style={{ backgroundColor: couleur }}
+            >
+              Créer quand même
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  return createPortal(<>{modalContent}{dupeConfirmModal}</>, document.body);
 }
