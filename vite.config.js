@@ -65,9 +65,20 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/offline.html',
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/auth/],
+        // Offline fallback for when navigateFallback (index.html) can't be served
+        offlineGoogleAnalytics: false,
         runtimeCaching: [
+          {
+            // SPA navigation: Network first, fallback to cached index.html
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages-cache',
+              networkTimeoutSeconds: 3,
+            }
+          },
           {
             // Cache Supabase API calls with Network First strategy
             urlPattern: /^https:\/\/.*supabase.*\/rest\/v1\/.*/i,
