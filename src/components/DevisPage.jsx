@@ -3510,7 +3510,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut));
         const devisRefuse = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'refuse');
         const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
-        const facturesPayees = cleanDevis.filter(d => d.statut === 'payee');
+        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
         const facturesEnRetard = facturesEnAttente.filter(f => Math.floor((Date.now() - new Date(f.date)) / 86400000) > 30);
         const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);

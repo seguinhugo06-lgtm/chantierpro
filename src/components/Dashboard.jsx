@@ -104,6 +104,7 @@ import {
   generateSuggestionsFromContext,
   transformSuggestions,
 } from '../lib/actionSuggestions';
+import { normalizeDevisRef } from '../lib/formatters';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
@@ -714,6 +715,22 @@ export default function Dashboard({
     // Chantiers terminés (Dashboard-specific)
     const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
+    // "Ce mois" tendance — use kpis (paid factures TTC) for consistency with DevisPage
+    const caCeMoisTendance = kpis.caMoisDernier > 0
+      ? Math.round(((kpis.caCeMois - kpis.caMoisDernier) / kpis.caMoisDernier) * 100)
+      : null;
+
+    const fmtKpiCA = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+
+    let caCeMoisTendanceLabel = 'vs mois dernier';
+    if (isEarlyMonth) {
+      caCeMoisTendanceLabel = `Début de mois · ${fmtKpiCA(kpis.caMoisDernier)} mois dernier`;
+    } else if (kpis.caMoisDernier > 0) {
+      caCeMoisTendanceLabel = `vs ${fmtKpiCA(kpis.caMoisDernier)} mois dernier`;
+    } else {
+      caCeMoisTendanceLabel = kpis.caCeMois > 0 ? 'vs 0 € mois dernier' : 'Pas de données';
+    }
+
     return {
       totalCA,
       thisMonthCA,
@@ -723,6 +740,8 @@ export default function Dashboard({
       // From useKPIs — unified definitions
       encaisse: kpis.caEncaisse,
       enAttente: kpis.caAEncaisser,
+      caCeMois: kpis.caCeMois, // Paid factures TTC this month (consistent with DevisPage)
+      caMoisDernier: kpis.caMoisDernier,
       montantOverdue: kpis.facturesOverdue.reduce((s, f) => s + (f.total_ttc || f.montant_ttc || 0), 0),
       chantiersActifs: kpis.chantiersActifs,
       chantiersProspect: kpis.chantiersProspect,
@@ -734,6 +753,9 @@ export default function Dashboard({
       devisTotalEnvoyes,
       tendance: tendanceDashboard,
       tendanceLabel: tendanceLabelDashboard,
+      // "Ce mois" KPI tendance (paid factures TTC, matches DevisPage)
+      caCeMoisTendance: isEarlyMonth ? null : caCeMoisTendance,
+      caCeMoisTendanceLabel,
       isEarlyMonth,
       objectifMensuel,
       progressionObjectif,
@@ -1153,28 +1175,29 @@ export default function Dashboard({
               )}
             </button>
 
-            {/* Ce mois */}
+            {/* Ce mois — CA encaissé (factures payées TTC ce mois) */}
             <button
               onClick={() => setCeMoisModalOpen(true)}
               className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              title="Factures payées ce mois (TTC)"
             >
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={15} className={stats.tendance != null ? (stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
+                <TrendingUp size={15} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
                 <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
               </div>
               <div className="flex items-baseline gap-1.5">
                 <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {formatMoney(stats.thisMonthCA, modeDiscret)}
+                  {formatMoney(stats.caCeMois, modeDiscret)}
                 </p>
-                {stats.tendance != null && (
-                  <span className={`text-[11px] font-bold ${stats.tendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {stats.tendance >= 0 ? '↗' : '↘'} {stats.tendance >= 0 ? '+' : ''}{stats.tendance}%
+                {stats.caCeMoisTendance != null && (
+                  <span className={`text-[11px] font-bold ${stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
                   </span>
                 )}
               </div>
-              {stats.tendance == null && stats.tendanceLabel && (
+              {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
                 <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {stats.tendanceLabel}
+                  {stats.caCeMoisTendanceLabel}
                 </p>
               )}
             </button>
@@ -1189,14 +1212,14 @@ export default function Dashboard({
           staleDevis.slice(0, 4).forEach(d => {
             const client = safeClients.find(c => c.id === d.client_id);
             const days = daysSince(d.date);
-            const shortNum = d.numero ? (d.numero.length > 10 ? d.numero.slice(-6) : d.numero) : '';
+            const displayNum = normalizeDevisRef(d.numero, d.type || 'devis', d.id);
             const clientNom = client?.nom || client?.prenom || 'Client';
             actions.push({
               id: `devis-${d.id}`,
               priority: days > 14 ? 1 : 2,
               color: days > 14 ? 'red' : 'amber',
               icon: '📄',
-              title: `${clientNom} · Devis ${shortNum ? '#' + shortNum : ''}`,
+              title: `${clientNom} · ${displayNum}`,
               subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · Sans réponse depuis ${days}j`,
               action: () => handleOpenRelance(d),
               actionLabel: 'Relancer',
@@ -1921,14 +1944,15 @@ export default function Dashboard({
           return Array.from({ length: 6 }, (_, i) => {
             const monthOffset = 5 - i;
             const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
+            // CA encaissé: factures payées (TTC) pour cohérence avec DevisPage
             const monthCA = safeDevis
               .filter(d => {
-                const dd = new Date(d.date);
-                return dd.getMonth() === targetMonth.getMonth() &&
-                       dd.getFullYear() === targetMonth.getFullYear() &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                if (d.type !== 'facture' || d.statut !== 'payee') return false;
+                const dd = new Date(d.date_paiement || d.updated_at || d.date);
+                return dd >= targetMonth && dd < nextMonth;
               })
-              .reduce((s, d) => s + (d.total_ht || 0), 0);
+              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
             return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
           });
         })()}
@@ -1938,14 +1962,14 @@ export default function Dashboard({
           return Array.from({ length: 12 }, (_, i) => {
             const monthOffset = 11 - i;
             const targetMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 1);
             const monthCA = safeDevis
               .filter(d => {
-                const dd = new Date(d.date);
-                return dd.getMonth() === targetMonth.getMonth() &&
-                       dd.getFullYear() === targetMonth.getFullYear() &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                if (d.type !== 'facture' || d.statut !== 'payee') return false;
+                const dd = new Date(d.date_paiement || d.updated_at || d.date);
+                return dd >= targetMonth && dd < nextMonth;
               })
-              .reduce((s, d) => s + (d.total_ht || 0), 0);
+              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
             return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
           });
         })()}
@@ -1954,13 +1978,15 @@ export default function Dashboard({
           return Array.from({ length: 5 }, (_, i) => {
             const yearOffset = 4 - i;
             const targetYear = now.getFullYear() - yearOffset;
+            const startOfYear = new Date(targetYear, 0, 1);
+            const endOfYear = new Date(targetYear + 1, 0, 1);
             const yearCA = safeDevis
               .filter(d => {
-                const dd = new Date(d.date);
-                return dd.getFullYear() === targetYear &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                if (d.type !== 'facture' || d.statut !== 'payee') return false;
+                const dd = new Date(d.date_paiement || d.updated_at || d.date);
+                return dd >= startOfYear && dd < endOfYear;
               })
-              .reduce((s, d) => s + (d.total_ht || 0), 0);
+              .reduce((s, d) => s + (d.total_ttc || d.montant_ttc || 0), 0);
             return { label: targetYear.toString(), revenue: yearCA };
           });
         })()}
