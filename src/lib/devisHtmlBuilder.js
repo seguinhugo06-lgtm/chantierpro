@@ -306,7 +306,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
     <strong>DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à: ${e.adresse?.split('\\n')[0] || e.adresse?.split('\n')[0] || '[Adresse]'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${e.adresse ? e.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
   </div>
   ` : ''}
 

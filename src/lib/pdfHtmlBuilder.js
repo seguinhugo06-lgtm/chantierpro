@@ -214,7 +214,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
+        · Chèque à l'ordre de ${entreprise?.nom || '<span class="missing-legal">[Nom entreprise manquant]</span>'}<br>
         · Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
@@ -245,7 +245,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
   </div>
   ` : ''}
 

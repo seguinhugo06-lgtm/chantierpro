@@ -1076,7 +1076,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
+        · Chèque à l'ordre de ${entreprise?.nom || '<span class="missing-legal">[Nom entreprise manquant]</span>'}<br>
         · Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
@@ -1107,7 +1107,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
   </div>
   ` : ''}
 
@@ -2961,7 +2961,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   >
                     Compris
                   </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom'].includes(i.id)) && (
+                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale'].includes(i.id)) && (
                     <button
                       onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
                       className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
