@@ -128,7 +128,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   // Client stats map — MUST be defined before filtered/getClientStatus/getClientStats
   const clientStatsMap = useMemo(() => {
     const map = new Map();
-    const empty = { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
+    const empty = { devis: 0, factures: 0, ca: 0, caEnCours: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
     (devis || []).forEach(d => {
       const cid = d.client_id;
       if (!cid) return;
@@ -136,11 +136,13 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       const s = map.get(cid);
       if (d.type === 'devis') s.devis++;
       if (d.type === 'facture') s.factures++;
-      if (d.type === 'devis' && d.statut === 'accepte') {
-        s.ca += d.total_ttc || 0;
+      // D2 fix: CA encaissé = only paid factures
+      if (d.type === 'facture' && d.statut === 'payee') {
+        s.ca += d.total_ttc || d.montant_ttc || (d.total_ht ? d.total_ht * 1.2 : 0);
       }
-      if (d.type === 'facture') {
-        s.ca += d.total_ttc || 0;
+      // CA en cours = factures envoyées + devis acceptés (pipeline)
+      if ((d.type === 'facture' && d.statut !== 'payee') || (d.type === 'devis' && d.statut === 'accepte')) {
+        s.caEnCours += d.total_ttc || d.montant_ttc || 0;
       }
       if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
     });
@@ -1439,17 +1441,16 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
       {/* KPI Cards - Clickable */}
       {displayClients.length > 0 && (() => {
-        const totalCA = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
-        // CA facturé = factures payées uniquement
-        const caFacture = (devis || []).filter(d => d.type === 'facture' && d.statut === 'payee').reduce((s, d) => s + (d.montant_ttc || d.total_ttc || 0), 0);
-        // CA en attente = total engagé (devis acceptés + factures) - factures payées
-        const caEnAttente = totalCA - caFacture;
+        // D2 fix: CA from clientStatsMap now correctly only counts paid factures
+        const caFacture = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
+        const caEnAttente = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.caEnCours, 0);
         const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
         const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
         let topClient = null;
         let topCA = 0;
         clientStatsMap.forEach((v, cid) => {
-          if (v.ca > topCA) { topCA = v.ca; topClient = clients.find(c => c.id === cid); }
+          const totalClientCA = v.ca + v.caEnCours;
+          if (totalClientCA > topCA) { topCA = totalClientCA; topClient = clients.find(c => c.id === cid); }
         });
 
         const kpiItems = [

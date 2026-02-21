@@ -98,6 +98,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
@@ -3076,6 +3077,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Plus size={18} style={{ color: couleur }} />
                 <span className="font-medium" style={{ color: couleur }}>Ajouter une ligne</span>
               </button>
+              {/* B2: Inline error when no lines */}
+              {section.lignes.length === 0 && (
+                <p className={`text-xs font-medium flex items-center gap-1.5 mt-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  <AlertTriangle size={12} /> Ajoutez au moins une prestation pour calculer le montant total
+                </p>
+              )}
             </div>
           ))}
           
@@ -3307,7 +3314,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {/* CA encaissé */}
-              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { ringColor: couleur } : {}}>
+              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { ringColor: couleur } : {}} title="Somme des factures avec statut Payée">
                 <div className="flex items-center justify-between mb-1">
                   <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>CA encaissé</p>
                   <Banknote size={14} style={{ color: couleur }} />
@@ -3346,7 +3353,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </button>
 
               {/* À encaisser */}
-              <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { ringColor: couleur } : {}}>
+              <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { ringColor: couleur } : {}} title="Factures envoyées non encore payées">
                 <div className="flex items-center justify-between mb-1">
                   <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>À encaisser</p>
                   <AlertTriangle size={14} className={facturesEnRetard.length > 0 ? 'text-red-500' : 'text-violet-500'} />
@@ -3551,6 +3558,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <p className={`text-xs ${textMuted} truncate max-w-[280px]`} title={`${cleanClientName(client) || d.client_nom || 'Client sans nom'}${chantier ? ` · ${chantier.nom}` : ''} · ${new Date(d.date).toLocaleDateString('fr-FR')}`}>
                     {(() => {
                       const name = cleanClientName(client) || (d.client_nom || 'Client sans nom');
+                      const isMissing = !client && !d.client_nom;
+                      if (isMissing) return (
+                        <span className="inline-flex items-center gap-1">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                            <AlertTriangle size={10} /> Client manquant
+                          </span>
+                          <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:text-amber-500'}`}>
+                            Assigner
+                          </button>
+                        </span>
+                      );
                       return name === 'Client sans nom'
                         ? <span className="italic text-slate-400">{name}</span>
                         : name;
@@ -3597,6 +3615,46 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         })}</div>
       )}
       <Snackbar />
+
+      {/* B1: Assign client dropdown modal */}
+      {assigningClientDevisId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setAssigningClientDevisId(null)}>
+          <div className={`${cardBg} border rounded-2xl w-full max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
+            <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <h3 className={`font-bold ${textPrimary}`}>Assigner un client</h3>
+              <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez le client pour ce devis</p>
+            </div>
+            <div className="p-3 max-h-64 overflow-y-auto space-y-1">
+              {clients.filter(c => c.nom).map(c => (
+                <button key={c.id} onClick={() => {
+                  const d = devis.find(dv => dv.id === assigningClientDevisId);
+                  if (d) {
+                    onUpdate(d.id, { client_id: c.id, client_nom: `${c.prenom || ''} ${c.nom}`.trim() });
+                    showToast(`Client "${`${c.prenom || ''} ${c.nom}`.trim()}" assigné`, 'success');
+                  }
+                  setAssigningClientDevisId(null);
+                }} className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: couleur }}>
+                    {(c.prenom?.[0] || c.nom?.[0] || '?').toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</p>
+                    {c.entreprise && <p className={`text-xs truncate ${textMuted}`}>{c.entreprise}</p>}
+                  </div>
+                </button>
+              ))}
+              {clients.filter(c => c.nom).length === 0 && (
+                <p className={`text-sm text-center py-4 ${textMuted}`}>Aucun client disponible</p>
+              )}
+            </div>
+            <div className={`p-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+              <button onClick={() => setAssigningClientDevisId(null)} className={`w-full py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF Preview Modal */}
       {showPdfPreview && (
