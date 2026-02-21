@@ -157,13 +157,19 @@ export const FIELD_MAPPINGS = {
       }
 
       // Sanitize statut to prevent devis_statut_check constraint violation
-      // DB allowed: brouillon, envoye, vu, accepte, acompte_facture, facture, refuse, payee
-      const VALID_DEVIS_STATUTS = ['brouillon', 'envoye', 'vu', 'accepte', 'acompte_facture', 'facture', 'refuse', 'payee'];
-      const STATUT_ALIASES = { signe: 'accepte', signed: 'accepte', paye: 'payee', paid: 'payee', sent: 'envoye', draft: 'brouillon', refused: 'refuse' };
+      // DB constraint (migration 030): brouillon, envoye, vu, accepte, refuse, annule, acompte_facture, facture, payee, en_attente, signe
+      const VALID_DEVIS_STATUTS = ['brouillon', 'envoye', 'vu', 'accepte', 'signe', 'refuse', 'annule', 'acompte_facture', 'facture', 'payee', 'en_attente'];
+      const STATUT_ALIASES = { signed: 'signe', paye: 'payee', paid: 'payee', sent: 'envoye', draft: 'brouillon', refused: 'refuse' };
       let statut = item.statut || 'brouillon';
       if (!VALID_DEVIS_STATUTS.includes(statut)) {
-        statut = STATUT_ALIASES[statut] || 'brouillon';
-        console.warn(`⚠️ devis: sanitized invalid statut "${item.statut}" → "${statut}"`);
+        const mapped = STATUT_ALIASES[statut];
+        if (mapped) {
+          console.warn(`⚠️ devis: mapped alias statut "${item.statut}" → "${mapped}"`);
+          statut = mapped;
+        } else {
+          console.error(`❌ devis: unknown statut "${item.statut}", falling back to "brouillon". Valid: ${VALID_DEVIS_STATUTS.join(', ')}`);
+          statut = 'brouillon';
+        }
       }
 
       return {
@@ -1061,6 +1067,11 @@ export async function saveItem(table, item, userId) {
           continue;
         }
         console.error(`❌ Error saving to ${table}:`, error.message);
+        // Detect constraint violations for clearer error messages
+        if (error.message?.includes('check constraint') || error.message?.includes('statut_check') || error.code === '23514') {
+          const detail = table === 'devis' ? ` (statut envoyé: "${supabaseData.statut}")` : '';
+          throw new Error(`Valeur invalide${detail}: ${error.message}`);
+        }
         throw new Error(`Failed to save to ${table}: ${error.message}`);
       }
 

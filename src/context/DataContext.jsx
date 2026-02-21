@@ -467,8 +467,15 @@ export function DataProvider({ children, initialData = {} }) {
           }
         } catch (error) {
           console.error('❌ addDevis: Supabase save failed:', error.message);
-          toast.error('Erreur sauvegarde devis', error.message);
-          await queueOffline('create', 'devis', newDevis);
+          const msg = error.message || '';
+          if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
+            toast.error('Erreur de statut', `Le statut "${newDevis.statut}" n'est pas valide.`);
+            // Remove the optimistic addition
+            setDevis(prev => prev.filter(d => d.id !== newDevis.id));
+          } else {
+            toast.error('Erreur sauvegarde devis', msg);
+            await queueOffline('create', 'devis', newDevis);
+          }
         }
       } else {
         pendingSavesRef.current.push({ table: 'devis', item: newDevis });
@@ -495,8 +502,16 @@ export function DataProvider({ children, initialData = {} }) {
           }
         } catch (error) {
           console.error('❌ updateDevis: Supabase save failed:', error.message);
-          toast.error('Erreur mise à jour', error.message);
-          await queueOffline('update', 'devis', { id, ...data });
+          const msg = error.message || '';
+          // Constraint violation = data issue, not network — don't queue offline
+          if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
+            toast.error('Erreur de statut', `Le statut "${data.statut || 'inconnu'}" n'est pas valide. Modification non enregistrée.`);
+            // Revert the optimistic update
+            setDevis(prev => prev.map(d => d.id === id ? current : d));
+          } else {
+            toast.error('Erreur mise à jour', msg);
+            await queueOffline('update', 'devis', { id, ...data });
+          }
         }
       } else {
         // Queue the full merged item for pending save
