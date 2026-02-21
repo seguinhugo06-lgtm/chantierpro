@@ -3525,14 +3525,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
           const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
 
-          // Contextual quick action
+          // B5: Contextual CTAs by status — clear next action per document
           const getQuickAction = () => {
-            if (d.statut === 'brouillon' && getDevisTTC(d) > 0) return { label: 'Envoyer', Icon: Send, cls: 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            // Brouillon → Envoyer (or Modifier if no amount)
+            if (d.statut === 'brouillon' && getDevisTTC(d) > 0) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0) return { label: 'Modifier', Icon: Edit3, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (['envoye', 'vu'].includes(d.statut) && daysSince > 7) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-700 hover:bg-amber-600 text-white' : 'bg-amber-100 hover:bg-amber-200 text-amber-700', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            // Envoyé/Vu → Relancer (amber)
+            if (['envoye', 'vu'].includes(d.statut)) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            // Accepté/Signé devis → Facturer (emerald)
             if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            // Facture non payée → Encaisser (brand color foncé)
             if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            // Refusé → Dupliquer
             if (d.statut === 'refuse') return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
+            // Payée → pas de CTA (check mark)
+            if (d.statut === 'payee') return null;
             return null;
           };
           const qa = getQuickAction();
