@@ -538,6 +538,7 @@ export default function Dashboard({
   setPage,
   setSelectedDevis,
   setCreateMode,
+  setAiPrefill,
   isDark = false,
   showHelp = false,
   setShowHelp,
@@ -1104,31 +1105,13 @@ export default function Dashboard({
     []
   );
 
-  // AI Chat: create devis from AI-generated data
-  const handleAICreateDevis = useCallback(async (devisData) => {
-    if (!addDevis) return;
-    try {
-      const newDevis = await addDevis({
-        type: 'devis',
-        statut: 'brouillon',
-        date: new Date().toISOString().split('T')[0],
-        validite: devisData.validite || 30,
-        objet: devisData.objet || 'Devis IA',
-        client_nom: devisData.client_nom || '',
-        client_id: devisData.client_id || null,
-        lignes: devisData.lignes || [],
-        notes: devisData.notes || '',
-        tvaRate: devisData.tvaRate || 10,
-        total_ht: (devisData.lignes || []).reduce((sum, l) => sum + (parseFloat(l.quantite || 0) * parseFloat(l.prixUnitaire || 0)), 0),
-      });
-      if (newDevis?.id) {
-        setSelectedDevis?.(newDevis);
-        setPage?.('devis');
-      }
-    } catch (e) {
-      console.error('Failed to create devis from AI:', e);
-    }
-  }, [addDevis, setSelectedDevis, setPage]);
+  // AI Chat: navigate to DevisPage with pre-filled data (NO premature addDevis call)
+  const handleAICreateDevis = useCallback((devisData) => {
+    // Store AI data for DevisPage to pick up — devis is NOT saved to DB yet
+    setAiPrefill?.(devisData);
+    setCreateMode?.((p) => ({ ...p, devis: true }));
+    setPage?.('devis');
+  }, [setAiPrefill, setCreateMode, setPage]);
 
   // ============ RENDER ============
 

@@ -190,15 +190,12 @@ export default function ChatInterface({
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  // Create devis from AI data
+  // Create devis from AI data — navigates to DevisPage with pre-filled form
   const handleCreateDevis = useCallback(() => {
     if (!pendingDevis || !onCreateDevis) return;
     onCreateDevis(pendingDevis);
     setPendingDevis(null);
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      content: 'Devis créé avec succès ! Vous pouvez le retrouver dans vos Devis & Factures.',
-    }]);
+    // Note: user will be redirected to DevisPage with pre-filled form
   }, [pendingDevis, onCreateDevis]);
 
   // Quick action buttons

@@ -47,7 +47,7 @@ const CONDITIONS_PAIEMENT = {
   'acompte_solde': '30% acompte, solde à réception',
 };
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -182,6 +182,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
   useEffect(() => { if (createMode) { setMode('create'); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+
+  // AI Prefill: populate form with IA-generated data (devis stays local until user confirms)
+  useEffect(() => {
+    if (!aiPrefill) return;
+    const lignes = (aiPrefill.lignes || []).map((l, i) => ({
+      id: `ia_${i}_${Date.now()}`,
+      description: l.designation || l.description || '',
+      quantite: l.quantite || 1,
+      unite: l.unite || 'u',
+      prixUnitaire: l.prixUnitaire || 0,
+    }));
+    setForm(prev => ({
+      ...prev,
+      type: 'devis',
+      clientId: aiPrefill.client_id || '',
+      tvaDefaut: aiPrefill.tvaRate || prev.tvaDefaut,
+      validite: aiPrefill.validite || prev.validite,
+      notes: [aiPrefill.objet || aiPrefill.description || '', aiPrefill.notes || ''].filter(Boolean).join('\n'),
+      sections: [{ id: '1', titre: aiPrefill.objet || aiPrefill.description || '', lignes }],
+    }));
+    setMode('create');
+    setAiPrefill?.(null); // Consume the prefill data
+  }, [aiPrefill, setAiPrefill]);
 
   const statusOrder = { brouillon: 0, envoye: 1, accepte: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: 6 };
 
