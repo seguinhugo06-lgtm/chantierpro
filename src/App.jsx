@@ -7,51 +7,59 @@ import FABMenu from './components/FABMenu';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 import LandingPage from './components/LandingPage';
 
-// Lazy load heavy page components for code splitting
-const Chantiers = lazy(() => import('./components/Chantiers'));
-const Planning = lazy(() => import('./components/Planning'));
-const Clients = lazy(() => import('./components/Clients'));
-const DevisPage = lazy(() => import('./components/DevisPage'));
-const Equipe = lazy(() => import('./components/Equipe').catch(err => {
-  console.error('[LAZY] Failed to load Equipe:', err);
-  // If chunk loading failed (stale bundle), auto-reload once
-  const msg = err?.message || '';
-  if (msg.includes('Failed to fetch') || msg.includes('ChunkLoadError') || msg.includes('Importing a module script failed')) {
-    const key = 'chantierpro_chunk_reload';
-    const last = sessionStorage.getItem(key);
-    if (!last || Date.now() - parseInt(last, 10) > 30000) {
-      sessionStorage.setItem(key, Date.now().toString());
-      window.location.reload();
+// Stale bundle handler — auto-reload once when a chunk fails to load
+const lazyWithRetry = (importFn, name) => lazy(() =>
+  importFn().catch(err => {
+    const msg = err?.message || '';
+    const isStale = msg.includes('Failed to fetch') || msg.includes('ChunkLoadError') || msg.includes('Importing a module script failed');
+    if (isStale) {
+      const key = 'chantierpro_chunk_reload';
+      const last = sessionStorage.getItem(key);
+      if (!last || Date.now() - parseInt(last, 10) > 30000) {
+        console.warn(`[LAZY] Stale bundle for ${name}, reloading...`, msg);
+        sessionStorage.setItem(key, Date.now().toString());
+        // Clear SW caches to ensure fresh assets on reload
+        if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        window.location.reload();
+      }
     }
-  }
-  return { default: () => <div style={{padding: '2rem', textAlign:'center', color:'#ef4444'}}>Erreur chargement module Équipe: {msg || 'inconnu'}<br/><button onClick={() => window.location.reload()} style={{marginTop:'1rem', padding:'0.5rem 1rem', background:'#f97316', color:'white', borderRadius:'0.5rem', border:'none', cursor:'pointer'}}>Recharger</button></div> };
-}));
-const Catalogue = lazy(() => import('./components/Catalogue'));
-const Settings = lazy(() => import('./components/Settings'));
-const AdminHelp = lazy(() => import('./components/admin-help/AdminHelp'));
-const DevisWizard = lazy(() => import('./components/DevisWizard'));
-const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
-const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
-const CommandPalette = lazy(() => import('./components/CommandPalette'));
-const DesignSystemDemo = lazy(() => import('./components/DesignSystemDemo'));
-const TresorerieModule = lazy(() => import('./components/tresorerie/TresorerieModule'));
-const BibliothequeOuvrages = lazy(() => import('./components/catalogue/BibliothequeOuvrages'));
-const SousTraitantsModule = lazy(() => import('./components/soustraitants/SousTraitantsModule'));
-const CommandesFournisseurs = lazy(() => import('./components/commandes/CommandesFournisseurs'));
-const IADevisAnalyse = lazy(() => import('./components/ia/IADevisAnalyse'));
-const CarnetEntretien = lazy(() => import('./components/entretien/CarnetEntretien'));
-const SignatureModule = lazy(() => import('./components/signatures/SignatureModule'));
-const ExportComptable = lazy(() => import('./components/export/ExportComptable'));
-const BillingDashboard = lazy(() => import('./components/subscription/BillingDashboard'));
-const PricingPage = lazy(() => import('./components/subscription/PricingPage'));
-const CheckoutSuccess = lazy(() => import('./components/subscription/CheckoutSuccess'));
-const AnalyticsPage = lazy(() => import('./components/AnalyticsPage'));
-const ImportModal = lazy(() => import('./components/ImportModal'));
-const LegalPages = lazy(() => import('./components/LegalPages'));
-const Changelog = lazy(() => import('./components/Changelog'));
-const FinancesPage = lazy(() => import('./components/FinancesPage'));
-const MemosPage = lazy(() => import('./components/MemosPage'));
-const ShortcutsHelp = lazy(() => import('./components/ShortcutsHelp'));
+    console.error(`[LAZY] Failed to load ${name}:`, err);
+    return { default: () => <div style={{padding:'2rem',textAlign:'center',color:'#ef4444'}}>Erreur chargement {name}<br/><button onClick={() => window.location.reload()} style={{marginTop:'1rem',padding:'0.5rem 1rem',background:'#f97316',color:'white',borderRadius:'0.5rem',border:'none',cursor:'pointer'}}>Recharger</button></div> };
+  })
+);
+
+// Lazy load heavy page components for code splitting
+const Chantiers = lazyWithRetry(() => import('./components/Chantiers'), 'Chantiers');
+const Planning = lazyWithRetry(() => import('./components/Planning'), 'Planning');
+const Clients = lazyWithRetry(() => import('./components/Clients'), 'Clients');
+const DevisPage = lazyWithRetry(() => import('./components/DevisPage'), 'DevisPage');
+const Equipe = lazyWithRetry(() => import('./components/Equipe'), 'Équipe');
+const Catalogue = lazyWithRetry(() => import('./components/Catalogue'), 'Catalogue');
+const Settings = lazyWithRetry(() => import('./components/Settings'), 'Paramètres');
+const AdminHelp = lazyWithRetry(() => import('./components/admin-help/AdminHelp'), 'AdminHelp');
+const DevisWizard = lazyWithRetry(() => import('./components/DevisWizard'), 'DevisWizard');
+const QuickClientModal = lazyWithRetry(() => import('./components/QuickClientModal'), 'QuickClient');
+const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantierModal'), 'QuickChantier');
+const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
+const DesignSystemDemo = lazyWithRetry(() => import('./components/DesignSystemDemo'), 'DesignSystem');
+const TresorerieModule = lazyWithRetry(() => import('./components/tresorerie/TresorerieModule'), 'Trésorerie');
+const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
+const SousTraitantsModule = lazyWithRetry(() => import('./components/soustraitants/SousTraitantsModule'), 'SousTraitants');
+const CommandesFournisseurs = lazyWithRetry(() => import('./components/commandes/CommandesFournisseurs'), 'Commandes');
+const IADevisAnalyse = lazyWithRetry(() => import('./components/ia/IADevisAnalyse'), 'IADevis');
+const CarnetEntretien = lazyWithRetry(() => import('./components/entretien/CarnetEntretien'), 'CarnetEntretien');
+const SignatureModule = lazyWithRetry(() => import('./components/signatures/SignatureModule'), 'Signatures');
+const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
+const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
+const PricingPage = lazyWithRetry(() => import('./components/subscription/PricingPage'), 'Pricing');
+const CheckoutSuccess = lazyWithRetry(() => import('./components/subscription/CheckoutSuccess'), 'Checkout');
+const AnalyticsPage = lazyWithRetry(() => import('./components/AnalyticsPage'), 'Analytique');
+const ImportModal = lazyWithRetry(() => import('./components/ImportModal'), 'Import');
+const LegalPages = lazyWithRetry(() => import('./components/LegalPages'), 'Legal');
+const Changelog = lazyWithRetry(() => import('./components/Changelog'), 'Changelog');
+const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'Finances');
+const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos');
+const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 import CookieConsent from './components/CookieConsent';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
