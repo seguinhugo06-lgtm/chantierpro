@@ -620,7 +620,7 @@ export default function TresorerieModule({
   modeDiscret = false, paiements = [],
 }) {
   // Helper: mask financial amounts when modeDiscret is active
-  const formatMoney = useCallback((amount) => modeDiscret ? '·····' : formatCurrency(amount), [modeDiscret]);
+  const formatMoney = useCallback((amount) => modeDiscret ? '••••\u00a0€' : formatCurrency(amount), [modeDiscret]);
   // -- Hook: tresorerie data from useTresorerie ─────────────────────
   const {
     previsions, setPrevisions, loading: tresorerieLoading,
@@ -653,7 +653,10 @@ export default function TresorerieModule({
   const [mouvStatutFilter, setMouvStatutFilter] = useState('all'); // all | prevu | paye
   const [showPrefillConfirm, setShowPrefillConfirm] = useState(false);
   const [showEncaisserWidget, setShowEncaisserWidget] = useState(true);
-  const [showChargesBTP, setShowChargesBTP] = useState(false);
+  const [showChargesBTP, setShowChargesBTP] = useState(() => {
+    try { return !localStorage.getItem('cp_treso_charges_btp_seen'); } catch { return true; }
+  });
+  const [confirmingPaidId, setConfirmingPaidId] = useState(null);
   const [alertDismissed, setAlertDismissed] = useState(() => {
     try { return localStorage.getItem('cp_treso_alert_dismissed') === '1'; } catch { return false; }
   });
@@ -1955,7 +1958,7 @@ export default function TresorerieModule({
       {activeTab === 'apercu' && (
         <div className={`rounded-2xl border overflow-hidden ${cardBg}`}>
           <button
-            onClick={() => setShowChargesBTP(!showChargesBTP)}
+            onClick={() => { setShowChargesBTP(!showChargesBTP); try { localStorage.setItem('cp_treso_charges_btp_seen', '1'); } catch {} }}
             className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/40' : 'hover:bg-gray-50'}`}
           >
             <div className="flex items-center gap-3">
@@ -2235,13 +2238,30 @@ export default function TresorerieModule({
                           )}
                         </td>
                         <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1 relative">
                             {isPrevision && p.statut !== 'Payé' && (
-                              <button onClick={() => handleMarkAsPaid(p.id)}
-                                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400' : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'}`}
-                                title="Marquer comme payé">
-                                <Check size={14} />
-                              </button>
+                              <>
+                                <button onClick={() => setConfirmingPaidId(confirmingPaidId === p.id ? null : p.id)}
+                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400' : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'}`}
+                                  title="Marquer comme payé">
+                                  <Check size={14} />
+                                </button>
+                                {confirmingPaidId === p.id && (
+                                  <div className={`absolute right-0 top-full z-30 mt-1 rounded-xl border shadow-xl p-3 w-52 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <p className={`text-xs font-medium mb-2 ${textPrimary}`}>Marquer comme payé ?</p>
+                                    <div className="flex gap-1.5">
+                                      <button onClick={() => { handleMarkAsPaid(p.id); setConfirmingPaidId(null); }}
+                                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1">
+                                        <Check size={12} /> Oui
+                                      </button>
+                                      <button onClick={() => setConfirmingPaidId(null)}
+                                        className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        Non
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
                             {isPrevision && (
                               <>
