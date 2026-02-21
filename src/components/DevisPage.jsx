@@ -1021,6 +1021,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -1698,6 +1699,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </button>
                 )}
                 {(cleanClientName(client) || selected.client_nom) && ` · `}{new Date(selected.date).toLocaleDateString('fr-FR')}
+                {selected.type === 'facture' && selected.date_echeance && (
+                  <span className={`ml-1 ${textMuted}`}> · Échéance: {new Date(selected.date_echeance).toLocaleDateString('fr-FR')}</span>
+                )}
               </p>
             </div>
 

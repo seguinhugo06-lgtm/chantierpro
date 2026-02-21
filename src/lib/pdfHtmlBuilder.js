@@ -166,6 +166,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
+        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>

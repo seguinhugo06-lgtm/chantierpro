@@ -154,7 +154,7 @@ export const DEMO_DEVIS = [
     ], total_ht: 28000, tva: 2800, total_ttc: 30800 },
 
   // ch5 - Acompte facture Rousseau — TVA 10%
-  { id: 'd9', numero: 'FAC-2026-00001', type: 'facture', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-22', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd5',
+  { id: 'd9', numero: 'FAC-2026-00001', type: 'facture', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-22', date_echeance: '2026-02-21', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd5',
     lignes: [
       { id: 'l1', description: 'Acompte 40% - Rénovation studio', quantite: 1, unite: 'forfait', prixUnitaire: 3400, montant: 3400 },
     ], total_ht: 3400, tva: 340, total_ttc: 3740 },
@@ -186,13 +186,13 @@ export const DEMO_DEVIS = [
     ], total_ht: 18500, tva: 1850, total_ttc: 20350 },
 
   // ch10 - Acompte facture Lambert
-  { id: 'd13', numero: 'FAC-2026-00002', type: 'facture', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-10', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd12',
+  { id: 'd13', numero: 'FAC-2026-00002', type: 'facture', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-10', date_echeance: '2026-03-12', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd12',
     lignes: [
       { id: 'l1', description: 'Acompte 30% - Ravalement façade', quantite: 1, unite: 'forfait', prixUnitaire: 5550, montant: 5550 },
     ], total_ht: 5550, tva: 555, total_ttc: 6105 },
 
   // ch1 - Facture solde Dupont
-  { id: 'd14', numero: 'FAC-2026-00003', type: 'facture', client_id: 'c1', chantier_id: 'ch1', date: '2026-02-05', statut: 'envoye', tvaRate: 10, facture_type: 'solde', devis_source_id: 'd1',
+  { id: 'd14', numero: 'FAC-2026-00003', type: 'facture', client_id: 'c1', chantier_id: 'ch1', date: '2026-02-05', date_echeance: '2026-03-07', statut: 'envoye', tvaRate: 10, facture_type: 'solde', devis_source_id: 'd1',
     lignes: [
       { id: 'l1', description: 'Solde - Rénovation cuisine', quantite: 1, unite: 'forfait', prixUnitaire: 3760, montant: 3760 },
     ], total_ht: 3760, tva: 376, total_ttc: 4136 },
