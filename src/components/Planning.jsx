@@ -564,7 +564,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               }
               if (viewMode === 'week') {
                 const weekEvts = weekDays.flatMap(d => getEventsForDate(d));
-                return weekEvts.length === 0 ? 'Aucun événement cette semaine' : `${weekEvts.length} événement${weekEvts.length > 1 ? 's' : ''} cette semaine`;
+                if (weekEvts.length > 0) return `${weekEvts.length} événement${weekEvts.length > 1 ? 's' : ''} cette semaine`;
+                // Check if month has events to hint navigation
+                const monthPrefix = `${weekDays[3].getFullYear()}-${String(weekDays[3].getMonth() + 1).padStart(2, '0')}`;
+                const monthEvts = allEvents.filter(e => e.date?.startsWith(monthPrefix) || (e.dateEnd && e.date <= `${monthPrefix}-31` && e.dateEnd >= `${monthPrefix}-01`));
+                if (monthEvts.length > 0) return `Aucun événement cette semaine · ${monthEvts.length} en ${MOIS[weekDays[3].getMonth()].toLowerCase()}`;
+                return 'Aucun événement cette semaine';
               }
               if (viewMode === 'day') {
                 const dayEvts = getEventsForDay(formatLocalDate(date));
@@ -1000,21 +1005,56 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 {(() => {
                   const weekHasEvents = weekDays.some(d => getEventsForDate(d).length > 0);
                   if (weekHasEvents) return null;
-                  return hasActiveFilter ? (
+
+                  if (hasActiveFilter) return (
                     <div className={`flex flex-col items-center py-8 text-center ${textMuted}`}>
                       <Filter size={32} className="mb-2 opacity-40" />
                       <p className="text-sm font-medium">Aucun événement pour ce filtre</p>
                       <button onClick={() => { setFilterTypes(new Set()); setFilterEmploye(''); }} className="mt-2 text-xs hover:underline" style={{ color: couleur }}>Réinitialiser les filtres</button>
                     </div>
-                  ) : (
-                    <EmptyState
-                      icon={Calendar}
-                      title="Aucun événement cette semaine"
-                      description="Cliquez sur un créneau horaire pour planifier un événement."
-                      actionLabel="+ Créer un événement"
-                      onAction={() => { setForm(f => ({ ...emptyForm, date: formatLocalDate(weekDays[0]), time: getNextHalfHour() })); setShowAdd(true); }}
-                      isDark={isDark}
-                    />
+                  );
+
+                  // Find nearest week with events to suggest navigation
+                  const findNearestEventWeek = () => {
+                    const weekStartStr = formatLocalDate(weekDays[0]);
+                    for (let offset = 1; offset <= 8; offset++) {
+                      for (const dir of [-1, 1]) {
+                        const checkDate = new Date(weekDays[0]);
+                        checkDate.setDate(checkDate.getDate() + dir * offset * 7);
+                        const checkWeek = [];
+                        for (let i = 0; i < 7; i++) {
+                          const d = new Date(checkDate);
+                          d.setDate(checkDate.getDate() + i);
+                          checkWeek.push(d);
+                        }
+                        if (checkWeek.some(d => getEventsForDate(d).length > 0)) {
+                          return { date: checkDate, dir, offset, label: `${checkWeek[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${checkWeek[6].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` };
+                        }
+                      }
+                    }
+                    return null;
+                  };
+                  const nearest = findNearestEventWeek();
+
+                  return (
+                    <div className="flex flex-col items-center">
+                      <EmptyState
+                        icon={Calendar}
+                        title="Aucun événement cette semaine"
+                        description="Cliquez sur un créneau horaire pour planifier un événement."
+                        actionLabel="+ Créer un événement"
+                        onAction={() => { setForm(f => ({ ...emptyForm, date: formatLocalDate(weekDays[0]), time: getNextHalfHour() })); setShowAdd(true); }}
+                        isDark={isDark}
+                      />
+                      {nearest && (
+                        <button
+                          onClick={() => setDate(nearest.date)}
+                          className={`mt-2 mb-4 text-sm font-medium px-4 py-2 rounded-xl transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                        >
+                          {nearest.dir < 0 ? '← ' : ''}Voir semaine du {nearest.label}{nearest.dir > 0 ? ' →' : ''}
+                        </button>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
