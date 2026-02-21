@@ -862,7 +862,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* === SECTION: FINANCES (condensé + accordion) === */}
         {(() => {
-          const healthColor = bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
+          const healthColor = !bilan.hasDepenses ? '#94a3b8' : bilan.margeBrute < 0 ? '#ef4444' : bilan.tauxMarge < 15 ? '#f59e0b' : '#10b981';
           const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
           const toggleFin = (k) => setFinExpanded(p => ({ ...p, [k]: !p[k] }));
 
@@ -879,7 +879,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <span className={textMuted}>Budget <strong className={textPrimary}>{formatMoney(revenuTotal)}</strong></span>
                   <span className={textMuted}>Dépensé <strong className="text-red-500">{formatMoney(bilan.totalDepenses)}</strong></span>
                   <span className="flex items-center gap-1.5">
-                    <span className="font-bold" style={{ color: healthColor }}>{formatPct(bilan.tauxMarge)}</span>
+                    <span className="font-bold" style={{ color: healthColor }}>{bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—'}</span>
                     <div className="w-2.5 h-2.5 rounded-full" style={{ background: healthColor }} />
                   </span>
                 </div>
@@ -2835,7 +2835,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     {budgetPrevu > 0 && (
                       <div className="flex items-center gap-1.5">
                         <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>{formatMoney(budgetPrevu)}</span>
-                        <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
+                        {bilan.hasDepenses ? (
+                          <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
+                        ) : (
+                          <span className={`text-[11px] tabular-nums ${textMuted}`} title="Ajoutez des dépenses pour calculer la marge">— marge</span>
+                        )}
                         {hasAlert && <AlertTriangle size={12} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
                       </div>
                     )}

@@ -111,8 +111,10 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
       .reduce((sum, d) => sum + (Number(d.total_ttc) || 0), 0);
 
     const totalDepenses = depensesInPeriod.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
+    const hasDepenses = totalDepenses > 0;
     const margeBrute = ca - totalDepenses;
-    const margePercent = ca > 0 ? (margeBrute / ca) * 100 : 0;
+    // Si aucune dépense enregistrée, la marge n'est pas calculable (évite d'afficher 100%)
+    const margePercent = ca > 0 && hasDepenses ? (margeBrute / ca) * 100 : 0;
 
     // ── N-1 comparisons ───────────────────────────────────────────
     const prevAcceptes = devisPrev.filter(d => ACCEPTED_STATUTS.includes(d.statut));
@@ -228,7 +230,9 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
         const chantierTotalDep = chantierDeps.reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
 
         const marge = chantierCA - chantierTotalDep;
-        const margePercent = chantierCA > 0 ? (marge / chantierCA) * 100 : 0;
+        const hasChantierDepenses = chantierTotalDep > 0;
+        // Marge non calculable si aucune dépense (évite 100% trompeur)
+        const margePercent = chantierCA > 0 && hasChantierDepenses ? (marge / chantierCA) * 100 : 0;
 
         const client = clients.find(c => c.id === (chantier.clientId || chantier.client_id));
         const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : '';
@@ -240,6 +244,7 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
           statut: chantier.statut,
           ca: chantierCA,
           depenses: chantierTotalDep,
+          hasDepenses: hasChantierDepenses,
           marge,
           margePercent,
           avancement: chantier.avancement || 0,
@@ -251,8 +256,8 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
       .sort((a, b) => b.ca - a.ca)
       .slice(0, 10);
 
-    // ── Margin distribution ───────────────────────────────────────
-    const activeChantiers = rentabiliteChantiers.filter(r => r.ca > 0);
+    // ── Margin distribution (only chantiers with actual depenses) ─
+    const activeChantiers = rentabiliteChantiers.filter(r => r.ca > 0 && r.hasDepenses);
     const avgMargin = activeChantiers.length > 0
       ? activeChantiers.reduce((s, r) => s + r.margePercent, 0) / activeChantiers.length
       : 0;
@@ -281,7 +286,7 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
 
     return {
       kpis: {
-        ca, caHT, margeBrute, margePercent,
+        ca, caHT, margeBrute, margePercent, hasDepenses,
         tauxConversion,
         totalDevisEnvoyes, signedCount, brouillonsCount, brouillonsMontant,
         devisEnAttente, montantEnAttente, totalDepenses,

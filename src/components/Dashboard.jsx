@@ -707,7 +707,9 @@ export default function Dashboard({
     );
 
     const marge = totalCA - totalDep - totalMO;
-    const tauxMarge = totalCA > 0 ? (marge / totalCA) * 100 : 0;
+    const hasDepenses = (totalDep + totalMO) > 0;
+    // Si aucune dépense enregistrée, la marge n'est pas calculable (évite 100% trompeur)
+    const tauxMarge = totalCA > 0 && hasDepenses ? (marge / totalCA) * 100 : 0;
 
     // Conversion rate — broader definition for Dashboard (includes more statuses)
     const devisSignes = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
@@ -808,6 +810,7 @@ export default function Dashboard({
       lastMonthCA,
       marge,
       tauxMarge,
+      hasDepenses,
       // From useKPIs — unified definitions
       encaisse: kpis.caEncaisse,
       enAttente: kpis.caAEncaisser,

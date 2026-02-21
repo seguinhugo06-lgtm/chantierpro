@@ -125,8 +125,9 @@ export default function KPIFactureWidget({
       result.push({
         icon: Target,
         label: 'Marge brute',
-        value: `${Math.round(stats.tauxMarge)}%`,
-        highlight: stats.tauxMarge < 20,
+        value: stats.hasDepenses ? `${Math.round(stats.tauxMarge)}%` : '—',
+        highlight: stats.hasDepenses && stats.tauxMarge < 20,
+        sub: !stats.hasDepenses ? 'Ajoutez vos dépenses' : undefined,
       });
     }
 

@@ -279,19 +279,30 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
         <div className={cardClass}>
           <div className="flex items-center justify-between mb-3">
             <span className={`text-sm font-medium ${textSecondary}`}>Marge brute</span>
-            <div className="p-2 rounded-lg" style={{ backgroundColor: kpis.margeBrute >= 0 ? '#22c55e20' : '#ef444420' }}>
-              <Wallet size={18} style={{ color: kpis.margeBrute >= 0 ? '#22c55e' : '#ef4444' }} />
+            <div className="p-2 rounded-lg" style={{ backgroundColor: kpis.hasDepenses ? (kpis.margeBrute >= 0 ? '#22c55e20' : '#ef444420') : (isDark ? '#33415520' : '#94a3b820') }}>
+              <Wallet size={18} style={{ color: kpis.hasDepenses ? (kpis.margeBrute >= 0 ? '#22c55e' : '#ef4444') : '#94a3b8' }} />
             </div>
           </div>
-          <p className={`text-2xl font-bold ${kpis.margeBrute >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-            {formatEUR(kpis.margeBrute)}
-          </p>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            <p className={`text-xs ${textSecondary}`}>
-              {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - Dépenses'}
-            </p>
-            <ComparisonBadge value={comparisons.marge} isDark={isDark} />
-          </div>
+          {kpis.hasDepenses ? (
+            <>
+              <p className={`text-2xl font-bold ${kpis.margeBrute >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatEUR(kpis.margeBrute)}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <p className={`text-xs ${textSecondary}`}>
+                  {kpis.margePercent > 0 ? `${kpis.margePercent.toFixed(1)}% du CA` : 'CA - Dépenses'}
+                </p>
+                <ComparisonBadge value={comparisons.marge} isDark={isDark} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className={`text-2xl font-bold ${textSecondary}`}>—</p>
+              <p className={`text-xs ${textSecondary} mt-1`}>
+                Ajoutez vos dépenses pour calculer votre marge réelle
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -603,8 +614,9 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
               </thead>
               <tbody>
                 {rentabiliteChantiers.map((r) => {
-                  const margeColor = r.margePercent >= 30 ? 'text-green-500' : r.margePercent >= 15 ? (isDark ? 'text-amber-400' : 'text-amber-600') : r.margePercent >= 0 ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-red-500';
-                  const barColor = r.margePercent >= 30 ? '#22c55e' : r.margePercent >= 15 ? '#f59e0b' : r.margePercent >= 0 ? '#f97316' : '#ef4444';
+                  const noDepenses = !r.hasDepenses;
+                  const margeColor = noDepenses ? textSecondary : r.margePercent >= 30 ? 'text-green-500' : r.margePercent >= 15 ? (isDark ? 'text-amber-400' : 'text-amber-600') : r.margePercent >= 0 ? (isDark ? 'text-orange-400' : 'text-orange-600') : 'text-red-500';
+                  const barColor = noDepenses ? '#94a3b8' : r.margePercent >= 30 ? '#22c55e' : r.margePercent >= 15 ? '#f59e0b' : r.margePercent >= 0 ? '#f97316' : '#ef4444';
                   const barWidth = r.ca > 0 ? Math.max(Math.min((r.ca / rentaMaxCA) * 100, 100), 5) : 5;
                   return (
                     <tr key={r.id} className={`border-b last:border-b-0 transition-colors ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-slate-100 hover:bg-slate-50'}`}>
@@ -618,12 +630,16 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                       </td>
                       <td className={`py-3 pr-4 text-right font-semibold whitespace-nowrap ${textPrimary}`}>{formatEUR(r.ca)}</td>
                       <td className={`py-3 pr-4 text-right whitespace-nowrap ${r.depenses > 0 ? 'text-red-500' : textSecondary}`}>{formatEUR(r.depenses)}</td>
-                      <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>{formatEUR(r.marge)}</td>
+                      <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>{noDepenses ? '—' : formatEUR(r.marge)}</td>
                       <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${margeColor}`}>
-                        <span className="inline-flex items-center gap-1">
-                          {r.margePercent >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                          {r.margePercent.toFixed(1)}%
-                        </span>
+                        {noDepenses ? (
+                          <span title="Ajoutez des dépenses pour ce chantier">—</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            {r.margePercent >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                            {r.margePercent.toFixed(1)}%
+                          </span>
+                        )}
                       </td>
                       <td className="py-3" style={{ minWidth: 120 }}>
                         <div className={`h-4 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
