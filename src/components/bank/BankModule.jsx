@@ -93,6 +93,8 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [showBankConnectModal, setShowBankConnectModal] = useState(false);
+  const [dsp2Email, setDsp2Email] = useState(() => { try { return localStorage.getItem('cp_bank_waitlist_email') || ''; } catch { return ''; } });
+  const [dsp2Submitted, setDsp2Submitted] = useState(() => { try { return !!localStorage.getItem('cp_bank_waitlist_email'); } catch { return false; } });
   const [filterStatut, setFilterStatut] = useState('all');
   const [filterType, setFilterType] = useState('all'); // all, credit, debit
   const [filterMonth, setFilterMonth] = useState('all');
@@ -252,16 +254,39 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
               ))}
             </div>
 
-            {/* CTA buttons */}
+            {/* DSP2 Coming Soon + CSV Import */}
             <div className="flex flex-col items-center gap-3 max-w-sm mx-auto">
-              <button
-                onClick={() => setShowBankConnectModal(true)}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-white font-semibold rounded-xl transition-all hover:shadow-lg"
-                style={{ background: couleur }}
-              >
-                <Landmark size={18} />
-                Connecter ma banque
-              </button>
+              {/* DSP2 Waitlist */}
+              <div className={`w-full p-4 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-blue-50/50 border-blue-200'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Landmark size={16} style={{ color: couleur }} />
+                  <span className={`text-sm font-semibold ${tc.text}`}>Connexion bancaire automatique</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: couleur }}>Bientôt</span>
+                </div>
+                <p className={`text-xs mb-3 ${tc.textMuted}`}>
+                  Synchronisez automatiquement vos comptes — BNP, Crédit Agricole, LCL, Société Générale et plus.
+                </p>
+                {dsp2Submitted ? (
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                    <CheckCircle size={14} /> Vous serez prévenu(e) lors du lancement
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="email" placeholder="votre@email.com" value={dsp2Email} onChange={e => setDsp2Email(e.target.value)}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm border ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 placeholder-slate-400'}`} />
+                    <button onClick={() => {
+                      if (!dsp2Email || !dsp2Email.includes('@')) return;
+                      try { localStorage.setItem('cp_bank_waitlist_email', dsp2Email); } catch {}
+                      setDsp2Submitted(true);
+                    }}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors hover:brightness-110"
+                      style={{ backgroundColor: couleur }}>
+                      M'avertir
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* CSV Import */}
               <button
                 onClick={() => setShowImportModal(true)}
                 className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-xl border transition-all hover:shadow-md ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}

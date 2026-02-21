@@ -23,7 +23,7 @@ import {
   AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings, Filter,
   Check, Edit3, Trash2, RotateCcw, Zap, RefreshCw, CalendarDays,
   FileText, Receipt, Percent, Link2, Sliders, Target, TrendingDown, Activity,
-  MessageCircle, ChevronDown, ChevronUp, HardHat, Banknote,
+  MessageCircle, ChevronDown, ChevronUp, HardHat, Banknote, Download,
 } from 'lucide-react';
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
@@ -2707,6 +2707,22 @@ export default function TresorerieModule({
                   className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-purple-900/30 hover:bg-purple-900/50 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-700'}`}
                   title="Fichier d'Écritures Comptables — Format DGFiP">
                   <FileText size={14} /> FEC
+                </button>
+                <button onClick={() => {
+                  const isQuarterly = (settings.regimeTva || 'trimestriel') === 'trimestriel';
+                  const rows = isQuarterly
+                    ? tvaQuarterly.map(q => `${q.label};${q.collectee.toFixed(2)};${q.deductible.toFixed(2)};${q.net.toFixed(2)}`)
+                    : tvaMonthly.map(m => `${m.mois};${m.collectee.toFixed(2)};${m.deductible.toFixed(2)};${(m.collectee - m.deductible).toFixed(2)}`);
+                  const csv = 'Période;TVA Collectée;TVA Déductible;Solde TVA\n' + rows.join('\n');
+                  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `resume_tva_${new Date().getFullYear()}.csv`; a.click();
+                  URL.revokeObjectURL(url);
+                  showToast('Résumé TVA exporté', 'success');
+                }}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'}`}
+                  title="Exporter le résumé TVA en CSV">
+                  <Download size={14} /> Résumé TVA
                 </button>
               </div>
             )}
