@@ -2394,9 +2394,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
                             <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
                             <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
-                            {!modeDiscret && (selected.lignes || []).some(l => l.prixAchat > 0) && (
-                              <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Marge</th>
-                            )}
                           </tr>
                         </thead>
                       )}
@@ -2407,13 +2404,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                             <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
                             <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
-                            {!modeDiscret && (selected.lignes || []).some(lg => lg.prixAchat > 0) && (() => {
-                              const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
-                              const pa = parseFloat(l.prixAchat || 0);
-                              const margePct = pu > 0 ? ((pu - pa) / pu * 100) : 0;
-                              const color = pa > 0 ? (margePct >= 30 ? 'text-emerald-600' : margePct >= 10 ? 'text-amber-600' : 'text-red-600') : textMuted;
-                              return <td className={`text-right text-xs ${color}`}>{pa > 0 ? `${margePct.toFixed(0)}%` : '—'}</td>;
-                            })()}
                           </tr>
                         ))}
                       </tbody>
