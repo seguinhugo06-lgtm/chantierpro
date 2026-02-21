@@ -179,6 +179,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
     .signature-box p { font-size: 7pt; color: #64748b; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
+    .missing-legal { color: #dc2626; font-style: italic; font-weight: 500; }
     .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
     @media print { body { padding: 15px; } }
   </style>
@@ -194,10 +195,10 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
         ${e.tel ? `Tél: ${e.tel}` : ''} ${e.email ? `· ${e.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${e.siret ? `SIRET: ${e.siret}` : ''}
+        ${e.siret ? `SIRET: ${e.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-        ${e.rcs || rcsComplet ? `<br>RCS: ${rcsComplet || e.rcs}` : ''}
-        ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
+        ${rcsComplet ? `<br>${rcsComplet}` : (e.rcs ? `<br>RCS: ${e.rcs}` : '')}
+        ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -342,20 +343,22 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
  * Bloc footer réutilisable
  */
 function buildFooterHtml(e, rcsComplet, isDevis = false) {
+  const isMicro = e.formeJuridique === 'Micro-entreprise';
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
-    ${e.capital ? ` · Capital: ${e.capital} €` : ''}<br>
-    ${e.siret ? `SIRET: ${e.siret}` : '<em style="color:#999">[SIRET à compléter dans Paramètres]</em>'}
-    ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-    ${rcsComplet ? ` · ${rcsComplet}` : ''}<br>
-    ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}<br>` : '<em style="color:#999">[N° TVA à compléter dans Paramètres]</em><br>'}
+    ${e.capital ? ` · Capital: ${e.capital} €` : ''}
+    ${e.adresse ? ` — ${e.adresse.replace(/\n/g, ', ')}` : ''}<br>
+    ${e.siret ? `SIRET: ${e.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
+    ${e.codeApe ? ` | APE: ${e.codeApe}` : ''}
+    ${rcsComplet ? ` | ${rcsComplet}` : ''}<br>
+    ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant — Complétez Paramètres > Légal]</span>' : '')}<br>
     <div class="assurances">
-      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide: ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<em style="color:#999">[Assurance décennale à compléter dans Paramètres > Assurances]</em>'}
+      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
       ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
-      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide: ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
-    ${isDevis ? '<div style="margin-top:6px;font-size:9px;color:#666">Devis reçu avant l\'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>' : ''}
+    ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>`;
 }
 

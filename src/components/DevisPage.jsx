@@ -951,6 +951,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
     .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
     .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+    .missing-legal { color: #dc2626; font-style: italic; font-weight: 500; }
     .doc-type { text-align: right; }
     .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
     .doc-info { font-size: 9pt; color: #64748b; }
@@ -995,10 +996,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
+        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-        ${entreprise?.rcs ? `<br>RCS: ${entreprise.rcs}` : ''}
-        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
+        ${getRCSComplet() ? `<br>${getRCSComplet()}` : ''}
+        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -1137,16 +1138,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="footer">
     <strong>${entreprise?.nom || ''}</strong>
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}<br>
-    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-    ${getRCSComplet() ? ` · ${getRCSComplet()}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
+    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
+    ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
+    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant]</span>'}
+    ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
+    ${getRCSComplet() ? ` | ${getRCSComplet()}` : ''}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant]</span>' : '')}<br>
     <div class="assurances">
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
-      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
+      ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
+    ${!isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>
 </body>
 </html>`;
@@ -1373,6 +1376,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // 7. Entreprise name
     if (!entreprise?.nom) {
       issues.push({ id: 'no_nom', label: 'Nom de l\'entreprise manquant', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'nom', isLegal: true });
+    }
+
+    // 8. Forme juridique — required for legal compliance
+    if (!entreprise?.formeJuridique) {
+      issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
+    }
+
+    // 9. Assurance décennale — obligatoire pour les artisans BTP
+    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) {
+      issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante — obligatoire pour les artisans BTP', actionLabel: 'Compléter les assurances →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
     }
 
     return issues;
@@ -3595,6 +3608,36 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <Edit3 size={32} className="absolute -top-1 -right-1 text-white/10" />
           </button>
         </div>
+
+        {/* === COMPLIANCE BANNER === */}
+        {(() => {
+          const missingLegal = [];
+          if (!entreprise?.siret) missingLegal.push('SIRET');
+          if (!entreprise?.adresse) missingLegal.push('Adresse');
+          if (!entreprise?.formeJuridique) missingLegal.push('Forme juridique');
+          if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
+          if (missingLegal.length === 0) return null;
+          return (
+            <div className={`flex items-start gap-3 p-3 rounded-xl border text-sm ${isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold">Vos documents ne sont pas conformes</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                  Champs manquants : {missingLegal.join(', ')}
+                </p>
+              </div>
+              {setPage && (
+                <button
+                  onClick={() => setPage('settings')}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Compléter le profil
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
       {/* === SECTION: KPIs CLIQUABLES === */}
       {(() => {

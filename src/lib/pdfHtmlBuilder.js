@@ -118,6 +118,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     .signature-box p { font-size: 7pt; color: #64748b; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
+    .missing-legal { color: #dc2626; font-style: italic; font-weight: 500; }
     .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
     @media print { body { padding: 15px; } }
   </style>
@@ -133,10 +134,10 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
         ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
+        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-        ${entreprise?.rcs ? `<br>RCS: ${entreprise.rcs}` : ''}
-        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
+        ${getRCSComplet(entreprise) ? `<br>${getRCSComplet(entreprise)}` : ''}
+        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -275,16 +276,18 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   <div class="footer">
     <strong>${entreprise?.nom || ''}</strong>
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}<br>
-    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-    ${getRCSComplet(entreprise) ? ` · ${getRCSComplet(entreprise)}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
+    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
+    ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
+    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant]</span>'}
+    ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
+    ${getRCSComplet(entreprise) ? ` | ${getRCSComplet(entreprise)}` : ''}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant]</span>' : '')}<br>
     <div class="assurances">
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
-      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
+      ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
+    ${!isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>
   ${subscription.isFree() ? `
   <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:flex;align-items:center;justify-content:center;">
