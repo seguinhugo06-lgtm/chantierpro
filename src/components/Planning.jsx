@@ -679,7 +679,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                               onMouseEnter={(e) => { if (window.innerWidth >= 640) { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ event: ev, x: r.right + 8, y: r.top }); }}}
                               onMouseLeave={() => setTooltip(null)}
+                              onTouchEnd={(e) => { if (window.innerWidth < 640) { e.preventDefault(); e.stopPropagation(); setTooltip({ event: ev, isMobile: true }); }}}
                               title={ev.title}
+                              aria-label={`${ev.title} — ${TYPE_LABELS[ev.type] || 'Événement'}${ev.time ? ` à ${ev.time}` : ''}`}
                               className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}}>
                               <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
                               <span className="truncate font-medium">{ev.title}</span>
@@ -930,6 +932,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             const dayEvents = getEventsForDay(dayStr);
             const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h-20h
 
+            // Separate all-day/multi-day events from timed events
+            const allDayEvts = dayEvents.filter(ev => !ev.time || ev.duration >= 480 || (ev.dateEnd && ev.dateEnd !== ev.date));
+            const timedOnlyEvts = dayEvents.filter(ev => ev.time && ev.duration < 480 && !(ev.dateEnd && ev.dateEnd !== ev.date));
+
             return (
               <div>
                 <div className={`text-center py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -937,11 +943,29 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                 </div>
+                {/* All-day / multi-day event banners */}
+                {allDayEvts.length > 0 && (
+                  <div className={`px-4 py-2.5 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${textMuted}`}>Journée entière</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allDayEvts.map(ev => {
+                        const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                        return (
+                          <button key={ev.id} onClick={() => handleEventClick(null, ev)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white text-xs font-medium cursor-pointer hover:shadow-md hover:brightness-110 transition-all"
+                            style={{ background: getEventColor(ev) }} title={ev.title}>
+                            <TypeIcon size={12} />
+                            <span className="truncate max-w-[140px]">{ev.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {HOURS.map(hour => {
                     const hourStr = `${String(hour).padStart(2, '0')}:00`;
-                    const hourEvents = dayEvents.filter(ev => {
-                      if (!ev.time) return hour === 8; // Default no-time events to 8h
+                    const hourEvents = timedOnlyEvts.filter(ev => {
                       const evHour = parseInt(ev.time.split(':')[0]);
                       return evHour === hour;
                     });
@@ -987,7 +1011,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                                 style={{ borderLeft: `3px solid ${eventColor}` }}
                               >
                                 <TypeIcon size={14} style={{ color: eventColor }} />
-                                <span className={`text-sm font-medium truncate ${textPrimary}`}>{ev.title}</span>
+                                <span className={`text-sm font-medium truncate ${textPrimary}`} title={ev.title}>{ev.title}</span>
                                 {ev.time && <span className={`text-xs ${textMuted} ml-auto`}>{ev.time}</span>}
                               </div>
                             );
@@ -1074,7 +1098,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                               </div>
                               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: eventColor }} />
                               <div className="flex-1 min-w-0">
-                                <p className={`font-medium text-sm truncate ${textPrimary}`}>{ev.title}</p>
+                                <p className={`font-medium text-sm truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
                                 {client && <p className={`text-xs ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
                               </div>
                               <span className="text-[10px] px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ background: eventColor }}>
@@ -1119,12 +1143,51 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         ) : null}
       </div>
 
-      {/* Tooltip popover for month view — P3.1: full title, assignee, description */}
+      {/* Tooltip popover (desktop) + Bottom sheet (mobile) */}
       {tooltip && (() => {
         const ev = tooltip.event;
         const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
         const employe = ev.employeId ? equipe.find(e => e.id === ev.employeId) : null;
-        // Smart positioning: flip left if overflowing right, flip up if overflowing bottom
+        const chantier = ev.chantierId ? chantiers.find(ch => ch.id === ev.chantierId) : null;
+        const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+        const recurrenceLabel = ev.recurrence === 'weekly' ? 'Chaque semaine' : ev.recurrence === 'biweekly' ? 'Toutes les 2 sem.' : ev.recurrence === 'daily' ? 'Chaque jour' : ev.recurrence === 'monthly' ? 'Chaque mois' : ev.recurrence === 'custom' ? 'Personnalisé' : '';
+
+        // Mobile bottom sheet
+        if (tooltip.isMobile) {
+          return (
+            <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setTooltip(null)}>
+              <div className={`w-full rounded-t-2xl p-5 pb-8 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} onClick={e => e.stopPropagation()}>
+                <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? '#475569' : '#cbd5e1' }} />
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
+                    <TypeIcon size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-bold text-base ${textPrimary}`}>{ev.title}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-1" style={{ background: getEventColor(ev) }}>
+                      {TYPE_LABELS[ev.type] || 'Événement'}
+                    </span>
+                  </div>
+                </div>
+                <div className={`space-y-2 text-sm ${textMuted}`}>
+                  <p className="flex items-center gap-2"><Calendar size={14} /> {new Date(ev.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                  <p className="flex items-center gap-2"><Clock size={14} /> {ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
+                  {client && <p className="flex items-center gap-2"><User size={14} /> {client.nom} {client.prenom || ''}</p>}
+                  {employe && <p className="flex items-center gap-2"><Briefcase size={14} /> {employe.nom}</p>}
+                  {chantier && <p className="flex items-center gap-2"><Home size={14} /> {chantier.nom}</p>}
+                  {ev.description && <p className={`text-xs pt-1 ${textMuted}`}>{ev.description}</p>}
+                  {recurrenceLabel && <p className="flex items-center gap-2"><RefreshCw size={14} /> {recurrenceLabel}</p>}
+                </div>
+                <button onClick={() => { setTooltip(null); handleEventClick(null, ev); }}
+                  className="w-full mt-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors" style={{ backgroundColor: couleur }}>
+                  Voir le détail
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // Desktop tooltip popover
         const tx = tooltip.x + 280 > window.innerWidth ? tooltip.x - 295 : tooltip.x;
         const ty = tooltip.y + 200 > window.innerHeight ? tooltip.y - 150 : tooltip.y;
         return (
@@ -1138,8 +1201,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 <p className={`text-xs ${textMuted}`}>{ev.time ? `${ev.time}${ev.duration ? ` — ${formatDuration(ev.duration)}` : ''}` : 'Toute la journée'}</p>
                 {client && <p className={`text-xs ${textMuted}`}>{client.nom} {client.prenom || ''}</p>}
                 {employe && <p className={`text-xs ${textMuted}`}>👤 {employe.nom}</p>}
+                {chantier && <p className={`text-xs ${textMuted}`}>🏗️ {chantier.nom}</p>}
                 {ev.description && <p className={`text-xs ${textMuted} line-clamp-2`}>{ev.description}</p>}
-                {(ev.recurrence && ev.recurrence !== 'never') && <p className={`text-xs ${textMuted}`}>🔁 {ev.recurrence === 'weekly' ? 'Chaque semaine' : ev.recurrence === 'biweekly' ? 'Toutes les 2 sem.' : ev.recurrence === 'daily' ? 'Chaque jour' : 'Chaque mois'}</p>}
+                {recurrenceLabel && <p className={`text-xs ${textMuted}`}>🔁 {recurrenceLabel}</p>}
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full text-white inline-block mt-2 ml-5" style={{ background: getEventColor(ev) }}>
                 {TYPE_LABELS[ev.type] || 'Événement'}
