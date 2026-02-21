@@ -2504,9 +2504,39 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               ))}
             </div>
           </div>
-          <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            <RefreshCw size={14} /> Réinitialiser les coefficients par défaut
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {/* E5: Appliquer coefficients à tous les articles */}
+            <button
+              onClick={async () => {
+                const articlesWithPrixAchat = catalogue.filter(c => c.prixAchat > 0);
+                if (articlesWithPrixAchat.length === 0) {
+                  showToast('Aucun article avec prix d\'achat à recalculer', 'info');
+                  return;
+                }
+                const ok = await confirm({
+                  title: 'Appliquer les coefficients',
+                  message: `Recalculer le prix de vente de ${articlesWithPrixAchat.length} article${articlesWithPrixAchat.length > 1 ? 's' : ''} selon les coefficients actuels ? Les prix de vente seront écrasés.`,
+                  confirmText: 'Appliquer',
+                  variant: 'warning',
+                });
+                if (!ok) return;
+                const updated = catalogue.map(c => {
+                  if (!c.prixAchat || c.prixAchat <= 0) return c;
+                  const coef = coefficients[c.categorie] || coefficients['Divers'] || 1.5;
+                  return { ...c, prixVente: Math.round(c.prixAchat * coef * 100) / 100 };
+                });
+                setCatalogue(updated);
+                showToast(`${articlesWithPrixAchat.length} prix recalculés`, 'success');
+              }}
+              className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-white`}
+              style={{ background: couleur }}
+            >
+              <Check size={14} /> Appliquer à tous les articles
+            </button>
+            <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <RefreshCw size={14} /> Réinitialiser par défaut
+            </button>
+          </div>
         </div>
       )}
 

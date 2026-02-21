@@ -67,6 +67,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
+  const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
@@ -196,6 +197,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
   };
 
+  // B7: Period date boundaries
+  const periodStart = useMemo(() => {
+    const now = new Date();
+    if (periodFilter === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (periodFilter === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    if (periodFilter === 'year') return new Date(now.getFullYear(), 0, 1);
+    return null; // 'all'
+  }, [periodFilter]);
+
   const filtered = getSortedDevis(devis.filter(d => {
     // Filter out ghost devis: no numero AND orphan client (client doesn't exist) AND brouillon
     if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
@@ -203,6 +213,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
     // Filter out test/dev data artefacts (DUP suffixes, malformed numeros)
     if (d.numero && (/DUP\d*$/.test(d.numero) || /^DEV----/.test(d.numero))) return false;
+    // B7: Period filter
+    if (periodStart && new Date(d.date) < periodStart) return false;
     if (filter === 'devis' && d.type !== 'devis') return false;
     if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
@@ -223,6 +235,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
     return true;
   }));
+
+  // B7: Counts for filter pills (computed from period-filtered list only)
+  const filterCounts = useMemo(() => {
+    const base = devis.filter(d => {
+      if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+      if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
+      if (d.numero && (/DUP\d*$/.test(d.numero) || /^DEV----/.test(d.numero))) return false;
+      if (periodStart && new Date(d.date) < periodStart) return false;
+      return true;
+    });
+    return {
+      all: base.length,
+      devis: base.filter(d => d.type === 'devis').length,
+      factures: base.filter(d => d.type === 'facture').length,
+      attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
+      a_traiter: base.filter(d => {
+        const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
+        return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
+      }).length,
+    };
+  }, [devis, clients, periodStart]);
 
   // Nettoyage affichage données test
   const cleanNumero = (numero) => {
@@ -1171,6 +1204,41 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }
       }, i * 500);
     });
+  };
+
+  // B8: Export CSV/Excel
+  const exportCSV = (docs) => {
+    if (docs.length === 0) return;
+    const BOM = '\uFEFF'; // UTF-8 BOM for Excel
+    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
+    const rows = docs.map(d => {
+      const client = clients.find(c => c.id === d.client_id);
+      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
+      const fmtDate = (v) => v ? new Date(v).toLocaleDateString('fr-FR') : '';
+      return [
+        d.numero || '',
+        d.type === 'facture' ? 'Facture' : 'Devis',
+        clientName,
+        fmtDate(d.date),
+        (d.objet || '').replace(/;/g, ','),
+        (d.total_ht || 0).toFixed(2),
+        (d.tva || 0).toFixed(2),
+        (d.total_ttc || d.montant_ttc || 0).toFixed(2),
+        d.statut || '',
+        fmtDate(d.date_envoi),
+        fmtDate(d.date_signature),
+        fmtDate(d.date_paiement),
+      ];
+    });
+    const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
   };
 
   // ============================================================================
@@ -3400,13 +3468,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
             <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-[150px] sm:w-[180px] pl-8 pr-3 py-2 border rounded-xl text-sm ${inputBg}`} />
           </div>
-          <div role="group" aria-label="Filtrer par type" className="flex gap-1">
-            {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
-                {k === 'a_traiter' && <Bell size={12} />}
+          {/* B7: Period filter */}
+          <div role="group" aria-label="Filtrer par période" className="flex gap-1">
+            {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trimestre'], ['year', 'Année']].map(([k, v]) => (
+              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1.5 rounded-lg text-xs whitespace-nowrap min-h-[36px] ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
                 {v}
               </button>
             ))}
+          </div>
+          <div className={`h-6 w-px ${isDark ? 'bg-slate-600' : 'bg-slate-300'} hidden sm:block`} />
+          {/* B7: Filter pills with counters */}
+          <div role="group" aria-label="Filtrer par type" className="flex gap-1">
+            {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
+              const count = filterCounts[k] || 0;
+              return (
+                <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                  {k === 'a_traiter' && <Bell size={12} />}
+                  {v}
+                  {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
         {/* Right: Sort + Export */}
@@ -3422,6 +3504,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {filtered.length > 0 && (
             <>
               <div className={`h-6 w-px ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+              {/* B8: CSV export */}
+              <button
+                onClick={() => exportCSV(filtered)}
+                className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                aria-label="Exporter en CSV"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
               <button
                 onClick={() => batchExportPDF(filtered)}
                 disabled={actionLoading === 'batch'}
@@ -3429,7 +3520,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 aria-label="Exporter les documents filtrés en PDF"
               >
                 {actionLoading === 'batch' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                <span className="hidden sm:inline">Exporter ({filtered.length})</span>
+                <span className="hidden sm:inline">PDF ({filtered.length})</span>
                 <span className="sm:hidden">PDF</span>
               </button>
             </>
