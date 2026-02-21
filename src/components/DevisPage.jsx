@@ -774,7 +774,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
 
   const createAcompte = async () => {
-    if (!selected || selected.statut !== 'accepte') return showToast('Le devis doit être accepté', 'error');
+    if (!selected || (selected.statut !== 'accepte' && selected.statut !== 'signe')) return showToast('Le devis doit être accepté ou signé', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
     const ratio = acomptePct / 100;
     const montantHT = selected.total_ht * ratio;
@@ -804,6 +804,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setShowAcompteModal(false);
     setSelected({ ...selected, statut: 'acompte_facture', acompte_pct: acomptePct });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
+  };
+
+  const confirmAndCreateSolde = async () => {
+    if (!selected) return;
+    const acompte = getAcompteFacture(selected.id);
+    const reste = acompte ? selected.total_ttc - (acompte.total_ttc || 0) : selected.total_ttc;
+    const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
+    const label = acompte ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
+    const ok = await confirm({
+      title: acompte ? 'Facturer le solde ?' : 'Créer la facture complète ?',
+      message: `${label} pour ${clientName}. Cette action est irréversible.`
+    });
+    if (!ok) return;
+    await createSolde();
   };
 
   const createSolde = async () => {
@@ -1644,10 +1658,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
           if (canAcompte) { setShowAcompteModal(true); return; }
-          const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-          confirm({ title: 'Créer la facture complète ?', message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.` }).then(ok => ok && createSolde());
+          confirmAndCreateSolde();
         }, color: 'bg-emerald-500 hover:bg-emerald-600' };
-        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: createSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
+        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: confirmAndCreateSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
         if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
       }
@@ -1963,7 +1976,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
                   {selected.statut === 'acompte_facture' && (
                     <button
-                      onClick={createSolde}
+                      onClick={confirmAndCreateSolde}
                       className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
                     >
                       <Receipt size={16} /> Facturer solde ({formatMoney(resteAFacturer)})
@@ -2113,7 +2126,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </button>
                 )}
                 {canFacturer && (
-                  <button onClick={createSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
+                  <button onClick={confirmAndCreateSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <Receipt size={16} className="text-emerald-500" />
                       <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
@@ -2153,7 +2166,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${selected.acompte_pct}%` }} />
             </div>
             {canFacturer && (
-              <button onClick={createSolde} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+              <button onClick={confirmAndCreateSolde} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
                 <Receipt size={16} /> Facturer le solde
               </button>
             )}
