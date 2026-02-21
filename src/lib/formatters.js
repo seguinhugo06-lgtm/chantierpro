@@ -420,3 +420,25 @@ export function formatPhone(phone) {
 
   return phone;
 }
+
+// ============ DEVIS LINE FILTERING ============
+
+/**
+ * Filtre les lignes d'un devis pour exclure les entrées invalides.
+ * Supprime : null/undefined, section markers (_isSection), lignes sans description,
+ * et lignes dont la description est littéralement "undefined".
+ *
+ * @param {Array} lignes - Tableau de lignes du devis
+ * @returns {Array} Lignes valides uniquement
+ */
+export function filterValidLignes(lignes) {
+  if (!Array.isArray(lignes)) return [];
+  return lignes.filter(l => {
+    if (!l) return false;
+    // Section markers from toSupabase flattening — not real line items
+    if (l._isSection) return false;
+    // No description at all, or literal string "undefined"
+    if (!l.description || l.description === 'undefined') return false;
+    return true;
+  });
+}

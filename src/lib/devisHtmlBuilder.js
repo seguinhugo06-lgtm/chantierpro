@@ -7,6 +7,8 @@
  * - DevisSignaturePage.jsx (aperçu lecture seule)
  */
 
+import { filterValidLignes } from './formatters';
+
 /**
  * Formatte un RCS complet
  */
@@ -58,6 +60,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
   if (typeof lignes === 'string') {
     try { lignes = JSON.parse(lignes); } catch { lignes = []; }
   }
+  // Filter out section markers, null/undefined, and lines with no description
+  lignes = filterValidLignes(lignes);
 
   const lignesHTML = lignes.map(l => `
     <tr>
@@ -411,7 +415,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     ville: client?.ville || '',
   };
 
-  const lignes = situation.lignes || [];
+  const lignes = filterValidLignes(situation.lignes);
   const defaultTvaRate = situation.tvaRate || parentDevis?.tvaRate || parentDevis?.tva_rate || 10;
 
   // Calculate totals from lignes with multi-TVA support

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { generateFacturXML, isFacturXCompliant } from '../lib/facturx';
+import { filterValidLignes } from '../lib/formatters';
 import QRCode from 'qrcode';
 
 const styles = StyleSheet.create({
@@ -269,15 +270,15 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
               <Text style={styles.colPrice}>Prix HT</Text>
               <Text style={styles.colTotal}>Total HT</Text>
             </View>
-            {devis.lignes.map((ligne, index) => (
-              <View 
-                key={index} 
+            {filterValidLignes(devis.lignes).map((ligne, index) => (
+              <View
+                key={index}
                 style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}
               >
-                <Text style={styles.colDesc}>{ligne.description}</Text>
-                <Text style={styles.colQty}>{ligne.quantite}</Text>
-                <Text style={styles.colPrice}>{ligne.prixUnitaire.toFixed(2)}€</Text>
-                <Text style={styles.colTotal}>{ligne.montant.toFixed(2)}€</Text>
+                <Text style={styles.colDesc}>{ligne.description || ''}</Text>
+                <Text style={styles.colQty}>{ligne.quantite || 0}</Text>
+                <Text style={styles.colPrice}>{(ligne.prixUnitaire || 0).toFixed(2)}€</Text>
+                <Text style={styles.colTotal}>{(ligne.montant || 0).toFixed(2)}€</Text>
               </View>
             ))}
           </View>

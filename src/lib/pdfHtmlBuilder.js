@@ -4,6 +4,7 @@
  */
 
 import { subscription } from '../stores/subscriptionStore';
+import { filterValidLignes } from './formatters';
 
 /**
  * Get entreprise data from localStorage
@@ -52,7 +53,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   const calculatedTvaDetails = doc.tvaDetails || (() => {
     const details = {};
     const defaultRate = doc.tvaRate || entreprise?.tvaDefaut || 10;
-    (doc.lignes || []).forEach(l => {
+    filterValidLignes(doc.lignes).forEach(l => {
       const rate = l.tva !== undefined ? l.tva : defaultRate;
       if (!details[rate]) {
         details[rate] = { base: 0, montant: 0 };
@@ -64,7 +65,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     return details;
   })();
 
-  const lignesHTML = (doc.lignes || []).map(l => `
+  const lignesHTML = filterValidLignes(doc.lignes).map(l => `
     <tr>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>

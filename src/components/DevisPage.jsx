@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
-import { formatMoney as fmtMoney } from '../lib/formatters';
+import { formatMoney as fmtMoney, filterValidLignes } from '../lib/formatters';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -884,7 +884,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const calculatedTvaDetails = doc.tvaDetails || (() => {
       const details = {};
       const defaultRate = doc.tvaRate || entreprise?.tvaDefaut || 10;
-      (doc.lignes || []).forEach(l => {
+      filterValidLignes(doc.lignes).forEach(l => {
         const rate = l.tva !== undefined ? l.tva : defaultRate;
         if (!details[rate]) {
           details[rate] = { base: 0, montant: 0 };
@@ -896,10 +896,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       return details;
     })();
 
-    const lignesHTML = (doc.lignes || []).map(l => `
+    const lignesHTML = filterValidLignes(doc.lignes).map(l => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(l.prixUnitaire||0)}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
@@ -2348,10 +2348,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         </thead>
                       )}
                       <tbody>
-                        {(section.lignes || []).map((l, i) => (
+                        {filterValidLignes(section.lignes).map((l, i) => (
                           <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                            <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
-                            <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                            <td className={`py-2.5 ${textPrimary}`}>{l.description || ''}</td>
+                            <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
                             <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
                             <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
                             {!modeDiscret && (selected.lignes || []).some(lg => lg.prixAchat > 0) && (() => {
