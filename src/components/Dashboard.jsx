@@ -95,6 +95,9 @@ import { Badge } from './ui/Badge';
 import { RelanceModal } from './modals/RelanceModal';
 import { MarginAnalysisModal } from './modals/MarginAnalysisModal';
 
+// Hooks
+import { useKPIs } from '../hooks/useKPIs';
+
 // Services & Utils
 import { getPendingRelances, formatRelanceForDisplay } from '../services/RelanceService';
 import {
@@ -593,18 +596,21 @@ export default function Dashboard({
   // Use real data loading state instead of artificial delay
   const isLoading = dataLoading;
 
-  // ============ COMPUTED STATS ============
+  // ============ COMPUTED STATS (via useKPIs + Dashboard-specific extras) ============
+
+  // Centralized KPIs — single source of truth for CA encaissé, à encaisser, tendance, etc.
+  const kpis = useKPIs();
 
   const stats = useMemo(() => {
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
 
-    // Devis by type
+    // Devis by type (needed for pipeline detail & suggestions)
     const devisOnly = safeDevis.filter((d) => d.type === 'devis');
     const factures = safeDevis.filter((d) => d.type === 'facture');
 
-    // Pipeline
+    // Pipeline (kept for suggestions context & CeMoisModal)
     const devisPipeline = {
       brouillon: devisOnly.filter((d) => d.statut === 'brouillon'),
       envoye: devisOnly.filter((d) => d.statut === 'envoye' || d.statut === 'vu'),
@@ -614,7 +620,7 @@ export default function Dashboard({
       refuse: devisOnly.filter((d) => d.statut === 'refuse'),
     };
 
-    // Financial stats
+    // Financial stats (Dashboard-specific: totalCA includes devis acceptés, not just factures payées)
     const totalCA = safeDevis
       .filter((d) => d.type === 'facture' || d.statut === 'accepte')
       .reduce((s, d) => s + (d.total_ht || 0), 0);
@@ -629,34 +635,13 @@ export default function Dashboard({
     const marge = totalCA - totalDep - totalMO;
     const tauxMarge = totalCA > 0 ? (marge / totalCA) * 100 : 0;
 
-    // Invoices
-    const facturesPayees = factures.filter((f) => f.statut === 'payee');
-    const facturesEnAttente = factures.filter((f) => f.statut !== 'payee');
-    const encaisse = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
-    const enAttente = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
-
-    // Overdue (30+ days)
-    const facturesOverdue = facturesEnAttente.filter((f) => daysSince(f.date) > 30);
-    const montantOverdue = facturesOverdue.reduce((s, f) => s + (f.total_ttc || 0), 0);
-
-    // Chantiers
-    const chantiersActifs = safeChantiers.filter((c) => c.statut === 'en_cours').length;
-    const chantiersProspect = safeChantiers.filter((c) => c.statut === 'prospect').length;
-    const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
-
-    // Devis en attente de réponse = envoyé + vu (exclu brouillons)
-    const devisEnAttente = devisPipeline.envoye.length;
-    const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
-
-    // Conversion rate — exclude brouillons from denominator
-    // Numerator: signed/invoiced (accepte + acompte_facture + facture + signe)
+    // Conversion rate — broader definition for Dashboard (includes more statuses)
     const devisSignes = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
-    // Denominator: all sent devis (envoye + vu + accepte + signe + facture + payee + refuse), NOT brouillons
     const devisTotalEnvoyes = devisOnly.filter(d => d.statut !== 'brouillon').length;
     const tauxConversion =
-      devisTotalEnvoyes > 0 ? (devisSignes / devisTotalEnvoyes) * 100 : -1; // -1 = no data
+      devisTotalEnvoyes > 0 ? (devisSignes / devisTotalEnvoyes) * 100 : -1;
 
-    // CA trend (compare last 2 months) — includes factures + devis acceptés
+    // CA trend — Dashboard-specific: uses total_ht including factures + devis acceptés
     const getMonthCA = (monthOffset) => {
       const targetMonth = new Date(thisYear, thisMonth - monthOffset, 1);
       return safeDevis
@@ -678,29 +663,28 @@ export default function Dashboard({
     const dayOfMonth = now.getDate();
     const isEarlyMonth = dayOfMonth <= 5;
 
-    // Calculate percentage change (N-1 comparison)
-    let tendance = null;
-    let tendanceLabel = 'vs mois dernier';
+    // Dashboard-specific tendance for "Ce mois" card (total_ht based)
+    let tendanceDashboard = null;
+    let tendanceLabelDashboard = 'vs mois dernier';
 
     const fmtCA = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
 
     if (isEarlyMonth) {
-      tendance = null;
-      tendanceLabel = `Début de mois · ${fmtCA(lastMonthCA)} mois dernier`;
+      tendanceDashboard = null;
+      tendanceLabelDashboard = `Début de mois · ${fmtCA(lastMonthCA)} mois dernier`;
     } else if (lastMonthCA > 0) {
       if (thisMonthCA === 0) {
-        tendance = -100;
-        tendanceLabel = `vs ${fmtCA(lastMonthCA)} mois dernier`;
+        tendanceDashboard = -100;
+        tendanceLabelDashboard = `vs ${fmtCA(lastMonthCA)} mois dernier`;
       } else {
         const rawChange = ((thisMonthCA - lastMonthCA) / lastMonthCA) * 100;
         if (Math.abs(rawChange) <= 200) {
-          tendance = Math.round(rawChange);
+          tendanceDashboard = Math.round(rawChange);
         }
-        tendanceLabel = `vs ${fmtCA(lastMonthCA)} mois dernier`;
+        tendanceLabelDashboard = `vs ${fmtCA(lastMonthCA)} mois dernier`;
       }
     } else {
-      // No previous month data
-      tendanceLabel = thisMonthCA > 0 ? `vs 0 € mois dernier` : 'Pas de données';
+      tendanceLabelDashboard = thisMonthCA > 0 ? `vs 0 € mois dernier` : 'Pas de données';
     }
 
     // Calculate monthly objective based on average of last 3 months
@@ -725,15 +709,8 @@ export default function Dashboard({
       ? Math.round((thisMonthCA / dayOfMonth) * 30)
       : null;
 
-    // Check if new user
-    const isNewUser =
-      safeClients.length === 0 && safeDevis.length === 0 && safeChantiers.length === 0;
-    const hasRealData = safeDevis.length > 0 || safeChantiers.length > 0;
-
-    // Low stock items
-    const lowStockItems = safeCatalogue.filter(
-      (item) => item.stock !== undefined && item.seuilAlerte && item.stock < item.seuilAlerte
-    );
+    // Chantiers terminés (Dashboard-specific)
+    const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
     return {
       totalCA,
@@ -741,32 +718,33 @@ export default function Dashboard({
       lastMonthCA,
       marge,
       tauxMarge,
-      encaisse,
-      enAttente,
-      montantOverdue,
-      chantiersActifs,
-      chantiersProspect,
+      // From useKPIs — unified definitions
+      encaisse: kpis.caEncaisse,
+      enAttente: kpis.caAEncaisser,
+      montantOverdue: kpis.facturesOverdue.reduce((s, f) => s + (f.total_ttc || f.montant_ttc || 0), 0),
+      chantiersActifs: kpis.chantiersActifs,
+      chantiersProspect: kpis.chantiersProspect,
       chantiersTermines,
-      devisEnAttente,
-      montantDevisEnAttente,
+      devisEnAttente: kpis.devisEnAttente,
+      montantDevisEnAttente: kpis.montantPipeline,
       tauxConversion,
       devisSignes,
       devisTotalEnvoyes,
-      tendance,
-      tendanceLabel,
+      tendance: tendanceDashboard,
+      tendanceLabel: tendanceLabelDashboard,
       isEarlyMonth,
       objectifMensuel,
       progressionObjectif,
       projectionMensuelle,
-      facturesPayees,
-      facturesEnAttente,
-      facturesOverdue,
+      facturesPayees: kpis.facturesPayees,
+      facturesEnAttente: kpis.facturesImpayees,
+      facturesOverdue: kpis.facturesOverdue,
       devisPipeline,
-      isNewUser,
-      hasRealData,
-      lowStockItems,
+      isNewUser: kpis.isNewUser,
+      hasRealData: kpis.hasRealData,
+      lowStockItems: kpis.lowStockItems,
     };
-  }, [safeChantiers, safeClients, safeDevis, safeDepenses, safePointages, safeEquipe, safeCatalogue]);
+  }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, kpis]);
 
   // ============ URGENT ACTION ============
 
