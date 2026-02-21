@@ -664,7 +664,7 @@ export default function TresorerieModule({
   });
   const [wizardStep, setWizardStep] = useState(0); // 0=solde, 1=charges, 2=done
   const [wizardCharges, setWizardCharges] = useState({}); // { chargeLabel: montant }
-  const showWizard = !wizardDismissed && previsions.length === 0 && !tresorerieLoading;
+  const showWizard = !wizardDismissed && previsions.length === 0 && !tresorerieLoading && !(settings.soldeInitial > 0);
 
   const handleWizardFinish = useCallback(async () => {
     // Step 0: save solde initial (already handled by updateSettings in the form)
@@ -1406,24 +1406,48 @@ export default function TresorerieModule({
       return past6.reduce((s, b) => s + b.sorties, 0) / past6.length;
     })();
 
+    // Factures impayées pour la projection
+    const facturesForProjection = devis.filter(d =>
+      (d.type === 'facture' || d.statut === 'accepte' || d.statut === 'signe') &&
+      !['payee', 'paye', 'refuse', 'brouillon'].includes(d.statut)
+    );
+
     const projections = [];
     let projBalance = solde;
     for (let i = 1; i <= 6; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       // Use scheduled previsions for this month, or fallback to averages
       const mk = { month: d.getMonth(), year: d.getFullYear() };
-      const scheduledEntrees = previsions.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
-      const scheduledSorties = previsions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
+      const monthPrevEntrees = previsions.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const scheduledEntrees = monthPrevEntrees.reduce((s, p) => s + (p.montant || 0), 0);
+      const monthPrevSorties = previsions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk));
+      const scheduledSorties = monthPrevSorties.reduce((s, p) => s + (p.montant || 0), 0);
 
-      const entrees = scheduledEntrees || avgMonthlyEntrees;
+      // Include unpaid invoices/accepted devis as projected income for this month
+      const monthInvoices = facturesForProjection.filter(f => {
+        const echeance = new Date(f.date_echeance || f.date_validite || f.date);
+        return echeance.getMonth() === mk.month && echeance.getFullYear() === mk.year;
+      });
+      const invoiceEntrees = monthInvoices.reduce((s, f) => s + Math.max((f.total_ttc || 0) - (f.montant_paye || 0), 0), 0);
+
+      const entrees = (scheduledEntrees + invoiceEntrees) || avgMonthlyEntrees;
       const sorties = scheduledSorties || avgMonthlySorties;
       projBalance += entrees - sorties;
+
+      // Build items list for tooltip
+      const items = [
+        ...monthPrevEntrees.map(p => ({ label: p.description || 'Prévision', montant: p.montant || 0, type: 'entree' })),
+        ...monthInvoices.map(f => ({ label: `Facture ${f.numero || f.nom || ''}`.trim(), montant: Math.max((f.total_ttc || 0) - (f.montant_paye || 0), 0), type: 'entree' })),
+        ...monthPrevSorties.map(p => ({ label: p.description || 'Charge', montant: p.montant || 0, type: 'sortie' })),
+      ];
+
       projections.push({
         mois: MONTH_NAMES[d.getMonth()],
         entrees,
         sorties,
         balance: projBalance,
-        isScheduled: scheduledEntrees > 0 || scheduledSorties > 0,
+        isScheduled: scheduledEntrees > 0 || scheduledSorties > 0 || invoiceEntrees > 0,
+        items,
       });
     }
 
@@ -2025,24 +2049,17 @@ export default function TresorerieModule({
         {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
           <CashFlowChart data={monthlyData} isDark={isDark} couleur={couleur} />
         ) : (
-          <div className="relative">
-            {/* Faux graphique semi-transparent */}
-            <div className="flex items-end justify-between gap-2 h-40 px-4 opacity-15">
-              {[35, 55, 45, 70, 60, 80, 50, 65, 40, 75, 55, 90].map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col gap-1 items-center justify-end h-full">
-                  <div className="w-full rounded-t" style={{ height: `${h}%`, backgroundColor: couleur }} />
-                  <div className="w-full rounded-b bg-red-400" style={{ height: `${h * 0.6}%` }} />
-                </div>
-              ))}
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ backgroundColor: `${couleur}15`, color: couleur }}>
+              <BarChart3 size={28} />
             </div>
-            {/* Overlay message */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className={`px-6 py-4 rounded-2xl backdrop-blur-sm text-center ${isDark ? 'bg-slate-800/80' : 'bg-white/80'}`}>
-                <BarChart3 size={28} className={`mx-auto mb-2 ${textSecondary}`} />
-                <p className={`text-sm font-semibold ${textPrimary}`}>Pas encore de données</p>
-                <p className={`text-xs mt-1 ${textSecondary}`}>Le graphique s'affichera dès que vous aurez des entrées ou sorties enregistrées</p>
-              </div>
-            </div>
+            <p className={`text-sm font-semibold mb-1 ${textPrimary}`}>Pas encore de données</p>
+            <p className={`text-xs max-w-sm ${textSecondary}`}>Ajoutez votre première entrée ou sortie pour voir votre flux de trésorerie</p>
+            <button onClick={() => setShowAddModal(true)}
+              className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors hover:brightness-110"
+              style={{ backgroundColor: couleur }}>
+              + Ajouter un mouvement
+            </button>
           </div>
         )}
       </div>
@@ -2071,7 +2088,8 @@ export default function TresorerieModule({
               const isNeg = p.balance < 0;
               const isBelowThreshold = p.balance < (settings.seuilAlerte || 5000);
               return (
-                <div key={i} className={`p-3 rounded-xl border text-center ${
+                <div key={i} title={p.items?.length > 0 ? p.items.map(it => `${it.type === 'entree' ? '+' : '-'} ${it.label}: ${formatCompact(it.montant)}`).join('\n') : 'Basé sur la moyenne'}
+                  className={`p-3 rounded-xl border text-center cursor-default ${
                   isNeg ? isDark ? 'bg-red-900/10 border-red-500/30' : 'bg-red-50 border-red-200'
                   : isBelowThreshold ? isDark ? 'bg-amber-900/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'
                   : isDark ? 'bg-slate-700/40 border-slate-600' : 'bg-gray-50 border-gray-200'

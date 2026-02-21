@@ -360,6 +360,11 @@ export default function ExportComptable({
   const to = new Date(dateTo);
   to.setHours(23, 59, 59, 999);
 
+  // Fingerprints to detect status changes even if array reference stays the same
+  const devisFingerprint = devis.length + '|' + devis.reduce((s, d) => s + (d.statut || ''), '');
+  const depensesFingerprint = depenses.length + '|' + depenses.reduce((s, d) => s + (d.montant || 0), 0);
+  const paiementsFingerprint = paiements.length + '|' + paiements.reduce((s, p) => s + (p.montant || 0), 0);
+
   const factures = useMemo(
     () =>
       devis.filter((d) => {
@@ -367,7 +372,8 @@ export default function ExportComptable({
         const dt = new Date(d.date_creation || d.created_at);
         return dt >= from && dt <= to;
       }),
-    [devis, dateFrom, dateTo]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [devis, dateFrom, dateTo, devisFingerprint]
   );
 
   const filteredDepenses = useMemo(
@@ -376,7 +382,8 @@ export default function ExportComptable({
         const dt = new Date(d.date);
         return dt >= from && dt <= to;
       }),
-    [depenses, dateFrom, dateTo]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [depenses, dateFrom, dateTo, depensesFingerprint]
   );
 
   const filteredPaiements = useMemo(
@@ -385,7 +392,8 @@ export default function ExportComptable({
         const dt = new Date(p.date || p.createdAt);
         return dt >= from && dt <= to;
       }),
-    [paiements, dateFrom, dateTo]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [paiements, dateFrom, dateTo, paiementsFingerprint]
   );
 
   const clientsMap = useMemo(() => {
