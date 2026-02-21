@@ -8,6 +8,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Wallet, Receipt, CheckCircle, AlertTriangle } from 'lucide-react';
 import KPICard from './KPICard';
+import { formatDevisNumber } from '../../lib/formatters';
 
 function daysSince(date) {
   if (!date) return 0;
@@ -50,7 +51,7 @@ export default function KPIEncaisserWidget({
       result.push({
         icon: Receipt,
         label: client?.nom || 'Client',
-        subLabel: `${firstFacture?.numero || 'Facture'} • ${days}j`,
+        subLabel: `${firstFacture ? formatDevisNumber(firstFacture) : 'Facture'} • ${days}j`,
         value: formatMoney(firstFacture?.total_ttc),
         highlight: days > 30,
         onClick: () => {

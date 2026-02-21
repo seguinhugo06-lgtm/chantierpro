@@ -378,6 +378,23 @@ export function normalizeDevisRef(numero, type = 'devis', fallbackId = '') {
   return `${prefix}-${raw}`;
 }
 
+/**
+ * Formate le numéro d'un devis/facture pour affichage, à partir de l'objet complet.
+ * Centralise la logique — à utiliser partout au lieu de d.numero brut.
+ * @param {Object} doc - Document (devis ou facture) avec { numero, type, id }
+ * @param {Object} [options]
+ * @param {boolean} [options.short=false] - Si true, retourne la forme courte (#00006)
+ * @returns {string} ex: "DEV-2026-00006" ou "#00006" (short)
+ */
+export function formatDevisNumber(doc, { short = false } = {}) {
+  if (!doc) return '???';
+  const full = normalizeDevisRef(doc.numero, doc.type || 'devis', doc.id || '');
+  if (!short) return full;
+  // Short form: extract last segment (5-digit number)
+  const match = full.match(/-(\d{4,})$/);
+  return match ? `#${match[1]}` : full;
+}
+
 // ============ PHONE FORMATTING ============
 
 /**

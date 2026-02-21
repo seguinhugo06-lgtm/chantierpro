@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { cn } from '../../lib/utils';
+import { formatDevisNumber } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
 import { Button } from '../ui/Button';
 import Widget, {
@@ -116,24 +117,7 @@ function formatCurrency(amount) {
   }).format(amount || 0);
 }
 
-/**
- * Format document number with correct prefix (FAC- for factures)
- */
-function formatFactureNumber(facture) {
-  const numero = facture.numero || facture.id?.slice(-6) || '---';
-
-  // If it already has FAC- prefix, use it as-is
-  if (numero.startsWith('FAC-')) {
-    return numero;
-  }
-
-  // If number starts with a digit, add FAC- prefix
-  if (/^\d/.test(numero)) {
-    return `FAC-${numero}`;
-  }
-
-  return numero;
-}
+// formatFactureNumber → replaced by centralized formatDevisNumber from formatters.js
 
 /**
  * Format compact currency
@@ -380,7 +364,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
               >
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatFactureNumber(facture)}
+                    {formatDevisNumber(facture)}
                     <span className="text-gray-400 mx-1">•</span>
                     <span className="text-gray-600 dark:text-gray-400">
                       {client?.nom || 'Client inconnu'}

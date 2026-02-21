@@ -104,7 +104,7 @@ import {
   generateSuggestionsFromContext,
   transformSuggestions,
 } from '../lib/actionSuggestions';
-import { normalizeDevisRef } from '../lib/formatters';
+import { normalizeDevisRef, formatDevisNumber } from '../lib/formatters';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
@@ -921,7 +921,7 @@ export default function Dashboard({
         itemId: f.id,
         type: 'payment',
         icon: CheckCircle,
-        title: `Facture ${f.numero} payée`,
+        title: `${formatDevisNumber(f)} payée`,
         subtitle: client?.nom || 'Client',
         amount: f.total_ttc,
         date: new Date(f.date_paiement || f.date),
@@ -941,7 +941,7 @@ export default function Dashboard({
           itemId: d.id,
           type: 'devis',
           icon: Send,
-          title: `Devis ${d.numero} envoyé`,
+          title: `${formatDevisNumber(d)} envoyé`,
           subtitle: client?.nom || 'Client',
           amount: d.total_ttc || d.total_ht,
           date: new Date(d.date),
@@ -1282,7 +1282,7 @@ export default function Dashboard({
           staleDevis.slice(0, 4).forEach(d => {
             const client = safeClients.find(c => c.id === d.client_id);
             const days = daysSince(d.date);
-            const displayNum = normalizeDevisRef(d.numero, d.type || 'devis', d.id);
+            const displayNum = formatDevisNumber(d);
             const clientNom = client?.nom || client?.prenom || 'Client';
             actions.push({
               id: `devis-${d.id}`,

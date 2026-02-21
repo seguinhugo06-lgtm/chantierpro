@@ -19,7 +19,7 @@ import {
   FileStack,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { formatMoney, formatDate, formatRelativeDate, normalizeDevisRef } from '../../lib/formatters';
+import { formatMoney, formatDate, formatRelativeDate, normalizeDevisRef, formatDevisNumber } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
 import { useToast } from '../../context/AppContext';
 import { DEVIS_STATUS } from '../../lib/constants';
@@ -65,28 +65,7 @@ function daysSince(dateString) {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Format document number with correct prefix (DEV- for devis, FAC- for factures)
- */
-function formatDocumentNumber(devis) {
-  const numero = devis.numero || devis.id?.slice(-6) || '---';
-
-  // If it already has a proper prefix, use it as-is
-  if (numero.startsWith('DEV-') || numero.startsWith('FAC-')) {
-    return numero;
-  }
-
-  // Determine the type and add appropriate prefix
-  const isFacture = devis.type === 'facture';
-  const prefix = isFacture ? 'FAC' : 'DEV';
-
-  // If number starts with a digit, add the prefix
-  if (/^\d/.test(numero)) {
-    return `${prefix}-${numero}`;
-  }
-
-  return numero;
-}
+// formatDocumentNumber → replaced by centralized formatDevisNumber from formatters.js
 
 
 /**
@@ -410,7 +389,7 @@ function DevisCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className={cn('text-xs font-semibold', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                {formatDocumentNumber(devis)}
+                {formatDevisNumber(devis)}
               </span>
               {needsRelance && (
                 <span className={cn(
@@ -426,7 +405,7 @@ function DevisCard({
               {client?.nom || 'Client inconnu'}
             </p>
             <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
-              {devis.titre || devis.objet || `${devis.type === 'facture' ? 'Facture' : 'Devis'} ${devis.numero || '#' + (devis.id?.slice(-6) || '---')}`}
+              {devis.titre || devis.objet || formatDevisNumber(devis)}
             </p>
           </div>
           <div className="text-right flex-shrink-0">

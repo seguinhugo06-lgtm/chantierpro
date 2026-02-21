@@ -49,6 +49,7 @@ import {
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { calculateGlobalKPIs, getMarginColor, MARGIN_THRESHOLDS } from '../../lib/business/margin-calculator';
 import { cn } from '../../lib/utils';
+import { formatDevisNumber } from '../../lib/formatters';
 
 // ============ UTILS ============
 
@@ -358,7 +359,7 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
               'text-sm font-semibold',
               isDark ? 'text-white' : 'text-gray-900'
             )}>
-              {facture.numero || `#${facture.id?.slice(-6)}`}
+              {formatDevisNumber(facture)}
             </span>
             {isOverdue && (
               <span className={cn(
@@ -1112,7 +1113,7 @@ export function CeMoisModal({
                             {client?.nom || 'Client'}
                           </p>
                           <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                            {devisItem.numero || `#${devisItem.id?.slice(-6)}`} • {days}j
+                            {formatDevisNumber(devisItem)} • {days}j
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
