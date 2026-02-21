@@ -196,6 +196,9 @@ export const FIELD_MAPPINGS = {
         acompte_facture_id: item.acompte_facture_id || null,
         acompte_pct: item.acompte_pct || null,
         montant_paye: item.montant_paye || 0,
+        // Payment tracking (date_paiement + mode_paiement exist in DB, reference_paiement is local-only)
+        date_paiement: item.date_paiement || null,
+        mode_paiement: item.mode_paiement || null,
       };
     },
     fromSupabase: (row) => ({
@@ -231,6 +234,10 @@ export const FIELD_MAPPINGS = {
       acompte_facture_id: row.acompte_facture_id || null,
       acompte_pct: row.acompte_pct ? parseFloat(row.acompte_pct) : null,
       montant_paye: row.montant_paye ? parseFloat(row.montant_paye) : 0,
+      // Payment tracking
+      date_paiement: row.date_paiement || null,
+      mode_paiement: row.mode_paiement || null,
+      reference_paiement: row.reference_paiement || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }),

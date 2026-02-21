@@ -1013,6 +1013,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Vos coordonnées bancaires apparaîtront sur vos factures pour faciliter les virements. Elles sont stockées localement et ne sont jamais partagées avec des tiers.
             </p>
           </div>
+
+          {/* Mode de paiement par défaut */}
+          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <h4 className="font-semibold mb-3">Mode de paiement par défaut</h4>
+            <p className={`text-sm ${textMuted} mb-3`}>Mode pré-sélectionné lors de l'encaissement d'une facture.</p>
+            <select
+              className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
+              value={entreprise.modePaiementDefaut || 'virement'}
+              onChange={e => updateEntreprise(p => ({...p, modePaiementDefaut: e.target.value}))}
+            >
+              <option value="virement">Virement bancaire (recommandé BTP)</option>
+              <option value="cheque">Chèque</option>
+              <option value="especes">Espèces</option>
+              <option value="cb">Carte bancaire</option>
+              <option value="prelevement">Prélèvement</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
         </div>
       )}
 

@@ -754,9 +754,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       const existingPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
       const totalPaye = existingPaiements.reduce((s, p) => s + (p.montant || 0), 0) + (paymentData.amount || 0);
       if (totalPaye >= (selected.total_ttc || 0)) {
-        onUpdate(selected.id, { statut: 'payee' });
-        setSelected(s => s ? { ...s, statut: 'payee' } : s);
-        setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée` });
+        // Build update payload — include offline payment metadata if available
+        const updatePayload = { statut: 'payee' };
+        if (paymentData.date_paiement) updatePayload.date_paiement = paymentData.date_paiement;
+        if (paymentData.mode_paiement) updatePayload.mode_paiement = paymentData.mode_paiement;
+        if (paymentData.reference_paiement) updatePayload.reference_paiement = paymentData.reference_paiement;
+
+        onUpdate(selected.id, updatePayload);
+        setSelected(s => s ? { ...s, ...updatePayload } : s);
+
+        const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
+        setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
       }
     }
   };

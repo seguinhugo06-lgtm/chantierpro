@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info } from 'lucide-react';
+import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info, Banknote, Building2, FileText, Wallet } from 'lucide-react';
 import { createPaymentLink, formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
 
 // Check if Stripe is configured
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
 
+/** Offline payment modes */
+const PAYMENT_MODES = [
+  { value: 'virement', label: 'Virement bancaire', icon: Building2, description: 'Recommandé BTP' },
+  { value: 'cheque', label: 'Chèque', icon: FileText, description: 'Précisez le numéro' },
+  { value: 'especes', label: 'Espèces', icon: Banknote, description: 'Paiement en main propre' },
+  { value: 'cb', label: 'Carte bancaire', icon: CreditCard, description: 'Terminal ou TPE' },
+  { value: 'autre', label: 'Autre', icon: Wallet, description: 'Prélèvement, etc.' },
+];
+
 /**
- * Modal de paiement avec QR Code Stripe
- * Permet au client de payer directement via son telephone
+ * Modal de paiement — 3 modes :
+ * 1. Paiement intégral (Stripe QR)
+ * 2. Paiement partiel (Stripe QR)
+ * 3. Paiement reçu hors ligne (virement, chèque, espèces…)
  */
 export default function PaymentModal({
   isOpen,
@@ -20,12 +31,18 @@ export default function PaymentModal({
   isDark,
   couleur
 }) {
-  const [paymentType, setPaymentType] = useState('full'); // 'full' ou 'custom'
+  const [paymentType, setPaymentType] = useState('full'); // 'full', 'custom', 'offline'
   const [customAmount, setCustomAmount] = useState('');
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [step, setStep] = useState('amount'); // 'amount' ou 'qr'
+  const [step, setStep] = useState('amount'); // 'amount', 'qr', 'offline_form'
+
+  // Offline payment state
+  const [offlineMode, setOfflineMode] = useState(entreprise?.modePaiementDefaut || 'virement');
+  const [offlineDate, setOfflineDate] = useState(new Date().toISOString().split('T')[0]);
+  const [offlineReference, setOfflineReference] = useState('');
+  const [offlineAmount, setOfflineAmount] = useState('');
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800" : "bg-white";
@@ -41,15 +58,21 @@ export default function PaymentModal({
       setPaymentLink(null);
       setPaymentType('full');
       setCustomAmount('');
+      setOfflineMode(entreprise?.modePaiementDefaut || 'virement');
+      setOfflineDate(new Date().toISOString().split('T')[0]);
+      setOfflineReference('');
+      setOfflineAmount('');
     }
-  }, [isOpen]);
+  }, [isOpen, entreprise?.modePaiementDefaut]);
 
   if (!isOpen || !document) return null;
 
   const totalTTC = document.total_ttc || 0;
   const amount = paymentType === 'full'
     ? totalTTC
-    : parseFloat(customAmount) || 0;
+    : paymentType === 'offline'
+      ? (parseFloat(offlineAmount) || totalTTC)
+      : parseFloat(customAmount) || 0;
 
   const handleGenerateLink = async () => {
     if (amount <= 0) return;
@@ -76,6 +99,26 @@ export default function PaymentModal({
       console.error('Erreur creation lien:', error);
     }
     setLoading(false);
+  };
+
+  /** Confirm offline payment — marks facture as paid */
+  const handleConfirmOffline = () => {
+    const montant = parseFloat(offlineAmount) || totalTTC;
+    if (montant <= 0) return;
+
+    onPaymentCreated?.({
+      amount: montant,
+      montant,
+      type: 'offline',
+      mode_paiement: offlineMode,
+      date_paiement: offlineDate,
+      reference_paiement: offlineReference.trim() || undefined,
+      documentId: document.id,
+      documentType: document.type,
+      status: 'completed',
+    });
+
+    onClose();
   };
 
   const copyLink = () => {
@@ -114,11 +157,14 @@ export default function PaymentModal({
     window.open(`mailto:${client.email}?subject=${subject}&body=${body}`);
   };
 
+  const selectedModeInfo = PAYMENT_MODES.find(m => m.value === offlineMode);
+  const ModeIcon = selectedModeInfo?.icon || Wallet;
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+      <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col`}>
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+        <div className="p-5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
               <CreditCard size={20} style={{ color: couleur }} />
@@ -136,16 +182,16 @@ export default function PaymentModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5">
+        {/* Content — scrollable */}
+        <div className="p-5 overflow-y-auto">
           {/* Demo Mode Banner */}
-          {!STRIPE_CONFIGURED && (
+          {!STRIPE_CONFIGURED && step === 'amount' && paymentType !== 'offline' && (
             <div className={`rounded-xl p-3 mb-4 flex items-start gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
               <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
               <div>
                 <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode demonstration</p>
                 <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Le paiement CB necessite une integration Stripe. Contactez le support pour activer les paiements reels.
+                  Le paiement CB necessite une integration Stripe. Utilisez "Paiement reçu" pour enregistrer un paiement hors ligne.
                 </p>
               </div>
             </div>
@@ -161,6 +207,7 @@ export default function PaymentModal({
 
               {/* Options de paiement */}
               <div className="space-y-3 mb-5">
+                {/* Option 1: Paiement intégral (Stripe) */}
                 <button
                   onClick={() => setPaymentType('full')}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
@@ -178,6 +225,7 @@ export default function PaymentModal({
                   </span>
                 </button>
 
+                {/* Option 2: Paiement partiel (Stripe) */}
                 <button
                   onClick={() => setPaymentType('custom')}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
@@ -194,9 +242,25 @@ export default function PaymentModal({
                     Personnaliser
                   </span>
                 </button>
+
+                {/* Option 3: Paiement reçu hors ligne */}
+                <button
+                  onClick={() => { setPaymentType('offline'); setOfflineAmount(totalTTC.toFixed(2)); }}
+                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
+                    paymentType === 'offline'
+                      ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
+                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                  }`}
+                >
+                  <div className="text-left">
+                    <p className={`font-medium ${textPrimary}`}>Paiement reçu (hors ligne)</p>
+                    <p className={`text-sm ${textMuted}`}>Virement, chèque, espèces...</p>
+                  </div>
+                  <Banknote size={20} style={{ color: paymentType === 'offline' ? '#3b82f6' : '#94a3b8' }} />
+                </button>
               </div>
 
-              {/* Montant personnalise */}
+              {/* Montant personnalise (mode custom) */}
               {paymentType === 'custom' && (
                 <div className="mb-5 space-y-3">
                   {/* Boutons raccourcis */}
@@ -231,20 +295,103 @@ export default function PaymentModal({
                 </div>
               )}
 
-              {/* Bouton generer */}
-              <button
-                onClick={handleGenerateLink}
-                disabled={loading || amount <= 0}
-                className="w-full py-4 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
-                style={{ background: couleur }}
-              >
-                {loading ? (
-                  <Loader size={20} className="animate-spin" />
-                ) : (
-                  <QrCode size={20} />
-                )}
-                Generer le QR Code
-              </button>
+              {/* Offline payment form */}
+              {paymentType === 'offline' && (
+                <div className="mb-5 space-y-4">
+                  {/* Mode de paiement */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Mode de paiement</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PAYMENT_MODES.map(mode => {
+                        const Icon = mode.icon;
+                        const isSelected = offlineMode === mode.value;
+                        return (
+                          <button
+                            key={mode.value}
+                            onClick={() => setOfflineMode(mode.value)}
+                            className={`p-3 rounded-xl border-2 flex items-center gap-2 transition-all text-left ${
+                              isSelected
+                                ? (isDark ? 'border-blue-500 bg-blue-900/20' : 'border-blue-500 bg-blue-50')
+                                : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300')
+                            }`}
+                          >
+                            <Icon size={16} style={{ color: isSelected ? '#3b82f6' : '#94a3b8' }} />
+                            <div className="min-w-0">
+                              <p className={`text-sm font-medium truncate ${textPrimary}`}>{mode.label}</p>
+                              {isSelected && <p className={`text-xs ${textMuted} truncate`}>{mode.description}</p>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Montant */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Montant reçu</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={offlineAmount}
+                        onChange={e => setOfflineAmount(e.target.value)}
+                        className={`w-full px-4 py-3 pr-12 border rounded-xl text-lg font-medium ${inputBg}`}
+                      />
+                      <span className={`absolute right-4 top-1/2 -translate-y-1/2 ${textMuted}`}>EUR</span>
+                    </div>
+                  </div>
+
+                  {/* Date de réception */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de réception</label>
+                    <input
+                      type="date"
+                      value={offlineDate}
+                      onChange={e => setOfflineDate(e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    />
+                  </div>
+
+                  {/* Référence (optionnel) */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>
+                      Référence <span className={textMuted}>(optionnel)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={offlineReference}
+                      onChange={e => setOfflineReference(e.target.value)}
+                      placeholder={offlineMode === 'virement' ? 'Réf. virement bancaire' : offlineMode === 'cheque' ? 'N° du chèque' : 'Référence du paiement'}
+                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              {paymentType === 'offline' ? (
+                <button
+                  onClick={handleConfirmOffline}
+                  disabled={(parseFloat(offlineAmount) || 0) <= 0}
+                  className="w-full py-4 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-emerald-500 hover:bg-emerald-600"
+                >
+                  <Check size={20} />
+                  Confirmer le paiement — {formatAmount(parseFloat(offlineAmount) || totalTTC)}
+                </button>
+              ) : (
+                <button
+                  onClick={handleGenerateLink}
+                  disabled={loading || amount <= 0}
+                  className="w-full py-4 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg"
+                  style={{ background: couleur }}
+                >
+                  {loading ? (
+                    <Loader size={20} className="animate-spin" />
+                  ) : (
+                    <QrCode size={20} />
+                  )}
+                  Generer le QR Code
+                </button>
+              )}
             </>
           )}
 
