@@ -231,7 +231,8 @@ export default function DevisSignaturePage({ signatureToken }) {
                 client,
                 chantier: null,
                 entreprise,
-                couleur
+                couleur,
+                mode: 'client'
               });
               const w = window.open('', '_blank');
               if (w) {
@@ -267,7 +268,8 @@ export default function DevisSignaturePage({ signatureToken }) {
       client,
       chantier: null,
       entreprise,
-      couleur
+      couleur,
+      mode: 'client'
     });
 
     return (

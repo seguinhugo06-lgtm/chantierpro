@@ -48,9 +48,11 @@ function getLinePU(l) {
  * @param {Object} params.chantier - Le chantier (optionnel)
  * @param {Object} params.entreprise - L'entreprise
  * @param {string} params.couleur - Couleur accent (défaut: #f97316)
+ * @param {'artisan'|'client'} params.mode - 'client' = page signature publique (masque les placeholders internes)
  * @returns {string} HTML complet
  */
-export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
+export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan' }) {
+  const isClientMode = mode === 'client';
   const color = couleur || entreprise?.couleur || '#f97316';
   const isFacture = doc.type === 'facture';
   const isMicro = (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
@@ -217,10 +219,10 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
         ${e.tel ? `Tél: ${e.tel}` : ''} ${e.email ? `· ${e.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${e.siret ? `SIRET: ${e.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
+        ${e.siret ? `SIRET: ${e.siret}` : (isClientMode ? '' : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>')}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
         ${rcsComplet ? `<br>${rcsComplet}` : (e.rcs ? `<br>RCS: ${e.rcs}` : '')}
-        ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
+        ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : (!isMicro && !isClientMode ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -328,7 +330,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
     <strong>DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${e.adresse ? e.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${e.adresse ? e.adresse.replace(/\n/g, ', ') : (isClientMode ? e.nom || '' : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>')}
   </div>
   ` : ''}
 
@@ -356,7 +358,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
   ` : ''}
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet, !isFacture)}
+  ${buildFooterHtml(e, rcsComplet, !isFacture, isClientMode)}
 </body>
 </html>`;
 }
@@ -364,19 +366,19 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
 /**
  * Bloc footer réutilisable
  */
-function buildFooterHtml(e, rcsComplet, isDevis = false) {
+function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
   const isMicro = e.formeJuridique === 'Micro-entreprise';
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
     ${e.capital ? ` · Capital: ${e.capital} €` : ''}
     ${e.adresse ? ` — ${e.adresse.replace(/\n/g, ', ')}` : ''}<br>
-    ${e.siret ? `SIRET: ${e.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
+    ${e.siret ? `SIRET: ${e.siret}` : (isClientMode ? '' : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>')}
     ${e.codeApe ? ` | APE: ${e.codeApe}` : ''}
     ${rcsComplet ? ` | ${rcsComplet}` : ''}<br>
-    ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant — Complétez Paramètres > Légal]</span>' : '')}<br>
+    ${e.tvaIntra ? `TVA Intracommunautaire: ${e.tvaIntra}` : (!isMicro && !isClientMode ? '<span class="missing-legal">[N° TVA manquant — Complétez Paramètres > Légal]</span>' : '')}<br>
     <div class="assurances">
-      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
+      ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : (isClientMode ? '' : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>')}
       ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
