@@ -1319,14 +1319,27 @@ export default function MemosPage({
               {items.length}
             </span>
           </button>
-          {/* #12: "Tout planifier" CTA for unsorted section */}
+          {/* F4: "Tout planifier" CTA for unsorted section — bulk date assignment */}
           {key === 'undated' && items.length > 0 && (
-            <button
-              onClick={() => { setFocusSortIndex(0); setActiveTab('inbox'); }}
-              className={`text-[10px] px-2 py-1 rounded-md font-medium whitespace-nowrap ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-            >
-              Tout planifier →
-            </button>
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                aria-label="Date pour planifier tous les mémos"
+                className={`text-[10px] px-1.5 py-1 rounded-md border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-700'}`}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  items.forEach(m => updateMemo(m.id, { due_date: e.target.value }));
+                  showToast(`${items.length} mémo${items.length > 1 ? 's' : ''} planifié${items.length > 1 ? 's' : ''} au ${new Date(e.target.value).toLocaleDateString('fr-FR')}`, 'success');
+                  e.target.value = '';
+                }}
+              />
+              <button
+                onClick={() => { setFocusSortIndex(0); setActiveTab('inbox'); }}
+                className={`text-[10px] px-2 py-1 rounded-md font-medium whitespace-nowrap ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+              >
+                Trier →
+              </button>
+            </div>
           )}
         </div>
         {/* #12: Info line for unsorted section */}
