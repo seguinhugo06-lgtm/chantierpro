@@ -200,7 +200,7 @@ export function validatePattern(pattern, value) {
 
 const DEMO_DEVIS = {
   id: 'demo-devis-001',
-  numero: 'DEV-2024-0042',
+  numero: 'DEV-2024-00042',
   created_at: new Date().toISOString(),
   validite: '30 jours',
   description: 'Travaux de rénovation énergétique - Isolation combles et pompe à chaleur',

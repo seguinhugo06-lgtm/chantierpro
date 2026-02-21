@@ -32,6 +32,40 @@ export function generateNumero(type, existingDocuments = []) {
 }
 
 /**
+ * Normalize a devis/facture numero to the standard format: PREFIX-YYYY-NNNNN
+ * Handles:
+ * - Timestamp-based numeros: DEV-1768204783439 → DEV-2026-NNNNN (re-assigned on next save)
+ * - Short padding: DEV-2026-001 → DEV-2026-00001
+ * - Already correct: DEV-2026-00001 → unchanged
+ * - Non-standard: returned as-is (e.g. imported numeros)
+ *
+ * @param {string} numero
+ * @returns {string} Normalized numero
+ */
+export function normalizeNumero(numero) {
+  if (!numero) return numero;
+
+  // Case 1: Standard format with wrong padding — DEV-2026-001 or DEV-2026-1
+  const shortMatch = numero.match(/^(DEV|FAC|AV)-(\d{4})-(\d{1,4})$/);
+  if (shortMatch) {
+    return `${shortMatch[1]}-${shortMatch[2]}-${String(parseInt(shortMatch[3], 10)).padStart(5, '0')}`;
+  }
+
+  // Case 2: Timestamp-based — DEV-1768204783439 (no year separator, >10 digits)
+  const tsMatch = numero.match(/^(DEV|FAC|AV)-(\d{10,})$/);
+  if (tsMatch) {
+    // Extract last 5 digits of timestamp as sequence to keep some uniqueness
+    const seq = parseInt(tsMatch[2].slice(-5), 10);
+    const year = new Date().getFullYear();
+    return `${tsMatch[1]}-${year}-${String(seq).padStart(5, '0')}`;
+  }
+
+  // Case 3: Already correct (5+ digits) — no change
+  // Case 4: Non-standard format — return as-is
+  return numero;
+}
+
+/**
  * Calculate totals for a devis/facture
  * @param {Object} form - Form data with sections, lignes, remise, etc.
  * @param {boolean} isMicro - Whether entreprise is micro-entreprise (no TVA)

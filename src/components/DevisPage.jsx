@@ -14,6 +14,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes } from '../lib/formatters';
+import { normalizeNumero } from '../lib/devis-utils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -280,12 +281,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
   }, [devis, clients, periodStart]);
 
-  // Nettoyage affichage données test
+  // Nettoyage affichage numéros — normalise les timestamps et padding court
   const cleanNumero = (numero) => {
     if (!numero) return '—';
-    const match = numero.match(/^(DEV|FAC)-(\d{10,})$/);
-    if (match) return `${match[1]}-···${match[2].slice(-4)}`;
-    return numero;
+    return normalizeNumero(numero);
   };
   const cleanClientName = (client) => {
     if (!client) return '';

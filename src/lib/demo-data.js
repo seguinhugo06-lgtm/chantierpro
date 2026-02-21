@@ -92,7 +92,7 @@ export const DEMO_CATALOGUE = [
 
 export const DEMO_DEVIS = [
   // ch1 - Cuisine Dupont — TVA 10% (rénovation)
-  { id: 'd1', numero: 'DEV-2026-001', type: 'devis', client_id: 'c1', chantier_id: 'ch1', date: '2026-01-05', validite: 30, statut: 'accepte', tvaRate: 10,
+  { id: 'd1', numero: 'DEV-2026-00001', type: 'devis', client_id: 'c1', chantier_id: 'ch1', date: '2026-01-05', validite: 30, statut: 'accepte', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Dépose cuisine existante', quantite: 1, unite: 'forfait', prixUnitaire: 800, montant: 800 },
       { id: 'l2', description: 'Pose carrelage sol', quantite: 18, unite: 'm²', prixUnitaire: 45, montant: 810 },
@@ -101,7 +101,7 @@ export const DEMO_DEVIS = [
     ], total_ht: 3760, tva: 376, total_ttc: 4136 },
 
   // ch2 - SDB Martin — TVA 10%
-  { id: 'd2', numero: 'DEV-2026-002', type: 'devis', client_id: 'c2', chantier_id: 'ch2', date: '2026-01-15', validite: 30, statut: 'accepte', tvaRate: 10,
+  { id: 'd2', numero: 'DEV-2026-00002', type: 'devis', client_id: 'c2', chantier_id: 'ch2', date: '2026-01-15', validite: 30, statut: 'accepte', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Dépose salle de bain', quantite: 1, unite: 'forfait', prixUnitaire: 600, montant: 600 },
       { id: 'l2', description: 'Pose douche italienne', quantite: 1, unite: 'forfait', prixUnitaire: 2500, montant: 2500 },
@@ -109,13 +109,13 @@ export const DEMO_DEVIS = [
     ], total_ht: 4475, tva: 447.5, total_ttc: 4922.5 },
 
   // ch3 - Peinture Bernard — FAC payée TVA 10%
-  { id: 'd3', numero: 'FAC-2025-015', type: 'facture', client_id: 'c3', chantier_id: 'ch3', date: '2025-12-20', statut: 'payee', tvaRate: 10,
+  { id: 'd3', numero: 'FAC-2025-00015', type: 'facture', client_id: 'c3', chantier_id: 'ch3', date: '2025-12-20', statut: 'payee', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Peinture T3 complet', quantite: 85, unite: 'm²', prixUnitaire: 25, montant: 2125 },
     ], total_ht: 2125, tva: 212.5, total_ttc: 2337.5 },
 
   // ch4 - Extension Petit — DEV brouillon TVA 20% (neuf)
-  { id: 'd4', numero: 'DEV-2026-003', type: 'devis', client_id: 'c4', chantier_id: 'ch4', date: '2026-01-25', validite: 60, statut: 'brouillon', tvaRate: 20,
+  { id: 'd4', numero: 'DEV-2026-00003', type: 'devis', client_id: 'c4', chantier_id: 'ch4', date: '2026-01-25', validite: 60, statut: 'brouillon', tvaRate: 20,
     lignes: [
       { id: 'l1', description: 'Gros œuvre extension', quantite: 40, unite: 'm²', prixUnitaire: 450, montant: 18000 },
       { id: 'l2', description: 'Toiture', quantite: 45, unite: 'm²', prixUnitaire: 180, montant: 8100 },
@@ -123,14 +123,14 @@ export const DEMO_DEVIS = [
     ], total_ht: 32600, tva: 6520, total_ttc: 39120 },
 
   // ch5 - Studio Rousseau — DEV accepté TVA 10%
-  { id: 'd5', numero: 'DEV-2026-004', type: 'devis', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-02', validite: 30, statut: 'accepte', tvaRate: 10,
+  { id: 'd5', numero: 'DEV-2026-00004', type: 'devis', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-02', validite: 30, statut: 'accepte', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Rénovation studio complète', quantite: 25, unite: 'm²', prixUnitaire: 280, montant: 7000 },
       { id: 'l2', description: 'Électricité', quantite: 1, unite: 'forfait', prixUnitaire: 1500, montant: 1500 },
     ], total_ht: 8500, tva: 850, total_ttc: 9350 },
 
   // ch6 - Bureau Lefevre — DEV envoyé TVA 20%
-  { id: 'd6', numero: 'DEV-2026-005', type: 'devis', client_id: 'c6', chantier_id: 'ch6', date: '2026-01-20', validite: 45, statut: 'envoye', tvaRate: 20,
+  { id: 'd6', numero: 'DEV-2026-00005', type: 'devis', client_id: 'c6', chantier_id: 'ch6', date: '2026-01-20', validite: 45, statut: 'envoye', tvaRate: 20,
     lignes: [
       { id: 'l1', description: 'Cloisons bureau', quantite: 30, unite: 'm²', prixUnitaire: 180, montant: 5400 },
       { id: 'l2', description: 'Électricité complète', quantite: 1, unite: 'forfait', prixUnitaire: 4200, montant: 4200 },
@@ -138,14 +138,14 @@ export const DEMO_DEVIS = [
     ], total_ht: 12000, tva: 2400, total_ttc: 14400 },
 
   // ch7 - Terrasse Garcia — FAC payée TVA 10%
-  { id: 'd7', numero: 'FAC-2025-012', type: 'facture', client_id: 'c7', chantier_id: 'ch7', date: '2025-12-10', statut: 'payee', tvaRate: 10,
+  { id: 'd7', numero: 'FAC-2025-00012', type: 'facture', client_id: 'c7', chantier_id: 'ch7', date: '2025-12-10', statut: 'payee', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Terrasse bois composite', quantite: 30, unite: 'm²', prixUnitaire: 180, montant: 5400 },
       { id: 'l2', description: 'Structure porteuse', quantite: 1, unite: 'forfait', prixUnitaire: 1400, montant: 1400 },
     ], total_ht: 6800, tva: 680, total_ttc: 7480 },
 
   // ch8 - Appart Dubois — DEV accepté TVA 10%
-  { id: 'd8', numero: 'DEV-2026-006', type: 'devis', client_id: 'c8', chantier_id: 'ch8', date: '2026-01-10', validite: 30, statut: 'accepte', tvaRate: 10,
+  { id: 'd8', numero: 'DEV-2026-00006', type: 'devis', client_id: 'c8', chantier_id: 'ch8', date: '2026-01-10', validite: 30, statut: 'accepte', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Rénovation plomberie complète', quantite: 1, unite: 'forfait', prixUnitaire: 8500, montant: 8500 },
       { id: 'l2', description: 'Réfection électrique', quantite: 1, unite: 'forfait', prixUnitaire: 9500, montant: 9500 },
@@ -154,13 +154,13 @@ export const DEMO_DEVIS = [
     ], total_ht: 28000, tva: 2800, total_ttc: 30800 },
 
   // ch5 - Acompte facture Rousseau — TVA 10%
-  { id: 'd9', numero: 'FAC-2026-001', type: 'facture', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-22', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd5',
+  { id: 'd9', numero: 'FAC-2026-00001', type: 'facture', client_id: 'c5', chantier_id: 'ch5', date: '2026-01-22', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd5',
     lignes: [
       { id: 'l1', description: 'Acompte 40% - Rénovation studio', quantite: 1, unite: 'forfait', prixUnitaire: 3400, montant: 3400 },
     ], total_ht: 3400, tva: 340, total_ttc: 3740 },
 
   // ch9 - Isolation Moreau — FAC payée TVA 5.5% (rénovation énergétique)
-  { id: 'd10', numero: 'FAC-2025-010', type: 'facture', client_id: 'c9', chantier_id: 'ch9', date: '2025-11-05', statut: 'payee', tvaRate: 5.5,
+  { id: 'd10', numero: 'FAC-2025-00010', type: 'facture', client_id: 'c9', chantier_id: 'ch9', date: '2025-11-05', statut: 'payee', tvaRate: 5.5,
     lignes: [
       { id: 'l1', description: 'Fourniture laine de roche 120mm', quantite: 85, unite: 'm²', prixUnitaire: 18, montant: 1530 },
       { id: 'l2', description: 'Pose isolation sous toiture', quantite: 85, unite: 'm²', prixUnitaire: 42, montant: 3570 },
@@ -169,14 +169,14 @@ export const DEMO_DEVIS = [
     ], total_ht: 6825, tva: 375.38, total_ttc: 7200.38 },
 
   // ch9 - DEV initial Moreau TVA 5.5%
-  { id: 'd11', numero: 'DEV-2025-018', type: 'devis', client_id: 'c9', chantier_id: 'ch9', date: '2025-09-28', validite: 30, statut: 'accepte', tvaRate: 5.5,
+  { id: 'd11', numero: 'DEV-2025-00018', type: 'devis', client_id: 'c9', chantier_id: 'ch9', date: '2025-09-28', validite: 30, statut: 'accepte', tvaRate: 5.5,
     lignes: [
       { id: 'l1', description: 'Isolation combles perdus 85m²', quantite: 85, unite: 'm²', prixUnitaire: 75, montant: 6375 },
       { id: 'l2', description: 'Trappe d\'accès', quantite: 1, unite: 'forfait', prixUnitaire: 450, montant: 450 },
     ], total_ht: 6825, tva: 375.38, total_ttc: 7200.38 },
 
   // ch10 - Façade Lambert — DEV accepté TVA 10%
-  { id: 'd12', numero: 'DEV-2026-007', type: 'devis', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-01', validite: 30, statut: 'accepte', tvaRate: 10,
+  { id: 'd12', numero: 'DEV-2026-00007', type: 'devis', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-01', validite: 30, statut: 'accepte', tvaRate: 10,
     lignes: [
       { id: 'l1', description: 'Échafaudage + installation', quantite: 1, unite: 'forfait', prixUnitaire: 3200, montant: 3200 },
       { id: 'l2', description: 'Nettoyage / décapage façade', quantite: 180, unite: 'm²', prixUnitaire: 12, montant: 2160 },
@@ -186,19 +186,19 @@ export const DEMO_DEVIS = [
     ], total_ht: 18500, tva: 1850, total_ttc: 20350 },
 
   // ch10 - Acompte facture Lambert
-  { id: 'd13', numero: 'FAC-2026-002', type: 'facture', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-10', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd12',
+  { id: 'd13', numero: 'FAC-2026-00002', type: 'facture', client_id: 'c10', chantier_id: 'ch10', date: '2026-02-10', statut: 'envoye', tvaRate: 10, facture_type: 'acompte', devis_source_id: 'd12',
     lignes: [
       { id: 'l1', description: 'Acompte 30% - Ravalement façade', quantite: 1, unite: 'forfait', prixUnitaire: 5550, montant: 5550 },
     ], total_ht: 5550, tva: 555, total_ttc: 6105 },
 
   // ch1 - Facture solde Dupont
-  { id: 'd14', numero: 'FAC-2026-003', type: 'facture', client_id: 'c1', chantier_id: 'ch1', date: '2026-02-05', statut: 'envoye', tvaRate: 10, facture_type: 'solde', devis_source_id: 'd1',
+  { id: 'd14', numero: 'FAC-2026-00003', type: 'facture', client_id: 'c1', chantier_id: 'ch1', date: '2026-02-05', statut: 'envoye', tvaRate: 10, facture_type: 'solde', devis_source_id: 'd1',
     lignes: [
       { id: 'l1', description: 'Solde - Rénovation cuisine', quantite: 1, unite: 'forfait', prixUnitaire: 3760, montant: 3760 },
     ], total_ht: 3760, tva: 376, total_ttc: 4136 },
 
   // Devis refusé — pour tester le statut "refusé"
-  { id: 'd15', numero: 'DEV-2026-008', type: 'devis', client_id: 'c9', chantier_id: null, date: '2026-01-28', validite: 30, statut: 'refuse', tvaRate: 20,
+  { id: 'd15', numero: 'DEV-2026-00008', type: 'devis', client_id: 'c9', chantier_id: null, date: '2026-01-28', validite: 30, statut: 'refuse', tvaRate: 20,
     lignes: [
       { id: 'l1', description: 'Construction garage', quantite: 25, unite: 'm²', prixUnitaire: 680, montant: 17000 },
       { id: 'l2', description: 'Porte basculante motorisée', quantite: 1, unite: 'forfait', prixUnitaire: 2800, montant: 2800 },

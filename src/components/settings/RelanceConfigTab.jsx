@@ -469,8 +469,8 @@ function TemplatePreview({ template, isDark, onClose }) {
   const sampleData = {
     '{{client_nom}}': 'M. Dupont',
     '{{client_prenom}}': 'Jean',
-    '{{devis_numero}}': 'DEV-2025-042',
-    '{{facture_numero}}': 'FAC-2025-018',
+    '{{devis_numero}}': 'DEV-2025-00042',
+    '{{facture_numero}}': 'FAC-2025-00018',
     '{{montant_ttc}}': '3 500,00',
     '{{montant}}': '3 500,00',
     '{{date_échéance}}': '15/01/2025',

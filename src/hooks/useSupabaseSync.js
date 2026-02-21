@@ -6,6 +6,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
 import { logger } from '../lib/logger';
+import { normalizeNumero } from '../lib/devis-utils';
 
 /**
  * Deep-sanitize a value so it is safely JSON-serializable.
@@ -206,7 +207,7 @@ export const FIELD_MAPPINGS = {
       client_id: row.client_id,
       client_nom: row.client_nom || '',
       chantier_id: row.chantier_id || null,
-      numero: row.numero,
+      numero: normalizeNumero(row.numero),
       type: row.type || 'devis',
       statut: row.statut || 'brouillon',
       date: row.date,
