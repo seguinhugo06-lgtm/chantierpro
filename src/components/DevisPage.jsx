@@ -267,10 +267,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const cleanClientName = (client) => {
     if (!client) return '';
     const nom = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    if (/^(ClientPersist|Test_|test_)/i.test(client.nom || '')) return client.prenom || 'Client sans nom';
-    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) return nom || 'Client sans nom';
-    if (!nom && !client.entreprise) return 'Client sans nom';
-    return nom || client.entreprise || 'Client sans nom';
+    if (/^(ClientPersist|Test_|test_)/i.test(client.nom || '')) return client.prenom || '';
+    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) return nom || '';
+    if (!nom && !client.entreprise) return '';
+    return nom || client.entreprise || '';
   };
 
   // Helper: compute line total robustly (handles montant, camelCase, snake_case)
@@ -1627,7 +1627,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 )}
               </div>
               <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h2>
-              <p className={`text-sm ${textMuted}`}>{cleanClientName(client) || (selected.client_nom || 'Client supprimé')} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
+              <p className={`text-sm ${textMuted}`}>
+                {cleanClientName(client) || selected.client_nom || ''}
+                {!cleanClientName(client) && !selected.client_nom && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(selected.id); }}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/40 text-amber-400 hover:bg-amber-900/60' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'} transition-colors`}
+                  >
+                    <AlertTriangle size={11} /> Client manquant · Assigner →
+                  </button>
+                )}
+                {(cleanClientName(client) || selected.client_nom) && ` · `}{new Date(selected.date).toLocaleDateString('fr-FR')}
+              </p>
             </div>
 
             {/* Header actions - with labels for better accessibility */}
@@ -3850,24 +3861,29 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>⏰ Relancer</span>
                     )}
                     {isExpired(d) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
+                    {d.statut === 'brouillon' && (!d.client_id || !client) && (
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>⚠️ Incomplet</span>
+                    )}
                   </div>
-                  <p className={`text-xs ${textMuted} truncate max-w-[280px]`} title={`${cleanClientName(client) || d.client_nom || 'Client sans nom'}${chantier ? ` · ${chantier.nom}` : ''} · ${new Date(d.date).toLocaleDateString('fr-FR')}`}>
+                  <p className={`text-xs ${textMuted} truncate max-w-[280px]`} title={`${cleanClientName(client) || d.client_nom || 'Client manquant'}${chantier ? ` · ${chantier.nom}` : ''} · ${new Date(d.date).toLocaleDateString('fr-FR')}`}>
                     {(() => {
-                      const name = cleanClientName(client) || (d.client_nom || 'Client sans nom');
-                      const isMissing = !client && !d.client_nom;
-                      if (isMissing) return (
+                      const name = cleanClientName(client);
+                      const fallbackName = d.client_nom || '';
+                      const displayName = name || fallbackName;
+                      // Client manquant: pas de client_id, ou client_id pointe vers un client supprimé, ou client sans nom
+                      const isOrphan = !d.client_id || (d.client_id && !client);
+                      const isNameless = client && !name;
+                      if (isOrphan || isNameless) return (
                         <span className="inline-flex items-center gap-1">
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                            <AlertTriangle size={10} /> Client manquant
+                            <AlertTriangle size={10} /> {isOrphan ? 'Client manquant' : 'Client sans nom'}
                           </span>
                           <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:text-amber-500'}`}>
                             Assigner
                           </button>
                         </span>
                       );
-                      return name === 'Client sans nom'
-                        ? <span className="italic text-slate-400">{name}</span>
-                        : name;
+                      return displayName;
                     })()}
                     {chantier ? ` · ${chantier.nom}` : ''}
                     {` · ${new Date(d.date).toLocaleDateString('fr-FR')}`}

@@ -662,6 +662,11 @@ export default function DevisExpressModal({
                 </>
               )}
             </button>
+            {!selectedClient && lignes.length > 0 && !isCreating && (
+              <p className={`text-xs text-center mt-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                ⚠️ Veuillez sélectionner un client avant de créer le devis
+              </p>
+            )}
           </div>
         )}
 
