@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Plus, Search, X, ChevronDown, ChevronRight, Calendar, Clock,
-  ClipboardList, Trash2, AlertCircle, CheckCircle2, Star,
+  ClipboardList, Trash2, AlertCircle, CheckCircle2, Star, Archive,
   Building2, Users, Tag, StickyNote, ChevronLeft, Filter,
   ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square,
   Mic, MicOff, Send, Share2, Copy, ExternalLink, PartyPopper
@@ -1746,6 +1746,30 @@ export default function MemosPage({
               {renderSection('Prochainement', inboxSections.future, 'future', '#3b82f6', Calendar)}
               {renderSection('Non triés', inboxSections.undated, 'undated', isDark ? '#94a3b8' : '#64748b', StickyNote, true)}
               {renderSection('Terminés', inboxSections.done, 'done', '#22c55e', CheckCircle2)}
+
+              {/* F6: Archive completed memos — bulk delete */}
+              {inboxSections.done.length > 2 && (
+                <div className={`flex justify-center py-2`}>
+                  <button
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Archiver les terminés',
+                        message: `Supprimer définitivement ${inboxSections.done.length} mémo${inboxSections.done.length > 1 ? 's' : ''} terminé${inboxSections.done.length > 1 ? 's' : ''} ?`,
+                        confirmText: 'Archiver',
+                        variant: 'danger',
+                      });
+                      if (ok) {
+                        inboxSections.done.forEach(m => deleteMemo(m.id));
+                        showToast(`${inboxSections.done.length} mémos archivés`, 'success');
+                      }
+                    }}
+                    className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+                  >
+                    <Archive size={13} />
+                    Archiver les {inboxSections.done.length} terminés
+                  </button>
+                </div>
+              )}
 
               {filteredMemos.length === 0 && (
                 <div className={`text-center py-12 ${tc.muted}`}>

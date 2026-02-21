@@ -1756,6 +1756,42 @@ export default function Dashboard({
                     </div>
                   </div>
                   <p className={`text-xs ${mutedClass} mt-2`}>Score réglementaire · Voir détails →</p>
+                  {/* A7: Insurance expiration alerts — contextual color */}
+                  {(() => {
+                    const alerts = [];
+                    const now = new Date();
+                    const addAlert = (label, dateStr) => {
+                      if (!dateStr) return;
+                      const exp = new Date(dateStr);
+                      const daysLeft = Math.ceil((exp - now) / 86400000);
+                      if (daysLeft <= 0) alerts.push({ label, daysLeft, color: 'red', text: 'Expirée !' });
+                      else if (daysLeft <= 30) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
+                      else if (daysLeft <= 90) alerts.push({ label, daysLeft, color: 'red', text: `Expire dans ${daysLeft}j` });
+                      else if (daysLeft <= 180) alerts.push({ label, daysLeft, color: 'orange', text: `Expire dans ${daysLeft}j` });
+                    };
+                    addAlert('RC Pro', entreprise?.rcProValidite);
+                    addAlert('Décennale', entreprise?.decennaleValidite);
+                    if (alerts.length > 0) {
+                      const dismissed = localStorage.getItem('cp_conformity_alert_dismissed');
+                      const dismissedDate = dismissed ? new Date(parseInt(dismissed)) : null;
+                      const canDismiss = alerts.every(a => a.daysLeft > 30);
+                      if (dismissedDate && canDismiss && (now - dismissedDate < 86400000)) return null;
+                      return (
+                        <div className={`mt-3 space-y-1.5`}>
+                          {alerts.map(a => (
+                            <div key={a.label} className={`flex items-center justify-between text-xs px-2 py-1.5 rounded-lg ${a.color === 'red' ? (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-700') : (isDark ? 'bg-orange-900/30 text-orange-400' : 'bg-orange-50 text-orange-700')}`}>
+                              <span className="font-medium">{a.label}</span>
+                              <span>{a.text}</span>
+                            </div>
+                          ))}
+                          {canDismiss && (
+                            <button onClick={(e) => { e.stopPropagation(); localStorage.setItem('cp_conformity_alert_dismissed', Date.now().toString()); }} className={`text-[10px] ${mutedClass}`}>Masquer 24h</button>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               );
             })()}
