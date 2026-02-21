@@ -8,6 +8,46 @@ import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
 import './index.css'
 
+// ── Stale chunk reload handler ──────────────────────────────────────
+// When a new deployment happens, old JS chunks (e.g. DevisPage-abc123.js)
+// no longer exist on the server. Lazy imports fail with ChunkLoadError.
+// This handler auto-reloads the page once to get fresh bundles.
+const RELOAD_KEY = 'chantierpro_chunk_reload';
+window.addEventListener('error', (event) => {
+  const msg = event?.message || event?.error?.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('ChunkLoadError') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Importing a module script failed')
+  ) {
+    // Prevent infinite reload loop — only reload once per session
+    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    if (!lastReload || Date.now() - parseInt(lastReload, 10) > 30000) {
+      console.warn('[ChunkError] Stale bundle detected, reloading...', msg);
+      sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+      window.location.reload();
+    }
+  }
+});
+
+// Also catch unhandled promise rejections (dynamic import() returns a promise)
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = event?.reason?.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('ChunkLoadError') ||
+    msg.includes('Importing a module script failed')
+  ) {
+    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    if (!lastReload || Date.now() - parseInt(lastReload, 10) > 30000) {
+      console.warn('[ChunkError] Stale dynamic import, reloading...', msg);
+      sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+      window.location.reload();
+    }
+  }
+});
+
 // Lazy load portal (separate from main app)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
 

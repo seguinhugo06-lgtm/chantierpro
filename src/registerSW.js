@@ -9,12 +9,32 @@ import { logger } from './lib/logger';
 // Check if we're in a browser environment
 const isSupported = 'serviceWorker' in navigator;
 
+// Build version — changes every build to detect stale bundles
+const BUILD_VERSION = Date.now().toString(36);
+
 /**
  * @typedef {Object} SWRegistrationOptions
  * @property {(needRefresh: boolean) => void} [onNeedRefresh] - Called when update is available
  * @property {() => void} [onOfflineReady] - Called when app is ready for offline use
  * @property {(error: Error) => void} [onRegisterError] - Called on registration error
  */
+
+/**
+ * Auto-reload when a new SW takes control of the page.
+ * This prevents stale JS bundles (e.g. old DevisPage chunk referencing
+ * an older React bundle where useMemo was tree-shaken differently).
+ */
+function setupControllerChangeReload() {
+  if (!isSupported) return;
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    logger.debug('[SW] New service worker took control — reloading page');
+    window.location.reload();
+  });
+}
 
 /**
  * Initialize service worker with update handling
@@ -37,6 +57,9 @@ export function initServiceWorker(options = {}) {
     return { updateSW: () => Promise.resolve(), offlineReady: false, needRefresh: false };
   }
 
+  // Auto-reload when new SW takes control (prevents stale bundle mismatch)
+  setupControllerChangeReload();
+
   try {
     updateSW = registerSW({
       immediate: true,
@@ -51,13 +74,20 @@ export function initServiceWorker(options = {}) {
         logger.debug('[SW] App ready to work offline');
       },
       onRegistered(registration) {
-        logger.debug('[SW] Registered:', registration?.scope);
+        logger.debug('[SW] Registered:', registration?.scope, 'build:', BUILD_VERSION);
 
-        // Check for updates every hour
         if (registration) {
+          // Check for updates every 15 minutes (was 1h — too slow)
           setInterval(() => {
             registration.update();
-          }, 60 * 60 * 1000);
+          }, 15 * 60 * 1000);
+
+          // Also check for updates when tab becomes visible (user returns to tab)
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+              registration.update();
+            }
+          });
         }
       },
       onRegisterError(error) {
