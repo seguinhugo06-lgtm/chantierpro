@@ -964,7 +964,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
     .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
     .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
-    .missing-legal { color: #dc2626; font-style: italic; font-weight: 500; }
+    .missing-legal { color: #94a3b8; font-style: italic; font-size: 7pt; }
+    @media print { .missing-legal { display: none; } }
     .doc-type { text-align: right; }
     .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
     .doc-info { font-size: 9pt; color: #64748b; }
@@ -1009,10 +1010,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
+        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
         ${getRCSComplet() ? `<br>${getRCSComplet()}` : ''}
-        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
+        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -1090,7 +1091,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || '<span class="missing-legal">[Nom entreprise manquant]</span>'}<br>
+        · Chèque à l'ordre de ${entreprise?.nom || ''}<br>
         · Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
@@ -1121,7 +1122,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
   </div>
   ` : ''}
 
@@ -1143,7 +1144,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">[OK] Signé électroniquement'+(doc.signataire ? ' par '+doc.signataire : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+doc.signataire : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
     </div>
   </div>
   ` : ''}
@@ -1154,12 +1155,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
     ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
     ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
-    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant]</span>'}
+    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
     ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
     ${getRCSComplet() ? ` | ${getRCSComplet()}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant]</span>' : '')}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
@@ -1403,6 +1404,31 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
 
     return issues;
+  };
+
+  /**
+   * getLegalIssues — returns only the legal profile issues (SIRET, adresse, etc.)
+   */
+  const getLegalIssues = () => {
+    const issues = [];
+    if (!entreprise?.siret) issues.push({ id: 'no_siret', label: 'SIRET non renseigné', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
+    if (!entreprise?.adresse) issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
+    if (!entreprise?.formeJuridique) issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
+    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
+    return issues;
+  };
+
+  /**
+   * tryDownload — checks legal compliance before PDF download
+   * Shows warning modal if profile incomplete, but allows "download anyway"
+   */
+  const tryDownload = (doc, downloadFn) => {
+    const legalIssues = getLegalIssues();
+    if (legalIssues.length > 0) {
+      setSendValidationIssues({ issues: legalIssues, doc, sendFn: downloadFn, isDownload: true });
+      return;
+    }
+    downloadFn(doc);
   };
 
   /**
@@ -1686,6 +1712,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {needsFollowUp(selected) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
+                {(() => {
+                  const legal = getLegalIssues();
+                  if (legal.length === 0) return null;
+                  return (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
+                      title={`Champs manquants : ${legal.map(i => i.label).join(', ')}`}
+                    >
+                      ⚠ {legal.length} champ{legal.length > 1 ? 's' : ''} légal{legal.length > 1 ? 'aux' : ''} manquant{legal.length > 1 ? 's' : ''}
+                    </span>
+                  );
+                })()}
               </div>
               <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h2>
               <p className={`text-sm ${textMuted}`}>
@@ -1708,7 +1746,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             {/* Header actions - with labels for better accessibility */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={() => { setActionLoading('pdf'); try { printPDF(selected); } finally { setTimeout(() => setActionLoading(null), 500); } }}
+                onClick={() => tryDownload(selected, (doc) => { setActionLoading('pdf'); try { printPDF(doc); } finally { setTimeout(() => setActionLoading(null), 500); } })}
                 disabled={actionLoading === 'pdf'}
                 className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 title="Télécharger le PDF"
@@ -2792,7 +2830,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <button onClick={() => { printPDF(selected); }} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm">
+                  <button onClick={() => tryDownload(selected, printPDF)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm">
                     <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
                     <span className="hidden sm:inline">Imprimer / PDF</span>
                     <span className="sm:hidden">PDF</span>
@@ -2873,12 +2911,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className="p-6">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-red-900/40' : 'bg-red-50'}`}>
-                    <AlertTriangle size={24} className="text-red-500" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${sendValidationIssues.isDownload ? (isDark ? 'bg-amber-900/40' : 'bg-amber-50') : (isDark ? 'bg-red-900/40' : 'bg-red-50')}`}>
+                    <AlertTriangle size={24} className={sendValidationIssues.isDownload ? 'text-amber-500' : 'text-red-500'} />
                   </div>
                   <div>
-                    <h3 className={`text-lg font-bold ${textPrimary}`}>Envoi impossible</h3>
-                    <p className={`text-sm ${textMuted}`}>Corrigez ces éléments avant d'envoyer</p>
+                    <h3 className={`text-lg font-bold ${textPrimary}`}>{sendValidationIssues.isDownload ? 'Profil incomplet' : 'Envoi impossible'}</h3>
+                    <p className={`text-sm ${textMuted}`}>{sendValidationIssues.isDownload ? 'Votre profil entreprise est incomplet' : 'Corrigez ces éléments avant d\'envoyer'}</p>
                   </div>
                 </div>
 
@@ -2973,7 +3011,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
                       style={{ backgroundColor: couleur }}
                     >
-                      Envoyer quand même
+                      {sendValidationIssues.isDownload ? 'Télécharger quand même' : 'Envoyer quand même'}
                     </button>
                   )}
                 </div>
@@ -4075,7 +4113,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
-                  onClick={() => { printPDF(selected); }}
+                  onClick={() => tryDownload(selected, printPDF)}
                   className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm"
                 >
                   <Download size={16} className="sm:w-[18px] sm:h-[18px]" />

@@ -138,7 +138,8 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     .signature-box p { font-size: 7pt; color: #64748b; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
-    .missing-legal { color: #dc2626; font-style: italic; font-weight: 500; }
+    .missing-legal { color: #94a3b8; font-style: italic; font-size: 7pt; }
+    @media print { .missing-legal { display: none; } }
     .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
     @media print { body { padding: 15px; } }
   </style>
@@ -154,10 +155,10 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
         ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
       </div>
       <div class="entreprise-legal">
-        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant — Complétez votre profil]</span>'}
+        ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
         ${getRCSComplet(entreprise) ? `<br>${getRCSComplet(entreprise)}` : ''}
-        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : (!isMicro ? '<br><span class="missing-legal">[N° TVA Intracommunautaire manquant]</span>' : '')}
+        ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
@@ -235,7 +236,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || '<span class="missing-legal">[Nom entreprise manquant]</span>'}<br>
+        · Chèque à l'ordre de ${entreprise?.nom || ''}<br>
         · Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
@@ -266,7 +267,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : '<span class="missing-legal">[Adresse manquante — à compléter dans Paramètres > Identité]</span>'}
+    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
   </div>
   ` : ''}
 
@@ -299,12 +300,12 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
     ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
     ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
-    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : '<span class="missing-legal">[SIRET manquant]</span>'}
+    ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
     ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
     ${getRCSComplet(entreprise) ? ` | ${getRCSComplet(entreprise)}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : (!isMicro ? '<span class="missing-legal">[N° TVA manquant]</span>' : '')}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : '<span class="missing-legal">[Assurance décennale manquante — Complétez Paramètres > Assurances]</span>'}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
