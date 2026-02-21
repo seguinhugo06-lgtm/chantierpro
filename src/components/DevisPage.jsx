@@ -1287,6 +1287,73 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return null;
   };
 
+  // ============ PRE-SEND VALIDATION ============
+  const [sendValidationIssues, setSendValidationIssues] = useState(null); // null or { issues: [], doc }
+
+  /**
+   * validateDevisForSend — checks all prerequisites before allowing send
+   * Returns array of { id, label, action?, actionLabel? } issues, or empty array if valid.
+   */
+  const validateDevisForSend = (doc) => {
+    const issues = [];
+    const client = clients.find(c => c.id === doc.client_id);
+
+    // 1. Client must exist
+    if (!doc.client_id || !client) {
+      issues.push({ id: 'no_client', label: 'Aucun client associé au devis', actionLabel: 'Modifier le devis', action: 'edit' });
+    }
+
+    // 2. Must have at least one line
+    const allLignes = doc.sections?.length > 0
+      ? doc.sections.flatMap(s => s.lignes || [])
+      : (doc.lignes || []);
+    if (allLignes.length === 0) {
+      issues.push({ id: 'no_lignes', label: 'Aucune ligne de prestation', actionLabel: 'Ajouter des lignes', action: 'edit' });
+    }
+
+    // 3. Total HT must be > 0
+    const totalHT = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
+    if (totalHT <= 0 && allLignes.length > 0) {
+      issues.push({ id: 'zero_total', label: 'Montant total HT = 0 € — vérifiez les prix unitaires', actionLabel: 'Modifier les lignes', action: 'edit' });
+    }
+
+    // 4. Lines with zero price
+    const zeroLines = allLignes.filter(l => {
+      const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
+      return pu <= 0;
+    });
+    if (zeroLines.length > 0) {
+      const desc = zeroLines.length === 1
+        ? `1 ligne sans prix : "${(zeroLines[0].description || 'Sans titre').substring(0, 40)}"`
+        : `${zeroLines.length} lignes sans prix unitaire`;
+      issues.push({ id: 'zero_price_lines', label: desc, actionLabel: 'Corriger les prix', action: 'edit' });
+    }
+
+    // 5. Entreprise info — SIRET required for legal compliance
+    if (!entreprise?.siret) {
+      issues.push({ id: 'no_siret', label: 'SIRET non renseigné dans vos paramètres', actionLabel: 'Compléter le profil →', action: 'settings' });
+    }
+
+    // 6. Entreprise address
+    if (!entreprise?.adresse) {
+      issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante', actionLabel: 'Compléter le profil →', action: 'settings' });
+    }
+
+    return issues;
+  };
+
+  /**
+   * trySend — validates, shows issues if any, or proceeds with send function
+   */
+  const trySend = (doc, sendFn) => {
+    const issues = validateDevisForSend(doc);
+    if (issues.length > 0) {
+      setSendValidationIssues({ issues, doc, sendFn });
+      return;
+    }
+    sendFn(doc);
+  };
+
   // Send helpers — update status FIRST, then open communication link in setTimeout
   // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
   const sendWhatsApp = (doc) => {
@@ -1703,7 +1770,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 return (
                   <select
                     value={selected.statut}
-                    onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+                    onChange={e => {
+                      const newStatus = e.target.value;
+                      // Validate before allowing transition to 'envoye'
+                      if (newStatus === 'envoye' && selected.statut === 'brouillon') {
+                        const issues = validateDevisForSend(selected);
+                        if (issues.length > 0) {
+                          setSendValidationIssues({ issues, doc: selected });
+                          e.target.value = selected.statut; // Reset dropdown
+                          return;
+                        }
+                      }
+                      onUpdate(selected.id, { statut: newStatus }); setSelected(s => ({...s, statut: newStatus}));
+                    }}
                     aria-label="Changer le statut du document"
                     className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border outline-none ${isDark ? `${statusColors.darkBg || 'bg-slate-700'} ${statusColors.darkText || 'text-slate-300'} border-slate-600` : `${statusColors.bg || 'bg-slate-100'} ${statusColors.text || 'text-slate-600'} border-slate-200`}`}
                   >
@@ -1721,10 +1800,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {selected.statut === 'brouillon' && (
                     <div className="relative flex items-center">
                       <button
-                        onClick={() => (selected.total_ttc || 0) > 0 ? sendEmail(selected) : null}
-                        disabled={(selected.total_ttc || 0) <= 0}
-                        title={(selected.total_ttc || 0) <= 0 ? "Ajoutez un montant avant d'envoyer" : undefined}
-                        className={`px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all shadow-md ${(selected.total_ttc || 0) <= 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                        onClick={() => trySend(selected, sendEmail)}
+                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all shadow-md hover:opacity-90"
                         style={{ backgroundColor: couleur }}
                       >
                         <Send size={16} /> Envoyer
@@ -1742,15 +1819,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                           <>
                           <div className="fixed inset-0 z-40" onClick={() => setShowChannelDropdown(false)} />
                           <div className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                            <button onClick={() => { sendWhatsApp(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <button onClick={() => { trySend(selected, sendWhatsApp); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                               <span className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
                               WhatsApp
                             </button>
-                            <button onClick={() => { sendSMS(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <button onClick={() => { trySend(selected, sendSMS); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                               <span className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
                               SMS
                             </button>
-                            <button onClick={() => { sendEmail(selected); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
+                            <button onClick={() => { trySend(selected, sendEmail); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                               <span className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><Mail size={14} /></span>
                               Email
                             </button>
@@ -2709,6 +2786,82 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               >
                 Plus tard
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pre-send validation issues modal */}
+        {sendValidationIssues && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSendValidationIssues(null)}>
+            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-red-900/40' : 'bg-red-50'}`}>
+                    <AlertTriangle size={24} className="text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-bold ${textPrimary}`}>Envoi impossible</h3>
+                    <p className={`text-sm ${textMuted}`}>Corrigez ces éléments avant d'envoyer</p>
+                  </div>
+                </div>
+
+                {/* Issues list */}
+                <div className="space-y-2 mb-6">
+                  {sendValidationIssues.issues.map(issue => (
+                    <div key={issue.id} className={`flex items-start gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                      <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${textPrimary}`}>{issue.label}</p>
+                      </div>
+                      {issue.action === 'settings' && (
+                        <button
+                          onClick={() => { setSendValidationIssues(null); setSelected(null); setPage('settings'); }}
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
+                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                        >
+                          {issue.actionLabel}
+                        </button>
+                      )}
+                      {issue.action === 'edit' && (
+                        <button
+                          onClick={() => {
+                            const doc = sendValidationIssues.doc;
+                            setSendValidationIssues(null);
+                            if (doc) {
+                              setEditingDevis(doc);
+                              setShowDevisWizard(true);
+                            }
+                          }}
+                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
+                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
+                        >
+                          {issue.actionLabel}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSendValidationIssues(null)}
+                    className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                  >
+                    Compris
+                  </button>
+                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => i.id === 'no_siret' || i.id === 'no_adresse') && (
+                    <button
+                      onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
+                      className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
+                      style={{ backgroundColor: couleur }}
+                    >
+                      Envoyer quand même
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
