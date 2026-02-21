@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList, Settings } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 
@@ -55,9 +55,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const [mobileWeekDay, setMobileWeekDay] = useState(0); // index into weekDays for mobile week grid
   const [agendaRange, setAgendaRange] = useState(30); // days to show in agenda view
   const [agendaHideEmpty, setAgendaHideEmpty] = useState(true); // P2.6: hide empty days
+  const [workHourStart, setWorkHourStart] = useState(() => { try { return parseInt(localStorage.getItem('cp_planning_hour_start')) || 7; } catch { return 7; } });
+  const [workHourEnd, setWorkHourEnd] = useState(() => { try { return parseInt(localStorage.getItem('cp_planning_hour_end')) || 20; } catch { return 20; } });
+  const [showPlanningSettings, setShowPlanningSettings] = useState(false);
   const weekGridRef = useRef(null);
   const detailModalRef = useRef(null);
-  const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', dateEnd: '', rappel: '' };
+  const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', recurrenceDays: [], recurrenceOccurrences: '', recurrenceEndType: 'date', dateEnd: '', rappel: '' };
   const [form, setForm] = useState(emptyForm);
 
   // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
@@ -199,16 +202,25 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       expanded.push(ev);
       if (!ev.recurrence || ev.recurrence === 'never' || !ev.date) return;
       const endStr = ev.recurrenceEnd || rangeEndStr;
+      const maxOccurrences = ev.recurrenceEndType === 'count' && ev.recurrenceOccurrences ? parseInt(ev.recurrenceOccurrences) : Infinity;
       const srcDate = new Date(ev.date + 'T00:00:00');
       let cur = new Date(srcDate);
-      const maxIter = ev.recurrence === 'daily' ? 365 : 100; // daily needs more iterations
+      const maxIter = (ev.recurrence === 'daily' || ev.recurrence === 'custom') ? 365 : 100;
+      let occurrenceCount = 0;
       for (let i = 0; i < maxIter; i++) {
-        if (ev.recurrence === 'daily') cur.setDate(cur.getDate() + 1);
+        if (ev.recurrence === 'custom') {
+          // Custom: iterate day by day, only keep matching weekdays
+          cur.setDate(cur.getDate() + 1);
+          const dayIndex = (cur.getDay() + 6) % 7; // Mon=0, Sun=6
+          if (!ev.recurrenceDays || !ev.recurrenceDays.includes(dayIndex)) continue;
+        } else if (ev.recurrence === 'daily') cur.setDate(cur.getDate() + 1);
         else if (ev.recurrence === 'weekly') cur.setDate(cur.getDate() + 7);
         else if (ev.recurrence === 'biweekly') cur.setDate(cur.getDate() + 14);
         else cur.setMonth(cur.getMonth() + 1);
         const dateStr = formatLocalDate(cur);
-        if (dateStr > endStr) break;
+        if (ev.recurrenceEndType !== 'count' && dateStr > endStr) break;
+        occurrenceCount++;
+        if (occurrenceCount > maxOccurrences) break;
         expanded.push({
           ...ev,
           id: `${ev.id}_rec_${dateStr}`,
@@ -405,26 +417,71 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             )}
           </div>
           {/* Recurrence */}
-          <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Récurrence</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
-                <option value="never">Jamais</option>
-                <option value="daily">Chaque jour</option>
-                <option value="weekly">Chaque semaine</option>
-                <option value="biweekly">Toutes les 2 semaines</option>
-                <option value="monthly">Chaque mois</option>
-              </select>
-            </div>
-            {form.recurrence !== 'never' && (
+          <div>
+            <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Jusqu'au</label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Récurrence</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
+                  <option value="never">Jamais</option>
+                  <option value="daily">Chaque jour</option>
+                  <option value="weekly">Chaque semaine</option>
+                  <option value="biweekly">Toutes les 2 semaines</option>
+                  <option value="monthly">Chaque mois</option>
+                  <option value="custom">Personnalisé</option>
+                </select>
+              </div>
+              {form.recurrence !== 'never' && (
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Fin de récurrence</label>
+                  <div className="flex gap-1 mb-1.5">
+                    <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                      style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
+                    <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                      style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>Après N fois</button>
+                  </div>
+                  {form.recurrenceEndType === 'count' ? (
+                    <input type="number" min="1" max="365" placeholder="Ex : 12" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceOccurrences} onChange={e => setForm(p => ({...p, recurrenceOccurrences: e.target.value}))} />
+                  ) : (
+                    <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Weekday picker for custom recurrence */}
+            {form.recurrence === 'custom' && (
+              <div className="mt-3">
+                <label className={`block text-xs font-medium mb-1.5 ${textMuted}`}>Jours de la semaine</label>
+                <div className="flex gap-1.5">
+                  {JOURS.map((j, i) => (
+                    <button key={i} type="button" onClick={() => {
+                      setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
+                    }}
+                      className={`w-10 h-10 rounded-full text-xs font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
+                      {j}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi-même</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label>
+              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
+                <option value="">Moi-même</option>
+                {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
+                  <option value="" disabled>— Aucun employé configuré —</option>
+                )}
+              </select>
+              {equipe.length === 0 && setPage && (
+                <button type="button" onClick={() => setPage('equipe')} className="text-xs mt-1 hover:underline" style={{ color: couleur }}>
+                  Configurer votre équipe →
+                </button>
+              )}
+            </div>
             {clients.length > 0 && (
               <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
             )}
@@ -536,20 +593,26 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             Aujourd'hui
           </button>
           {/* Collaborator filter — separated select */}
-          {equipe.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className={`text-[10px] uppercase tracking-wider font-medium ${textMuted}`}>Afficher pour</span>
-              <select
-                className={`px-3 py-1.5 border rounded-lg text-xs font-medium ${inputBg}`}
-                value={filterEmploye}
-                onChange={e => setFilterEmploye(e.target.value)}
-                aria-label="Filtrer par collaborateur"
-              >
-                <option value="">Tous</option>
-                <option value="__me__">Moi</option>
-                {equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
-              </select>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] uppercase tracking-wider font-medium ${textMuted}`}>Afficher pour</span>
+            <select
+              className={`px-3 py-1.5 border rounded-lg text-xs font-medium ${inputBg}`}
+              value={filterEmploye}
+              onChange={e => setFilterEmploye(e.target.value)}
+              aria-label="Filtrer par collaborateur"
+            >
+              <option value="">Tous</option>
+              <option value="__me__">Moi</option>
+              {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
+                <option value="" disabled>Aucun employé → Configurer l'équipe</option>
+              )}
+            </select>
+            {equipe.length === 0 && setPage && (
+              <button onClick={() => setPage('equipe')} className="text-[10px] hover:underline whitespace-nowrap" style={{ color: couleur }}>
+                Configurer →
+              </button>
+            )}
+          </div>
           )}
           {filterTypes.size > 0 && (
             <button
@@ -565,6 +628,39 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
           <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
           <button onClick={() => setViewMode('agenda')} className={`px-3 py-1.5 text-sm ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+        </div>
+        {/* Work hours settings */}
+        <div className="relative">
+          <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
+            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+            title="Paramètres horaires" aria-label="Paramètres horaires">
+            <Settings size={16} />
+          </button>
+          {showPlanningSettings && (
+            <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <p className={`text-xs font-semibold mb-3 ${textPrimary}`}>Horaires de travail</p>
+              <div className="space-y-3">
+                <div>
+                  <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de début</label>
+                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                    value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch {} }}>
+                    {Array.from({length: 8}, (_, i) => i + 5).map(h => <option key={h} value={h}>{h}h00</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                    value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch {} }}>
+                    {Array.from({length: 10}, (_, i) => i + 14).map(h => <option key={h} value={h}>{h}h00</option>)}
+                  </select>
+                </div>
+              </div>
+              <button onClick={() => setShowPlanningSettings(false)}
+                className={`mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                Fermer
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -728,8 +824,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         ) : viewMode === 'week' ? (
           // Week view — hourly grid (Google Calendar style)
           (() => {
-            const HOUR_START = 7;
-            const HOUR_END = 20;
+            const HOUR_START = workHourStart;
+            const HOUR_END = workHourEnd;
             const HOURS = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
             const HOUR_HEIGHT = 60; // px per hour slot
             const TOTAL_HEIGHT = HOURS.length * HOUR_HEIGHT;
@@ -930,7 +1026,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           (() => {
             const dayStr = formatLocalDate(date);
             const dayEvents = getEventsForDay(dayStr);
-            const HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 7h-20h
+            const HOURS = Array.from({ length: workHourEnd - workHourStart + 1 }, (_, i) => i + workHourStart);
 
             // Separate all-day/multi-day events from timed events
             const allDayEvts = dayEvents.filter(ev => !ev.time || ev.duration >= 480 || (ev.dateEnd && ev.dateEnd !== ev.date));
@@ -1280,7 +1376,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <TypeIcon size={20} />
                     </div>
                     <div>
-                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁 ${showDetail.recurrence === 'daily' ? 'Quotidien' : showDetail.recurrence === 'weekly' ? 'Hebdo' : showDetail.recurrence === 'biweekly' ? 'Bi-hebdo' : showDetail.recurrence === 'monthly' ? 'Mensuel' : 'Récurrent'}` : ''}</p>
+                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁 ${showDetail.recurrence === 'daily' ? 'Quotidien' : showDetail.recurrence === 'weekly' ? 'Hebdo' : showDetail.recurrence === 'biweekly' ? 'Bi-hebdo' : showDetail.recurrence === 'monthly' ? 'Mensuel' : showDetail.recurrence === 'custom' ? 'Personnalisé' : 'Récurrent'}` : ''}</p>
                       <h2 className={`font-bold ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
@@ -1334,27 +1430,66 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         </div>
                       )}
                     </div>
-                    <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Récurrence</label>
-                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
-                          <option value="never">Jamais</option>
-                          <option value="daily">Chaque jour</option>
-                          <option value="weekly">Chaque semaine</option>
-                          <option value="biweekly">Toutes les 2 semaines</option>
-                          <option value="monthly">Chaque mois</option>
-                        </select>
-                      </div>
-                      {form.recurrence !== 'never' && (
+                    <div>
+                      <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                         <div>
-                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Jusqu'au</label>
-                          <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Récurrence</label>
+                          <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
+                            <option value="never">Jamais</option>
+                            <option value="daily">Chaque jour</option>
+                            <option value="weekly">Chaque semaine</option>
+                            <option value="biweekly">Toutes les 2 semaines</option>
+                            <option value="monthly">Chaque mois</option>
+                            <option value="custom">Personnalisé</option>
+                          </select>
+                        </div>
+                        {form.recurrence !== 'never' && (
+                          <div>
+                            <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Fin de récurrence</label>
+                            <div className="flex gap-1 mb-1.5">
+                              <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
+                              <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                                style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>Après N fois</button>
+                            </div>
+                            {form.recurrenceEndType === 'count' ? (
+                              <input type="number" min="1" max="365" placeholder="Ex : 12" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceOccurrences} onChange={e => setForm(p => ({...p, recurrenceOccurrences: e.target.value}))} />
+                            ) : (
+                              <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {form.recurrence === 'custom' && (
+                        <div className="mt-3">
+                          <label className={`block text-xs font-medium mb-1.5 ${textMuted}`}>Jours de la semaine</label>
+                          <div className="flex gap-1.5">
+                            {JOURS.map((j, i) => (
+                              <button key={i} type="button" onClick={() => {
+                                setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
+                              }}
+                                className={`w-10 h-10 rounded-full text-xs font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
+                                {j}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Aucun</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
+                      <div>
+                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label>
+                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
+                          <option value="">Aucun</option>
+                          {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
+                            <option value="" disabled>— Aucun employé configuré —</option>
+                          )}
+                        </select>
+                      </div>
                     </div>
                     {clients.length > 0 && (
                       <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
