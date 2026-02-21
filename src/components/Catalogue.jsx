@@ -1443,8 +1443,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {(() => {
                 const totalArticles = catalogue.length;
+                // E1 fix: only count items with both defined stock AND prixAchat
                 const stockItems = catalogue.filter(c => (c.stock_actuel ?? c.stock) != null && (c.stock_actuel ?? c.stock) > 0);
-                const totalStockValue = stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0);
+                const stockWithPrice = stockItems.filter(c => c.prixAchat > 0);
+                const totalStockValue = stockWithPrice.reduce((s, c) => s + c.prixAchat * (c.stock_actuel ?? c.stock), 0);
                 const avgMargin = (() => {
                   const withMargin = catalogue.filter(c => c.prix > 0 && c.prixAchat != null);
                   if (withMargin.length === 0) return null;
@@ -1455,7 +1457,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                 })();
                 return [
                   { label: 'Articles catalogue', value: totalArticles, color: couleur },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : '—'), color: couleur },
+                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1)}k€` : '—'), color: couleur, title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat' },
                   { label: 'Marge moy.', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)}%` : '—'), color: avgMargin && avgMargin >= 25 ? '#22c55e' : '#f59e0b' },
                   { label: 'Stock bas', value: alertesStock.length, color: alertesStock.length > 0 ? '#ef4444' : '#22c55e', title: 'Articles en dessous du seuil minimum de stock' },
                   { label: 'Favoris', value: favoris.length, color: '#f59e0b', onClick: () => setActiveTab('favoris') },
@@ -2356,15 +2358,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <p className={`text-[11px] ${textMuted}`}>Stock bas</p>
                   <p className={`text-xl font-bold ${alertesStock.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{alertesStock.length}</p>
                 </div>
-                {/* #6: Valeur stock — conditional color */}
+                {/* #6: Valeur stock — E1 fix: only count items with prixAchat */}
                 {(() => {
-                  const stockValue = stockItems.reduce((s, c) => s + (c.prixAchat || 0) * (c.stock_actuel ?? c.stock ?? 0), 0);
+                  const withPrice = stockItems.filter(c => c.prixAchat > 0);
+                  const stockValue = withPrice.reduce((s, c) => s + c.prixAchat * (c.stock_actuel ?? c.stock ?? 0), 0);
                   const hasLowStock = alertesStock.length > 0;
-                  const stockColor = stockValue > 0 ? (hasLowStock ? '#f59e0b' : '#22c55e') : '#94a3b8';
+                  const noPrice = stockItems.length > 0 && withPrice.length === 0;
+                  const stockColor = noPrice ? '#94a3b8' : stockValue > 0 ? (hasLowStock ? '#f59e0b' : '#22c55e') : '#94a3b8';
                   return (
-                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title="Valeur totale du stock au prix d'achat">
+                    <div className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`} title={noPrice ? "Prix d'achat manquant — valeur non calculable" : "Valeur totale du stock au prix d'achat"}>
                       <p className={`text-[11px] ${textMuted}`}>Valeur stock</p>
-                      <p className="text-xl font-bold" style={{ color: stockColor }}>{modeDiscret ? '·····' : `${(stockValue / 1000).toFixed(1)}k€`}</p>
+                      <p className="text-xl font-bold" style={{ color: stockColor }}>{modeDiscret ? '·····' : (noPrice ? 'N/A' : `${(stockValue / 1000).toFixed(1)}k€`)}</p>
                     </div>
                   );
                 })()}

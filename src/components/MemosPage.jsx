@@ -786,18 +786,21 @@ function StatsBar({ memos, isDark, couleur }) {
 
     const total = memos.length;
     const completed = memos.filter(m => m.is_done).length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     const overdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < today()).length;
 
-    // Completed this month
+    // F1 fix: completion rate = done THIS MONTH / created THIS MONTH
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     monthStart.setHours(0, 0, 0, 0);
-    const completedThisMonth = memos.filter(m =>
-      m.is_done && m.done_at && new Date(m.done_at) >= monthStart
-    ).length;
+    const createdThisMonth = memos.filter(m => {
+      const d = new Date(m.created_at || m.createdAt || m.id?.substring?.(0, 8));
+      return !isNaN(d.getTime()) && d >= monthStart;
+    });
+    const completedThisMonth = createdThisMonth.filter(m => m.is_done).length;
+    const totalThisMonth = createdThisMonth.length;
+    const completionRate = totalThisMonth > 0 ? Math.round((completedThisMonth / totalThisMonth) * 100) : (total > 0 ? Math.round((completed / total) * 100) : 0);
 
-    return { completedThisWeek, completionRate, overdueCount, completedThisMonth, completed, total };
+    return { completedThisWeek, completionRate, overdueCount, completedThisMonth, totalThisMonth, completed, total };
   }, [memos]);
 
   // #2: Completion color progressive
@@ -821,7 +824,7 @@ function StatsBar({ memos, isDark, couleur }) {
           <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, backgroundColor: completionColor }} />
         </div>
         <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {stats.completed} / {stats.total} ce mois
+          {stats.completedThisMonth} / {stats.totalThisMonth || stats.total} ce mois
         </div>
       </div>
 

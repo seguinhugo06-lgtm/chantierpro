@@ -2109,9 +2109,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // Handle chantier creation from modal
   const handleCreateChantier = (formData) => {
+    // C2: Validate chantier name
+    const RESERVED_WORDS = ['test', 'essai', 'demo', 'tmp', 'aaa', 'xxx', 'azerty', 'qwerty'];
+    const trimmedName = (formData.nom || '').trim();
+    if (trimmedName.length < 5) {
+      showToast('Le nom du chantier doit contenir au moins 5 caractères', 'error');
+      return;
+    }
+    if (RESERVED_WORDS.some(w => trimmedName.toLowerCase() === w)) {
+      showToast('Nom de chantier non valide pour la production (mot réservé)', 'error');
+      return;
+    }
+
     // Duplicate detection
     const duplicate = chantiers.some(c =>
-      c.nom?.toLowerCase().trim() === (formData.nom || '').toLowerCase().trim() &&
+      c.nom?.toLowerCase().trim() === trimmedName.toLowerCase() &&
       (c.client_id || '') === (formData.client_id || formData.clientId || '') &&
       (c.adresse || '').toLowerCase().trim() === (formData.adresse || '').toLowerCase().trim()
     );
