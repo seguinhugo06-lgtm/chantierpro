@@ -931,7 +931,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(l.prixUnitaire||0)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
       </tr>

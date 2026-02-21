@@ -29,6 +29,23 @@ function getRCSComplet(entreprise) {
 }
 
 /**
+ * Robust line total — handles camelCase and snake_case fields
+ */
+function getLineTotal(l) {
+  if (l.montant != null && l.montant !== 0) return parseFloat(l.montant);
+  const qty = parseFloat(l.quantite || l.qte || 0);
+  const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || l.pu_ht || 0);
+  return qty * pu;
+}
+
+/**
+ * Robust PU extraction
+ */
+function getLinePU(l) {
+  return parseFloat(l.prixUnitaire || l.prix_unitaire || l.pu_ht || 0);
+}
+
+/**
  * Build full HTML string for a devis/facture document
  * Conforme législation française (mentions obligatoires, garanties, rétractation)
  *
@@ -58,23 +75,26 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       if (!details[rate]) {
         details[rate] = { base: 0, montant: 0 };
       }
-      const lineMontant = l.montant || (l.quantite || 0) * (l.prixUnitaire || 0);
+      const lineMontant = getLineTotal(l);
       details[rate].base += lineMontant;
       details[rate].montant += lineMontant * (rate / 100);
     });
     return details;
   })();
 
-  const lignesHTML = filterValidLignes(doc.lignes).map(l => `
+  const lignesHTML = filterValidLignes(doc.lignes).map(l => {
+    const pu = getLinePU(l);
+    const total = getLineTotal(l);
+    return `
     <tr>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire || 0).toFixed(2)} €</td>
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${pu.toFixed(2)} €</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate || 10)) + '%'}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)) < 0 ? 'color:#dc2626;' : ''}">${(l.montant || (l.quantite || 0) * (l.prixUnitaire || 0)).toFixed(2)} €</td>
-    </tr>
-  `).join('');
+      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${total.toFixed(2)} €</td>
+    </tr>`;
+  }).join('');
 
   return `<!DOCTYPE html>
 <html lang="fr">
