@@ -464,10 +464,16 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     }
   };
 
-  // Quick client creation handler
-  const handleQuickSubmit = (data) => {
-    onSubmit(data);
+  // D6: Quick client creation handler
+  const handleQuickSubmit = async (data) => {
+    const newClient = await onSubmit(data);
     setShowQuickModal(false);
+    const clientName = `${data.prenom || ''} ${data.nom}`.trim();
+    showToast(`✅ ${clientName} ajouté`, 'success');
+    // Auto-open client fiche after creation
+    if (newClient?.id) {
+      setViewId(newClient.id);
+    }
   };
 
   // Ouvrir un document (devis/facture)

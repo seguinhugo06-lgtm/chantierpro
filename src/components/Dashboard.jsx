@@ -511,8 +511,8 @@ export default function Dashboard({
   addMemo,
   toggleMemo,
 }) {
-  // Access dataLoading from context to prevent onboarding flash during Supabase load
-  const { dataLoading } = useData();
+  // Access dataLoading + addClient from context
+  const { dataLoading, addClient } = useData();
 
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -1979,6 +1979,7 @@ export default function Dashboard({
           }
         }}
         clients={clients}
+        addClient={addClient}
         isDark={isDark}
         couleur={couleur}
       />

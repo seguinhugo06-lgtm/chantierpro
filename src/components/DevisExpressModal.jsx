@@ -4,15 +4,17 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge } from '../lib/data/modeles-devis';
 import TemplateSelector from './TemplateSelector';
+import QuickClientModal from './QuickClientModal';
 
 export default function DevisExpressModal({
   isOpen,
   onClose,
   onCreateDevis,
   clients = [],
+  addClient,
   isDark = false,
   couleur = '#f97316',
   tvaDefaut = 10
@@ -28,6 +30,7 @@ export default function DevisExpressModal({
   const [remise, setRemise] = useState(0);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [modeleQtys, setModeleQtys] = useState({}); // { modeleId: qty } for step 2 preview
+  const [showQuickClient, setShowQuickClient] = useState(false);
 
   // Theme classes
   const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
@@ -422,6 +425,16 @@ export default function DevisExpressModal({
                   />
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
+                  {/* D6: Bouton Créer nouveau client */}
+                  {addClient && (
+                    <button
+                      onClick={() => setShowQuickClient(true)}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-1.5 border-2 border-dashed font-medium ${isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300' : 'border-slate-300 text-slate-500 hover:border-slate-400 hover:text-slate-700'}`}
+                    >
+                      <UserPlus size={14} />
+                      Nouveau client
+                    </button>
+                  )}
                   {filteredClients.map(client => (
                     <button
                       key={client.id}
@@ -616,6 +629,24 @@ export default function DevisExpressModal({
         isDark={isDark}
         couleur={couleur}
       />
+
+      {/* D6: Quick Client Modal — create client inline during Devis Express */}
+      {addClient && (
+        <QuickClientModal
+          isOpen={showQuickClient}
+          onClose={() => setShowQuickClient(false)}
+          onSubmit={async (clientData) => {
+            const newClient = await addClient(clientData);
+            if (newClient?.id) {
+              setSelectedClient(newClient);
+              setClientSearch('');
+            }
+          }}
+          isDark={isDark}
+          couleur={couleur}
+          existingClients={clients}
+        />
+      )}
     </div>
   );
 }
