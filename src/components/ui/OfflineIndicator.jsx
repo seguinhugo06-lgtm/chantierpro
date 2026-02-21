@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Wifi, WifiOff, RefreshCw, Cloud, CheckCircle } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Cloud, CheckCircle, Trash2 } from 'lucide-react';
 
 /**
  * OfflineIndicator - Shows network status and pending sync count
@@ -31,6 +31,7 @@ export default function OfflineIndicator({
   const [syncError, setSyncError] = useState(false);
   const syncAttempts = useRef(0);
   const prevPendingRef = useRef(pendingCount);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Listen for network changes
   useEffect(() => {
@@ -89,6 +90,25 @@ export default function OfflineIndicator({
     }
   };
 
+  const handleForceClear = async () => {
+    if (!onForceClear || isClearing) return;
+    setIsClearing(true);
+    try {
+      await onForceClear();
+      setSyncError(false);
+      syncAttempts.current = 0;
+      setShowSuccess(true);
+      setShowBanner(true);
+      setTimeout(() => { setShowSuccess(false); setShowBanner(false); }, 3000);
+    } catch (error) {
+      console.error('Force clear failed:', error);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const showClearButton = onForceClear && pendingCount > 0 && (syncError || syncAttempts.current >= 2);
+
   // Clear error on successful sync (pending drops to 0)
   useEffect(() => {
     if (pendingCount === 0 && syncError) setSyncError(false);
@@ -132,15 +152,28 @@ export default function OfflineIndicator({
             )}
           </>
         ) : syncError ? (
-          <button onClick={handleSync} className="flex items-center gap-2 cursor-pointer">
-            <RefreshCw size={16} />
-            <span>Erreur de sync — Appuyer pour réessayer</span>
-            {pendingCount > 0 && (
-              <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                {pendingCount} en attente
-              </span>
+          <div className="flex items-center gap-2">
+            <button onClick={handleSync} className="flex items-center gap-2 cursor-pointer" disabled={isSyncing}>
+              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+              <span>Erreur de sync — Appuyer pour réessayer</span>
+              {pendingCount > 0 && (
+                <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                  {pendingCount} en attente
+                </span>
+              )}
+            </button>
+            {showClearButton && (
+              <button
+                onClick={handleForceClear}
+                disabled={isClearing}
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                title="Supprimer les modifications bloquées"
+              >
+                <Trash2 size={12} />
+                Effacer
+              </button>
             )}
-          </button>
+          </div>
         ) : showSuccess ? (
           <>
             <CheckCircle size={16} />
@@ -157,6 +190,17 @@ export default function OfflineIndicator({
               >
                 <RefreshCw size={12} />
                 Synchroniser
+              </button>
+            )}
+            {showClearButton && !isSyncing && (
+              <button
+                onClick={handleForceClear}
+                disabled={isClearing}
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                title="Supprimer les modifications bloquées"
+              >
+                <Trash2 size={12} />
+                Effacer
               </button>
             )}
           </>

@@ -429,20 +429,39 @@ export default function App() {
         equipe: { create: dataAddEmployee, update: dataUpdateEmployee, delete: dataDeleteEmployee },
         catalogue: { create: dataAddCatalogueItem, update: dataUpdateCatalogueItem, delete: dataDeleteCatalogueItem },
       });
+
+      // Always refresh counter after sync
       const count = await getPendingCount();
       setPendingSync(count);
+
       if (results.success > 0) {
         showToast(`${results.success} modification${results.success > 1 ? 's' : ''} synchronisée${results.success > 1 ? 's' : ''}`, 'success');
       }
-      if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
+
+      // Show specific info about cleared/rejected mutations
+      const permanentErrors = results.errors?.filter(e => e.permanent) || [];
+      if (permanentErrors.length > 0) {
+        showToast(`${permanentErrors.length} modification${permanentErrors.length > 1 ? 's' : ''} rejetée${permanentErrors.length > 1 ? 's' : ''} et supprimée${permanentErrors.length > 1 ? 's' : ''}`, 'info');
+      } else if (results.cleared > 0 && results.success === 0 && results.failed === 0) {
         showToast('File d\'attente nettoyée', 'info');
       }
+
       if (results.failed > 0) {
-        showToast(`${results.failed} erreur${results.failed > 1 ? 's' : ''} de synchronisation`, 'error');
+        showToast(`${results.failed} modification${results.failed > 1 ? 's' : ''} en échec — nouvelle tentative automatique`, 'error');
+      }
+
+      // If everything was processed (success + cleared) and nothing is left, ensure counter is 0
+      if (count === 0 && (results.success > 0 || results.cleared > 0)) {
+        setPendingSync(0);
       }
     } catch (error) {
       console.error('Sync error:', error);
       showToast('Erreur de synchronisation', 'error');
+      // Still try to refresh the counter even on error
+      try {
+        const count = await getPendingCount();
+        setPendingSync(count);
+      } catch { /* ignore */ }
     }
   };
 

@@ -115,6 +115,55 @@ export const removeMutation = async (id) => {
 };
 
 /**
+ * Met à jour une mutation existante (ex: incrémenter retryCount)
+ * @param {Object} mutation - La mutation mise à jour (doit avoir un id)
+ */
+const updateMutation = async (mutation) => {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((resolve, reject) => {
+      const request = store.put(mutation);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    // Fallback localStorage
+    const pending = JSON.parse(localStorage.getItem('cp_pending_mutations') || '[]');
+    const idx = pending.findIndex(m => m.id === mutation.id);
+    if (idx >= 0) pending[idx] = mutation;
+    localStorage.setItem('cp_pending_mutations', JSON.stringify(pending));
+  }
+};
+
+/** Maximum sync retry attempts before force-removing a mutation */
+const MAX_RETRY_ATTEMPTS = 3;
+
+/**
+ * Détecte si une erreur est permanente (ne réussira jamais)
+ * @param {Error|Object} error
+ * @returns {boolean}
+ */
+const isPermanentError = (error) => {
+  const errMsg = error?.message || String(error || '');
+  const errStatus = error?.status || error?.statusCode || 0;
+  const errCode = error?.code || '';
+
+  // HTTP status codes that are permanent
+  if ([400, 401, 403, 404, 406, 409, 422].includes(errStatus)) return true;
+
+  // Postgres error codes (Supabase returns these via error.code)
+  // 23xxx = integrity constraints, 42xxx = syntax/schema, 28xxx = auth
+  if (/^(23|42|28)\d{3}$/.test(errCode)) return true;
+
+  // Common permanent error messages
+  if (/not found|not acceptable|bad request|forbidden|unauthorized|does not exist|violates|row-level|check constraint|unique constraint|foreign key|null value|duplicate key|permission denied|schema|invalid input/i.test(errMsg)) return true;
+
+  return false;
+};
+
+/**
  * Synchronise toutes les mutations en attente
  * @param {Object} handlers - Handlers pour chaque type d'entite
  * @returns {Promise<Object>} Resultat de la synchronisation
@@ -138,6 +187,20 @@ export const syncQueue = async (handlers) => {
         console.warn(`Mutation ${mutation.id} trop ancienne (>7j), suppression`);
         await removeMutation(mutation.id);
         results.cleared++;
+        continue;
+      }
+
+      // Auto-clear mutations that have failed too many times
+      const retryCount = mutation.retryCount || 0;
+      if (retryCount >= MAX_RETRY_ATTEMPTS) {
+        console.warn(`Mutation ${mutation.id} a échoué ${retryCount} fois, suppression définitive`);
+        await removeMutation(mutation.id);
+        results.cleared++;
+        results.errors.push({
+          mutation,
+          error: `Échec après ${retryCount} tentatives`,
+          permanent: true
+        });
         continue;
       }
 
@@ -172,17 +235,33 @@ export const syncQueue = async (handlers) => {
     } catch (error) {
       console.error(`Erreur sync mutation ${mutation.id}:`, error);
       const errMsg = error?.message || '';
-      const errStatus = error?.status || error?.statusCode || 0;
-      // Permanent errors (table missing, RLS denied, bad schema) — remove, they'll never succeed
-      const isPermanent = [400, 401, 403, 404, 406, 409, 422].includes(errStatus)
-        || /not found|not acceptable|bad request|forbidden|unauthorized|does not exist|violates|row-level/i.test(errMsg);
-      if (isPermanent) {
+
+      if (isPermanentError(error)) {
         console.warn(`Mutation ${mutation.id} erreur permanente, suppression:`, errMsg);
         await removeMutation(mutation.id);
         results.cleared++;
+        results.errors.push({ mutation, error: errMsg, permanent: true });
       } else {
-        results.failed++;
-        results.errors.push({ mutation, error: errMsg });
+        // Transient error — increment retry counter in-place
+        const retryCount = (mutation.retryCount || 0) + 1;
+        if (retryCount >= MAX_RETRY_ATTEMPTS) {
+          // Max retries reached, remove it
+          console.warn(`Mutation ${mutation.id} a atteint ${MAX_RETRY_ATTEMPTS} échecs, suppression:`, errMsg);
+          await removeMutation(mutation.id);
+          results.cleared++;
+          results.errors.push({ mutation, error: `${errMsg} (après ${retryCount} tentatives)`, permanent: true });
+        } else {
+          // Update the mutation with incremented retry count
+          try {
+            await updateMutation({ ...mutation, retryCount, lastError: errMsg });
+          } catch {
+            // If we can't even update, just remove it
+            await removeMutation(mutation.id);
+            results.cleared++;
+          }
+          results.failed++;
+          results.errors.push({ mutation, error: errMsg, retriesLeft: MAX_RETRY_ATTEMPTS - retryCount });
+        }
       }
     }
   }
