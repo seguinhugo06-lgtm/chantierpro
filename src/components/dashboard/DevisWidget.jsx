@@ -19,7 +19,7 @@ import {
   FileStack,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { formatMoney, formatDate, formatRelativeDate } from '../../lib/formatters';
+import { formatMoney, formatDate, formatRelativeDate, normalizeDevisRef } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
 import { useToast } from '../../context/AppContext';
 import { DEVIS_STATUS } from '../../lib/constants';
@@ -252,8 +252,8 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
   useEffect(() => {
     if (isOpen && client && devis) {
       const template = method === 'email'
-        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} pour un montant de ${formatMoney(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
-        : `Bonjour ${client.nom}, je vous relance concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} (${formatMoney(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
+        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${normalizeDevisRef(devis.numero, devis.type, devis.id)} pour un montant de ${formatMoney(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
+        : `Bonjour ${client.nom}, je vous relance concernant le devis ${normalizeDevisRef(devis.numero, devis.type, devis.id)} (${formatMoney(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
       setMessage(template);
     }
   }, [isOpen, client, devis, method]);
@@ -270,7 +270,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
     >
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Devis <span className="font-medium">{devis?.numero || '#' + devis?.id?.slice(-6)}</span> • {formatMoney(devis?.total_ttc)}
+          Devis <span className="font-medium">{normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
         {/* Method selector */}
@@ -340,7 +340,7 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
             </div>
             <div>
               <p className="font-medium text-gray-900 dark:text-white">
-                {devis?.numero || '#' + devis?.id?.slice(-6)}
+                {normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {client?.nom || 'Client inconnu'}

@@ -344,6 +344,40 @@ export function getStatusColor(status) {
   return STATUS_COLORS[status] || 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
 }
 
+// ============ DOCUMENT NUMBER FORMATTING ============
+
+/**
+ * Normalise une référence de devis/facture au format standard
+ * @param {string} numero - Numéro brut du document
+ * @param {string} [type='devis'] - Type: 'devis' ou 'facture'
+ * @param {string} [fallbackId] - ID de fallback si numero manquant
+ * @returns {string} Référence normalisée (ex: "DEV-2026-00015")
+ */
+export function normalizeDevisRef(numero, type = 'devis', fallbackId = '') {
+  const prefix = type === 'facture' ? 'FAC' : 'DEV';
+  if (!numero && !fallbackId) return `${prefix}-???`;
+
+  const raw = numero || fallbackId.slice(-6);
+
+  // Already in correct format DEV-2026-XXXXX or FAC-2026-XXXXX
+  if (/^(DEV|FAC)-\d{4}-\d{4,}$/.test(raw)) return raw;
+
+  // Has prefix but wrong format (e.g., DEV-783439) — normalize
+  const prefixed = raw.replace(/^(DEV|FAC)-?/i, '');
+
+  // Pure digits — format as XXXXX with year
+  const year = new Date().getFullYear();
+  const digits = prefixed.replace(/\D/g, '');
+  if (digits.length >= 5) {
+    return `${prefix}-${year}-${digits.slice(-5).padStart(5, '0')}`;
+  }
+  if (digits.length > 0) {
+    return `${prefix}-${year}-${digits.padStart(5, '0')}`;
+  }
+
+  return `${prefix}-${raw}`;
+}
+
 // ============ PHONE FORMATTING ============
 
 /**

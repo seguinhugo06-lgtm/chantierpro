@@ -4,7 +4,7 @@ import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, P
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
-import { generateId } from '../lib/utils';
+import { generateId, findDuplicateChantiers } from '../lib/utils';
 import QuickChantierModal from './QuickChantierModal';
 import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, getAllTasksByPhase, calculateProgressByPhase, generateSmartTasks, getAvailableProjectTypes } from '../lib/templates/task-templates-v2';
 import TaskGeneratorModal from './TaskGeneratorModal';
@@ -62,6 +62,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const textPrimary = isDark ? "text-slate-100" : "text-slate-900";
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
+
+  // C1: Duplicate chantier detection
+  const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
 
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
@@ -2750,6 +2753,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${statusColor}`}>
                       {statusLabel}
                     </span>
+                    {duplicateMap.has(ch.id) && (
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
+                        ⚠ Doublon probable
+                      </span>
+                    )}
                   </div>
                 </div>
 

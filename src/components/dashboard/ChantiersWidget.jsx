@@ -92,6 +92,30 @@ const statusConfig = {
     label: 'En retard',
     icon: AlertCircle,
   },
+  abandonne: {
+    color: 'bg-red-400',
+    borderColor: 'border-l-red-400',
+    textColor: 'text-red-500 dark:text-red-400',
+    bgColor: 'bg-red-50/30 dark:bg-red-900/10',
+    label: 'Abandonné',
+    icon: AlertTriangle,
+  },
+  archive: {
+    color: 'bg-slate-400',
+    borderColor: 'border-l-slate-400',
+    textColor: 'text-slate-500 dark:text-slate-400',
+    bgColor: 'bg-slate-50/50 dark:bg-slate-800/30',
+    label: 'Archivé',
+    icon: CheckCircle2,
+  },
+  brouillon: {
+    color: 'bg-slate-300',
+    borderColor: 'border-l-slate-300',
+    textColor: 'text-slate-500 dark:text-slate-400',
+    bgColor: 'bg-slate-50/50 dark:bg-slate-800/20',
+    label: 'Brouillon',
+    icon: Clock,
+  },
 };
 
 // Weather icon mapping with emojis
@@ -165,7 +189,7 @@ function isChantierLate(chantier) {
  */
 function getEffectiveStatus(chantier) {
   if (isChantierLate(chantier)) return 'en_retard';
-  return chantier.statut || 'en_cours';
+  return chantier.statut || 'prospect';
 }
 
 /**
