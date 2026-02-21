@@ -613,7 +613,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               </button>
             )}
           </div>
-          )}
           {filterTypes.size > 0 && (
             <button
               onClick={() => setFilterTypes(new Set())}
