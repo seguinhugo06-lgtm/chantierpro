@@ -1329,14 +1329,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       issues.push({ id: 'zero_price_lines', label: desc, actionLabel: 'Corriger les prix', action: 'edit' });
     }
 
-    // 5. Entreprise info — SIRET required for legal compliance
+    // 5. Entreprise info — SIRET required for legal compliance (art. R123-237 Code de commerce)
     if (!entreprise?.siret) {
-      issues.push({ id: 'no_siret', label: 'SIRET non renseigné dans vos paramètres', actionLabel: 'Compléter le profil →', action: 'settings' });
+      issues.push({ id: 'no_siret', label: 'SIRET non renseigné — mention obligatoire sur les devis et factures (loi française)', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
     }
 
-    // 6. Entreprise address
+    // 6. Entreprise address — required for legal compliance
     if (!entreprise?.adresse) {
-      issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante', actionLabel: 'Compléter le profil →', action: 'settings' });
+      issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
+    }
+
+    // 7. Entreprise name
+    if (!entreprise?.nom) {
+      issues.push({ id: 'no_nom', label: 'Nom de l\'entreprise manquant', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'nom', isLegal: true });
     }
 
     return issues;
@@ -2806,6 +2811,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
 
+                {/* Legal conformity warning */}
+                {sendValidationIssues.issues.some(i => i.isLegal) && (
+                  <div className={`rounded-xl p-3 mb-4 ${isDark ? 'bg-amber-900/20 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
+                    <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                      <strong>⚖️ Conformité légale :</strong> Votre devis ne sera pas conforme à la réglementation française sans ces informations.
+                      <button
+                        onClick={() => {
+                          const firstLegal = sendValidationIssues.issues.find(i => i.isLegal);
+                          setSendValidationIssues(null);
+                          setSelected(null);
+                          setPage('settings');
+                          if (firstLegal?.settingsTab) {
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
+                                detail: { tab: firstLegal.settingsTab, fieldId: firstLegal.settingsField }
+                              }));
+                            }, 200);
+                          }
+                        }}
+                        className="ml-1 underline font-semibold hover:opacity-80"
+                        style={{ color: isDark ? '#fbbf24' : '#d97706' }}
+                      >
+                        Compléter votre profil maintenant →
+                      </button>
+                    </p>
+                  </div>
+                )}
+
                 {/* Issues list */}
                 <div className="space-y-2 mb-6">
                   {sendValidationIssues.issues.map(issue => (
@@ -2816,7 +2849,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </div>
                       {issue.action === 'settings' && (
                         <button
-                          onClick={() => { setSendValidationIssues(null); setSelected(null); setPage('settings'); }}
+                          onClick={() => {
+                            setSendValidationIssues(null);
+                            setSelected(null);
+                            setPage('settings');
+                            // Deep link to specific settings tab/field
+                            if (issue.settingsTab) {
+                              setTimeout(() => {
+                                window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
+                                  detail: { tab: issue.settingsTab, fieldId: issue.settingsField }
+                                }));
+                              }, 200);
+                            }
+                          }}
                           className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
                           style={{ color: couleur, backgroundColor: `${couleur}15` }}
                         >
@@ -2851,7 +2896,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   >
                     Compris
                   </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => i.id === 'no_siret' || i.id === 'no_adresse') && (
+                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom'].includes(i.id)) && (
                     <button
                       onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
                       className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"

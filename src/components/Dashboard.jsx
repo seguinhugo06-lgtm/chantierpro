@@ -127,6 +127,40 @@ const PERIOD_OPTIONS = [
   { value: 'year', label: 'Cette année' },
 ];
 
+// Profile required fields — shared definition for completion %
+const PROFILE_REQUIRED_FIELDS = [
+  { key: 'nom', label: 'Nom de l\'entreprise', tab: 'identite' },
+  { key: 'adresse', label: 'Adresse', tab: 'identite' },
+  { key: 'siret', label: 'N° SIRET', tab: 'legal' },
+  { key: 'tel', label: 'Téléphone', tab: 'identite' },
+  { key: 'email', label: 'Email', tab: 'identite' },
+];
+
+// All profile fields for completion calculation (mirrors Settings.jsx)
+const PROFILE_ALL_FIELDS = [
+  ...PROFILE_REQUIRED_FIELDS,
+  { key: 'formeJuridique', label: 'Forme juridique', tab: 'legal' },
+  { key: 'codeApe', label: 'Code APE', tab: 'legal' },
+  { key: 'rcsVille', label: 'Ville RCS', tab: 'legal' },
+  { key: 'rcsNumero', label: 'N° RCS', tab: 'legal' },
+  { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', tab: 'legal' },
+  { key: 'rcProAssureur', label: 'Assureur RC Pro', tab: 'assurances' },
+  { key: 'rcProNumero', label: 'N° Police RC Pro', tab: 'assurances' },
+  { key: 'decennaleAssureur', label: 'Assureur Décennale', tab: 'assurances' },
+  { key: 'decennaleNumero', label: 'N° Police Décennale', tab: 'assurances' },
+];
+
+// Facture 2026 compliance criteria → maps to Settings tabs for deep linking
+const F26_CRITERIA = [
+  { label: 'SIRET', key: 'siret', tab: 'legal', fieldId: 'siret' },
+  { label: 'N° TVA intra.', key: 'tvaIntra', tab: 'legal', fieldId: 'tvaIntra' },
+  { label: 'RCS', key: 'rcs', tab: 'legal', fieldId: 'rcs' },
+  { label: 'Coordonnées bancaires', key: 'banque', tab: 'banque', fieldId: 'iban' },
+  { label: 'Adresse complète', key: 'adresse', tab: 'identite', fieldId: 'adresse' },
+  { label: 'Assurance RC Pro', key: 'rcPro', tab: 'assurances', fieldId: 'rcPro' },
+  { label: 'Format numérotation', key: 'numerotation', tab: null, fieldId: null },
+];
+
 // ============ UTILITY FUNCTIONS ============
 
 /**
@@ -527,6 +561,42 @@ export default function Dashboard({
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDevisExpress, setShowDevisExpress] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+
+  // Profile completion calculation
+  const profileCompletude = useMemo(() => {
+    if (!entreprise) return 0;
+    const filled = PROFILE_ALL_FIELDS.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
+    return Math.round((filled.length / PROFILE_ALL_FIELDS.length) * 100);
+  }, [entreprise]);
+
+  const missingRequiredFields = useMemo(() => {
+    if (!entreprise) return PROFILE_REQUIRED_FIELDS;
+    return PROFILE_REQUIRED_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
+  }, [entreprise]);
+
+  // Show profile setup wizard automatically if profile < 30% (first launch or incomplete)
+  const [profileSetupDismissed, setProfileSetupDismissed] = useState(() => {
+    try { return localStorage.getItem('chantierpro_profile_setup_dismissed') === 'true'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    if (profileCompletude < 30 && !profileSetupDismissed && entreprise && !showProfileSetup) {
+      // Small delay to avoid showing immediately on first render
+      const t = setTimeout(() => setShowProfileSetup(true), 800);
+      return () => clearTimeout(t);
+    }
+  }, [profileCompletude, profileSetupDismissed, entreprise]);
+
+  // Navigate to a specific settings tab with optional field focus
+  const navigateToSettingsTab = useCallback((tab, fieldId) => {
+    setPage('settings');
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
+        detail: { tab, fieldId }
+      }));
+    }, 200);
+  }, [setPage]);
 
   // Widget configuration - persisted in localStorage
   // Default widgets — show only essential ones by default to reduce dashboard density
@@ -1442,22 +1512,79 @@ export default function Dashboard({
           />
         </section>
 
+        {/* ========== PROFILE COMPLETION BANNER — visible when < 80% ========== */}
+        {profileCompletude < 80 && (
+          <section className="px-4 sm:px-6 pb-4">
+            <div className={`rounded-xl border p-4 ${
+              profileCompletude < 30
+                ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
+                : profileCompletude < 60
+                  ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+                  : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
+                  profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
+                }`}>
+                  {profileCompletude}%
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    Complétez votre profil entreprise
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {missingRequiredFields.length > 0
+                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
+                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
+                    }
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Compléter →
+                </button>
+              </div>
+              {/* Missing required fields */}
+              {missingRequiredFields.length > 0 && (
+                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
+                  {missingRequiredFields.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
+                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
+                      }`}
+                    >
+                      ✗ {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Facture 2026 Countdown Card */}
         {(() => {
           const f26target = new Date('2026-09-01');
           const now = new Date();
           const daysLeft = Math.max(0, Math.ceil((f26target - now) / (1000 * 60 * 60 * 24)));
-          const f26criteria = [
-            { label: 'SIRET', ok: !!entreprise?.siret },
-            { label: 'N° TVA intra.', ok: !!entreprise?.tvaIntra },
-            { label: 'RCS', ok: !!(entreprise?.rcsVille && entreprise?.rcsNumero) },
-            { label: 'Coordonnées bancaires', ok: !!(entreprise?.banque || entreprise?.iban) },
-            { label: 'Adresse complète', ok: !!entreprise?.adresse },
-            { label: 'Assurance RC Pro', ok: !!entreprise?.rcProAssureur },
-            { label: 'Format numérotation', ok: true },
-          ];
-          const f26done = f26criteria.filter(c => c.ok).length;
-          const f26score = Math.round((f26done / f26criteria.length) * 100);
+          const f26criteriaEval = F26_CRITERIA.map(c => ({
+            ...c,
+            ok: c.key === 'siret' ? !!entreprise?.siret
+              : c.key === 'tvaIntra' ? !!entreprise?.tvaIntra
+              : c.key === 'rcs' ? !!(entreprise?.rcsVille && entreprise?.rcsNumero)
+              : c.key === 'banque' ? !!(entreprise?.banque || entreprise?.iban)
+              : c.key === 'adresse' ? !!entreprise?.adresse
+              : c.key === 'rcPro' ? !!entreprise?.rcProAssureur
+              : c.key === 'numerotation' ? true
+              : false,
+          }));
+          const f26done = f26criteriaEval.filter(c => c.ok).length;
+          const f26score = Math.round((f26done / f26criteriaEval.length) * 100);
           if (f26score >= 100 || daysLeft <= 0) return null;
           return (
             <section className="px-4 sm:px-6 pb-4">
@@ -1477,26 +1604,46 @@ export default function Dashboard({
                       Facture électronique obligatoire dans <strong>J-{daysLeft}</strong>
                     </p>
                     <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {f26done}/{f26criteria.length} critères remplis
+                      {f26done}/{f26criteriaEval.length} critères remplis
                     </p>
                   </div>
                   <button
-                    onClick={() => setPage('settings')}
+                    onClick={() => {
+                      // Find first missing criterion and navigate to its tab
+                      const firstMissing = f26criteriaEval.find(c => !c.ok && c.tab);
+                      if (firstMissing) {
+                        navigateToSettingsTab(firstMissing.tab, firstMissing.fieldId);
+                      } else {
+                        setPage('settings');
+                      }
+                    }}
                     className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
                     style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
                   >
                     Compléter
                   </button>
                 </div>
-                {/* Criteria checklist */}
+                {/* Criteria checklist — each item links to its Settings section */}
                 <div className="mt-3 pt-3 border-t border-current/10 grid grid-cols-2 gap-1.5">
-                  {f26criteria.map(c => (
-                    <div key={c.label} className="flex items-center gap-1.5 text-xs">
+                  {f26criteriaEval.map(c => (
+                    <button
+                      key={c.label}
+                      onClick={() => {
+                        if (!c.ok && c.tab) {
+                          navigateToSettingsTab(c.tab, c.fieldId);
+                        }
+                      }}
+                      disabled={c.ok || !c.tab}
+                      className={`flex items-center gap-1.5 text-xs text-left transition-colors rounded px-1 py-0.5 ${
+                        !c.ok && c.tab ? (isDark ? 'hover:bg-slate-700/50 cursor-pointer' : 'hover:bg-white/50 cursor-pointer') : ''
+                      }`}
+                    >
                       <span className={c.ok ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}>{c.ok ? '✓' : '✗'}</span>
                       <span className={c.ok ? (isDark ? 'text-slate-300' : 'text-slate-600') : (isDark ? 'text-slate-500' : 'text-slate-400')}>
                         {c.label}
                       </span>
-                    </div>
+                      {!c.ok && c.tab && <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>→</span>}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -2103,6 +2250,113 @@ export default function Dashboard({
         isDark={isDark}
         modeDiscret={modeDiscret}
       />
+
+      {/* ========== PROFILE SETUP WIZARD MODAL ========== */}
+      {/* Appears automatically when profile < 30% and not dismissed */}
+      {showProfileSetup && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
+            setShowProfileSetup(false);
+            setProfileSetupDismissed(true);
+            localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+          }} />
+          <div className={`relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+            {/* Header */}
+            <div className="p-6 pb-0">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: couleur + '20' }}>
+                    <AlertTriangle size={20} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Configurez votre entreprise</h2>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Informations obligatoires pour vos documents</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowProfileSetup(false);
+                    setProfileSetupDismissed(true);
+                    localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+                  }}
+                  className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className={`rounded-xl border p-4 mb-4 ${isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'}`}>
+                <p className={`text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                  <strong>⚠️ Attention :</strong> En France, un devis ou une facture doit obligatoirement mentionner le SIRET, l'adresse et les coordonnées de l'entreprise.
+                  Sans ces informations, vos documents ne sont <strong>pas conformes à la loi</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Missing fields */}
+            <div className="px-6 pb-4">
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Informations manquantes ({missingRequiredFields.length})
+              </p>
+              <div className="space-y-2">
+                {missingRequiredFields.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => {
+                      setShowProfileSetup(false);
+                      navigateToSettingsTab(f.tab, f.key);
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:shadow-sm ${
+                      isDark ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 hover:bg-white'
+                    }`}
+                  >
+                    <span className="text-red-400">✗</span>
+                    <span className={`flex-1 text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{f.label}</span>
+                    <ChevronRight size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="px-6 pb-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Progression du profil</span>
+                <span className={`text-xs font-bold ${profileCompletude < 30 ? 'text-red-500' : profileCompletude < 60 ? 'text-amber-500' : 'text-emerald-500'}`}>{profileCompletude}%</span>
+              </div>
+              <div className={`h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${profileCompletude}%`, background: profileCompletude < 30 ? '#ef4444' : profileCompletude < 60 ? '#f59e0b' : '#22c55e' }} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}`}>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowProfileSetup(false);
+                    setProfileSetupDismissed(true);
+                    localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}`}
+                >
+                  Plus tard
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfileSetup(false);
+                    navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: couleur }}
+                >
+                  Compléter mon profil →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
