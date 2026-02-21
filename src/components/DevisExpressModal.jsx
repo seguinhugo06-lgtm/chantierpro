@@ -3,8 +3,8 @@
  * Flow: Métier → Modèle → Personnalisation → Création
  */
 
-import React, { useState, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2 } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge } from '../lib/data/modeles-devis';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
@@ -31,6 +31,9 @@ export default function DevisExpressModal({
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [modeleQtys, setModeleQtys] = useState({}); // { modeleId: qty } for step 2 preview
   const [showQuickClient, setShowQuickClient] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [creationError, setCreationError] = useState(null);
 
   // Theme classes
   const bgMain = isDark ? 'bg-slate-900' : 'bg-white';
@@ -55,6 +58,9 @@ export default function DevisExpressModal({
     setRemise(0);
     setShowTemplateSelector(false);
     setModeleQtys({});
+    setIsCreating(false);
+    setShowSuccess(false);
+    setCreationError(null);
     onClose();
   };
 
@@ -151,34 +157,57 @@ export default function DevisExpressModal({
     return { totalHT, totalAchat, remiseAmount, totalApresRemise, tva, ttc, marge };
   }, [lignes, remise, tvaDefaut]);
 
-  // Create devis
-  const handleCreateDevis = () => {
-    if (!selectedClient) return;
+  // Create devis — async with loading + success animation
+  const handleCreateDevis = async () => {
+    if (!selectedClient || isCreating) return;
 
-    onCreateDevis({
-      client_id: selectedClient.id,
-      type: 'devis',
-      statut: 'brouillon',
-      date: new Date().toISOString().split('T')[0],
-      lignes: lignes.map(l => ({
-        description: l.description,
-        quantite: l.quantite,
-        unite: l.unite,
-        prixUnitaire: l.prixUnitaire,
-        prixAchat: l.prixAchat,
-        tva: l.tva,
-      })),
-      sections: [{ id: '1', titre: '', lignes }],
-      remise,
-      tvaRate: tvaDefaut,
-      total_ht: totals.totalApresRemise,
-      tva: totals.tva,
-      total_ttc: totals.ttc,
-      notes,
-      modele_source: selectedModele?.id,
-    });
+    setIsCreating(true);
+    setCreationError(null);
 
-    handleClose();
+    try {
+      const result = await onCreateDevis({
+        client_id: selectedClient.id,
+        type: 'devis',
+        statut: 'brouillon',
+        date: new Date().toISOString().split('T')[0],
+        lignes: lignes.map(l => ({
+          description: l.description,
+          quantite: l.quantite,
+          unite: l.unite,
+          prixUnitaire: l.prixUnitaire,
+          prixAchat: l.prixAchat,
+          tva: l.tva,
+        })),
+        sections: [{ id: '1', titre: '', lignes }],
+        remise,
+        tvaRate: tvaDefaut,
+        total_ht: totals.totalApresRemise,
+        tva: totals.tva,
+        total_ttc: totals.ttc,
+        notes,
+        modele_source: selectedModele?.id,
+      });
+
+      // If parent returned false explicitly, treat as error
+      if (result === false) {
+        setCreationError('Impossible de créer le devis. Vérifiez le client sélectionné.');
+        setIsCreating(false);
+        return;
+      }
+
+      // Success — show checkmark animation then close
+      setIsCreating(false);
+      setShowSuccess(true);
+
+      setTimeout(() => {
+        setShowSuccess(false);
+        handleClose();
+      }, 1400);
+    } catch (err) {
+      console.error('DevisExpress creation failed:', err);
+      setCreationError(err.message || 'Erreur inconnue lors de la création');
+      setIsCreating(false);
+    }
   };
 
   // Get métiers
@@ -606,17 +635,60 @@ export default function DevisExpressModal({
         {/* Footer */}
         {step === 3 && (
           <div className={`p-4 border-t ${borderColor}`}>
+            {/* Error message */}
+            {creationError && (
+              <div className="mb-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-start gap-2">
+                <X size={16} className="shrink-0 mt-0.5" />
+                <span>{creationError}</span>
+              </div>
+            )}
             <button
               onClick={handleCreateDevis}
-              disabled={!selectedClient || lignes.length === 0}
+              disabled={!selectedClient || lignes.length === 0 || isCreating}
               className={`w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all ${
-                !selectedClient || lignes.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                !selectedClient || lignes.length === 0 || isCreating ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
               }`}
               style={{ backgroundColor: couleur }}
             >
-              <FileText size={20} />
-              Créer le devis
+              {isCreating ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Création en cours...
+                </>
+              ) : (
+                <>
+                  <FileText size={20} />
+                  Créer le devis
+                </>
+              )}
             </button>
+          </div>
+        )}
+
+        {/* Success overlay */}
+        {showSuccess && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+            <div
+              className="flex flex-col items-center gap-4"
+              style={{ animation: 'devisSuccessIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}
+            >
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
+                style={{ backgroundColor: couleur }}
+              >
+                <Check size={40} className="text-white" strokeWidth={3} />
+              </div>
+              <div className="text-center">
+                <p className="text-white font-bold text-lg">Devis créé !</p>
+                <p className="text-white/70 text-sm mt-1">Redirection en cours...</p>
+              </div>
+            </div>
+            <style>{`
+              @keyframes devisSuccessIn {
+                0% { opacity: 0; transform: scale(0.5); }
+                100% { opacity: 1; transform: scale(1); }
+              }
+            `}</style>
           </div>
         )}
       </div>

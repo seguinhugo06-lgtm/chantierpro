@@ -2012,16 +2012,22 @@ export default function Dashboard({
               date: new Date().toISOString().split('T')[0],
             });
             if (newDevis?.id) {
-              setShowDevisExpress(false);
-              setSelectedDevis?.(newDevis);
-              setPage?.('devis');
-              showToast('Devis créé avec succès', 'success');
+              // Don't close modal here — let the modal show success animation first
+              // Navigation happens after modal closes itself
+              setTimeout(() => {
+                setSelectedDevis?.(newDevis);
+                setPage?.('devis');
+              }, 1500);
+              showToast(`Devis ${newDevis.numero || ''} créé avec succès !`, 'success');
+              return true;
             } else {
               showToast('Erreur : impossible de créer le devis. Vérifiez le client sélectionné.', 'error');
+              return false;
             }
           } catch (err) {
             console.error('DevisExpress creation failed:', err);
             showToast(`Erreur création devis : ${err.message || 'erreur inconnue'}`, 'error');
+            throw err; // Re-throw so modal can show inline error
           }
         }}
         clients={clients}
