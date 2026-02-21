@@ -105,6 +105,7 @@ import {
   transformSuggestions,
 } from '../lib/actionSuggestions';
 import { useData } from '../context/DataContext';
+import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
 import OnboardingChecklist from './dashboard/OnboardingChecklist';
 
@@ -513,6 +514,7 @@ export default function Dashboard({
 }) {
   // Access dataLoading + addClient from context
   const { dataLoading, addClient } = useData();
+  const { showToast } = useToast();
 
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -2002,16 +2004,24 @@ export default function Dashboard({
         isOpen={showDevisExpress}
         onClose={() => setShowDevisExpress(false)}
         onCreateDevis={async (devisData) => {
-          const newDevis = await addDevis?.({
-            ...devisData,
-            type: 'devis',
-            statut: 'brouillon',
-            date: new Date().toISOString().split('T')[0],
-          });
-          if (newDevis?.id) {
-            setShowDevisExpress(false);
-            setSelectedDevis?.(newDevis);
-            setPage?.('devis');
+          try {
+            const newDevis = await addDevis?.({
+              ...devisData,
+              type: 'devis',
+              statut: 'brouillon',
+              date: new Date().toISOString().split('T')[0],
+            });
+            if (newDevis?.id) {
+              setShowDevisExpress(false);
+              setSelectedDevis?.(newDevis);
+              setPage?.('devis');
+              showToast('Devis créé avec succès', 'success');
+            } else {
+              showToast('Erreur : impossible de créer le devis. Vérifiez le client sélectionné.', 'error');
+            }
+          } catch (err) {
+            console.error('DevisExpress creation failed:', err);
+            showToast(`Erreur création devis : ${err.message || 'erreur inconnue'}`, 'error');
           }
         }}
         clients={clients}

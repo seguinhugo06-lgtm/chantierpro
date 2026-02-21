@@ -425,15 +425,19 @@ export function DataProvider({ children, initialData = {} }) {
 
   // ============ DEVIS OPERATIONS ============
   const addDevis = useCallback(async (data) => {
-    // Prevent ghost devis: reject documents without required fields
-    if (!data.numero || !data.client_id) {
-      console.error('addDevis: rejected ghost devis (missing numero or client_id):', { numero: data.numero, client_id: data.client_id });
+    // Require client_id — reject if missing
+    if (!data.client_id) {
+      console.error('addDevis: rejected — missing client_id');
       return null;
     }
     // Validate client_id is a proper UUID to prevent ghost data (demo IDs like 'c1')
     if (!isDemo && data.client_id && !isValidUUID(data.client_id)) {
       console.error('addDevis: invalid client_id (non-UUID):', data.client_id);
       return null;
+    }
+    // Auto-generate numero if missing (Devis Express, AI, etc.)
+    if (!data.numero) {
+      data.numero = await getNextNumero(data.type || 'devis', userId, devis);
     }
     // Prevent duplicate numeros — check both local + Supabase
     if (devis.some(d => d.numero === data.numero)) {
