@@ -48,13 +48,21 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Lazy load portal (separate from main app)
+// Lazy load public pages (separate from main app — no AuthGuard, no DataProvider)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
+const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
 
 // Check if this is a portal URL
 function getPortalToken() {
   const path = window.location.pathname
   const match = path.match(/^\/portal\/([a-f0-9-]+)$/i)
+  return match ? match[1] : null
+}
+
+// Check if this is a signature URL: /devis/signer/{uuid}
+function getSignatureToken() {
+  const path = window.location.pathname
+  const match = path.match(/^\/devis\/signer\/([a-f0-9-]+)$/i)
   return match ? match[1] : null
 }
 
@@ -65,6 +73,7 @@ function shouldUseDemoData() {
 }
 
 const portalToken = getPortalToken()
+const signatureToken = getSignatureToken()
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -84,15 +93,23 @@ if (isDemo) {
   console.log('🔐 Production mode - data from Supabase')
 }
 
-// Render portal or main app based on URL
+// Public page loading spinner
+const PublicFallback = () => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+  </div>
+)
+
+// Render public pages or main app based on URL
+// Public routes (/portal/:token, /devis/signer/:token) bypass AuthGuard & DataProvider
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {portalToken ? (
-      <Suspense fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-        </div>
-      }>
+    {signatureToken ? (
+      <Suspense fallback={<PublicFallback />}>
+        <DevisSignaturePage signatureToken={signatureToken} />
+      </Suspense>
+    ) : portalToken ? (
+      <Suspense fallback={<PublicFallback />}>
         <ClientPortal accessToken={portalToken} />
       </Suspense>
     ) : (

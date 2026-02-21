@@ -1045,6 +1045,51 @@ export async function getCommunicationHistory(clientId, limit = 50) {
   }
 }
 
+/**
+ * Notify the artisan that a client signed their devis
+ * Called from DevisSignaturePage (public, unauthenticated context)
+ * @param {Object} params
+ * @param {Object} params.entreprise - Artisan entreprise data
+ * @param {Object} params.devis - Devis data
+ * @param {Object} params.client - Client data
+ * @param {string} params.signataire - Name of the person who signed
+ */
+export async function notifyArtisanSignature({ entreprise, devis, client, signataire }) {
+  try {
+    if (!supabase) return { success: false, error: 'No supabase connection' };
+
+    const artisanEmail = entreprise?.email;
+    const artisanPhone = entreprise?.telephone;
+    const clientNom = `${client?.prenom || ''} ${client?.nom || ''}`.trim() || signataire || 'Votre client';
+    const devisNumero = devis?.numero || 'N/A';
+    const montant = (devis?.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+
+    const subject = `Devis ${devisNumero} signé par ${clientNom}`;
+    const message = `${clientNom} a signé le devis ${devisNumero} (${montant}). Connectez-vous à ChantierPro pour voir les détails.`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2 style="color:#16a34a">✅ Devis signé !</h2>
+        <p><strong>${clientNom}</strong> a signé votre devis <strong>${devisNumero}</strong> d'un montant de <strong>${montant}</strong>.</p>
+        <p>Signataire : ${signataire || clientNom}</p>
+        <p>Date : ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        <p style="margin-top:20px"><a href="${typeof window !== 'undefined' ? window.location.origin : 'https://chantierpro.vercel.app'}" style="background:#f97316;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Voir dans ChantierPro</a></p>
+      </div>
+    `;
+
+    // Send to artisan via email or SMS (with fallback)
+    if (artisanEmail) {
+      return await sendEmail(artisanEmail, subject, html, { fallbackPhone: artisanPhone });
+    } else if (artisanPhone) {
+      return await sendSMS(artisanPhone, message);
+    }
+
+    return { success: false, error: 'No artisan contact info' };
+  } catch (error) {
+    console.error('notifyArtisanSignature error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -1059,6 +1104,7 @@ export default {
   notifyChantierTermine,
   notifyFactureEnvoyee,
   notifyPaiementRecu,
+  notifyArtisanSignature,
   getCommunicationHistory,
   formatFrenchPhoneNumber,
   renderTemplate,
