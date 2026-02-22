@@ -638,34 +638,34 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
       {/* Calendar */}
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden`}>
-        <div className={`flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`flex items-center justify-between px-3 sm:px-5 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {viewMode !== 'agenda' ? (
             <button
               onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
               aria-label={viewMode === 'month' ? 'Mois précédent' : viewMode === 'day' ? 'Jour précédent' : 'Semaine précédente'}
             >
-              <ChevronLeft size={24} className={textPrimary} />
+              <ChevronLeft size={20} className={textPrimary} />
             </button>
-          ) : <div className="w-10" />}
-          <h2 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>
+          ) : <div className="w-8" />}
+          <h2 className={`text-base sm:text-lg font-bold ${textPrimary}`}>
             {viewMode === 'month' ? `${MOIS[month]} ${year}` : viewMode === 'day' ? date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : viewMode === 'agenda' ? 'Agenda' : `Semaine du ${weekDays[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
           </h2>
           {viewMode !== 'agenda' ? (
             <button
               onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
               aria-label={viewMode === 'month' ? 'Mois suivant' : viewMode === 'day' ? 'Jour suivant' : 'Semaine suivante'}
             >
-              <ChevronRight size={24} className={textPrimary} />
+              <ChevronRight size={20} className={textPrimary} />
             </button>
-          ) : <div className="w-10" />}
+          ) : <div className="w-8" />}
         </div>
 
         {viewMode === 'month' ? (
           <>
             <div className={`grid grid-cols-7 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              {JOURS.map(j => <div key={j} className={`py-2 text-center text-xs sm:text-sm font-medium ${textMuted}`}>{j}</div>)}
+              {JOURS.map(j => <div key={j} className={`py-1.5 text-center text-[10px] sm:text-xs font-medium ${textMuted}`}>{j}</div>)}
             </div>
             <div className="grid grid-cols-7">
               {days.map((day, i) => {
@@ -680,10 +680,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                 const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
                 const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
                 return (
-                  <div key={i} className={`min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 border-r border-b ${isDark ? 'border-slate-700' : 'border-slate-100'} ${!day ? (isDark ? 'bg-slate-900/50' : 'bg-slate-50') : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }} onClick={() => day && handleQuickAdd(dateStr)}>
+                  <div key={i} className={`min-h-[68px] sm:min-h-[88px] p-0.5 sm:p-1.5 border-r border-b ${isDark ? 'border-slate-700' : 'border-slate-100'} ${!day ? (isDark ? 'bg-slate-900/50' : 'bg-slate-50') : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('eventId'); if (id && dateStr) moveEvent(id, dateStr); }} onClick={() => day && handleQuickAdd(dateStr)}>
                     {day && (<>
-                      <div className="flex items-center gap-1 mb-1">
-                        <p className={`text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
+                      <div className="flex items-center gap-0.5 mb-0.5">
+                        <p className={`text-[10px] sm:text-xs font-medium w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full ${isToday ? 'text-white' : textPrimary}`} style={isToday ? {background: couleur} : {}}>{day}</p>
                         {(() => {
                           if (dayEvents.length === 0) return null;
                           // Show mini color dots per event type
@@ -699,9 +699,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           );
                         })()}
                       </div>
-                      <div className="space-y-0.5 sm:space-y-1">
-                        {dayEvents.slice(0, 2).map(ev => {
-                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                      <div className="space-y-px">
+                        {dayEvents.slice(0, 3).map(ev => {
                           const allDay = isAllDayEvent(ev);
                           return (
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
@@ -710,21 +709,20 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                               onTouchEnd={(e) => { if (window.innerWidth < 640) { e.preventDefault(); e.stopPropagation(); setTooltip({ event: ev, isMobile: true }); }}}
                               title={ev.title}
                               aria-label={`${ev.title} — ${TYPE_LABELS[ev.type] || 'Événement'}${ev.time ? ` à ${ev.time}` : ''}`}
-                              className={`group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1 ${allDay ? 'text-white' : 'text-white'}`}
-                              style={allDay ? { background: getEventColor(ev) } : { background: getEventColor(ev), opacity: 0.9 }}>
-                              {!allDay && ev.time && <span className="text-[9px] opacity-80 hidden sm:inline flex-shrink-0">{ev.time.slice(0, 5)}</span>}
-                              <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
+                              className="text-[9px] sm:text-[11px] px-1 sm:px-1.5 py-0.5 rounded cursor-pointer hover:brightness-110 transition-all flex items-center gap-0.5 text-white leading-tight"
+                              style={{ background: getEventColor(ev), opacity: allDay ? 1 : 0.9 }}>
+                              {!allDay && ev.time && <span className="opacity-80 hidden sm:inline flex-shrink-0">{ev.time.slice(0, 5)}</span>}
                               <span className="truncate font-medium">{ev.title}</span>
                             </div>
                           );
                         })}
-                        {dayEvents.length > 2 && (
+                        {dayEvents.length > 3 && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('week'); }}
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                            onClick={(e) => { e.stopPropagation(); setDate(new Date(year, month, day)); setViewMode('day'); }}
+                            className={`text-[10px] font-semibold px-1.5 py-0 rounded transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'hover:underline'}`}
                             style={{ color: couleur }}
                           >
-                            +{dayEvents.length - 2} autres
+                            +{dayEvents.length - 3}
                           </button>
                         )}
                       </div>
