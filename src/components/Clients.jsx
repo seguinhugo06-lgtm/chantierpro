@@ -109,6 +109,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
   const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
   const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
+  const [duplicateDismissed, setDuplicateDismissed] = useState(() => localStorage.getItem('clientDuplicateDismissed') === 'true');
 
   // Duplicate detection for form fields (telephone, email, nom)
   const { phoneDuplicates, emailDuplicates, strongDuplicates, checkField: checkDupeField, clearAll: clearDupes } = useDuplicateCheck(clients, editId, 300);
@@ -1475,7 +1476,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Liste
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Quick Client Modal */}
       <QuickClientModal
         isOpen={showQuickModal}
@@ -1543,79 +1544,14 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
       )}
 
-      {/* KPI Cards - Clickable */}
-      {displayClients.length > 0 && (() => {
-        // D2 fix: CA from clientStatsMap now correctly only counts paid factures
-        const caFacture = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
-        const caEnAttente = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.caEnCours, 0);
-        const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
-        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
-        let topClient = null;
-        let topCA = 0;
-        clientStatsMap.forEach((v, cid) => {
-          const totalClientCA = v.ca + v.caEnCours;
-          if (totalClientCA > topCA) { topCA = totalClientCA; topClient = clients.find(c => c.id === cid); }
-        });
-
-        const kpiItems = [
-          { key: 'actifs', icon: Users, color: couleur, iconBg: `${couleur}15`, value: clientsActifs, label: 'Clients actifs', sub: `sur ${displayClients.length}` },
-          { key: 'ca', icon: Euro, color: couleur, iconBg: `${couleur}15`, value: formatMoney(caFacture), label: 'CA encaissé', sub: modeDiscret ? '' : (caEnAttente > 0 ? `${formatMoney(caEnAttente)} en cours` : '') },
-          { key: 'top', icon: Briefcase, color: couleur, iconBg: `${couleur}15`, value: modeDiscret ? '·····' : (topClient?.nom || '—'), label: 'Top client', sub: modeDiscret ? '' : formatMoney(topCA) },
-          { key: 'devis_attente', icon: Send, color: couleur, iconBg: `${couleur}15`, value: devisEnAttente, label: 'Devis en attente', sub: devisEnAttente > 0 ? 'à relancer' : '' },
-        ];
-
-        return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            {kpiItems.map(kpi => {
-              const isActive = kpiFilter === kpi.key;
-              const Icon = kpi.icon;
-              return (
-                <button
-                  key={kpi.key}
-                  onClick={() => {
-                    if (kpi.key === 'top' && topClient) {
-                      setViewId(topClient.id);
-                    } else if (kpi.key === 'devis_attente' && !isActive && setPage) {
-                      setPage('devis');
-                    } else {
-                      setKpiFilter(isActive ? null : kpi.key);
-                    }
-                  }}
-                  className={`${cardBg} rounded-xl border p-3 sm:p-4 text-left transition-all duration-200 ${isActive ? 'ring-2 shadow-lg scale-[1.02]' : 'hover:shadow-md hover:scale-[1.01]'}`}
-                  style={isActive ? { borderColor: kpi.color, ringColor: kpi.color, '--tw-ring-color': kpi.color } : {}}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: kpi.iconBg }}>
-                      <Icon size={16} style={{ color: kpi.color }} />
-                    </div>
-                    {isActive && (
-                      <span
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs"
-                        style={{ background: kpi.color }}
-                        onClick={(e) => { e.stopPropagation(); setKpiFilter(null); }}
-                      >
-                        ×
-                      </span>
-                    )}
-                  </div>
-                  <p className={`text-lg sm:text-xl font-bold truncate ${kpi.key === 'top' ? 'text-purple-500' : ''}`} style={kpi.key !== 'top' ? { color: kpi.color } : {}}>{kpi.value}</p>
-                  <p className={`text-xs ${textMuted}`}>{kpi.label}</p>
-                  {kpi.sub && <p className={`text-[10px] ${textMuted} mt-0.5`}>{kpi.sub}</p>}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })()}
-
-      <div className="flex justify-between items-center gap-3">
+      {/* ========== HEADER COMPACT ========== */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
             </button>
@@ -1626,198 +1562,154 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {onImportClients && (
             <button
               onClick={onImportClients}
-              className={`w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-              title="Importer des clients (CSV)"
+              className={`p-2 rounded-xl transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+              title="Importer (CSV)"
             >
-              <Upload size={16} /><span className="hidden sm:inline">Importer</span>
+              <Upload size={16} />
             </button>
           )}
           <button
             onClick={() => setShowQuickModal(true)}
-            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all"
-            style={{background: `${couleur}20`, color: couleur}}
-            title="Ajout rapide"
+            className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
+            style={{ background: couleur }}
           >
-            <Zap size={16} /><span className="hidden sm:inline">Ajout rapide</span>
-          </button>
-          <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
-            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nouveau client</span>
+            <span className="sm:hidden">Nouveau</span>
           </button>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="space-y-3">
-        {/* Search bar full-width */}
-        <div className="relative">
-          <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-          <input
-            type="text"
-            placeholder="Rechercher par nom, téléphone, email, adresse..."
-            aria-label="Rechercher un client"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className={`w-full pl-10 pr-10 py-3 border rounded-xl text-sm ${inputBg}`}
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className={`absolute right-3 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
-              <X size={16} />
-            </button>
-          )}
+      {/* === DUPLICATE BANNER — compact + dismissable === */}
+      {!duplicateDismissed && duplicateMap.size > 0 && !kpiFilter && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/10 border-amber-800/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+          <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+          <span className="flex-1">{Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} · <span className="underline cursor-pointer" onClick={() => setFilterStatus('')}>Résoudre</span></span>
+          <button
+            onClick={() => { setDuplicateDismissed(true); localStorage.setItem('clientDuplicateDismissed', 'true'); }}
+            className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
+          >
+            <X size={14} />
+          </button>
         </div>
+      )}
 
-        {/* Filters row */}
+      {/* === SEARCH + FILTERS COMPACT === */}
+      <div className="space-y-2">
+        {/* Row 1: Search + View toggle + Sort */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              aria-label="Rechercher un client"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className={`w-full pl-8 pr-8 py-1.5 border rounded-xl text-sm ${inputBg}`}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {/* Grid/List toggle */}
+          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              style={viewMode === 'grid' ? { background: couleur } : {}}
+              title="Vue grille"
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              style={viewMode === 'list' ? { background: couleur } : {}}
+              title="Vue liste"
+            >
+              <List size={14} />
+            </button>
+          </div>
+          {/* Sort */}
+          <select
+            value={`${sortBy}-${sortDir}`}
+            onChange={(e) => { const [s, d] = e.target.value.split('-'); setSortBy(s); setSortDir(d); }}
+            className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+          >
+            <option value="recent-desc">Récent</option>
+            <option value="name-asc">Nom A-Z</option>
+            <option value="name-desc">Nom Z-A</option>
+            <option value="ca-desc">CA ↓</option>
+            <option value="activite-desc">Activité</option>
+          </select>
+        </div>
+        {/* Row 2: Type + Status filters */}
         {displayClients.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto">
-            {/* Grid/List toggle */}
-            <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
-                style={viewMode === 'grid' ? { background: couleur } : {}}
-                title="Vue grille"
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
-                style={viewMode === 'list' ? { background: couleur } : {}}
-                title="Vue liste"
-              >
-                <List size={16} />
-              </button>
-            </div>
-
-            {/* Type filter — custom picker */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {/* Type filter dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowTypePicker(!showTypePicker)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border min-h-[36px] transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700' : 'border-slate-200 hover:bg-slate-50'} ${inputBg}`}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterCategorie ? 'text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+                style={filterCategorie ? { background: couleur, borderColor: couleur } : {}}
               >
-                {filterCategorie ? (
-                  <><span>{TYPE_ICONS[filterCategorie] || '📋'}</span> <span className={textPrimary}>{filterCategorie}</span></>
-                ) : (
-                  <span className={textMuted}>Type : Tous</span>
-                )}
-                <ChevronDown size={14} className={`${textMuted} transition-transform ${showTypePicker ? 'rotate-180' : ''}`} />
+                {filterCategorie ? `${TYPE_ICONS[filterCategorie] || ''} ${filterCategorie}` : 'Type'}
+                <ChevronDown size={12} className={`transition-transform ${showTypePicker ? 'rotate-180' : ''}`} />
               </button>
               {showTypePicker && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowTypePicker(false)} />
-                  <div className={`absolute top-full left-0 mt-1 z-40 w-56 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className={`absolute top-full left-0 mt-1 z-40 w-48 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                     <button
                       onClick={() => { setFilterCategorie(''); setShowTypePicker(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${!filterCategorie ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                      className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${!filterCategorie ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
                     >
-                      <span className="w-5 text-center">📋</span> Tous
-                      {!filterCategorie && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                      Tous {!filterCategorie && <Check size={12} className="ml-auto" style={{color: couleur}} />}
                     </button>
                     {CLIENT_TYPES.map(t => (
                       <button
                         key={t}
                         onClick={() => { setFilterCategorie(t); setShowTypePicker(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${filterCategorie === t ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${filterCategorie === t ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
                       >
-                        <span className="w-5 text-center">{TYPE_ICONS[t] || '📋'}</span> {t}
-                        {filterCategorie === t && <Check size={14} className="ml-auto" style={{color: couleur}} />}
+                        {TYPE_ICONS[t] || '📋'} {t} {filterCategorie === t && <Check size={12} className="ml-auto" style={{color: couleur}} />}
                       </button>
                     ))}
                   </div>
                 </>
               )}
             </div>
-
-            {/* Status filter pills */}
-            <div className="flex items-center gap-1.5">
-              {[
-                { key: '', label: 'Tous' },
-                { key: 'actif', label: 'Actifs' },
-                { key: 'prospect', label: 'Prospects' },
-                { key: 'inactif', label: 'Inactifs' },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => setFilterStatus(opt.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  style={filterStatus === opt.key ? { background: couleur } : {}}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort buttons with ASC/DESC toggle */}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <ArrowUpDown size={14} className={textMuted} />
-              {[
-                { key: 'recent', label: 'Récent' },
-                { key: 'name', label: 'Nom' },
-                { key: 'ca', label: 'CA' },
-                { key: 'activite', label: 'Activité' },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => handleSortChange(opt.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors flex items-center gap-1 ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  style={sortBy === opt.key ? { background: couleur } : {}}
-                >
-                  {opt.label}
-                  {sortBy === opt.key && (
-                    <span className="text-[10px] opacity-80">{sortDir === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Active filter indicator */}
-        {(kpiFilter || filterCategorie || filterStatus) && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs ${textMuted}`}>Filtres actifs :</span>
-            {kpiFilter && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white" style={{ background: couleur }}>
-                {kpiFilter === 'actifs' ? 'Clients actifs' : kpiFilter === 'ca' ? 'CA > 0' : kpiFilter === 'devis_attente' ? 'Devis en attente' : kpiFilter}
-                <button onClick={() => setKpiFilter(null)} className="ml-0.5 hover:opacity-80">×</button>
-              </span>
+            {/* Status pills */}
+            {[
+              { key: '', label: 'Tous' },
+              { key: 'actif', label: 'Actifs' },
+              { key: 'prospect', label: 'Prospects' },
+              { key: 'inactif', label: 'Inactifs' },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setFilterStatus(opt.key)}
+                className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                style={filterStatus === opt.key ? { background: couleur } : {}}
+              >
+                {opt.label}
+              </button>
+            ))}
+            {/* Active filters indicator */}
+            {(kpiFilter || filterCategorie || filterStatus) && (
+              <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); }} className={`text-[10px] underline ${textMuted} ml-1`}>
+                Effacer
+              </button>
             )}
-            {filterStatus && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white" style={{ background: couleur }}>
-                {CLIENT_STATUS_LABELS[filterStatus] || filterStatus}
-                <button onClick={() => setFilterStatus('')} className="ml-0.5 hover:opacity-80">×</button>
-              </span>
-            )}
-            {filterCategorie && (
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'}`}>
-                {filterCategorie}
-                <button onClick={() => setFilterCategorie('')} className="ml-0.5 hover:opacity-80">×</button>
-              </span>
-            )}
-            <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); }} className={`text-xs underline ${textMuted} hover:${textPrimary}`}>
-              Tout effacer
-            </button>
           </div>
         )}
       </div>
 
       {/* Skeleton loader while data is loading */}
       {!clients && <ClientSkeleton isDark={isDark} />}
-
-      {/* Global duplicate banner */}
-      {duplicateMap.size > 0 && !kpiFilter && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
-          <div className="flex-1">
-            <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-              {Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''}
-            </p>
-            <p className={`text-xs ${isDark ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
-              Clients avec le même téléphone ou email. Cliquez sur un client pour fusionner.
-            </p>
-          </div>
-        </div>
-      )}
 
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
