@@ -814,15 +814,15 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
 
             return (
               <div>
-                <div className={`text-center py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                  <p className={`text-lg font-bold ${textPrimary}`}>
+                <div className={`text-center py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                  <p className={`text-sm font-bold ${textPrimary}`}>
                     {date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
                 </div>
                 {/* All-day / multi-day event banners */}
                 {allDayEvts.length > 0 && (
-                  <div className={`px-4 py-2.5 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${textMuted}`}>Journée entière</p>
+                  <div className={`px-3 py-2 border-b ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${textMuted}`}>Journée</p>
                     <div className="flex flex-wrap gap-1.5">
                       {allDayEvts.map(ev => {
                         const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
@@ -849,7 +849,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     return (
                       <div
                         key={hour}
-                        className={`flex min-h-[60px] ${isDark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50'}`}
+                        className={`flex min-h-[48px] ${isDark ? 'hover:bg-slate-700/20' : 'hover:bg-slate-50'}`}
                         onDragOver={e => e.preventDefault()}
                         onDrop={e => {
                           e.preventDefault();
@@ -955,7 +955,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                         {isToday ? "Aujourd'hui — " : ''}{dayDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                       </div>
                       {dayEvts.length === 0 ? (
-                        <div className={`px-4 py-3 text-sm ${textMuted} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>Aucun événement</div>
+                        <div className={`px-4 py-2 text-xs ${textMuted} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>—</div>
                       ) : (
                         dayEvts.map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
@@ -963,23 +963,20 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                           const client = ev.clientId ? clients.find(c => c.id === ev.clientId) : null;
                           return (
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                              className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-b min-h-[56px] ${isDark ? 'border-slate-700/50 hover:bg-slate-800' : 'border-slate-100 hover:bg-slate-50'}`}>
-                              <div className="flex flex-col items-center w-14 flex-shrink-0">
+                              className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-all border-b ${isDark ? 'border-slate-700/50 hover:bg-slate-800' : 'border-slate-100 hover:bg-slate-50'}`}>
+                              <div className="flex flex-col items-center w-12 flex-shrink-0">
                                 {ev.time ? (
-                                  <span className={`text-sm font-bold ${textPrimary}`}>{ev.time}</span>
+                                  <span className={`text-xs font-bold ${textPrimary}`}>{ev.time}</span>
                                 ) : (
                                   <span className={`text-[10px] italic ${textMuted}`}>Journée</span>
                                 )}
-                                {ev.time && ev.duration && <span className={`text-[10px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
+                                {ev.time && ev.duration && <span className={`text-[9px] ${textMuted}`}>{formatDuration(ev.duration)}</span>}
                               </div>
-                              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: eventColor }} />
+                              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: eventColor }} />
                               <div className="flex-1 min-w-0">
                                 <p className={`font-medium text-sm truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
-                                {client && <p className={`text-xs ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
+                                {client && <p className={`text-[10px] ${textMuted} truncate`}>{client.nom} {client.prenom || ''}</p>}
                               </div>
-                              <span className="text-[10px] px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ background: eventColor }}>
-                                {TYPE_LABELS[ev.type] || 'Autre'}
-                              </span>
                             </div>
                           );
                         })
@@ -1031,12 +1028,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         // Mobile bottom sheet
         if (tooltip.isMobile) {
           return (
-            <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setTooltip(null)}>
-              <div className={`w-full rounded-t-2xl p-5 pb-8 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} onClick={e => e.stopPropagation()}>
-                <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? '#475569' : '#cbd5e1' }} />
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
-                    <TypeIcon size={18} />
+            <div className="fixed inset-0 z-50 flex items-end" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }} onClick={() => setTooltip(null)}>
+              <div className={`w-full rounded-t-xl p-4 pb-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} onClick={e => e.stopPropagation()}>
+                <div className="w-8 h-1 rounded-full mx-auto mb-3" style={{ backgroundColor: isDark ? '#475569' : '#cbd5e1' }} />
+                <div className="flex items-start gap-2.5 mb-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
+                    <TypeIcon size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`font-bold text-base ${textPrimary}`}>{ev.title}</p>
