@@ -105,6 +105,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
+  const [showCreateMenu, setShowCreateMenu] = useState(false); // split-button dropdown
+  const [complianceDismissed, setComplianceDismissed] = useState(() => localStorage.getItem('complianceDismissed') === 'true');
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
@@ -3605,9 +3607,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // === LIST VIEW ===
   return (
-    <div className="space-y-6">
-      {/* ========== HEADER ========== */}
-      <div className="space-y-3">
+    <div className="space-y-3">
+      {/* ========== HEADER COMPACT ========== */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {setPage && (
             <button
@@ -3621,76 +3623,94 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
         </div>
 
-        {/* 3 Hero Buttons */}
-        <div className="grid grid-cols-3 gap-2">
-          {/* Devis IA */}
-          <button
-            onClick={() => setPage('ia-devis')}
-            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-            style={{ background: `linear-gradient(135deg, ${couleur}99, ${couleur}77)` }}
-          >
-            <Sparkles size={20} className="mb-1 text-white/90" />
-            <p className="font-bold text-xs sm:text-sm leading-tight">Devis IA</p>
-            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">Photo → Devis</p>
-            <Mic size={32} className="absolute -top-1 -right-1 text-white/10" />
-          </button>
-
-          {/* Devis Express */}
-          <button
-            onClick={() => setShowDevisExpressModal(true)}
-            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-            style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)' }}
-          >
-            <Zap size={20} className="mb-1 text-white/90" />
-            <p className="font-bold text-xs sm:text-sm leading-tight">Express</p>
-            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">3 clics, c'est chiffré</p>
-            <FileText size={32} className="absolute -top-1 -right-1 text-white/10" />
-          </button>
-
-          {/* Nouveau */}
-          <button
-            onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }}
-            className={`relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]`}
-            style={{ background: `linear-gradient(135deg, ${couleur}cc, ${couleur})` }}
-          >
-            <Plus size={20} className="mb-1 text-white/90" />
-            <p className="font-bold text-xs sm:text-sm leading-tight">Nouveau</p>
-            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">Devis manuel</p>
-            <Edit3 size={32} className="absolute -top-1 -right-1 text-white/10" />
-          </button>
-        </div>
-
-        {/* === COMPLIANCE BANNER === */}
-        {(() => {
-          const missingLegal = [];
-          if (!entreprise?.siret) missingLegal.push('SIRET');
-          if (!entreprise?.adresse) missingLegal.push('Adresse');
-          if (!entreprise?.formeJuridique) missingLegal.push('Forme juridique');
-          if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
-          if (missingLegal.length === 0) return null;
-          return (
-            <div className={`flex items-start gap-3 p-3 rounded-xl border text-sm ${isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-              <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold">Vos documents ne sont pas conformes</p>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                  Champs manquants : {missingLegal.join(', ')}
-                </p>
-              </div>
-              {setPage && (
+        {/* Split-button: + Nouveau devis */}
+        <div className="relative">
+          <div className="flex items-stretch">
+            <button
+              onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }}
+              className="px-4 py-2.5 text-white rounded-l-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
+              style={{ background: couleur }}
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Nouveau devis</span>
+              <span className="sm:hidden">Nouveau</span>
+            </button>
+            <button
+              onClick={() => setShowCreateMenu(!showCreateMenu)}
+              className="px-2 text-white rounded-r-xl border-l border-white/20 hover:opacity-80 transition-all"
+              style={{ background: couleur }}
+              aria-label="Options de création"
+            >
+              <ChevronDown size={14} />
+            </button>
+          </div>
+          {/* Dropdown menu */}
+          {showCreateMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
+              <div className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                 <button
-                  onClick={() => setPage('settings')}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
-                  style={{ backgroundColor: couleur }}
+                  onClick={() => { setShowCreateMenu(false); setPage('ia-devis'); }}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
                 >
-                  Compléter le profil
+                  <Sparkles size={16} className="text-violet-500" />
+                  <div>
+                    <p className={`text-sm font-medium ${textPrimary}`}>Devis IA</p>
+                    <p className={`text-[11px] ${textMuted}`}>Photo → Devis automatique</p>
+                  </div>
                 </button>
-              )}
-            </div>
-          );
-        })()}
+                <button
+                  onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
+                >
+                  <Zap size={16} className="text-amber-500" />
+                  <div>
+                    <p className={`text-sm font-medium ${textPrimary}`}>Devis Express</p>
+                    <p className={`text-[11px] ${textMuted}`}>3 clics, c'est chiffré</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setShowCreateMenu(false); setEditingDevis(null); setShowDevisWizard(true); }}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
+                >
+                  <Edit3 size={16} style={{ color: couleur }} />
+                  <div>
+                    <p className={`text-sm font-medium ${textPrimary}`}>Devis manuel</p>
+                    <p className={`text-[11px] ${textMuted}`}>Création détaillée</p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-      {/* === SECTION: KPIs CLIQUABLES === */}
+
+      {/* === COMPLIANCE BANNER — compact + dismissable === */}
+      {!complianceDismissed && (() => {
+        const missingLegal = [];
+        if (!entreprise?.siret) missingLegal.push('SIRET');
+        if (!entreprise?.adresse) missingLegal.push('Adresse');
+        if (!entreprise?.formeJuridique) missingLegal.push('Forme juridique');
+        if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
+        if (missingLegal.length === 0) return null;
+        return (
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+            <span className="flex-1 min-w-0 truncate">Non conforme — {missingLegal.join(', ')}</span>
+            {setPage && (
+              <button onClick={() => setPage('settings')} className="shrink-0 underline font-medium hover:opacity-80">Compléter</button>
+            )}
+            <button
+              onClick={() => { setComplianceDismissed(true); localStorage.setItem('complianceDismissed', 'true'); }}
+              className={`shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
+              aria-label="Masquer l'alerte"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })()}
+      {/* === KPIs COMPACTS — ligne dense === */}
       {(() => {
         const cleanDevis = devis.filter(d => {
           if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
@@ -3698,179 +3718,120 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           return true;
         });
         const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
-        const devisAccepte = cleanDevis.filter(d => d.type === 'devis' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut));
-        const devisRefuse = cleanDevis.filter(d => d.type === 'devis' && d.statut === 'refuse');
         const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
         const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
         const facturesEnRetard = facturesEnAttente.filter(f => Math.floor((Date.now() - new Date(f.date)) / 86400000) > 30);
         const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
         const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
-        // Taux de conversion — formule unifiée via calcConversion (statsUtils.js)
         const conversionResult = calcConversion(cleanDevis);
         const totalEnvoyes = conversionResult.envoyes;
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
-        // Count "à traiter" items
-        const aTraiterCount = cleanDevis.filter(d => {
-          const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-          return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
-        }).length;
-
-        // Monthly trend calculation (current month vs previous month)
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const payeesCeMois = facturesPayees.filter(f => new Date(f.date_paiement || f.updated_at || f.date) >= startOfMonth).reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const payeesMoisDernier = facturesPayees.filter(f => { const d = new Date(f.date_paiement || f.updated_at || f.date); return d >= startOfPrevMonth && d < startOfMonth; }).reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const trendCA = payeesMoisDernier > 0 ? Math.round(((payeesCeMois - payeesMoisDernier) / payeesMoisDernier) * 100) : null;
 
         return (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {/* CA encaissé */}
-              <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { ringColor: couleur } : {}} title="Somme des factures avec statut Payée">
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>CA encaissé</p>
-                  <Banknote size={14} style={{ color: couleur }} />
-                </div>
-                <p className="text-lg font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : formatMoney(montantPayees)}</p>
-                <div className="flex items-center justify-between">
-                  <p className={`text-[11px] ${textMuted}`}>{facturesPayees.length} facture{facturesPayees.length !== 1 ? 's' : ''}</p>
-                  {!modeDiscret && trendCA != null && (
-                    <span className={`text-[10px] font-semibold ${trendCA >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {trendCA >= 0 ? '↑' : '↓'} {Math.abs(trendCA)}%
-                    </span>
-                  )}
-                </div>
-              </button>
+          <div className="grid grid-cols-4 gap-2">
+            {/* CA encaissé */}
+            <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
+              <p className="text-sm sm:text-base font-bold leading-tight mt-0.5" style={{ color: couleur }}>{modeDiscret ? '···' : formatMoney(montantPayees)}</p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
+            </button>
 
-              {/* En cours */}
-              <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { ringColor: couleur } : {}}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>En cours</p>
-                  <Clock size={14} className="text-blue-500" />
-                </div>
-                <p className="text-lg font-bold text-blue-600">{devisEnvoye.length}</p>
-                <p className={`text-[11px] ${textMuted}`}>{modeDiscret ? '·····' : formatMoney(montantEnCours)}</p>
-              </button>
+            {/* En cours */}
+            <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
+              <p className="text-sm sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
+            </button>
 
-              {/* Conversion */}
-              <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { ringColor: couleur } : {}}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>Conversion</p>
-                  <TrendingUp size={14} className={tauxConversion != null && tauxConversion >= 50 ? 'text-emerald-500' : 'text-amber-500'} />
-                </div>
-                <p className={`text-lg font-bold ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
-                  {formatConversion(tauxConversion)}
-                </p>
-                <p className={`text-[11px] ${textMuted}`}>{conversionResult.signes}/{totalEnvoyes} signés</p>
-              </button>
+            {/* Conversion */}
+            <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Conversion</p>
+              <p className={`text-sm sm:text-base font-bold leading-tight mt-0.5 ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
+                {formatConversion(tauxConversion)}
+              </p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{conversionResult.signes}/{totalEnvoyes}</p>
+            </button>
 
-              {/* À encaisser */}
-              <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border p-3 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { ringColor: couleur } : {}} title="Factures envoyées non encore payées">
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted}`}>À encaisser</p>
-                  <AlertTriangle size={14} className={facturesEnRetard.length > 0 ? 'text-red-500' : 'text-violet-500'} />
-                </div>
-                <p className={`text-lg font-bold ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
-                  {modeDiscret ? '·····' : formatMoney(montantAEncaisser)}
-                </p>
-                <p className={`text-[11px] ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
-                  {facturesEnRetard.length > 0 ? `⚠️ ${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} en attente`}
-                </p>
-              </button>
-            </div>
-
-            {/* À traiter badge */}
-            {aTraiterCount > 0 && (
-              <button
-                onClick={() => setFilter('a_traiter')}
-                className={`w-full rounded-xl p-3 flex items-center justify-between transition-all ${filter === 'a_traiter' ? 'text-white' : isDark ? 'bg-amber-900/20 hover:bg-amber-900/30' : 'bg-amber-50 hover:bg-amber-100'}`}
-                style={filter === 'a_traiter' ? { background: couleur } : {}}
-              >
-                <span className={`text-sm font-semibold ${filter === 'a_traiter' ? 'text-white' : isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                  🔔 {aTraiterCount} document{aTraiterCount > 1 ? 's' : ''} à traiter aujourd'hui
-                </span>
-                <ChevronRight size={16} className={filter === 'a_traiter' ? 'text-white' : 'text-amber-500'} />
-              </button>
-            )}
+            {/* À encaisser */}
+            <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
+              <p className={`text-sm sm:text-base font-bold leading-tight mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
+                {modeDiscret ? '···' : formatMoney(montantAEncaisser)}
+              </p>
+              <p className={`text-[10px] leading-none mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
+                {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} att.`}
+              </p>
+            </button>
           </div>
         );
       })()}
 
-      {/* === SECTION: LISTE DES DOCUMENTS === */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
-          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Tous les documents</h2>
-          <span className={`text-xs ${textMuted}`}>— {filtered.length} document{filtered.length > 1 ? 's' : ''}</span>
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        {/* Left: Search + Filter pills */}
-        <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
-          <div className="relative">
+      {/* === SEARCH + FILTERS === */}
+      <div className="space-y-2">
+        {/* Row 1: Search + Period filters + Sort + Export */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1 max-w-[200px]">
             <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-[150px] sm:w-[180px] pl-8 pr-3 py-2 border rounded-xl text-sm ${inputBg}`} />
+            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
           </div>
-          {/* B7: Period filter */}
           <div role="group" aria-label="Filtrer par période" className="flex gap-1">
-            {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trimestre'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1.5 rounded-lg text-xs whitespace-nowrap min-h-[36px] ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
+            {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
+              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
                 {v}
               </button>
             ))}
           </div>
-          <div className={`h-6 w-px ${isDark ? 'bg-slate-600' : 'bg-slate-300'} hidden sm:block`} />
-          {/* B7: Filter pills with counters */}
-          <div role="group" aria-label="Filtrer par type" className="flex gap-1">
-            {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
-              const count = filterCounts[k] || 0;
-              return (
-                <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
-                  {k === 'a_traiter' && <Bell size={12} />}
-                  {v}
-                  {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        {/* Right: Sort + Export */}
-        <div className="flex gap-2 items-center flex-shrink-0">
-          <div role="group" aria-label="Trier par" className="flex gap-1 items-center">
-            <ArrowUpDown size={14} className={textMuted} />
-            {[['recent', 'Récent'], ['status', 'Statut'], ['amount', 'Montant']].map(([k, v]) => (
-              <button key={k} onClick={() => setSortBy(k)} aria-pressed={sortBy === k} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>
-                {v}
-              </button>
-            ))}
-          </div>
+          <div className="flex-1" />
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+          >
+            <option value="recent">Récent</option>
+            <option value="status">Statut</option>
+            <option value="amount">Montant</option>
+          </select>
+          {/* Export dropdown */}
           {filtered.length > 0 && (
-            <>
-              <div className={`h-6 w-px ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-              {/* B8: CSV export */}
+            <div className="relative">
               <button
-                onClick={() => exportCSV(filtered)}
-                className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                aria-label="Exporter en CSV"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const menu = e.currentTarget.nextElementSibling;
+                  menu.classList.toggle('hidden');
+                }}
+                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                aria-label="Exporter"
+                title="Exporter"
               >
-                <Download size={16} />
-                <span className="hidden sm:inline">CSV</span>
+                <Download size={14} />
               </button>
-              <button
-                onClick={() => batchExportPDF(filtered)}
-                disabled={actionLoading === 'batch'}
-                className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                aria-label="Exporter les documents filtrés en PDF"
-              >
-                {actionLoading === 'batch' ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                <span className="hidden sm:inline">PDF ({filtered.length})</span>
-                <span className="sm:hidden">PDF</span>
-              </button>
-            </>
+              <div className={`hidden absolute right-0 mt-1 w-36 rounded-xl border shadow-lg z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <button onClick={() => exportCSV(filtered)} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-600'}`}>
+                  <Download size={12} /> CSV
+                </button>
+                <button onClick={() => batchExportPDF(filtered)} disabled={actionLoading === 'batch'} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 border-t ${isDark ? 'hover:bg-slate-700 text-slate-300 border-slate-700' : 'hover:bg-slate-50 text-slate-600 border-slate-100'}`}>
+                  {actionLoading === 'batch' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} PDF ({filtered.length})
+                </button>
+              </div>
+            </div>
           )}
+        </div>
+        {/* Row 2: Type filter pills */}
+        <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
+            const count = filterCounts[k] || 0;
+            return (
+              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                {k === 'a_traiter' && <Bell size={11} />}
+                {v}
+                {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
+              </button>
+            );
+          })}
+          <span className={`text-[10px] ${textMuted} self-center ml-1`}>{filtered.length} doc.</span>
         </div>
       </div>
       {filtered.length === 0 ? (
@@ -3962,98 +3923,123 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
           const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
 
-          // B5: Contextual CTAs by status — clear next action per document
+          // Follow-up time indicator for sent devis
+          const getFollowUpInfo = () => {
+            if (!['envoye', 'vu'].includes(d.statut) || d.type !== 'devis') return null;
+            const sentDate = d.updated_at || d.date;
+            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
+            if (daysSent >= 30) return { text: `+${daysSent}j sans réponse`, cls: 'text-red-500 font-medium' };
+            if (daysSent >= 14) return { text: `${daysSent}j sans réponse`, cls: 'text-red-500' };
+            if (daysSent >= 7) return { text: `${daysSent}j en attente`, cls: isDark ? 'text-amber-400' : 'text-amber-600' };
+            if (daysSent >= 3) return { text: `Envoyé il y a ${daysSent}j`, cls: textMuted };
+            return { text: 'Envoyé récemment', cls: isDark ? 'text-emerald-400' : 'text-emerald-600' };
+          };
+          const followUp = getFollowUpInfo();
+
+          // Left border color by status
+          const borderLeftColor = d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
+            : ['envoye', 'vu'].includes(d.statut) ? '#3b82f6'
+            : ['accepte', 'signe'].includes(d.statut) ? '#22c55e'
+            : d.statut === 'facture' || d.statut === 'acompte_facture' ? '#8b5cf6'
+            : d.statut === 'payee' ? '#10b981'
+            : d.statut === 'refuse' ? '#ef4444'
+            : '#94a3b8';
+
+          // Contextual CTAs by status
           const getQuickAction = () => {
-            // Brouillon → Envoyer (or Modifier if no amount)
             if (d.statut === 'brouillon' && getDevisTTC(d) > 0) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if (d.statut === 'brouillon' && getDevisTTC(d) <= 0) return { label: 'Modifier', Icon: Edit3, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            // Envoyé/Vu → Relancer (amber)
             if (['envoye', 'vu'].includes(d.statut)) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
-            // Accepté/Signé devis → Facturer (emerald)
             if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            // Facture non payée → Encaisser (brand color foncé)
             if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            // Refusé → Dupliquer
             if (d.statut === 'refuse') return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
-            // Payée → pas de CTA (check mark)
             if (d.statut === 'payee') return null;
             return null;
           };
           const qa = getQuickAction();
 
-          return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-md transition-all duration-200`}>
-              <div className="flex items-center gap-3">
-                {/* Status dot */}
-                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${statusColor.dot}`} role="status" aria-label={`Statut: ${statusLabel}`} />
+          // Client display
+          const clientName = cleanClientName(client) || d.client_nom || '';
+          const isOrphan = !d.client_id || (d.client_id && !client);
+          const isNameless = client && !clientName;
 
-                {/* Content */}
+          return (
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md transition-all duration-200 px-3 py-2.5`} style={{ borderLeftWidth: '3px', borderLeftColor }}>
+              <div className="flex items-center gap-2.5">
+                {/* Content — single dense row */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  {/* Row 1: Numero + badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-xs ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
                     <p className={`font-semibold text-sm ${textPrimary}`}>{cleanNumero(d.numero)}</p>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`} role="status" aria-label={`Statut: ${statusLabel}`}>{statusLabel}</span>
-                    {hasAcompte && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>+ Acompte</span>}
-                    {d.is_avenant && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
-                    {needsFollowUp(d) && !qa && (
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>⏰ Relancer</span>
-                    )}
-                    {isExpired(d) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
-                    {d.statut === 'brouillon' && (!d.client_id || !client) && (
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>⚠️ Incomplet</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
+                    {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
+                    {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
+                    {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
+                    {d.statut === 'brouillon' && (isOrphan || isNameless) && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
                     )}
                   </div>
-                  <p className={`text-xs ${textMuted} truncate max-w-[280px]`} title={`${cleanClientName(client) || d.client_nom || 'Client manquant'}${chantier ? ` · ${chantier.nom}` : ''} · ${new Date(d.date).toLocaleDateString('fr-FR')}`}>
-                    {(() => {
-                      const name = cleanClientName(client);
-                      const fallbackName = d.client_nom || '';
-                      const displayName = name || fallbackName;
-                      // Client manquant: pas de client_id, ou client_id pointe vers un client supprimé, ou client sans nom
-                      const isOrphan = !d.client_id || (d.client_id && !client);
-                      const isNameless = client && !name;
-                      if (isOrphan || isNameless) return (
-                        <span className="inline-flex items-center gap-1">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                            <AlertTriangle size={10} /> {isOrphan ? 'Client manquant' : 'Client sans nom'}
-                          </span>
-                          <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:text-amber-500'}`}>
-                            Assigner
-                          </button>
+                  {/* Row 2: Client · Chantier · Date · Follow-up */}
+                  <div className={`text-xs ${textMuted} truncate mt-0.5 flex items-center gap-1 flex-wrap`}>
+                    {(isOrphan || isNameless) ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                          {isOrphan ? 'Client manquant' : 'Sans nom'}
                         </span>
-                      );
-                      return displayName;
-                    })()}
-                    {chantier ? ` · ${chantier.nom}` : ''}
-                    {` · ${new Date(d.date).toLocaleDateString('fr-FR')}`}
-                  </p>
+                        <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                          Assigner
+                        </button>
+                      </span>
+                    ) : (
+                      <span>{clientName}</span>
+                    )}
+                    {chantier && (
+                      <>
+                        <span>·</span>
+                        <span className={`italic truncate max-w-[120px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{chantier.nom}</span>
+                      </>
+                    )}
+                    <span>·</span>
+                    <span>{new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                    {followUp && (
+                      <>
+                        <span>·</span>
+                        <span className={`text-[10px] ${followUp.cls}`}>{followUp.text}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                {/* Quick action OR PDF */}
+                {/* Right: Action + Amount */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {d.signature_token && (
                     <button onClick={(e) => {
                       e.stopPropagation();
                       const url = `${window.location.origin}/devis/signer/${d.signature_token}`;
                       navigator.clipboard?.writeText(url).then(() => showToast('Lien copié !', 'success')).catch(() => showToast('Copie échouée', 'error'));
-                    }} className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
-                      <Link2 size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                    }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
+                      <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
                   )}
                   {qa ? (
-                    <button onClick={qa.fn} className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 min-h-[36px] transition-all ${qa.cls}`} style={qa.style}>
-                      <qa.Icon size={14} />
+                    <button onClick={qa.fn} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 min-h-[32px] transition-all ${qa.cls}`} style={qa.style}>
+                      <qa.Icon size={13} />
                       <span className="hidden sm:inline">{qa.label}</span>
                     </button>
+                  ) : d.statut === 'payee' ? (
+                    <CheckCircle size={16} className="text-emerald-500" />
                   ) : (
-                    <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
-                      <Eye size={16} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+                    <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
+                      <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
                   )}
                   {getDevisTTC(d) <= 0 ? (
-                    <span className={`text-xs font-medium px-2 py-1 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                      ⚠ Montant manquant
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                      0 €
                     </span>
                   ) : (
-                    <p className="text-sm sm:text-base font-bold min-w-[80px] sm:min-w-[100px] text-right tabular-nums" style={{color: couleur}}>
+                    <p className="text-sm font-bold min-w-[70px] text-right tabular-nums" style={{color: couleur}}>
                       {formatMoney(getDevisTTC(d))}
                     </p>
                   )}
