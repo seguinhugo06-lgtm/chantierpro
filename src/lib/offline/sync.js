@@ -358,21 +358,24 @@ export const registerNetworkListeners = (onOnline, onOffline) => {
   if (typeof window === 'undefined') return () => {};
 
   let debounceTimer = null;
+  let lastNotifiedState = true; // assume online initially, only fire on transitions
 
-  const verifyAndNotify = async (browserSaysOnline) => {
+  const verifyAndNotify = (browserSaysOnline) => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       const reallyOnline = await checkConnectivity();
-      if (reallyOnline) {
+      if (reallyOnline && !lastNotifiedState) {
+        // Transition: offline → online
+        lastNotifiedState = true;
         console.log('ChantierPro: Retour en ligne, synchronisation...');
         onOnline?.();
-      } else if (!browserSaysOnline) {
-        // Only declare offline if both browser AND ping agree
+      } else if (!reallyOnline && !browserSaysOnline && lastNotifiedState) {
+        // Transition: online → offline (only when both browser + ping agree)
+        lastNotifiedState = false;
         console.log('ChantierPro: Passage hors ligne');
         onOffline?.();
       }
-      // If browser says offline but ping succeeds → ignore (false alarm)
-    }, 300); // 300ms debounce to absorb rapid online/offline toggling
+    }, 500); // 500ms debounce to absorb rapid online/offline toggling
   };
 
   const handleOnline = () => verifyAndNotify(true);

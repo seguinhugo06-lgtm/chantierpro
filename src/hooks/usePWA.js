@@ -38,7 +38,7 @@ export function usePWA(syncHandlers = {}) {
   const [canInstall, setCanInstall] = React.useState(false);
   const [needsRefresh, setNeedsRefresh] = React.useState(false);
   const [offlineReady, setOfflineReady] = React.useState(false);
-  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = React.useState(false); // Optimistic: assume online, verify via ping
   const [pendingSyncCount, setPendingSyncCount] = React.useState(getSyncQueue().length);
 
   const updateSWRef = React.useRef(null);
@@ -75,18 +75,20 @@ export function usePWA(syncHandlers = {}) {
   // Handle online/offline status with real connectivity check
   React.useEffect(() => {
     let timer = null;
+    let lastState = true; // optimistic: match initial state
 
     const verifyAndSet = (browserSaysOnline) => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
         const reallyOnline = await checkConnectivity();
-        if (reallyOnline) {
+        if (reallyOnline && !lastState) {
+          lastState = true;
           setIsOffline(false);
-        } else if (!browserSaysOnline) {
+        } else if (!reallyOnline && !browserSaysOnline && lastState) {
+          lastState = false;
           setIsOffline(true);
         }
-        // browser says offline but ping succeeds → ignore (DevTools glitch)
-      }, 300);
+      }, 500);
     };
 
     const handleOnline = () => verifyAndSet(true);
