@@ -52,15 +52,21 @@ const downloadFile = (content, filename, mimeType = 'text/csv') => {
 // ─── Accounting mapping ─────────────────────────────────────────────────────
 
 const mapFactureToEntries = (facture, client) => {
-  const date = new Date(facture.date_creation || facture.created_at);
+  // Data model: date (ISO string), total_ht, total_ttc, tva
+  const date = new Date(facture.date || facture.createdAt || facture.created_at);
   const ref = facture.numero || `F-${date.getFullYear()}-${String(facture.id).slice(0, 4)}`;
-  const clientName = client?.nom || client?.entreprise || 'Client inconnu';
+  const clientName = client
+    ? `${client.prenom || ''} ${client.nom || ''}`.trim() || client.entreprise || 'Client inconnu'
+    : 'Client inconnu';
+  const totalTTC = facture.total_ttc || 0;
+  const totalHT = facture.total_ht || 0;
+  const totalTVA = facture.tva || (totalTTC - totalHT);
   return [
     {
       date,
       ref,
       libelle: `Facture ${ref} - ${clientName}`,
-      debit: facture.montant_ttc || 0,
+      debit: totalTTC,
       credit: 0,
       compte: '411000',
       journal: 'VE',
@@ -70,7 +76,7 @@ const mapFactureToEntries = (facture, client) => {
       ref,
       libelle: `Facture ${ref} - Prestations`,
       debit: 0,
-      credit: facture.montant_ht || 0,
+      credit: totalHT,
       compte: '706000',
       journal: 'VE',
     },
@@ -79,7 +85,7 @@ const mapFactureToEntries = (facture, client) => {
       ref,
       libelle: `Facture ${ref} - TVA collectée`,
       debit: 0,
-      credit: (facture.montant_ttc || 0) - (facture.montant_ht || 0),
+      credit: totalTVA,
       compte: '445710',
       journal: 'VE',
     },
@@ -369,7 +375,8 @@ export default function ExportComptable({
     () =>
       devis.filter((d) => {
         if (d.type !== 'facture') return false;
-        const dt = new Date(d.date_creation || d.created_at);
+        // Use d.date (the document date) as primary, fallback to createdAt
+        const dt = new Date(d.date || d.createdAt || d.created_at);
         return dt >= from && dt <= to;
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -429,8 +436,8 @@ export default function ExportComptable({
 
   // ─── Summaries ──────────────────────────────────────────────────────────
 
-  const totalHTFactures = factures.reduce((s, f) => s + (f.montant_ht || 0), 0);
-  const totalTTCFactures = factures.reduce((s, f) => s + (f.montant_ttc || 0), 0);
+  const totalHTFactures = factures.reduce((s, f) => s + (f.total_ht || 0), 0);
+  const totalTTCFactures = factures.reduce((s, f) => s + (f.total_ttc || 0), 0);
   const totalDepenses = filteredDepenses.reduce((s, d) => s + (d.montant || 0), 0);
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
