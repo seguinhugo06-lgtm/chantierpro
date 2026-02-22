@@ -645,7 +645,7 @@ export default function App() {
   useEffect(() => {
     const REDIRECTS = {
       ouvrages: 'catalogue', commandes: 'chantiers',
-      tresorerie: 'finances', 'ia-devis': 'devis', entretien: 'dashboard',
+      tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
       pricing: 'settings', billing: 'settings',

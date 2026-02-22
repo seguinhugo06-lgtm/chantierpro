@@ -3623,17 +3623,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         {/* 3 Hero Buttons */}
         <div className="grid grid-cols-3 gap-2">
-          {/* Devis IA — feature coming soon (disabled) */}
-          <div
-            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white/80 pointer-events-none opacity-60"
+          {/* Devis IA */}
+          <button
+            onClick={() => setPage('ia-devis')}
+            className="relative overflow-hidden rounded-xl p-3 sm:p-4 text-left text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
             style={{ background: `linear-gradient(135deg, ${couleur}99, ${couleur}77)` }}
           >
-            <Mic size={20} className="mb-1 text-white/70" />
+            <Sparkles size={20} className="mb-1 text-white/90" />
             <p className="font-bold text-xs sm:text-sm leading-tight">Devis IA</p>
-            <p className="text-[10px] sm:text-xs text-white/50 mt-0.5 hidden sm:block">Bientôt disponible</p>
-            <Sparkles size={32} className="absolute -top-1 -right-1 text-white/10" />
-            <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/25 text-white backdrop-blur-sm">Bientôt</span>
-          </div>
+            <p className="text-[10px] sm:text-xs text-white/60 mt-0.5 hidden sm:block">Photo → Devis</p>
+            <Mic size={32} className="absolute -top-1 -right-1 text-white/10" />
+          </button>
 
           {/* Devis Express */}
           <button
