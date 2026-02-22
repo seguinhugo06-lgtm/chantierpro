@@ -61,6 +61,7 @@ const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'F
 const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos');
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 import CookieConsent from './components/CookieConsent';
+import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -1140,8 +1141,30 @@ export default function App() {
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
+  // LEGAL-001: CGU acceptance check — block app until accepted
+  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt;
+
+  const handleCguAccept = async (version) => {
+    const now = new Date().toISOString();
+    const updated = { ...entreprise, cguAcceptedAt: now, cguVersion: version };
+    setEntreprise(updated);
+    // Persist to localStorage immediately
+    try { localStorage.setItem('cp_entreprise', JSON.stringify(updated)); } catch {}
+    // Sync to Supabase
+    if (supabase && user?.id) {
+      try {
+        await supabase.from('entreprise')
+          .upsert({ user_id: user.id, settings_json: updated }, { onConflict: 'user_id' });
+      } catch (e) { console.warn('CGU acceptance Supabase sync failed:', e.message); }
+    }
+  };
+
   return (
     <div className={`min-h-screen ${tc.bg}`}>
+      {/* LEGAL-001: CGU acceptance modal — blocks app until accepted */}
+      {needsCguAcceptance && (
+        <CGUAcceptanceModal onAccept={handleCguAccept} couleur={couleur} />
+      )}
       {/* Skip to main content link for accessibility */}
       <a
         href="#main-content"
