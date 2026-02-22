@@ -1924,14 +1924,37 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   return;
                 }
                 try {
+                  // LEGAL-002: Delete all user data from Supabase first
+                  if (supabase && !isDemo) {
+                    const { error: rpcError } = await supabase.rpc('delete_user_data');
+                    if (rpcError) {
+                      console.error('Server-side deletion failed:', rpcError);
+                      // Fallback: try manual deletion of key tables
+                      const uid = (await auth.getCurrentUser())?.id;
+                      if (uid) {
+                        await Promise.allSettled([
+                          supabase.from('devis').delete().eq('user_id', uid),
+                          supabase.from('chantiers').delete().eq('user_id', uid),
+                          supabase.from('clients').delete().eq('user_id', uid),
+                          supabase.from('articles').delete().eq('user_id', uid),
+                          supabase.from('memos').delete().eq('user_id', uid),
+                          supabase.from('planning_events').delete().eq('user_id', uid),
+                          supabase.from('entreprise').delete().eq('user_id', uid),
+                        ]);
+                      }
+                    }
+                  }
                   // Clear all localStorage
                   const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
                   keys.forEach(k => localStorage.removeItem(k));
+                  // Clear IndexedDB offline store
+                  try { indexedDB.deleteDatabase('chantierpro-offline'); } catch {}
                   // Sign out
                   await auth.signOut();
-                  showToast('Compte et données supprimés', 'success');
+                  showToast('Compte et données supprimés définitivement', 'success');
                   window.location.reload();
-                } catch {
+                } catch (e) {
+                  console.error('Account deletion error:', e);
                   showToast('Erreur lors de la suppression', 'error');
                 }
               }}
