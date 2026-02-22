@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Wifi, WifiOff, RefreshCw, Cloud, CheckCircle, Trash2 } from 'lucide-react';
+import { checkConnectivity } from '../../lib/offline/sync';
 
 /**
  * OfflineIndicator - Shows network status and pending sync count
@@ -25,7 +26,7 @@ export default function OfflineIndicator({
   position = 'bottom',
   className = ''
 }) {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // Optimistic
   const [showBanner, setShowBanner] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -34,31 +35,40 @@ export default function OfflineIndicator({
   const prevPendingRef = useRef(pendingCount);
   const [isClearing, setIsClearing] = useState(false);
 
-  // Listen for network changes
+  // Listen for network changes with real connectivity check
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      // Show brief "back online" message
-      setShowBanner(true);
-      setShowSuccess(true);
-      setTimeout(() => { setShowBanner(false); setShowSuccess(false); }, 3000);
+    let timer = null;
+    let lastState = true;
+
+    const verifyAndSet = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline && !lastState) {
+          lastState = true;
+          setIsOnline(true);
+          setShowBanner(true);
+          setShowSuccess(true);
+          setTimeout(() => { setShowBanner(false); setShowSuccess(false); }, 3000);
+        } else if (!reallyOnline && !browserSaysOnline && lastState) {
+          lastState = false;
+          setIsOnline(false);
+          setShowBanner(true);
+          setShowSuccess(false);
+        }
+      }, 500);
     };
 
-    const handleOffline = () => {
-      setIsOnline(false);
-      setShowBanner(true);
-      setShowSuccess(false);
-    };
+    const handleOnline = () => verifyAndSet(true);
+    const handleOffline = () => verifyAndSet(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Show banner initially if offline
-    if (!navigator.onLine) {
-      setShowBanner(true);
-    }
+    if (!navigator.onLine) verifyAndSet(false);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -240,19 +250,26 @@ export default function OfflineIndicator({
  * NetworkStatus - Compact network status indicator (for header/sidebar)
  */
 export function NetworkStatus({ isDark = false, showLabel = true }) {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // Optimistic
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    let timer = null;
+    let lastState = true;
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+    const verify = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline && !lastState) { lastState = true; setIsOnline(true); }
+        else if (!reallyOnline && !browserSaysOnline && lastState) { lastState = false; setIsOnline(false); }
+      }, 500);
     };
+
+    window.addEventListener('online', () => verify(true));
+    window.addEventListener('offline', () => verify(false));
+    if (!navigator.onLine) verify(false);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const textColor = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -282,16 +299,30 @@ export function NetworkStatus({ isDark = false, showLabel = true }) {
  * useOnlineStatus - Hook for network status
  */
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // Optimistic
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    let timer = null;
+    let lastState = true;
+
+    const verify = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline && !lastState) { lastState = true; setIsOnline(true); }
+        else if (!reallyOnline && !browserSaysOnline && lastState) { lastState = false; setIsOnline(false); }
+      }, 500);
+    };
+
+    const handleOnline = () => verify(true);
+    const handleOffline = () => verify(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    if (!navigator.onLine) verify(false);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };

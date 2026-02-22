@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { checkConnectivity } from '../lib/offline/sync';
 
 /**
  * @typedef {Object} NetworkStatus
@@ -11,23 +12,11 @@ import { useState, useEffect } from 'react';
 
 /**
  * useNetworkStatus - Monitor network connection status
- *
- * @returns {NetworkStatus} Current network status
- *
- * @example
- * const { online, effectiveType } = useNetworkStatus();
- *
- * if (!online) {
- *   return <OfflineBanner />;
- * }
- *
- * if (effectiveType === 'slow-2g' || effectiveType === '2g') {
- *   return <SlowConnectionWarning />;
- * }
+ * Uses real connectivity ping to avoid false offline from Chrome DevTools.
  */
 export default function useNetworkStatus() {
   const [status, setStatus] = useState(() => ({
-    online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    online: true, // Optimistic
     effectiveType: undefined,
     downlink: undefined,
     rtt: undefined,
@@ -35,42 +24,46 @@ export default function useNetworkStatus() {
   }));
 
   useEffect(() => {
-    const updateStatus = () => {
-      const connection = navigator?.connection ||
-                        navigator?.mozConnection ||
-                        navigator?.webkitConnection;
+    let timer = null;
+    let lastOnline = true;
 
-      setStatus({
-        online: navigator.onLine,
-        effectiveType: connection?.effectiveType,
-        downlink: connection?.downlink,
-        rtt: connection?.rtt,
-        saveData: connection?.saveData || false
-      });
-    };
-
-    // Initial update
-    updateStatus();
-
-    // Listen for online/offline events
-    window.addEventListener('online', updateStatus);
-    window.addEventListener('offline', updateStatus);
-
-    // Listen for connection changes (where supported)
     const connection = navigator?.connection ||
                       navigator?.mozConnection ||
                       navigator?.webkitConnection;
 
-    if (connection) {
-      connection.addEventListener('change', updateStatus);
-    }
+    const getConnectionInfo = () => ({
+      effectiveType: connection?.effectiveType,
+      downlink: connection?.downlink,
+      rtt: connection?.rtt,
+      saveData: connection?.saveData || false
+    });
+
+    const verifyAndUpdate = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline && !lastOnline) {
+          lastOnline = true;
+          setStatus({ online: true, ...getConnectionInfo() });
+        } else if (!reallyOnline && !browserSaysOnline && lastOnline) {
+          lastOnline = false;
+          setStatus({ online: false, ...getConnectionInfo() });
+        }
+      }, 500);
+    };
+
+    const handleOnline = () => verifyAndUpdate(true);
+    const handleOffline = () => verifyAndUpdate(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    if (connection) connection.addEventListener('change', () => verifyAndUpdate(navigator.onLine));
+    if (!navigator.onLine) verifyAndUpdate(false);
 
     return () => {
-      window.removeEventListener('online', updateStatus);
-      window.removeEventListener('offline', updateStatus);
-      if (connection) {
-        connection.removeEventListener('change', updateStatus);
-      }
+      clearTimeout(timer);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -78,26 +71,35 @@ export default function useNetworkStatus() {
 }
 
 /**
- * useOnlineStatus - Simple online/offline hook
+ * useOnlineStatus - Simple online/offline hook with real ping verification
  *
  * @returns {boolean} Is online
- *
- * @example
- * const isOnline = useOnlineStatus();
  */
 export function useOnlineStatus() {
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(true); // Optimistic
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    let timer = null;
+    let lastState = true;
+
+    const verify = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline && !lastState) { lastState = true; setIsOnline(true); }
+        else if (!reallyOnline && !browserSaysOnline && lastState) { lastState = false; setIsOnline(false); }
+      }, 500);
+    };
+
+    const handleOnline = () => verify(true);
+    const handleOffline = () => verify(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    if (!navigator.onLine) verify(false);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
