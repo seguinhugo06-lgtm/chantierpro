@@ -1107,267 +1107,165 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         </div>
       )}
 
-      {/* Modal détail/édition - overlays on top of calendar */}
+      {/* Modal détail/édition — compact */}
       {showDetail && (() => {
         const TypeIcon = TYPE_ICONS[showDetail.type] || Calendar;
         return (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
-            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
-              <div className={`p-5 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
+            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+              <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }}>
-                      <TypeIcon size={20} />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white" style={{ background: showDetail.color || typeColors[showDetail.type] || couleur }}>
+                      <TypeIcon size={16} />
                     </div>
                     <div>
-                      <p className={`text-xs ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁 ${showDetail.recurrence === 'daily' ? 'Quotidien' : showDetail.recurrence === 'weekly' ? 'Hebdo' : showDetail.recurrence === 'biweekly' ? 'Bi-hebdo' : showDetail.recurrence === 'monthly' ? 'Mensuel' : showDetail.recurrence === 'custom' ? 'Personnalisé' : 'Récurrent'}` : ''}</p>
-                      <h2 className={`font-bold ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
+                      <p className={`text-[10px] ${textMuted}`}>{TYPE_LABELS[showDetail.type] || 'Événement'}{(showDetail.recurrence && showDetail.recurrence !== 'never') || showDetail.isRecurrence ? ` · 🔁` : ''}</p>
+                      <h2 className={`font-bold text-sm ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
-                  <button onClick={() => setShowDetail(null)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                    <X size={20} className={textMuted} />
+                  <button onClick={() => setShowDetail(null)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <X size={16} className={textMuted} />
                   </button>
                 </div>
               </div>
 
-              <div className="p-5">
+              <div className="p-4">
                 {editMode ? (
-                  <div className="space-y-4">
-                    <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Titre *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
+                  <div className="space-y-3">
+                    <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Titre *</label><input className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Date *</label><input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Heure</label><input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
                     </div>
                     <div>
-                      <label className={`block text-sm font-medium mb-2 ${textSecondary}`}>Durée</label>
-                      <div className="flex flex-wrap gap-2">
+                      <label className={`block text-xs font-medium mb-1.5 ${textSecondary}`}>Durée</label>
+                      <div className="flex flex-wrap gap-1.5">
                         {DURATIONS.map(d => (
                           <button key={d.value} type="button" onClick={() => {
-                            if (d.value === 480) {
-                              setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
-                            } else if (d.value === -1) {
-                              setForm(p => ({...p, duration: -1}));
-                            } else {
-                              setForm(p => ({...p, duration: d.value, endTime: ''}));
-                            }
+                            if (d.value === 480) setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
+                            else if (d.value === -1) setForm(p => ({...p, duration: -1}));
+                            else setForm(p => ({...p, duration: d.value, endTime: ''}));
                           }}
-                            className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                             style={form.duration === d.value ? { background: couleur } : {}}>
                             {d.label}
                           </button>
                         ))}
                       </div>
-                      {/* P2.1: Custom end time field in edit modal */}
                       {form.duration === -1 && (
-                        <div className="mt-3 flex items-center gap-3">
+                        <div className="mt-2 flex items-center gap-2">
                           <div className="flex-1">
-                            <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
-                            <input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
+                            <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                            <input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
                           </div>
                           {form.time && form.endTime && (() => {
                             const [sh, sm] = form.time.split(':').map(Number);
                             const [eh, em] = form.endTime.split(':').map(Number);
                             const diff = (eh * 60 + em) - (sh * 60 + sm);
-                            if (diff > 0) return <span className={`text-sm font-medium mt-5 ${textSecondary}`}>Durée : {formatDuration(diff)}</span>;
+                            if (diff > 0) return <span className={`text-xs font-medium mt-4 ${textSecondary}`}>{formatDuration(diff)}</span>;
                             return null;
                           })()}
                         </div>
                       )}
                     </div>
-                    <div>
-                      <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                        <div>
-                          <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Récurrence</label>
-                          <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
-                            <option value="never">Jamais</option>
-                            <option value="daily">Chaque jour</option>
-                            <option value="weekly">Chaque semaine</option>
-                            <option value="biweekly">Toutes les 2 semaines</option>
-                            <option value="monthly">Chaque mois</option>
-                            <option value="custom">Personnalisé</option>
-                          </select>
-                        </div>
-                        {form.recurrence !== 'never' && (
-                          <div>
-                            <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Fin de récurrence</label>
-                            <div className="flex gap-1 mb-1.5">
-                              <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                                style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
-                              <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                                style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>Après N fois</button>
-                            </div>
-                            {form.recurrenceEndType === 'count' ? (
-                              <input type="number" min="1" max="365" placeholder="Ex : 12" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceOccurrences} onChange={e => setForm(p => ({...p, recurrenceOccurrences: e.target.value}))} />
-                            ) : (
-                              <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {form.recurrence === 'custom' && (
-                        <div className="mt-3">
-                          <label className={`block text-xs font-medium mb-1.5 ${textMuted}`}>Jours de la semaine</label>
-                          <div className="flex gap-1.5">
-                            {JOURS.map((j, i) => (
-                              <button key={i} type="button" onClick={() => {
-                                setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
-                              }}
-                                className={`w-10 h-10 rounded-full text-xs font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
-                                {j}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV Client</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Employé</label>
-                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
-                          <option value="">Aucun</option>
-                          {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
-                            <option value="" disabled>— Aucun employé configuré —</option>
-                          )}
-                        </select>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Récurrence</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}><option value="never">Jamais</option><option value="daily">Quotidien</option><option value="weekly">Hebdo</option><option value="biweekly">Bi-hebdo</option><option value="monthly">Mensuel</option><option value="custom">Custom</option></select></div>
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Rappel</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}><option value="">Aucun</option><option value="15">15 min</option><option value="30">30 min</option><option value="60">1h</option><option value="1440">Veille</option></select></div>
                     </div>
                     {clients.length > 0 && (
-                      <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Client</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">—</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
                     )}
-                    {/* P2.2: Date de fin + P2.5: Rappel */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Date de fin <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
-                        <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
-                      </div>
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Rappel</label>
-                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}>
-                          <option value="">Aucun</option>
-                          <option value="15">15 min avant</option>
-                          <option value="30">30 min avant</option>
-                          <option value="60">1h avant</option>
-                          <option value="1440">La veille</option>
-                          <option value="2880">2 jours avant</option>
-                        </select>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Date de fin</label><input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} /></div>
+                      {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
+                        <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Chantier</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">—</option>{(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => <option key={ch.id} value={ch.id}>{ch.nom}</option>)}</select></div>
+                      )}
                     </div>
-                    {/* P2.4: Chantier associé — when type is chantier OR client selected */}
-                    {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
-                      <div>
-                        <label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Chantier associé <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
-                        <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
-                          <option value="">— Aucun —</option>
-                          {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => {
-                            const cl = clients.find(c => c.id === ch.client_id);
-                            return <option key={ch.id} value={ch.id}>{ch.nom}{cl ? ` — ${cl.nom}` : ''}</option>;
-                          })}
-                        </select>
-                      </div>
-                    )}
-                    <div><label className={`block text-sm font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
+                    <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Calendar size={16} className={textMuted} />
-                        <span className={textPrimary}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Clock size={16} className={textMuted} />
-                        {showDetail.time ? (
-                          <span className={textPrimary}>{showDetail.time}{showDetail.duration ? ` — ${formatDuration(showDetail.duration)}` : ''}</span>
-                        ) : (
-                          <span className={`italic ${textMuted}`}>Toute la journée</span>
-                        )}
-                      </div>
-                      {showDetail.employeId && (
-                        <div className="flex items-center gap-3">
-                          <User size={16} className={textMuted} />
-                          <span className={textPrimary}>{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span>
-                        </div>
-                      )}
-                      {showDetail.clientId && (() => {
-                        const client = clients.find(c => c.id === showDetail.clientId);
-                        return client ? (
-                          <div className="flex items-center gap-3">
-                            <Building2 size={16} className={textMuted} />
-                            <span className={textPrimary}>{client.nom} {client.prenom || ''}</span>
-                          </div>
-                        ) : null;
-                      })()}
-                      {showDetail.chantierId && !showDetail.isChantier && (() => {
-                        const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
-                        return ch ? (
-                          <div className="flex items-center gap-3">
-                            <Home size={16} className={textMuted} />
-                            <button onClick={() => goToChantier(ch.id)} className="hover:underline" style={{ color: couleur }}>{ch.nom}</button>
-                          </div>
-                        ) : null;
-                      })()}
-                      {showDetail.rappel && (
-                        <div className="flex items-center gap-3">
-                          <Bell size={16} className={textMuted} />
-                          <span className={textPrimary}>Rappel : {showDetail.rappel === '15' ? '15 min avant' : showDetail.rappel === '30' ? '30 min avant' : showDetail.rappel === '60' ? '1h avant' : showDetail.rappel === '1440' ? 'La veille' : showDetail.rappel === '2880' ? '2 jours avant' : `${showDetail.rappel} min`}</span>
-                        </div>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar size={14} className={textMuted} />
+                      <span className={`text-sm ${textPrimary}`}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}{showDetail.dateEnd && showDetail.dateEnd !== showDetail.date && ` → ${new Date(showDetail.dateEnd).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <Clock size={14} className={textMuted} />
+                      {showDetail.time ? (
+                        <span className={`text-sm ${textPrimary}`}>{showDetail.time}{showDetail.duration ? ` — ${formatDuration(showDetail.duration)}` : ''}</span>
+                      ) : (
+                        <span className={`text-sm italic ${textMuted}`}>Toute la journée</span>
                       )}
                     </div>
-                    {showDetail.description && (
-                      <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                        <p className={`text-sm ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</p>
+                    {showDetail.employeId && (
+                      <div className="flex items-center gap-2.5">
+                        <User size={14} className={textMuted} />
+                        <span className={`text-sm ${textPrimary}`}>{equipe.find(e => e.id === showDetail.employeId)?.nom || '-'}</span>
                       </div>
+                    )}
+                    {showDetail.clientId && (() => {
+                      const client = clients.find(c => c.id === showDetail.clientId);
+                      return client ? (
+                        <div className="flex items-center gap-2.5">
+                          <Building2 size={14} className={textMuted} />
+                          <span className={`text-sm ${textPrimary}`}>{client.nom} {client.prenom || ''}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {showDetail.chantierId && !showDetail.isChantier && (() => {
+                      const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
+                      return ch ? (
+                        <div className="flex items-center gap-2.5">
+                          <Home size={14} className={textMuted} />
+                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline" style={{ color: couleur }}>{ch.nom}</button>
+                        </div>
+                      ) : null;
+                    })()}
+                    {showDetail.rappel && (
+                      <div className="flex items-center gap-2.5">
+                        <Bell size={14} className={textMuted} />
+                        <span className={`text-sm ${textPrimary}`}>Rappel {showDetail.rappel === '15' ? '15 min' : showDetail.rappel === '30' ? '30 min' : showDetail.rappel === '60' ? '1h' : showDetail.rappel === '1440' ? 'veille' : `${showDetail.rappel} min`}</span>
+                      </div>
+                    )}
+                    {showDetail.description && (
+                      <div className={`p-3 rounded-lg text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-50'} ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className={`p-4 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'} rounded-b-2xl flex gap-3`}>
+              <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'} rounded-b-xl flex gap-2`}>
                 {showDetail.isChantier ? (
-                  <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>
-                    <Home size={16} /> Voir le chantier →
+                  <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
+                    <Home size={14} /> Voir le chantier
                   </button>
                 ) : editMode ? (
                   <>
-                    <button onClick={() => setEditMode(false)} className={`flex-1 px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200'}`}>Annuler</button>
-                    <button onClick={handleUpdateEvent} className="flex-1 px-4 py-2.5 text-white rounded-xl min-h-[44px]" style={{ background: couleur }}>Enregistrer</button>
+                    <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200'}`}>Annuler</button>
+                    <button onClick={handleUpdateEvent} className="flex-1 py-2 text-white rounded-lg text-sm font-medium" style={{ background: couleur }}>Enregistrer</button>
                   </>
                 ) : (
-                  <div className="flex flex-col gap-2 w-full">
-                    <div className="flex gap-3">
-                      <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`} aria-label="Supprimer l'événement">
-                        <Trash2 size={16} />
-                      </button>
-                      <button onClick={startEdit} className="flex-1 px-4 py-2.5 text-white rounded-xl flex items-center justify-center gap-2 min-h-[44px]" style={{ background: couleur }}>
-                        <Edit3 size={16} /> Modifier
-                      </button>
-                    </div>
-                    {/* Navigation links: chantier / client */}
-                    {(showDetail.chantierId || showDetail.clientId) && (
-                      <div className="flex gap-2">
-                        {showDetail.chantierId && !showDetail.isChantier && (() => {
-                          const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
-                          return ch ? (
-                            <button onClick={() => goToChantier(ch.id)} className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px] border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                              <Home size={14} style={{ color: couleur }} /> Voir le chantier →
-                            </button>
-                          ) : null;
-                        })()}
-                        {showDetail.clientId && (() => {
-                          const client = clients.find(c => c.id === showDetail.clientId);
-                          return client ? (
-                            <button onClick={() => { if (setPage) { setPage('clients'); } setShowDetail(null); }} className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 min-h-[40px] border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                              <User size={14} style={{ color: couleur }} /> Voir le client →
-                            </button>
-                          ) : null;
-                        })()}
-                      </div>
-                    )}
-                  </div>
+                  <>
+                    <button onClick={() => handleDeleteEvent(showDetail.id)} className={`px-3 py-2 rounded-lg ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-600'}`} aria-label="Supprimer">
+                      <Trash2 size={14} />
+                    </button>
+                    <button onClick={startEdit} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
+                      <Edit3 size={14} /> Modifier
+                    </button>
+                    {showDetail.chantierId && !showDetail.isChantier && (() => {
+                      const ch = (chantiers || []).find(c => c.id === showDetail.chantierId);
+                      return ch ? <button onClick={() => goToChantier(ch.id)} className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}><Home size={12} /></button> : null;
+                    })()}
+                    {showDetail.clientId && (() => {
+                      const client = clients.find(c => c.id === showDetail.clientId);
+                      return client ? <button onClick={() => { if (setPage) { setPage('clients'); } setShowDetail(null); }} className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}><User size={12} /></button> : null;
+                    })()}
+                  </>
                 )}
               </div>
             </div>
