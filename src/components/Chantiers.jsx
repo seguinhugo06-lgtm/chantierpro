@@ -161,6 +161,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [finExpanded, setFinExpanded] = useState({}); // Finance accordion sections
   const [animatedTaskId, setAnimatedTaskId] = useState(null);
   const [counterPulse, setCounterPulse] = useState(false);
+  const [todayCollapsed, setTodayCollapsed] = useState(false); // Étape 1: collapsible today banner
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
@@ -2409,71 +2410,68 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
       </div>
 
-      {/* === BANDE JOURNEE D'AUJOURD'HUI === */}
+      {/* === BANDEAU AUJOURD'HUI — compact sticky 60px === */}
       {(() => {
         const today = new Date().toISOString().split('T')[0];
         const chantiersToday = chantiers.filter(c => {
           if (c.statut !== 'en_cours') return false;
           const debut = c.date_debut ? c.date_debut.split('T')[0] : null;
           const fin = c.date_fin ? c.date_fin.split('T')[0] : null;
-          if (!debut) return true; // en_cours sans date = toujours affiche
+          if (!debut) return true;
           return debut <= today && (!fin || fin >= today);
         });
         const tachesEnAttente = chantiersToday.reduce((sum, c) => sum + (c.taches || []).filter(t => !t.done).length, 0);
 
-        if (chantiersToday.length === 0 && chantiers.length > 0) {
-          return (
-            <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                  <Calendar size={20} className={textMuted} />
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${textPrimary}`}>Aucun chantier planifie aujourd'hui</p>
-                  <p className={`text-xs ${textMuted}`}>Voulez-vous en creer un ?</p>
-                </div>
-                <button onClick={() => setShow(true)} className="px-3 py-2 rounded-lg text-sm font-medium text-white" style={{ backgroundColor: couleur }}>
-                  <Plus size={14} className="inline mr-1" />Creer
-                </button>
-              </div>
-            </div>
-          );
-        }
+        if (chantiers.length === 0) return null;
 
-        if (chantiersToday.length > 0) {
-          return (
-            <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-              {/* Header */}
-              <div className="px-4 py-3 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${couleur}10, ${couleur}05)` }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className={`text-sm font-semibold ${textPrimary}`}>
-                    Aujourd'hui : {chantiersToday.length} chantier{chantiersToday.length > 1 ? 's' : ''}
+        return (
+          <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+            {/* Compact header — always visible */}
+            <button
+              onClick={() => chantiersToday.length > 0 && setTodayCollapsed(!todayCollapsed)}
+              className={`w-full px-4 py-2.5 flex items-center justify-between gap-2 transition-colors ${chantiersToday.length > 0 ? 'cursor-pointer' : 'cursor-default'} ${isDark ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {chantiersToday.length > 0 ? (
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                ) : (
+                  <Calendar size={14} className={`shrink-0 ${textMuted}`} />
+                )}
+                <span className={`text-sm font-medium ${textPrimary}`}>
+                  {chantiersToday.length > 0
+                    ? `Aujourd'hui · ${chantiersToday.length} chantier${chantiersToday.length > 1 ? 's' : ''}`
+                    : 'Aucun chantier aujourd\'hui'
+                  }
+                </span>
+                {tachesEnAttente > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                    {tachesEnAttente} tâche{tachesEnAttente > 1 ? 's' : ''}
                   </span>
-                  {tachesEnAttente > 0 && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                      {tachesEnAttente} tache{tachesEnAttente > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
-              {/* Chantiers du jour */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+              <div className="flex items-center gap-2 shrink-0">
+                {chantiersToday.length === 0 && (
+                  <span onClick={(e) => { e.stopPropagation(); setShow(true); }} className="px-2.5 py-1 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: couleur }}>
+                    <Plus size={12} className="inline mr-0.5" />Créer
+                  </span>
+                )}
+                {chantiersToday.length > 0 && (
+                  todayCollapsed ? <ChevronDown size={14} className={textMuted} /> : <ChevronUp size={14} className={textMuted} />
+                )}
+              </div>
+            </button>
+            {/* Expandable chantier list */}
+            {chantiersToday.length > 0 && !todayCollapsed && (
+              <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
                 {chantiersToday.slice(0, 4).map(c => {
                   const cl = clients.find(cl => cl.id === c.client_id);
                   return (
-                    <div key={c.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
+                    <div key={c.id} className={`px-4 py-2 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.nom}</p>
                         <p className={`text-xs ${textMuted} truncate`}>
-                          {cl ? `${cl.nom} ${cl.prenom || ''}`.trim() : ''}
+                          {[cl ? `${cl.nom} ${cl.prenom || ''}`.trim() : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
                         </p>
-                        {(c.adresse || c.ville) && (
-                          <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
-                            <MapPin size={10} className="flex-shrink-0" />
-                            {[c.adresse, c.ville].filter(Boolean).join(', ')}
-                          </p>
-                        )}
                       </div>
                       {(c.adresse || c.ville) && (
                         <button
@@ -2486,21 +2484,23 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                             else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                           }}
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
                           style={{ backgroundColor: couleur }}
-                          title="Ouvrir GPS"
+                          title="GPS"
                         >
-                          <Navigation size={16} />
+                          <Navigation size={14} />
                         </button>
                       )}
                     </div>
                   );
                 })}
+                {chantiersToday.length > 4 && (
+                  <p className={`text-xs text-center py-1.5 ${textMuted}`}>+{chantiersToday.length - 4} autres</p>
+                )}
               </div>
-            </div>
-          );
-        }
-        return null;
+            )}
+          </div>
+        );
       })()}
 
       {/* Search bar */}
@@ -2583,144 +2583,6 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         </div>
       ) : (
         <>
-          {/* En Cours Card - Simplified: Progression, Équipe, Tasks only */}
-          {(() => {
-            // Only show hero card when viewing all or en_cours filter
-            if (filterStatus !== 'all' && filterStatus !== 'en_cours') return null;
-            const activeChantiers = chantiers.filter(c => c.statut === 'en_cours');
-            if (activeChantiers.length === 0) return null;
-
-            const current = activeChantiers.sort((a, b) => (a.avancement || 0) - (b.avancement || 0))[0];
-            const client = clients.find(c => c.id === current.client_id);
-            const bilanRaw2 = getChantierBilan(current.id);
-            const bilan = bilanRaw2 || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
-            const allTasks = current.taches || [];
-            const pendingTasks = allTasks.filter(t => !t.done);
-            const tasksDone = allTasks.filter(t => t.done).length;
-            const tasksTotal = allTasks.length;
-
-            // Team from pointages
-            const chPointages = pointages.filter(p => p.chantierId === current.id);
-            const teamIds = [...new Set(chPointages.map(p => p.employeId))];
-            const teamMembers = teamIds.map(id => equipe.find(e => e.id === id)).filter(Boolean);
-
-            // Smart progression
-            const avancement = calculateSmartProgression(current, bilan, tasksDone, tasksTotal);
-
-            // Complete task handler
-            const completeTask = (taskId) => {
-              const ch = chantiers.find(c => c.id === current.id);
-              if (ch) {
-                updateChantier(current.id, {
-                  taches: ch.taches.map(t => t.id === taskId ? { ...t, done: true } : t)
-                });
-                showToast?.('Tâche complétée', 'success');
-              }
-            };
-
-            // Date calculation
-            const dateFin = current.date_fin ? new Date(current.date_fin) : null;
-            const dateFinFormatted = dateFin ? dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
-
-            return (
-              <div
-                onClick={() => setView(current.id)}
-                className={`mb-4 ${cardBg} rounded-xl border-2 p-4 cursor-pointer transition-all shadow-md hover:shadow-lg`}
-                style={{ borderColor: `${couleur}50`, boxShadow: `0 4px 12px ${couleur}15` }}
-              >
-                {/* Header with status badge */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-1 rounded-full text-xs font-bold text-white" style={{ background: couleur }}>
-                      EN COURS
-                    </span>
-                    {dateFinFormatted && (
-                      <span className={`text-xs ${textMuted}`}>Fin: {dateFinFormatted}</span>
-                    )}
-                  </div>
-                  <ChevronRight size={18} className={textMuted} />
-                </div>
-
-                {/* Name + Client */}
-                <h3 className={`font-bold text-lg ${textPrimary}`} title={current.nom}>{current.nom}</h3>
-                <p className={`text-sm ${textMuted} mb-3`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</p>
-
-                {/* Progress Bar */}
-                <div className={`mb-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <div className="h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(5, avancement))}%`, background: couleur }} />
-                </div>
-                <p className={`text-sm font-semibold mb-4`} style={{ color: couleur }}>{avancement}%</p>
-
-                {/* Équipe - Full names */}
-                <div className="mb-4">
-                  {teamMembers.length > 0 && (
-                    <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Équipe ({teamMembers.length})</p>
-                  )}
-                  {teamMembers.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {teamMembers.slice(0, 3).map(member => (
-                        <div key={member.id} className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: couleur }}>
-                            {member.prenom?.[0]}{member.nom?.[0]}
-                          </div>
-                          <span className={`text-sm ${textPrimary}`}>{member.prenom} {member.nom}</span>
-                          {member.role && <span className={`text-xs ${textMuted}`}>({member.role})</span>}
-                        </div>
-                      ))}
-                      {teamMembers.length > 3 && (
-                        <p className={`text-xs ${textMuted} pl-9`}>+{teamMembers.length - 3} autres</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className={`text-sm ${textMuted}`}>Aucune équipe assignée</p>
-                  )}
-                </div>
-
-                {/* Tasks with quick complete */}
-                <div>
-                  {tasksTotal > 0 && (
-                    <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-2`}>Tâches ({tasksDone}/{tasksTotal})</p>
-                  )}
-                  {pendingTasks.length > 0 ? (
-                    <div className="space-y-1">
-                      {pendingTasks.slice(0, 4).map(task => (
-                        <button
-                          key={task.id}
-                          onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
-                          className={`w-full min-h-[44px] py-2 px-3 rounded-lg flex items-center gap-3 text-left transition-all active:scale-[0.98] ${isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'}`}
-                        >
-                          <div className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center" style={{ borderColor: couleur }}>
-                            <Check size={12} className="opacity-0 group-hover:opacity-100" style={{ color: couleur }} />
-                          </div>
-                          <span className={`text-sm flex-1 ${textPrimary}`}>{task.text}</span>
-                          <Check size={18} style={{ color: couleur }} />
-                        </button>
-                      ))}
-                      {pendingTasks.length > 4 && (
-                        <p className={`text-xs ${textMuted} text-center py-1`}>+{pendingTasks.length - 4} autres</p>
-                      )}
-                    </div>
-                  ) : tasksTotal === 0 ? (
-                    <div
-                      onClick={(e) => { e.stopPropagation(); setView(current.id); }}
-                      className={`p-4 rounded-xl cursor-pointer transition-all ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 border border-slate-600' : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border border-orange-200'}`}
-                    >
-                      <p className={`text-sm font-medium mb-1 ${textPrimary}`}>📋 Aucune tâche planifiée</p>
-                      <p className={`text-xs ${textMuted} mb-3`}>Ajoutez les étapes du chantier pour suivre l'avancement et coordonner votre équipe</p>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ background: couleur }}>
-                        <Plus size={14} /> Première tâche
-                      </span>
-                    </div>
-                  ) : (
-                    <div className={`p-3 rounded-lg text-center ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-                      <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Toutes les tâches terminées</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
           {/* === SECTION: LISTE DES CHANTIERS === */}
           {/* Status Filter Tabs + Sorting */}
           <div className="flex flex-col gap-3 mb-4">
@@ -2968,10 +2830,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     {budgetPrevu > 0 && (
                       <div className="flex items-center gap-1.5">
                         <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>{formatMoney(budgetPrevu)}</span>
-                        {bilan.hasDepenses ? (
+                        {bilan.hasDepenses && (
                           <span className={`text-[11px] font-bold tabular-nums ${getMargeColor(bilan.tauxMarge)}`} title="Taux de marge">{formatPct(bilan.tauxMarge)} marge</span>
-                        ) : (
-                          <span className={`text-[11px] tabular-nums ${textMuted}`} title="Ajoutez des dépenses pour calculer la marge">— marge</span>
                         )}
                         {hasAlert && <AlertTriangle size={12} className={`${bilan.tauxMarge < 0 ? 'text-red-500' : 'text-amber-500'}`} />}
                       </div>
