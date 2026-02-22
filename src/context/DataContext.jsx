@@ -982,10 +982,10 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('planning_events', newEvent, userId);
+        await saveItem('events', newEvent, userId);
       } catch (error) {
         console.error('Error saving planning event to Supabase:', error);
-        await queueOffline('create', 'planning_events', newEvent);
+        await queueOffline('create', 'events', newEvent);
       }
     }
     return newEvent;
@@ -997,10 +997,10 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('planning_events', updated, userId);
+        await saveItem('events', updated, userId);
       } catch (error) {
         console.error('Error updating planning event:', error);
-        await queueOffline('update', 'planning_events', updated);
+        await queueOffline('update', 'events', updated);
       }
     }
   }, [userId]);
@@ -1010,10 +1010,10 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('planning_events', id, userId);
+        await deleteItem('events', id, userId);
       } catch (error) {
         console.error('Error deleting planning event:', error);
-        await queueOffline('delete', 'planning_events', { id });
+        await queueOffline('delete', 'events', { id });
       }
     }
   }, [userId]);

@@ -1948,7 +1948,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                           supabase.from('clients').delete().eq('user_id', uid),
                           supabase.from('articles').delete().eq('user_id', uid),
                           supabase.from('memos').delete().eq('user_id', uid),
-                          supabase.from('planning_events').delete().eq('user_id', uid),
+                          supabase.from('events').delete().eq('user_id', uid),
                           supabase.from('entreprise').delete().eq('user_id', uid),
                         ]);
                       }

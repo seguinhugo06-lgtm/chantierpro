@@ -633,35 +633,72 @@ export const FIELD_MAPPINGS = {
     }),
   },
 
+  // Consolidated: planning events now use the `events` table
   planning_events: {
-    toSupabase: (item) => ({
-      id: item.id,
-      title: item.title,
-      date: item.date || null,
-      time: item.time || null,
-      type: item.type || 'rdv',
-      employe_id: item.employeId || item.employe_id || null,
-      client_id: item.clientId || item.client_id || null,
-      description: item.description || '',
-      duration: item.duration || null,
-      recurrence: item.recurrence || 'never',
-      recurrence_end: item.recurrenceEnd || item.recurrence_end || null,
-    }),
-    fromSupabase: (row) => ({
-      id: row.id,
-      title: row.title,
-      date: row.date,
-      time: row.time || '',
-      type: row.type || 'rdv',
-      employeId: row.employe_id || '',
-      client_id: row.client_id || '',
-      clientId: row.client_id || '',
-      description: row.description || '',
-      duration: row.duration || 60,
-      recurrence: row.recurrence || 'never',
-      recurrenceEnd: row.recurrence_end || '',
-      createdAt: row.created_at,
-    }),
+    toSupabase: (item) => {
+      // Build start_date from date + time
+      const startDate = item.time
+        ? `${item.date}T${item.time}:00`
+        : `${item.date}T00:00:00`;
+      // Build end_date from duration or dateEnd
+      let endDate = null;
+      if (item.dateEnd) {
+        endDate = item.time ? `${item.dateEnd}T${item.time}:00` : `${item.dateEnd}T23:59:59`;
+      } else if (item.time && item.duration && item.duration > 0) {
+        const start = new Date(startDate);
+        start.setMinutes(start.getMinutes() + (item.duration || 60));
+        endDate = start.toISOString();
+      }
+      return {
+        id: item.id,
+        title: item.title,
+        start_date: startDate,
+        end_date: endDate,
+        all_day: !item.time,
+        type: item.type || 'rdv',
+        employe_id: item.employeId || item.employe_id || null,
+        client_id: item.clientId || item.client_id || null,
+        chantier_id: item.chantierId || item.chantier_id || null,
+        description: item.description || '',
+        duration_minutes: item.duration || null,
+        recurrence: item.recurrence === 'never' ? null : (item.recurrence || null),
+        recurrence_end_date: item.recurrenceEnd || item.recurrence_end || null,
+        recurrence_days: item.recurrenceDays || null,
+        rappel: item.rappel || null,
+        status: item.status || 'planned',
+        location: item.location || null,
+        color: item.color || null,
+      };
+    },
+    fromSupabase: (row) => {
+      // Extract date and time from start_date timestamp
+      const startDate = row.start_date ? new Date(row.start_date) : null;
+      const date = startDate ? startDate.toISOString().split('T')[0] : row.date || '';
+      const time = (!row.all_day && startDate) ? startDate.toTimeString().slice(0, 5) : '';
+      const endDate = row.end_date ? new Date(row.end_date).toISOString().split('T')[0] : '';
+      return {
+        id: row.id,
+        title: row.title,
+        date,
+        time,
+        dateEnd: endDate,
+        type: row.type || 'rdv',
+        employeId: row.employe_id || '',
+        client_id: row.client_id || '',
+        clientId: row.client_id || '',
+        chantierId: row.chantier_id || '',
+        description: row.description || '',
+        duration: row.duration_minutes || 60,
+        recurrence: row.recurrence || 'never',
+        recurrenceEnd: row.recurrence_end_date || '',
+        recurrenceDays: row.recurrence_days || null,
+        rappel: row.rappel || '',
+        status: row.status || 'planned',
+        location: row.location || '',
+        color: row.color || '',
+        createdAt: row.created_at,
+      };
+    },
   },
 
   // ── Paiements (payments on invoices/devis) ───────────────────────
@@ -874,7 +911,7 @@ export async function loadAllData(userId) {
       supabase.from('tresorerie_settings').select('*').eq('user_id', userId).maybeSingle().then(r => r, () => ({ data: null })),
       supabase.from('reglements').select('*').eq('user_id', userId).order('date_reglement', { ascending: false }).then(r => r, () => ({ data: [] })),
       supabase.from('tresorerie_mouvements').select('*').eq('user_id', userId).order('date', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('planning_events').select('*').eq('user_id', userId).order('date', { ascending: true }).then(r => r, () => ({ data: [] })),
+      supabase.from('events').select('*').eq('user_id', userId).order('start_date', { ascending: true }).then(r => r, () => ({ data: [] })),
       supabase.from('paiements').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       supabase.from('echanges').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       supabase.from('ajustements').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
