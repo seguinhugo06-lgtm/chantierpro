@@ -184,14 +184,17 @@ export function useAnalytique({ devis = [], clients = [], chantiers = [], depens
           clientChantiers.some(ch => (dep.chantierId || dep.chantier_id) === ch.id)
         ).reduce((sum, d) => sum + (Number(d.montant) || 0), 0);
 
+        const hasClientDepenses = clientDepenses > 0;
         return {
           id: clientId,
           nom,
           montant: data.montant,
           nbDevis: data.nbDevis,
           depenses: clientDepenses,
+          hasDepenses: hasClientDepenses,
           marge: data.montant - clientDepenses,
-          margePercent: data.montant > 0 ? ((data.montant - clientDepenses) / data.montant) * 100 : 0,
+          // Marge non calculable si aucune dépense (évite 100% trompeur)
+          margePercent: data.montant > 0 && hasClientDepenses ? ((data.montant - clientDepenses) / data.montant) * 100 : null,
         };
       })
       .sort((a, b) => b.montant - a.montant)

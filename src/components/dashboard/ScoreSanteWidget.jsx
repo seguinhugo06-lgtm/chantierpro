@@ -269,11 +269,17 @@ function useHealthScores() {
     );
     let avgMargin = 0;
     if (relevantChantiers.length > 0) {
-      const totalMarge = relevantChantiers.reduce((sum, c) => {
+      const chantiersWithDepenses = relevantChantiers.filter(c => {
         const bilan = getChantierBilan(c.id);
-        return sum + (bilan?.tauxMarge || 0);
-      }, 0);
-      avgMargin = totalMarge / relevantChantiers.length;
+        return bilan?.hasDepenses;
+      });
+      if (chantiersWithDepenses.length > 0) {
+        const totalMarge = chantiersWithDepenses.reduce((sum, c) => {
+          const bilan = getChantierBilan(c.id);
+          return sum + (bilan?.tauxMarge || 0);
+        }, 0);
+        avgMargin = totalMarge / chantiersWithDepenses.length;
+      }
     }
     // 30% margin = score 100
     const marge = Math.min(100, avgMargin * 3.33);

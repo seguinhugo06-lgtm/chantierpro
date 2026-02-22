@@ -247,13 +247,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     const avancement = ch.statut === 'termine' ? 100 : calculateSmartProgression(ch, bilan, tasksDone, tasksTotal);
     const depensesFinalesEstimees = avancement > 0 ? bilan.totalDepenses / (avancement / 100) : bilan.totalDepenses * 2;
     const beneficeProjecte = bilan.revenuPrevu - depensesFinalesEstimees;
-    const tauxMargeProjecte = bilan.revenuPrevu > 0 ? (beneficeProjecte / bilan.revenuPrevu) * 100 : 0;
+    const tauxMargeProjecte = bilan.revenuPrevu > 0 && bilan.hasDepenses ? (beneficeProjecte / bilan.revenuPrevu) * 100 : null;
 
     // Alertes - basées sur des seuils clairs
     const revenuTotal = bilan.revenuPrevu + (bilan.adjRevenus || 0);
     const budgetDepasse = revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9; // >90% du budget consommé
     const margeNegative = bilan.margeBrute < 0;
-    const margeFaible = !margeNegative && bilan.tauxMarge < 15;
+    const margeFaible = !margeNegative && bilan.hasDepenses && bilan.tauxMarge < 15;
 
     return (
       <div className="space-y-4 sm:space-y-6 pb-24">
@@ -1006,11 +1006,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           </div>
                           <div className="text-center">
                             <p className={`text-[10px] ${textMuted}`}>Bénéfice</p>
-                            <p className={`font-bold text-sm ${getMargeColor(tauxMargeProjecte)}`}>{formatMoney(beneficeProjecte)}</p>
+                            <p className={`font-bold text-sm ${tauxMargeProjecte != null ? getMargeColor(tauxMargeProjecte) : textMuted}`}>{bilan.hasDepenses ? formatMoney(beneficeProjecte) : '—'}</p>
                           </div>
                           <div className="text-center">
                             <p className={`text-[10px] ${textMuted}`}>Marge</p>
-                            <p className={`font-bold text-sm ${getMargeColor(tauxMargeProjecte)}`}>{formatPct(tauxMargeProjecte)}</p>
+                            <p className={`font-bold text-sm ${tauxMargeProjecte != null ? getMargeColor(tauxMargeProjecte) : textMuted}`}>{tauxMargeProjecte != null ? formatPct(tauxMargeProjecte) : '—'}</p>
                           </div>
                         </div>
                       </div>

@@ -255,7 +255,9 @@ export function useChantierStats(chantierId, { devis, depenses, pointages, equip
     const revenuTotal = revenuDevis + ajustementsRevenu;
     const depensesTotal = totalDepenses + coutMainOeuvre + ajustementsDepense;
     const marge = revenuTotal - depensesTotal;
-    const tauxMarge = revenuTotal > 0 ? (marge / revenuTotal) * 100 : 0;
+    const hasDepenses = depensesTotal > 0;
+    // Marge non calculable si aucune dépense (évite 100% trompeur)
+    const tauxMarge = revenuTotal > 0 && hasDepenses ? (marge / revenuTotal) * 100 : 0;
 
     return {
       revenuDevis,
@@ -268,6 +270,7 @@ export function useChantierStats(chantierId, { devis, depenses, pointages, equip
       depensesTotal,
       marge,
       tauxMarge,
+      hasDepenses,
       devisCount: chantierDevis.length,
       depensesCount: chantierDepenses.length,
       pointagesCount: chantierPointages.length

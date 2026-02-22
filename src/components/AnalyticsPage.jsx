@@ -423,8 +423,8 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
                         }}
                       />
                     </div>
-                    {client.margePercent > 0 && (
-                      <span className={`text-[10px] font-medium ${client.margePercent >= 20 ? 'text-green-500' : isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                    {client.margePercent != null && (
+                      <span className={`text-[10px] font-medium ${client.margePercent >= 20 ? 'text-green-500' : client.margePercent >= 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : 'text-red-500'}`}>
                         marge {client.margePercent.toFixed(0)}%
                       </span>
                     )}
