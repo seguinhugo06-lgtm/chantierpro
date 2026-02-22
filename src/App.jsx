@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
-import { auth, isDemo } from './supabaseClient';
+import supabase, { auth, isDemo } from './supabaseClient';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -540,6 +540,38 @@ export default function App() {
       const m = localStorage.getItem('cp_mode_discret'); if (m) setModeDiscret(JSON.parse(m));
     } catch (err) { console.warn('Failed to load settings from localStorage:', err.message); }
   }, []);
+
+  // Sync entreprise from Supabase on login (cloud → local merge)
+  useEffect(() => {
+    if (isDemo || !supabase || !user?.id) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('entreprise')
+          .select('settings_json')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (error) { console.warn('Failed to load entreprise from Supabase:', error.message); return; }
+        if (data?.settings_json && typeof data.settings_json === 'object') {
+          const cloud = data.settings_json;
+          setEntreprise(prev => {
+            // If local has default/empty nom, cloud wins entirely
+            const localIsDefault = !prev.nom || prev.nom === 'Martin Renovation';
+            if (localIsDefault && cloud.nom) return { ...prev, ...cloud };
+            // Otherwise merge: cloud fills empty fields, local overrides non-empty
+            const merged = { ...prev };
+            for (const [key, val] of Object.entries(cloud)) {
+              if (val != null && val !== '' && (!merged[key] || merged[key] === '')) {
+                merged[key] = val;
+              }
+            }
+            return merged;
+          });
+        }
+      } catch (e) { console.warn('Entreprise Supabase sync error:', e.message); }
+    })();
+  }, [user?.id]);
+
   useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);

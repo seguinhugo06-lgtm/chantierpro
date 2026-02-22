@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
 import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
-import { auth } from '../supabaseClient';
+import supabase, { auth, isDemo } from '../supabaseClient';
 import AdminHelp from './admin-help/AdminHelp';
 import {
   INTEGRATION_TYPES,
@@ -100,9 +100,27 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
   // Debounced save notification with visible indicator (MUST be before lookupSIRENE)
   const saveTimeoutRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved'
+  const supabaseSaveRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
   const updateEntreprise = useCallback((updater) => {
-    setEntreprise(updater);
+    setEntreprise((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Debounced Supabase sync (1.5s after last change)
+      if (!isDemo && supabase && user?.id) {
+        if (supabaseSaveRef.current) clearTimeout(supabaseSaveRef.current);
+        supabaseSaveRef.current = setTimeout(async () => {
+          try {
+            const { error } = await supabase
+              .from('entreprise')
+              .upsert({ user_id: user.id, settings_json: next }, { onConflict: 'user_id' });
+            if (error) console.warn('Supabase entreprise sync failed:', error.message);
+          } catch (e) {
+            console.warn('Supabase entreprise sync error:', e.message);
+          }
+        }, 1500);
+      }
+      return next;
+    });
     setSaveStatus('saving');
     // Debounce the toast to avoid spam
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -112,7 +130,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       // Reset indicator after 3s
       setTimeout(() => setSaveStatus(null), 3000);
     }, 800);
-  }, [setEntreprise, showToast]);
+  }, [setEntreprise, showToast, user?.id]);
 
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {
