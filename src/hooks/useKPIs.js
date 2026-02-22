@@ -82,9 +82,9 @@ export function useKPIs({ period = 'month', clientId, chantierId } = {}) {
     const devisRefuses = devisOnly.filter(d => d.statut === 'refuse');
     const montantPipeline = devisEnvoyes.reduce((s, d) => s + (d.total_ttc || d.total_ht || 0), 0);
 
-    // Taux de conversion (formule unifiée via calcConversion)
+    // Taux de conversion (formule unifiée via calcConversion — raw float, formatConversion() for display)
     const conversionResult = calcConversion(devisOnly);
-    const tauxConversion = conversionResult.taux > 0 ? Math.round(conversionResult.taux) : null;
+    const tauxConversion = conversionResult.envoyes > 0 ? conversionResult.taux : null;
 
     // === CHANTIERS ===
     let scopedChantiers = chantiers;

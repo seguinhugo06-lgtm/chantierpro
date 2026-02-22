@@ -105,6 +105,7 @@ import {
   transformSuggestions,
 } from '../lib/actionSuggestions';
 import { normalizeDevisRef, formatDevisNumber } from '../lib/formatters';
+import { calcConversion } from '../lib/statsUtils';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
@@ -711,11 +712,11 @@ export default function Dashboard({
     // Si aucune dépense enregistrée, la marge n'est pas calculable (évite 100% trompeur)
     const tauxMarge = totalCA > 0 && hasDepenses ? (marge / totalCA) * 100 : 0;
 
-    // Conversion rate — broader definition for Dashboard (includes more statuses)
-    const devisSignes = devisOnly.filter(d => ['accepte', 'signe', 'acompte_facture', 'facture', 'payee', 'paye'].includes(d.statut)).length;
-    const devisTotalEnvoyes = devisOnly.filter(d => d.statut !== 'brouillon').length;
-    const tauxConversion =
-      devisTotalEnvoyes > 0 ? (devisSignes / devisTotalEnvoyes) * 100 : -1;
+    // Conversion rate — formule unifiée via calcConversion (statsUtils.js)
+    const conversionDash = calcConversion(devisOnly);
+    const devisSignes = conversionDash.signes;
+    const devisTotalEnvoyes = conversionDash.envoyes;
+    const tauxConversion = devisTotalEnvoyes > 0 ? conversionDash.taux : -1;
 
     // CA trend — Dashboard-specific: uses total_ht including factures + devis acceptés
     const getMonthCA = (monthOffset) => {

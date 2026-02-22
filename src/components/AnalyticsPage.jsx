@@ -11,6 +11,7 @@ import {
   Calendar, Info, FileEdit,
 } from 'lucide-react';
 import { useAnalytique } from '../hooks/useAnalytique';
+import { formatConversion } from '../lib/statsUtils';
 
 const formatEUR = (value) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value || 0);
@@ -268,7 +269,7 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
               <Target size={18} style={{ color: couleur }} />
             </div>
           </div>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{kpis.tauxConversion.toFixed(1)}%</p>
+          <p className={`text-2xl font-bold ${textPrimary}`}>{formatConversion(kpis.tauxConversion)}</p>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <p className={`text-xs ${textSecondary}`}>{kpis.signedCount}/{kpis.totalDevisEnvoyes} signés</p>
             <ComparisonBadge value={comparisons.tauxConversion} isDark={isDark} suffix="pts" />

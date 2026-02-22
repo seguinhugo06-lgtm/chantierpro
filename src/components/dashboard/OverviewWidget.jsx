@@ -31,7 +31,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { cn } from '../../lib/utils';
 import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../context/DataContext';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
-import { calcConversion } from '../../lib/statsUtils';
+import { calcConversion, formatConversion } from '../../lib/statsUtils';
 
 /**
  * Format currency — exact amounts for consistency across Dashboard
@@ -330,7 +330,7 @@ function OverviewWidget({ setPage, isDark = false, className }) {
     const conversionResult = calcConversion(devisOnly);
     const devisSignesOv = conversionResult.signes;
     const devisSent = conversionResult.envoyes;
-    const tauxConversion = devisSent > 0 ? Math.round(conversionResult.taux) : -1;
+    const tauxConversion = devisSent > 0 ? conversionResult.taux : -1;
 
     // Factures
     const facturesImpayees = factures.filter(f => f.statut !== 'payee');
@@ -505,7 +505,7 @@ function OverviewWidget({ setPage, isDark = false, className }) {
           <StatCard
             icon={Percent}
             title="Conversion"
-            mainValue={stats.tauxConversion < 0 ? '—' : `${stats.tauxConversion}%`}
+            mainValue={formatConversion(stats.tauxConversion < 0 ? null : stats.tauxConversion)}
             secondaryValue={stats.tauxConversion >= 0 ? `${stats.devisSent} envoyés → ${stats.devisSignesOv} signés` : undefined}
             color={stats.tauxConversion >= 50 ? '#10b981' : stats.tauxConversion >= 30 ? '#f59e0b' : '#ef4444'}
             gradient={stats.tauxConversion >= 50

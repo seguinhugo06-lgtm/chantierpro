@@ -50,6 +50,7 @@ import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar,
 import { calculateGlobalKPIs, getMarginColor, MARGIN_THRESHOLDS } from '../../lib/business/margin-calculator';
 import { cn } from '../../lib/utils';
 import { formatDevisNumber } from '../../lib/formatters';
+import { formatConversion } from '../../lib/statsUtils';
 
 // ============ UTILS ============
 
@@ -1083,7 +1084,7 @@ export function CeMoisModal({
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : isDark ? 'text-white' : 'text-gray-900'
                       )}>
-                        {Math.round(periodStats.tauxConversion || 0)}%
+                        {formatConversion(periodStats.tauxConversion || 0)}
                       </span>
                     </div>
                   </div>

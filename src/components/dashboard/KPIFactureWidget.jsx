@@ -8,6 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, Target, FileText, Zap } from 'lucide-react';
 import KPICard from './KPICard';
+import { formatConversion } from '../../lib/statsUtils';
 
 export default function KPIFactureWidget({
   stats,
@@ -141,7 +142,7 @@ export default function KPIFactureWidget({
     result.push({
       icon: Zap,
       label: 'Taux conversion',
-      value: `${Math.round(stats.tauxConversion)}%`,
+      value: formatConversion(stats.tauxConversion),
       sub: stats.conversionSignes != null ? `${stats.conversionSignes}/${stats.conversionEnvoyes} signés` : undefined,
     });
 

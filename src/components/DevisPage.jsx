@@ -15,6 +15,7 @@ import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
+import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
@@ -3705,8 +3706,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
         const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const totalEnvoyes = devisEnvoye.length + devisAccepte.length + devisRefuse.length;
-        const tauxConversion = totalEnvoyes > 0 ? Math.round((devisAccepte.length / totalEnvoyes) * 100) : null;
+        // Taux de conversion — formule unifiée via calcConversion (statsUtils.js)
+        const conversionResult = calcConversion(cleanDevis);
+        const totalEnvoyes = conversionResult.envoyes;
+        const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
         // Count "à traiter" items
         const aTraiterCount = cleanDevis.filter(d => {
           const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
@@ -3758,9 +3761,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <TrendingUp size={14} className={tauxConversion != null && tauxConversion >= 50 ? 'text-emerald-500' : 'text-amber-500'} />
                 </div>
                 <p className={`text-lg font-bold ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
-                  {tauxConversion != null ? `${tauxConversion}%` : '—'}
+                  {formatConversion(tauxConversion)}
                 </p>
-                <p className={`text-[11px] ${textMuted}`}>{devisAccepte.length}/{totalEnvoyes} signés</p>
+                <p className={`text-[11px] ${textMuted}`}>{conversionResult.signes}/{totalEnvoyes} signés</p>
               </button>
 
               {/* À encaisser */}

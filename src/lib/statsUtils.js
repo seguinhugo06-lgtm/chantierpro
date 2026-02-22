@@ -33,3 +33,15 @@ export function calcConversion(devisList) {
   const taux = envoyes.length > 0 ? (signes.length / envoyes.length) * 100 : 0;
   return { taux, signes: signes.length, envoyes: envoyes.length };
 }
+
+/**
+ * Formate un taux de conversion pour affichage cohérent.
+ * Convention : toujours 1 décimale (ex: "54.5%"), "—" si non calculable.
+ *
+ * @param {number|null} taux - Le taux brut (0-100), null si non calculable
+ * @returns {string} Taux formaté (ex: "54.5%") ou "—"
+ */
+export function formatConversion(taux) {
+  if (taux == null || taux < 0) return '—';
+  return `${taux.toFixed(1)}%`;
+}
