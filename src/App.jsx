@@ -1727,14 +1727,9 @@ export default function App() {
                   <X size={22} />
                 </button>
               </div>
-              {unreadNotifs.length > 0 && (
-                <button onClick={markAllNotifsRead} className="mt-3 text-sm font-medium hover:underline" style={{color: couleur}}>
-                  Tout marquer comme lu
-                </button>
-              )}
             </div>
 
-            {/* Content */}
+            {/* Content — UX-011: "Tout marquer comme lu" uniquement en bas */}
             <div className="flex-1 overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="px-6 py-16 text-center">

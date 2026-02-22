@@ -653,9 +653,7 @@ export default function TresorerieModule({
   const [mouvStatutFilter, setMouvStatutFilter] = useState('all'); // all | prevu | paye
   const [showPrefillConfirm, setShowPrefillConfirm] = useState(false);
   const [showEncaisserWidget, setShowEncaisserWidget] = useState(true);
-  const [showChargesBTP, setShowChargesBTP] = useState(() => {
-    try { return !localStorage.getItem('cp_treso_charges_btp_seen'); } catch { return true; }
-  });
+  const [showChargesBTP, setShowChargesBTP] = useState(false); // UX: fermé par défaut, l'user ouvre s'il veut
   const [confirmingPaidId, setConfirmingPaidId] = useState(null);
   const [alertDismissed, setAlertDismissed] = useState(() => {
     try { return localStorage.getItem('cp_treso_alert_dismissed') === '1'; } catch { return false; }
@@ -1748,6 +1746,11 @@ export default function TresorerieModule({
                   className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
                   style={{ backgroundColor: couleur }}>
                   Suivant →
+                </button>
+                {/* UX-010: bouton pour passer le wizard */}
+                <button onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch {} setWizardStep(2); }}
+                  className={`w-full py-2 text-xs font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>
+                  Passer cette étape →
                 </button>
               </div>
             </div>

@@ -1434,15 +1434,10 @@ export default function Dashboard({
                           {ch.clientNom}{ch.prochEch ? ` · Éch. ${ch.prochEch}` : ''}
                         </p>
                       </div>
-                      {!ch.avancement || ch.avancement === 0 ? (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-                          Non démarré
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold ml-2 flex-shrink-0" style={{ color: couleur }}>
-                          {ch.avancement}%
-                        </span>
-                      )}
+                      {/* UX-002: Chantiers filtrés "en_cours" → toujours afficher l'avancement, jamais "Non démarré" */}
+                      <span className={`text-xs font-bold ml-2 flex-shrink-0 ${!ch.avancement ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={ch.avancement ? { color: couleur } : undefined}>
+                        {ch.avancement || 0}%
+                      </span>
                     </div>
                     {ch.avancement > 0 && (
                       <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>

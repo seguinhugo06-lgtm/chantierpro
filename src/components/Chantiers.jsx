@@ -473,13 +473,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                   else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                 }}
-                className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-white font-semibold text-base min-h-[56px] transition-all hover:opacity-90 active:scale-[0.98] shadow-lg"
-                style={{ background: `linear-gradient(135deg, #f97316, #ea580c)` }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-medium text-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: couleur }}
+                aria-label="Ouvrir dans Google Maps"
               >
-                <MapPin size={22} />
+                <MapPin size={16} />
                 Ouvrir GPS
               </button>
-              <p className={`text-xs ${textMuted} text-center mt-2`}>
+              <p className={`text-xs ${textMuted} mt-2`}>
                 {ch.adresse}{ch.codePostal ? `, ${ch.codePostal}` : ''}{ch.ville ? ` ${ch.ville}` : ''}
               </p>
             </div>
@@ -538,10 +539,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                       else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                     }}
-                    className="hidden sm:flex w-full items-center justify-center gap-3 py-4 rounded-xl text-white font-semibold min-h-[52px] transition-all hover:opacity-90 active:scale-[0.98] shadow-md"
-                    style={{ background: `linear-gradient(135deg, #f97316, #ea580c)` }}
+                    className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-medium text-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ background: couleur }}
+                    aria-label="Ouvrir dans Google Maps"
                   >
-                    <MapPin size={20} />
+                    <MapPin size={16} />
                     Ouvrir GPS
                   </button>
                 </div>
