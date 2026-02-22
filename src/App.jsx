@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
 import { auth, isDemo } from './supabaseClient';
 
 // Eager load critical components
@@ -384,6 +384,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
+  const [syncErrorDetails, setSyncErrorDetails] = useState(null); // { message, failedCount, permanentCount }
+  const syncRetryTimerRef = useRef(null);
+  const syncRetryAttemptRef = useRef(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('chantierpro_onboarding_complete'));
   const [showLanding, setShowLanding] = useState(true);
   const [showImport, setShowImport] = useState(false);
@@ -418,6 +421,29 @@ export default function App() {
   const updateEvent = async (id, data) => { await dataUpdatePlanningEvent(id, data); };
   const deleteEvent = async (id) => { await dataDeletePlanningEvent(id); showToast('Événement supprimé', 'info'); };
 
+  // Cancel any pending retry timer
+  const cancelSyncRetry = useCallback(() => {
+    if (syncRetryTimerRef.current) {
+      clearTimeout(syncRetryTimerRef.current);
+      syncRetryTimerRef.current = null;
+    }
+  }, []);
+
+  // Schedule an auto-retry with exponential backoff
+  const scheduleSyncRetry = useCallback(() => {
+    cancelSyncRetry();
+    const attempt = syncRetryAttemptRef.current;
+    if (attempt >= 3) return; // Stop after 3 auto-retries
+
+    const delay = Math.min(5000 * Math.pow(2, attempt), 60000); // 5s, 10s, 20s (max 60s)
+    console.log(`[Sync] Auto-retry #${attempt + 1} scheduled in ${delay / 1000}s`);
+    syncRetryTimerRef.current = setTimeout(() => {
+      syncRetryTimerRef.current = null;
+      syncRetryAttemptRef.current = attempt + 1;
+      handleManualSync().catch(err => console.warn('Auto-retry sync failed:', err));
+    }, delay);
+  }, []);
+
   // Manual sync handler for offline queue
   const handleManualSync = async () => {
     try {
@@ -425,6 +451,7 @@ export default function App() {
       if (isDemo) {
         await clearAllMutations();
         setPendingSync(0);
+        setSyncErrorDetails(null);
         return;
       }
 
@@ -455,16 +482,48 @@ export default function App() {
       }
 
       if (results.failed > 0) {
+        // Build error detail message from the failed mutations
+        const transientErrors = results.errors?.filter(e => !e.permanent) || [];
+        const errorEntities = [...new Set(transientErrors.map(e => e.mutation?.entity).filter(Boolean))];
+        const entityLabel = errorEntities.length > 0 ? ` (${errorEntities.join(', ')})` : '';
+        const lastError = transientErrors[0]?.error || '';
+
+        setSyncErrorDetails({
+          message: lastError
+            ? `Impossible de sauvegarder${entityLabel}. ${lastError.length > 80 ? lastError.slice(0, 80) + '…' : lastError}`
+            : `Impossible de sauvegarder vos modifications${entityLabel}. Vérifiez votre connexion.`,
+          failedCount: results.failed,
+          permanentCount: permanentErrors.length,
+        });
+
         showToast(`${results.failed} modification${results.failed > 1 ? 's' : ''} en échec — nouvelle tentative automatique`, 'error');
+
+        // Schedule auto-retry with backoff
+        scheduleSyncRetry();
+      } else {
+        // All succeeded or cleared — reset retry state
+        setSyncErrorDetails(null);
+        syncRetryAttemptRef.current = 0;
+        cancelSyncRetry();
       }
 
       // If everything was processed (success + cleared) and nothing is left, ensure counter is 0
       if (count === 0 && (results.success > 0 || results.cleared > 0)) {
         setPendingSync(0);
+        setSyncErrorDetails(null);
+        syncRetryAttemptRef.current = 0;
+        cancelSyncRetry();
       }
     } catch (error) {
       console.error('Sync error:', error);
+      setSyncErrorDetails({
+        message: `Erreur de synchronisation : ${error.message || 'Vérifiez votre connexion.'}`,
+        failedCount: 0,
+        permanentCount: 0,
+      });
       showToast('Erreur de synchronisation', 'error');
+      // Schedule auto-retry
+      scheduleSyncRetry();
       // Still try to refresh the counter even on error
       try {
         const count = await getPendingCount();
@@ -1778,11 +1837,15 @@ export default function App() {
       {/* Offline indicator banner */}
       <OfflineIndicator
         pendingCount={pendingSync}
-        onSync={handleManualSync}
+        onSync={() => { syncRetryAttemptRef.current = 0; cancelSyncRetry(); return handleManualSync(); }}
         onForceClear={async () => {
           await clearAllMutations();
           setPendingSync(0);
+          setSyncErrorDetails(null);
+          syncRetryAttemptRef.current = 0;
+          cancelSyncRetry();
         }}
+        errorDetails={syncErrorDetails}
         isDark={isDark}
       />
 

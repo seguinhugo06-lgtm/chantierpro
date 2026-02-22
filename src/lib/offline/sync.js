@@ -141,6 +141,29 @@ const updateMutation = async (mutation) => {
 const MAX_RETRY_ATTEMPTS = 3;
 
 /**
+ * Exécute une fonction asynchrone avec retry et backoff exponentiel.
+ * @param {Function} fn - Async function to execute
+ * @param {number} maxAttempts - Maximum number of attempts (default 3)
+ * @returns {Promise<*>} Result of fn()
+ */
+export const retryWithBackoff = async (fn, maxAttempts = 3) => {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      // Don't retry permanent errors
+      if (isPermanentError(e)) throw e;
+      if (i < maxAttempts - 1) {
+        const delay = 1000 * Math.pow(2, i); // 1s, 2s, 4s
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw e; // Final attempt failed
+      }
+    }
+  }
+};
+
+/**
  * Détecte si une erreur est permanente (ne réussira jamais)
  * @param {Error|Object} error
  * @returns {boolean}
@@ -205,22 +228,24 @@ export const syncQueue = async (handlers) => {
       }
 
       let result;
-      switch (mutation.action) {
-        case 'create':
-          result = await handler.create?.(mutation.data);
-          break;
-        case 'update':
-          result = await handler.update?.(mutation.data.id, mutation.data);
-          break;
-        case 'delete':
-          result = await handler.delete?.(mutation.data.id);
-          break;
-        default:
-          console.warn(`Action sync inconnue: ${mutation.action}`);
-          await removeMutation(mutation.id);
-          results.cleared++;
-          continue;
+      const execAction = async () => {
+        switch (mutation.action) {
+          case 'create': return await handler.create?.(mutation.data);
+          case 'update': return await handler.update?.(mutation.data.id, mutation.data);
+          case 'delete': return await handler.delete?.(mutation.data.id);
+          default: return null;
+        }
+      };
+
+      if (!['create', 'update', 'delete'].includes(mutation.action)) {
+        console.warn(`Action sync inconnue: ${mutation.action}`);
+        await removeMutation(mutation.id);
+        results.cleared++;
+        continue;
       }
+
+      // Execute with exponential backoff (1s, 2s, 4s between retries)
+      result = await retryWithBackoff(execAction, 2);
 
       // If handler silently refused (returned null/undefined), treat as cleared
       if (result === null || result === undefined) {
@@ -341,5 +366,6 @@ export default {
   syncQueue,
   getPendingCount,
   useNetworkStatus,
-  registerNetworkListeners
+  registerNetworkListeners,
+  retryWithBackoff
 };

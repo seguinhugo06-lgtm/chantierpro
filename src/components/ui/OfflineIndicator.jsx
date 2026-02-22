@@ -20,6 +20,7 @@ export default function OfflineIndicator({
   pendingCount = 0,
   onSync,
   onForceClear,
+  errorDetails = null, // { message, failedCount, permanentCount }
   isDark = false,
   position = 'bottom',
   className = ''
@@ -107,6 +108,14 @@ export default function OfflineIndicator({
     }
   };
 
+  // Sync error state from parent errorDetails prop
+  useEffect(() => {
+    if (errorDetails) {
+      setSyncError(true);
+      setShowBanner(true);
+    }
+  }, [errorDetails]);
+
   const showClearButton = onForceClear && pendingCount > 0 && (syncError || syncAttempts.current >= 2);
 
   // Clear error on successful sync (pending drops to 0)
@@ -152,27 +161,39 @@ export default function OfflineIndicator({
             )}
           </>
         ) : syncError ? (
-          <div className="flex items-center gap-2">
-            <button onClick={handleSync} className="flex items-center gap-2 cursor-pointer" disabled={isSyncing}>
-              <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-              <span>Erreur de sync — Appuyer pour réessayer</span>
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <RefreshCw size={16} className={`flex-shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="truncate text-xs sm:text-sm">
+                {errorDetails?.message || 'Impossible de sauvegarder vos modifications. Vérifiez votre connexion.'}
+              </span>
               {pendingCount > 0 && (
-                <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs flex-shrink-0">
                   {pendingCount} en attente
                 </span>
               )}
-            </button>
-            {showClearButton && (
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={handleForceClear}
-                disabled={isClearing}
+                onClick={handleSync}
+                disabled={isSyncing}
                 className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
-                title="Supprimer les modifications bloquées"
               >
-                <Trash2 size={12} />
-                Effacer
+                <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+                Réessayer
               </button>
-            )}
+              {showClearButton && (
+                <button
+                  onClick={handleForceClear}
+                  disabled={isClearing}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                  title="Rejeter les modifications bloquées pour éviter les données corrompues"
+                >
+                  <Trash2 size={12} />
+                  Rejeter
+                </button>
+              )}
+            </div>
           </div>
         ) : showSuccess ? (
           <>
