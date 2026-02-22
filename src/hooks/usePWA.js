@@ -13,6 +13,7 @@ import {
   setupOnlineSync,
   processSyncQueue,
 } from '../registerSW';
+import { checkConnectivity } from '../lib/offline/sync';
 
 /**
  * @typedef {Object} UsePWAReturn
@@ -71,15 +72,34 @@ export function usePWA(syncHandlers = {}) {
     };
   }, []);
 
-  // Handle online/offline status
+  // Handle online/offline status with real connectivity check
   React.useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    let timer = null;
+
+    const verifyAndSet = (browserSaysOnline) => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const reallyOnline = await checkConnectivity();
+        if (reallyOnline) {
+          setIsOffline(false);
+        } else if (!browserSaysOnline) {
+          setIsOffline(true);
+        }
+        // browser says offline but ping succeeds → ignore (DevTools glitch)
+      }, 300);
+    };
+
+    const handleOnline = () => verifyAndSet(true);
+    const handleOffline = () => verifyAndSet(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Initial verify if browser says offline
+    if (!navigator.onLine) verifyAndSet(false);
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };

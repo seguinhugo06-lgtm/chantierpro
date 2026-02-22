@@ -332,27 +332,62 @@ export const useNetworkStatus = () => {
 };
 
 /**
- * Enregistre les event listeners pour le retour en ligne
+ * Vérifie la connectivité réelle avec un fetch léger.
+ * navigator.onLine est peu fiable (Chrome DevTools toggle, faux positifs).
+ * @returns {Promise<boolean>}
+ */
+export const checkConnectivity = async () => {
+  try {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    if (!url) return navigator.onLine;
+    // HEAD on /auth/v1/ is lightweight and always returns quickly
+    const resp = await fetch(`${url}/auth/v1/`, { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    return resp.ok || resp.status === 401; // 401 = reachable but unauthorized = online
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Enregistre les event listeners pour le retour en ligne.
+ * Utilise un ping réel pour éviter les faux offline (Chrome DevTools, etc.)
  * @param {Function} onOnline - Callback quand retour en ligne
  * @param {Function} onOffline - Callback quand passage hors ligne
  */
 export const registerNetworkListeners = (onOnline, onOffline) => {
   if (typeof window === 'undefined') return () => {};
 
-  const handleOnline = () => {
-    console.log('ChantierPro: Retour en ligne, synchronisation...');
-    onOnline?.();
+  let debounceTimer = null;
+
+  const verifyAndNotify = async (browserSaysOnline) => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      const reallyOnline = await checkConnectivity();
+      if (reallyOnline) {
+        console.log('ChantierPro: Retour en ligne, synchronisation...');
+        onOnline?.();
+      } else if (!browserSaysOnline) {
+        // Only declare offline if both browser AND ping agree
+        console.log('ChantierPro: Passage hors ligne');
+        onOffline?.();
+      }
+      // If browser says offline but ping succeeds → ignore (false alarm)
+    }, 300); // 300ms debounce to absorb rapid online/offline toggling
   };
 
-  const handleOffline = () => {
-    console.log('ChantierPro: Passage hors ligne');
-    onOffline?.();
-  };
+  const handleOnline = () => verifyAndNotify(true);
+  const handleOffline = () => verifyAndNotify(false);
 
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 
+  // Initial check: if navigator.onLine is false, verify immediately
+  if (!navigator.onLine) {
+    verifyAndNotify(false);
+  }
+
   return () => {
+    clearTimeout(debounceTimer);
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
   };
@@ -367,5 +402,6 @@ export default {
   getPendingCount,
   useNetworkStatus,
   registerNetworkListeners,
+  checkConnectivity,
   retryWithBackoff
 };

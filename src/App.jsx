@@ -74,7 +74,7 @@ import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionSto
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
-import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations } from './lib/offline/sync';
+import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
@@ -382,7 +382,7 @@ export default function App() {
   const [showFABQuickClient, setShowFABQuickClient] = useState(false);
   const [showFABQuickChantier, setShowFABQuickChantier] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // Optimistic: assume online, verify via ping
   const [pendingSync, setPendingSync] = useState(0);
   const [syncErrorDetails, setSyncErrorDetails] = useState(null); // { message, failedCount, permanentCount }
   const syncRetryTimerRef = useRef(null);
