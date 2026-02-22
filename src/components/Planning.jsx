@@ -539,184 +539,101 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const upcomingEvents = allEvents.filter(e => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <div className="flex items-center gap-3">
+    <div className="space-y-3">
+      {/* Header compact — titre + contrôles fusionnés */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           {setPage && (
             <button
               onClick={() => setPage('dashboard')}
-              className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
           )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Planning</h1>
-            <p className={`text-sm ${textMuted}`}>{(() => {
-              // P3.2: Dynamic header based on current view
-              if (viewMode === 'month') {
-                const monthEvts = allEvents.filter(e => {
-                  if (filterEmploye && e.employeId !== filterEmploye) return false;
-                  if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
-                  return e.date?.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`);
-                });
-                return monthEvts.length === 0 ? `Aucun événement en ${MOIS[month].toLowerCase()}` : `${monthEvts.length} événement${monthEvts.length > 1 ? 's' : ''} en ${MOIS[month].toLowerCase()}`;
-              }
-              if (viewMode === 'week') {
-                const weekEvts = weekDays.flatMap(d => getEventsForDate(d));
-                if (weekEvts.length > 0) return `${weekEvts.length} événement${weekEvts.length > 1 ? 's' : ''} cette semaine`;
-                // Check if month has events to hint navigation
-                const monthPrefix = `${weekDays[3].getFullYear()}-${String(weekDays[3].getMonth() + 1).padStart(2, '0')}`;
-                const monthEvts = allEvents.filter(e => e.date?.startsWith(monthPrefix) || (e.dateEnd && e.date <= `${monthPrefix}-31` && e.dateEnd >= `${monthPrefix}-01`));
-                if (monthEvts.length > 0) return `Aucun événement cette semaine · ${monthEvts.length} en ${MOIS[weekDays[3].getMonth()].toLowerCase()}`;
-                return 'Aucun événement cette semaine';
-              }
-              if (viewMode === 'day') {
-                const dayEvts = getEventsForDay(formatLocalDate(date));
-                const dayLabel = formatLocalDate(date) === todayStr ? "aujourd'hui" : date.toLocaleDateString('fr-FR', { weekday: 'long' });
-                return dayEvts.length === 0 ? `Aucun événement ${dayLabel}` : `${dayEvts.length} événement${dayEvts.length > 1 ? 's' : ''} ${dayLabel}`;
-              }
-              // agenda
-              return todayEvents.length === 0 ? "Aucun événement aujourd'hui" : `${todayEvents.length} événement${todayEvents.length > 1 ? 's' : ''} aujourd'hui`;
-            })()}</p>
-          </div>
+          <h1 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>Planning</h1>
+          <span className={`text-xs ${textMuted} hidden sm:inline`}>{(() => {
+            if (viewMode === 'month') {
+              const monthEvts = allEvents.filter(e => {
+                if (filterEmploye && e.employeId !== filterEmploye) return false;
+                if (filterTypes.size > 0 && !filterTypes.has(e.type)) return false;
+                return e.date?.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`);
+              });
+              return monthEvts.length === 0 ? '' : `· ${monthEvts.length} évén.`;
+            }
+            if (viewMode === 'week') {
+              const weekEvts = weekDays.flatMap(d => getEventsForDate(d));
+              return weekEvts.length > 0 ? `· ${weekEvts.length} évén.` : '';
+            }
+            if (viewMode === 'day') {
+              const dayEvts = getEventsForDay(formatLocalDate(date));
+              return dayEvts.length > 0 ? `· ${dayEvts.length} évén.` : '';
+            }
+            return todayEvents.length > 0 ? `· ${todayEvents.length} évén.` : '';
+          })()}</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button onClick={goToToday} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
+            Aujourd'hui
+          </button>
+          <select
+            className={`px-2 py-1 border rounded-lg text-xs ${inputBg}`}
+            value={filterEmploye}
+            onChange={e => setFilterEmploye(e.target.value)}
+            aria-label="Filtrer par collaborateur"
+          >
+            <option value="">Tous</option>
+            <option value="__me__">Moi</option>
+            {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
+              <option value="" disabled>Aucun employé</option>
+            )}
+          </select>
+          <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <button onClick={() => { setViewMode('month'); }} className={`px-2 py-1 text-xs ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2 py-1 text-xs ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2 py-1 text-xs ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+            <button onClick={() => setViewMode('agenda')} className={`px-2 py-1 text-xs ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+          </div>
+          <div className="relative">
+            <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
+              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              title="Paramètres horaires" aria-label="Paramètres horaires">
+              <Settings size={14} />
+            </button>
+            {showPlanningSettings && (
+              <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                <p className={`text-xs font-semibold mb-3 ${textPrimary}`}>Horaires de travail</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de début</label>
+                    <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                      value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch {} }}>
+                      {Array.from({length: 8}, (_, i) => i + 5).map(h => <option key={h} value={h}>{h}h00</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                    <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                      value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch {} }}>
+                      {Array.from({length: 10}, (_, i) => i + 14).map(h => <option key={h} value={h}>{h}h00</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button onClick={() => setShowPlanningSettings(false)}
+                  className={`mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  Fermer
+                </button>
+              </div>
+            )}
+          </div>
           <button onClick={() => {
             setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
             setShowAdd(true);
-          }} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
-            <Plus size={16} /><span className="hidden sm:inline">Événement</span>
+          }} className="w-9 h-9 sm:w-auto sm:h-8 sm:px-3 text-white rounded-lg flex items-center justify-center sm:gap-1.5 hover:shadow-lg transition-all text-xs" style={{background: couleur}}>
+            <Plus size={14} /><span className="hidden sm:inline">Événement</span>
           </button>
         </div>
-      </div>
-
-      {/* Filters and View Toggle */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-2 items-center flex-wrap">
-          <button onClick={goToToday} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
-            Aujourd'hui
-          </button>
-          {/* Collaborator filter — separated select */}
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] uppercase tracking-wider font-medium ${textMuted}`}>Afficher pour</span>
-            <select
-              className={`px-3 py-1.5 border rounded-lg text-xs font-medium ${inputBg}`}
-              value={filterEmploye}
-              onChange={e => setFilterEmploye(e.target.value)}
-              aria-label="Filtrer par collaborateur"
-            >
-              <option value="">Tous</option>
-              <option value="__me__">Moi</option>
-              {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
-                <option value="" disabled>Aucun employé → Configurer l'équipe</option>
-              )}
-            </select>
-            {equipe.length === 0 && setPage && (
-              <button onClick={() => setPage('equipe')} className="text-[10px] hover:underline whitespace-nowrap" style={{ color: couleur }}>
-                Configurer →
-              </button>
-            )}
-          </div>
-          {filterTypes.size > 0 && (
-            <button
-              onClick={() => setFilterTypes(new Set())}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}
-            >
-              <X size={12} /> Tout afficher
-            </button>
-          )}
-        </div>
-        <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => { setViewMode('month'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-          <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Semaine</button>
-          <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-3 py-1.5 text-sm ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
-          <button onClick={() => setViewMode('agenda')} className={`px-3 py-1.5 text-sm ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
-        </div>
-        {/* Work hours settings */}
-        <div className="relative">
-          <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-            title="Paramètres horaires" aria-label="Paramètres horaires">
-            <Settings size={16} />
-          </button>
-          {showPlanningSettings && (
-            <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <p className={`text-xs font-semibold mb-3 ${textPrimary}`}>Horaires de travail</p>
-              <div className="space-y-3">
-                <div>
-                  <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de début</label>
-                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-                    value={workHourStart} onChange={e => { const v = parseInt(e.target.value); setWorkHourStart(v); try { localStorage.setItem('cp_planning_hour_start', String(v)); } catch {} }}>
-                    {Array.from({length: 8}, (_, i) => i + 5).map(h => <option key={h} value={h}>{h}h00</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={`block text-[11px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
-                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-                    value={workHourEnd} onChange={e => { const v = parseInt(e.target.value); setWorkHourEnd(v); try { localStorage.setItem('cp_planning_hour_end', String(v)); } catch {} }}>
-                    {Array.from({length: 10}, (_, i) => i + 14).map(h => <option key={h} value={h}>{h}h00</option>)}
-                  </select>
-                </div>
-              </div>
-              <button onClick={() => setShowPlanningSettings(false)}
-                className={`mt-3 w-full py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                Fermer
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Legend — P1.3: clickable multi-select filters */}
-      <div className={`flex gap-2 sm:gap-3 flex-wrap p-3 rounded-xl items-center ${isDark ? 'bg-slate-800/50' : 'bg-white shadow-sm border border-slate-200'}`}>
-        {Object.entries(TYPE_LABELS).map(([key, label]) => {
-          const Icon = TYPE_ICONS[key];
-          const isActive = filterTypes.size === 0 || filterTypes.has(key);
-          const isFiltering = filterTypes.size > 0;
-          return (
-            <button
-              key={key}
-              onClick={() => {
-                setFilterTypes(prev => {
-                  const next = new Set(prev);
-                  if (next.has(key)) {
-                    next.delete(key);
-                  } else {
-                    next.add(key);
-                  }
-                  return next;
-                });
-              }}
-              aria-label={`Filtrer par ${label}`}
-              aria-pressed={isFiltering ? isActive : undefined}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                isFiltering && isActive
-                  ? 'text-white shadow-md'
-                  : isFiltering && !isActive
-                  ? `border ${isDark ? 'border-slate-600 opacity-50' : 'border-slate-300 opacity-50'}`
-                  : isDark
-                  ? 'bg-slate-700 hover:bg-slate-600'
-                  : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'
-              }`}
-              style={isFiltering && isActive ? { background: typeColors[key] } : {}}
-            >
-              <span className={`w-4 h-4 rounded-full shadow-sm ${isFiltering && isActive ? 'bg-white/40' : ''}`} style={!(isFiltering && isActive) ? { background: typeColors[key] } : {}} aria-hidden="true" />
-              <span className={`text-sm font-semibold ${isFiltering && isActive ? '' : textPrimary}`}>{label}</span>
-            </button>
-          );
-        })}
-        {filterTypes.size > 0 && (
-          <button
-            onClick={() => setFilterTypes(new Set())}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-          >
-            <X size={14} /> Tout
-          </button>
-        )}
       </div>
 
       {/* Calendar */}
@@ -1357,43 +1274,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
         );
       })()}
 
-      {/* Upcoming events */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-5`}>
-        <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
-          <CalendarCheck size={18} style={{color: couleur}} /> Prochains événements
-        </h3>
-        {upcomingEvents.length === 0 ? (
-          <div className={`text-center py-6 ${textMuted}`}>
-            <Calendar size={32} className="mx-auto mb-2 opacity-30" />
-            <p>Aucun événement à venir</p>
-            <button onClick={() => setShowAdd(true)} className="mt-3 text-sm hover:underline" style={{ color: couleur }}>Créer un événement</button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {upcomingEvents.slice(0, 5).map(ev => {
-              const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-              const daysUntil = Math.ceil((new Date(ev.date) - new Date()) / 86400000);
-              return (
-                <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: getEventColor(ev) }}>
-                    <TypeIcon size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium truncate ${textPrimary}`} title={ev.title}>{ev.title}</p>
-                    <p className={`text-sm ${textMuted}`}>{new Date(ev.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} {ev.time && `à ${ev.time}`}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-1 rounded-full ${daysUntil === 0 ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : daysUntil <= 2 ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700') : (isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-600')}`}>
-                    {daysUntil === 0 ? "Aujourd'hui" : daysUntil === 1 ? 'Demain' : `${daysUntil}j`}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Tips — dismissable, stored in localStorage */}
-      {/* Onboarding banner — shown once, then dismissed via localStorage */}
       {showTips && (
         <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
           <CalendarDays size={20} className="flex-shrink-0 mt-0.5" style={{ color: couleur }} />
