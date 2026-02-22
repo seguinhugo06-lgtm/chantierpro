@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon } from 'lucide-react';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
@@ -65,6 +65,56 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
   // C1: Duplicate chantier detection
   const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
+
+  // P0.1: Compute chantier health alerts (reusable across detail + list)
+  const getChantierAlerts = React.useCallback((ch, bilan) => {
+    const alerts = [];
+    if (!ch || ch.statut === 'termine' || ch.statut === 'archive') return alerts;
+    const revTotal = (bilan?.revenuPrevu || 0) + (bilan?.adjRevenus || 0);
+
+    // Budget thresholds: 100%+ red, 90%+ orange, 75%+ yellow
+    if (revTotal > 0 && bilan?.totalDepenses > 0) {
+      const pct = (bilan.totalDepenses / revTotal) * 100;
+      if (pct >= 100) alerts.push({ type: 'budget', severity: 'critical', label: `Budget dépassé (${Math.round(pct)}%)`, icon: 'TrendingDown' });
+      else if (pct >= 90) alerts.push({ type: 'budget', severity: 'warning', label: `Budget à ${Math.round(pct)}%`, icon: 'AlertTriangle' });
+      else if (pct >= 75) alerts.push({ type: 'budget', severity: 'caution', label: `Budget à ${Math.round(pct)}%`, icon: 'AlertCircle' });
+    }
+
+    // Overdue: date_fin passed
+    if (ch.date_fin) {
+      const df = new Date(ch.date_fin); df.setHours(0,0,0,0);
+      const now = new Date(); now.setHours(0,0,0,0);
+      const days = Math.ceil((df - now) / 86400000);
+      if (days < 0) alerts.push({ type: 'overdue', severity: 'critical', label: `En retard de ${Math.abs(days)}j`, icon: 'Clock' });
+    }
+
+    // Dormant: no activity in 7+ days
+    const lastActivity = Math.max(
+      ch.updated_at ? new Date(ch.updated_at).getTime() : 0,
+      ch.last_photo_at ? new Date(ch.last_photo_at).getTime() : 0
+    );
+    if (lastActivity > 0 && ch.statut === 'en_cours') {
+      const daysSince = Math.floor((Date.now() - lastActivity) / 86400000);
+      if (daysSince >= 7) alerts.push({ type: 'dormant', severity: 'warning', label: `Inactif ${daysSince}j`, icon: 'Moon' });
+    }
+
+    // Priority tasks overdue
+    const tasks = ch.taches || [];
+    const critPending = tasks.filter(t => t.critical && !t.done).length;
+    if (critPending > 0) alerts.push({ type: 'tasks', severity: 'warning', label: `${critPending} prioritaire${critPending > 1 ? 's' : ''}`, icon: 'Zap' });
+
+    return alerts;
+  }, []);
+
+  // P0.1: Worst severity determines health color
+  const getHealthColor = (alerts) => {
+    if (!alerts.length) return '#10b981'; // green
+    const hasCritical = alerts.some(a => a.severity === 'critical');
+    const hasWarning = alerts.some(a => a.severity === 'warning');
+    if (hasCritical) return '#ef4444'; // red
+    if (hasWarning) return '#f59e0b'; // amber
+    return '#eab308'; // yellow (caution)
+  };
 
   const [view, setView] = useState(selectedChantier || null);
   const [show, setShow] = useState(false);
@@ -251,9 +301,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
     // Alertes - basées sur des seuils clairs
     const revenuTotal = bilan.revenuPrevu + (bilan.adjRevenus || 0);
-    const budgetDepasse = revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9; // >90% du budget consommé
+    const budgetDepasse = revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9;
     const margeNegative = bilan.margeBrute < 0;
     const margeFaible = !margeNegative && bilan.hasDepenses && bilan.tauxMarge < 15;
+
+    // P0.1: Unified alert system
+    const chAlerts = getChantierAlerts(ch, bilan);
+    const healthColor = getHealthColor(chAlerts);
+
+    // P0.2: Financial KPI data
+    const depPct = revenuTotal > 0 ? Math.min(100, (bilan.totalDepenses / revenuTotal) * 100) : 0;
+    const totalFacture = devis?.filter(d => d.chantier_id === ch.id && (d.type === 'facture' || d.statut === 'facture' || d.statut === 'payee')).reduce((s, d) => s + (d.total_ht || 0), 0) || 0;
+    const resteAFacturer = revenuTotal - totalFacture;
 
     return (
       <div className="space-y-4 sm:space-y-6 pb-24">
@@ -841,24 +900,75 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {/* Quick actions remplacées par le FAB flottant (voir bas de page) */}
         <input id={`photo-quick-${ch.id}`} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'pendant')} />
 
-        {/* Alertes */}
-        {(margeNegative || budgetDepasse || margeFaible) && (
-          <div className={`rounded-2xl p-4 ${margeNegative ? (isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200') : budgetDepasse ? (isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200') : (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200')}`}>
-            <div className="flex items-center gap-3">
-              {margeNegative ? <TrendingDown size={24} className="text-red-500" /> : budgetDepasse ? <AlertTriangle size={24} className="text-amber-500" /> : <AlertCircle size={24} className="text-blue-500" />}
-              <div>
-                <p className={`font-semibold ${margeNegative ? (isDark ? 'text-red-400' : 'text-red-700') : budgetDepasse ? (isDark ? 'text-amber-400' : 'text-amber-700') : (isDark ? 'text-blue-400' : 'text-blue-700')}`}>
-                  {margeNegative ? 'Chantier en perte' : budgetDepasse ? 'Budget presque épuisé' : 'Marge faible'}
-                </p>
-                <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {margeNegative
-                    ? `Les dépenses (${formatMoney(bilan.totalDepenses)}) dépassent le revenu prévu (${formatMoney(revenuTotal)}).`
-                    : budgetDepasse
-                    ? `Vous avez consommé ${((bilan.totalDepenses / revenuTotal) * 100).toFixed(0)}% du budget. Surveillez les coûts.`
-                    : `Marge prévisionnelle de ${formatPct(bilan.tauxMarge)} - en dessous de 15%.`}
+        {/* P0.1: Unified smart alerts — multiple alerts stacked */}
+        {chAlerts.length > 0 && (
+          <div className="space-y-2">
+            {chAlerts.map((alert, i) => {
+              const colors = alert.severity === 'critical'
+                ? (isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700')
+                : alert.severity === 'warning'
+                ? (isDark ? 'bg-amber-900/30 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700')
+                : (isDark ? 'bg-yellow-900/20 border-yellow-700 text-yellow-300' : 'bg-yellow-50 border-yellow-200 text-yellow-700');
+              const iconColor = alert.severity === 'critical' ? 'text-red-500' : alert.severity === 'warning' ? 'text-amber-500' : 'text-yellow-500';
+              return (
+                <div key={`${alert.type}-${i}`} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${colors}`}>
+                  {alert.type === 'budget' && <TrendingDown size={18} className={iconColor} />}
+                  {alert.type === 'overdue' && <Clock size={18} className={iconColor} />}
+                  {alert.type === 'dormant' && <AlertCircle size={18} className={iconColor} />}
+                  {alert.type === 'tasks' && <AlertTriangle size={18} className={iconColor} />}
+                  <span className="text-sm font-medium">{alert.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* P0.2: Unified financial KPI dashboard — always visible */}
+        {(revenuTotal > 0 || bilan.totalDepenses > 0) && (
+          <div className={`${cardBg} rounded-xl border p-4`}>
+            {/* KPI row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+              <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Budget</p>
+                <p className={`text-lg font-bold tabular-nums ${textPrimary}`}>{modeDiscret ? '•••••' : formatMoney(revenuTotal)}</p>
+              </div>
+              <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Dépensé</p>
+                <p className="text-lg font-bold tabular-nums text-red-500">{modeDiscret ? '•••••' : formatMoney(bilan.totalDepenses)}</p>
+              </div>
+              <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Facturé</p>
+                <p className="text-lg font-bold tabular-nums" style={{ color: couleur }}>{modeDiscret ? '•••••' : formatMoney(totalFacture)}</p>
+              </div>
+              <div className={`rounded-lg p-2.5 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <p className={`text-[10px] font-medium uppercase tracking-wider ${textMuted}`}>Marge brute</p>
+                <p className="text-lg font-bold tabular-nums" style={{ color: getHealthColor(chAlerts) }}>
+                  {modeDiscret ? '•••••' : bilan.hasDepenses ? `${formatPct(bilan.tauxMarge)}` : '—'}
                 </p>
               </div>
             </div>
+            {/* Double progress bar: avancement vs budget consumption */}
+            {revenuTotal > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Avancement</span>
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
+                  </div>
+                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Budget</span>
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <div className={`h-full rounded-full transition-all ${depPct > avancement && avancement > 0 ? 'bg-red-500' : depPct > 75 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, depPct)}%` }} />
+                  </div>
+                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right ${depPct > avancement && avancement > 0 ? 'text-red-500' : depPct > 75 ? 'text-amber-500' : 'text-emerald-500'}`}>{Math.round(depPct)}%</span>
+                </div>
+                {resteAFacturer > 0 && !modeDiscret && (
+                  <p className={`text-[10px] ${textMuted} text-right`}>Reste à facturer : <strong className={textPrimary}>{formatMoney(resteAFacturer)}</strong></p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -2721,6 +2831,22 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const revenuTotalList = bilan.revenuPrevu + (bilan.adjRevenus || 0);
             const budgetDepleted = revenuTotalList > 0 && bilan.totalDepenses > revenuTotalList * 0.9;
             const hasAlert = bilan.tauxMarge < 0 || budgetDepleted;
+            // P0.1: Unified alerts for list cards
+            const listAlerts = getChantierAlerts(ch, bilan);
+            const listHealthColor = getHealthColor(listAlerts);
+            // P3.9: Left border color by status
+            const borderLeftColor = ch.statut === 'termine' ? '#10b981' : ch.statut === 'en_cours' ? (listAlerts.some(a => a.severity === 'critical') ? '#ef4444' : listAlerts.some(a => a.severity === 'warning') ? '#f59e0b' : '#f97316') : ch.statut === 'prospect' ? '#3b82f6' : ch.statut === 'archive' ? '#94a3b8' : '#cbd5e1';
+            // P3.9: Days countdown
+            const daysInfo = (() => {
+              if (!ch.date_fin || ch.statut === 'termine' || ch.statut === 'archive') return null;
+              const df = new Date(ch.date_fin); df.setHours(0,0,0,0);
+              const now = new Date(); now.setHours(0,0,0,0);
+              const d = Math.ceil((df - now) / 86400000);
+              if (d < 0) return { text: `Retard +${Math.abs(d)}j`, color: 'text-red-500' };
+              if (d === 0) return { text: "Échéance aujourd'hui", color: 'text-amber-500' };
+              if (d <= 7) return { text: `J-${d}`, color: 'text-amber-500' };
+              return { text: `J-${d}`, color: isDark ? 'text-slate-400' : 'text-slate-500' };
+            })();
             const statusLabel = ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Terminé' : ch.statut === 'archive' ? 'Archivé' : 'Prospect';
             const statusColor = ch.statut === 'en_cours'
               ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700')
@@ -2751,14 +2877,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             const dateRange = formatDateRange();
 
             return (
-              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${hasAlert ? (bilan.tauxMarge < 0 ? (isDark ? 'border-red-700 hover:border-red-600' : 'border-red-300 hover:border-red-400') : (isDark ? 'border-amber-700 hover:border-amber-600' : 'border-amber-300 hover:border-amber-400')) : (isDark ? 'hover:border-slate-500' : 'hover:border-orange-200')}`}>
-                {/* Row 1: Nom + Ref + Badge statut */}
+              <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500' : 'hover:border-orange-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
+                {/* Row 1: Nom + Health dot + Badges */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-2 min-w-0">
+                    {/* P0.1: Health indicator dot */}
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
                     <h3 className={`font-semibold text-sm leading-tight truncate ${textPrimary}`}>{ch.nom}</h3>
                     <span className={`text-[10px] font-mono shrink-0 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {/* P3.9: Days countdown badge */}
+                    {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
                     {isDraftChantier(ch) && (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
                         Brouillon
@@ -2809,9 +2939,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 {/* Row 3: Progress bar + Budget/Marge compacts */}
                 <div className="flex items-center gap-3">
                   {/* Progress bar - inline */}
+                  {/* P3.9: Compact empty state for chantiers without tasks */}
                   {ch.statut === 'en_cours' && avancement === 0 && allTasks.length === 0 && (
                     <div className="flex-1">
-                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>Non démarré</span>
+                      <span className={`text-[11px] ${textMuted}`}>0 tâche • <span className="underline">Configurer →</span></span>
                     </div>
                   )}
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
