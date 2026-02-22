@@ -597,34 +597,44 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* Tabs — Desktop: pills with separators, Mobile: accordion groups */}
-      {/* Desktop tabs (hidden on mobile) */}
-      <div className={`hidden sm:flex gap-1.5 border-b pb-0 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        {[
-          ['identite', '🏢 Identité'],
-          ['legal', '📋 Légal'],
-          ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
-          ['banque', '🏦 Banque'],
-          ['_sep1', ''],
-          ['documents', '📄 Documents'],
-          ['facture2026', '🧾 Facture 2026'],
-          ['relances', '📨 Relances'],
-          ['_sep2', ''],
-          ['comptabilite', '🧮 Comptabilité'],
-          ['rentabilite', '📊 Rentabilité'],
-          ['donnees', '💾 Données'],
-          ['administratif', '📁 Administratif'],
-          ['multi', '🏗️ Multi-entreprise'],
-        ].filter(([k]) => k).map(([k, v]) => (
-          k.startsWith('_sep') ? <div key={k} className={`w-px h-6 self-center mx-1 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} /> :
-          <button key={k} data-tab={k} onClick={() => {
-            setTab(k);
-            setTimeout(() => document.querySelector(`[data-tab="${k}"]`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 50);
-          }} className={`relative px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm transition-colors ${tab === k ? `${isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200'} -mb-[1px] font-semibold` : `${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>
-            {v}
-            {tab === k && <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full" style={{ backgroundColor: entreprise.couleur }} />}
-          </button>
-        ))}
+      {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
+      {/* Level 1: Group pills (hidden on mobile) */}
+      <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className="flex gap-1">
+          {TAB_GROUPS.map(group => {
+            const activeInGroup = group.tabs.some(t => t.key === tab);
+            return (
+              <button
+                key={group.id}
+                onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
+                className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm transition-colors ${activeInGroup ? `${isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200'} -mb-[1px] font-semibold` : `${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}`}
+                style={activeInGroup ? { color: entreprise.couleur } : {}}
+              >
+                {group.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Level 2: Sub-tabs within active group */}
+        {(() => {
+          const activeGroup = TAB_GROUPS.find(g => g.tabs.some(t => t.key === tab));
+          if (!activeGroup || activeGroup.tabs.length <= 1) return null;
+          return (
+            <div className={`flex gap-1 px-2 py-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+              {activeGroup.tabs.map(t => (
+                <button
+                  key={t.key}
+                  data-tab={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === t.key ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
+                  style={tab === t.key ? { backgroundColor: entreprise.couleur } : {}}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Mobile tabs — grouped accordion (visible < 640px) */}

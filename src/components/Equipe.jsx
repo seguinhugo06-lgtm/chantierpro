@@ -1478,81 +1478,87 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
       {/* Visual Stats Dashboard — only for employes mode */}
       {!isSousTraitants && (<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Week Hero Card with Navigation */}
+        {/* Week Hero Card with Navigation — compact when no data */}
         <motion.div
-          className="col-span-2 rounded-2xl p-5 sm:p-6 text-white relative overflow-hidden shadow-lg"
+          className={`col-span-2 rounded-2xl text-white relative overflow-hidden shadow-lg ${totalWeekHours === 0 && approvedWeekHours === 0 ? 'p-4' : 'p-5 sm:p-6'}`}
           style={{ background: getBannerGradient() }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
-
-          <div className="relative">
-            {/* Week Navigation */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setWeekOffset(o => o - 1)}
-                className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg"
-                aria-label="Semaine précédente"
-              >
-                <ChevronLeft size={24} className="text-orange-600" />
-              </button>
-              <div className="flex items-center gap-2 px-5 py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
-                <Calendar size={16} className="text-white" />
-                <p className="text-sm text-white font-bold">
-                  {weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
-                </p>
-              </div>
-              <button
-                onClick={() => setWeekOffset(o => Math.min(o + 1, 0))}
-                disabled={weekOffset >= 0}
-                className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Semaine suivante"
-              >
-                <ChevronRight size={24} className="text-orange-600" />
-              </button>
-            </div>
-
-            <div className="flex items-end justify-between mb-4">
-              <div>
-                <p className={`text-5xl sm:text-6xl font-black text-white ${totalWeekHours === 0 ? 'opacity-50' : ''}`} style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
-                <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                  {totalWeekHours === 0 ? 'Aucune heure pointée' : `${equipe.length} membre${equipe.length > 1 ? 's' : ''} dans l'équipe`}
-                </p>
-              </div>
-              <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm" title="Heures validées par un responsable cette semaine">
-                <div className="flex items-center gap-2 justify-end">
-                  <Check size={16} className="text-white" />
-                  <span className="text-sm text-white font-semibold">Validées</span>
+          {totalWeekHours === 0 && approvedWeekHours === 0 ? (
+            /* ── Compact mode: single line when no hours ── */
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button onClick={() => setWeekOffset(o => o - 1)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center" aria-label="Semaine précédente">
+                  <ChevronLeft size={16} className="text-white" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-white/80" />
+                  <p className="text-sm text-white font-semibold">
+                    {weekOffset === 0 ? 'Cette semaine' : `${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                  </p>
                 </div>
-                <p className="text-2xl font-black text-white">{approvedWeekHours.toFixed(1)}h</p>
+                <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center disabled:opacity-40" aria-label="Semaine suivante">
+                  <ChevronRight size={16} className="text-white" />
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-white/70 text-sm">0h pointé</span>
+                {heuresCible > 0 && <span className="text-white/50 text-xs">/ {heuresCible}h</span>}
               </div>
             </div>
-
-            {/* Progress bar — fixed: heuresPointées / heuresCible */}
-            <div className="relative">
-              <div className="h-4 bg-black/20 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: progressColor }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                />
+          ) : (
+            /* ── Full mode: detailed stats when hours exist ── */
+            <>
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-black/10 -ml-8 -mb-8" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <button onClick={() => setWeekOffset(o => o - 1)} className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg" aria-label="Semaine précédente">
+                    <ChevronLeft size={24} className="text-orange-600" />
+                  </button>
+                  <div className="flex items-center gap-2 px-5 py-2.5 bg-black/20 rounded-xl backdrop-blur-sm">
+                    <Calendar size={16} className="text-white" />
+                    <p className="text-sm text-white font-bold">
+                      {weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}
+                    </p>
+                  </div>
+                  <button onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} disabled={weekOffset >= 0} className="w-12 h-12 rounded-xl bg-white/90 hover:bg-white transition-colors flex items-center justify-center shadow-lg disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Semaine suivante">
+                    <ChevronRight size={24} className="text-orange-600" />
+                  </button>
+                </div>
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    <p className="text-5xl sm:text-6xl font-black text-white" style={{textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>{totalWeekHours.toFixed(0)}<span className="text-3xl">h</span></p>
+                    <p className="text-sm text-white/95 mt-2 font-semibold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                      {`${equipe.length} membre${equipe.length > 1 ? 's' : ''} dans l'équipe`}
+                    </p>
+                  </div>
+                  <div className="text-right bg-black/15 rounded-xl px-4 py-3 backdrop-blur-sm" title="Heures validées par un responsable cette semaine">
+                    <div className="flex items-center gap-2 justify-end">
+                      <Check size={16} className="text-white" />
+                      <span className="text-sm text-white font-semibold">Validées</span>
+                    </div>
+                    <p className="text-2xl font-black text-white">{approvedWeekHours.toFixed(1)}h</p>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="h-4 bg-black/20 rounded-full overflow-hidden">
+                    <motion.div className="h-full rounded-full" style={{ background: progressColor }} initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-white/70" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                      {heuresCible > 0 ? `Objectif : ${heuresCible}h` : 'Aucun employé actif'}
+                    </p>
+                    <p className="text-sm text-white font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
+                      {`${Math.round(progressPercent)}% pointé`}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-white/70" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                  {heuresCible > 0 ? `Objectif : ${heuresCible}h` : 'Aucun employé actif'}
-                </p>
-                <p className="text-sm text-white font-bold" style={{textShadow: '0 1px 2px rgba(0,0,0,0.2)'}}>
-                  {heuresCible > 0 ? `${Math.round(progressPercent)}% pointé` : 'Aucune heure cette semaine'}
-                </p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </motion.div>
 
         {/* Today's Activity Card */}
