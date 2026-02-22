@@ -251,6 +251,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return getEventsForDay(d);
   };
 
+  // Unified all-day check — consistent across all views (week, day, month)
+  const isAllDayEvent = (ev) => !ev.time || ev.duration >= 480 || (ev.dateEnd && ev.dateEnd !== ev.date);
+
   // Check if any filter is active (for empty state messaging)
   const hasActiveFilter = filterEmploye || filterTypes.size > 0;
 
@@ -749,7 +752,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </div>
             <div className="grid grid-cols-7">
               {days.map((day, i) => {
-                const dayEvents = day ? getEventsForDay(day) : [];
+                const rawEvents = day ? getEventsForDay(day) : [];
+                // Sort: all-day first, then by time
+                const dayEvents = [...rawEvents].sort((a, b) => {
+                  const aAllDay = isAllDayEvent(a) ? 0 : 1;
+                  const bAllDay = isAllDayEvent(b) ? 0 : 1;
+                  if (aAllDay !== bAllDay) return aAllDay - bAllDay;
+                  return (a.time || '').localeCompare(b.time || '');
+                });
                 const isToday = day && new Date().toDateString() === new Date(year, month, day).toDateString();
                 const dateStr = day ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
                 return (
@@ -775,6 +785,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <div className="space-y-0.5 sm:space-y-1">
                         {dayEvents.slice(0, 2).map(ev => {
                           const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                          const allDay = isAllDayEvent(ev);
                           return (
                             <div key={ev.id} onClick={(e) => handleEventClick(e, ev)} draggable onDragStart={e => e.dataTransfer.setData('eventId', ev.id)}
                               onMouseEnter={(e) => { if (window.innerWidth >= 640) { const r = e.currentTarget.getBoundingClientRect(); setTooltip({ event: ev, x: r.right + 8, y: r.top }); }}}
@@ -782,7 +793,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                               onTouchEnd={(e) => { if (window.innerWidth < 640) { e.preventDefault(); e.stopPropagation(); setTooltip({ event: ev, isMobile: true }); }}}
                               title={ev.title}
                               aria-label={`${ev.title} — ${TYPE_LABELS[ev.type] || 'Événement'}${ev.time ? ` à ${ev.time}` : ''}`}
-                              className="group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg text-white cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1" style={{background: getEventColor(ev)}}>
+                              className={`group text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 rounded-md sm:rounded-lg cursor-pointer hover:scale-105 hover:shadow-md transition-all flex items-center gap-1 ${allDay ? 'text-white' : 'text-white'}`}
+                              style={allDay ? { background: getEventColor(ev) } : { background: getEventColor(ev), opacity: 0.9 }}>
+                              {!allDay && ev.time && <span className="text-[9px] opacity-80 hidden sm:inline flex-shrink-0">{ev.time.slice(0, 5)}</span>}
                               <TypeIcon size={10} className="opacity-75 flex-shrink-0 hidden sm:block" />
                               <span className="truncate font-medium">{ev.title}</span>
                             </div>
@@ -856,8 +869,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               const dayEvts = getEventsForDate(dayDate);
               const isToday = formatLocalDate(dayDate) === todayStr;
               const dateStr = formatLocalDate(dayDate);
-              const allDayEvts = dayEvts.filter(ev => !ev.time);
-              const timedEvts = dayEvts.filter(ev => ev.time);
+              const timedEvts = dayEvts.filter(ev => !isAllDayEvent(ev));
 
               return (
                 <div key={dayIdx} className={`relative border-l ${isDark ? 'border-slate-700' : 'border-slate-200'}`} style={{ height: TOTAL_HEIGHT, ...style }}>
@@ -892,52 +904,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               );
             };
 
+            // Pre-compute all-day events per day (shared between desktop header and mobile)
+            const allDayMap = weekDays.map(d => getEventsForDate(d).filter(ev => isAllDayEvent(ev)));
+            const hasAnyAllDay = allDayMap.some(arr => arr.length > 0);
+
             return (
               <div>
-                {/* All-day events row */}
-                {(() => {
-                  const allDayMap = weekDays.map(d => getEventsForDate(d).filter(ev => !ev.time));
-                  const hasAnyAllDay = allDayMap.some(arr => arr.length > 0);
-                  if (!hasAnyAllDay) return null;
-                  return (
-                    <div className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      {/* Desktop all-day — P3.4: better visibility */}
-                      <div className="hidden sm:flex">
-                        <div className={`w-14 flex-shrink-0 text-[10px] text-center py-2 font-medium ${textMuted}`}>Journée</div>
-                        {weekDays.map((d, i) => (
-                          <div key={i} className={`flex-1 p-1.5 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[36px]`}>
-                            {allDayMap[i].map(ev => {
-                              const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-                              return (
-                                <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                                  className="text-[11px] px-2 py-1 rounded-md text-white cursor-pointer truncate mb-0.5 flex items-center gap-1 hover:brightness-110 transition-all shadow-sm"
-                                  style={{ background: getEventColor(ev) }}>
-                                  <TypeIcon size={10} className="opacity-75 flex-shrink-0" />
-                                  <span className="truncate font-medium">{ev.title}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                      {/* Mobile all-day — P3.4: improved */}
-                      <div className="sm:hidden p-2">
-                        {allDayMap[mobileWeekDay]?.map(ev => {
-                          const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
-                          return (
-                            <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
-                              className="text-xs px-2.5 py-1.5 rounded-lg text-white cursor-pointer truncate mb-1 flex items-center gap-1.5 shadow-sm"
-                              style={{ background: getEventColor(ev) }}>
-                              <TypeIcon size={12} className="opacity-75 flex-shrink-0" />
-                              <span className="truncate font-medium">{ev.title}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
                 {/* Desktop: 7-column grid */}
                 <div className="hidden sm:block">
                   {/* Day headers */}
@@ -953,6 +925,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       );
                     })}
                   </div>
+                  {/* All-day events row — BELOW headers, ABOVE hourly grid */}
+                  {hasAnyAllDay && (
+                    <div className={`flex border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <div className={`w-14 flex-shrink-0 text-[10px] text-center py-2 font-medium ${textMuted}`}>Journée</div>
+                      {weekDays.map((d, i) => (
+                        <div key={i} className={`flex-1 p-1.5 border-l ${isDark ? 'border-slate-700' : 'border-slate-200'} min-h-[36px]`}>
+                          {allDayMap[i].map(ev => {
+                            const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                            return (
+                              <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
+                                className="text-[11px] px-2 py-1 rounded-md text-white cursor-pointer truncate mb-0.5 flex items-center gap-1 hover:brightness-110 transition-all shadow-sm"
+                                style={{ background: getEventColor(ev) }}>
+                                <TypeIcon size={10} className="opacity-75 flex-shrink-0" />
+                                <span className="truncate font-medium">{ev.title}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Scrollable grid */}
                   <div ref={weekGridRef} className="overflow-y-auto" style={{ maxHeight: 'min(600px, 60vh)' }}>
                     <div className="flex" style={{ height: TOTAL_HEIGHT }}>
@@ -987,6 +980,22 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       );
                     })}
                   </div>
+                  {/* Mobile all-day events for selected day */}
+                  {allDayMap[mobileWeekDay]?.length > 0 && (
+                    <div className={`p-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      {allDayMap[mobileWeekDay].map(ev => {
+                        const TypeIcon = TYPE_ICONS[ev.type] || Calendar;
+                        return (
+                          <div key={ev.id} onClick={(e) => handleEventClick(e, ev)}
+                            className="text-xs px-2.5 py-1.5 rounded-lg text-white cursor-pointer truncate mb-1 flex items-center gap-1.5 shadow-sm"
+                            style={{ background: getEventColor(ev) }}>
+                            <TypeIcon size={12} className="opacity-75 flex-shrink-0" />
+                            <span className="truncate font-medium">{ev.title}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {/* Single day hourly grid */}
                   <div className="overflow-y-auto" style={{ maxHeight: 'min(500px, 55vh)' }}>
                     <div className="flex" style={{ height: TOTAL_HEIGHT }}>
@@ -1068,8 +1077,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             const HOURS = Array.from({ length: workHourEnd - workHourStart + 1 }, (_, i) => i + workHourStart);
 
             // Separate all-day/multi-day events from timed events
-            const allDayEvts = dayEvents.filter(ev => !ev.time || ev.duration >= 480 || (ev.dateEnd && ev.dateEnd !== ev.date));
-            const timedOnlyEvts = dayEvents.filter(ev => ev.time && ev.duration < 480 && !(ev.dateEnd && ev.dateEnd !== ev.date));
+            const allDayEvts = dayEvents.filter(ev => isAllDayEvent(ev));
+            const timedOnlyEvts = dayEvents.filter(ev => !isAllDayEvent(ev));
 
             return (
               <div>
