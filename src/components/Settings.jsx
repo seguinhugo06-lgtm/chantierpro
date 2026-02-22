@@ -754,6 +754,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value="SARL">SARL</option>
                   <option value="SAS">SAS</option>
                   <option value="SASU">SASU</option>
+                  <option value="SA">SA (Société Anonyme)</option>
+                  <option value="SNC">SNC (Société en Nom Collectif)</option>
                 </select>
               </div>
               <div>

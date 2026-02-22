@@ -487,6 +487,10 @@ export function DataProvider({ children, initialData = {} }) {
   }, [userId, devis]);
 
   const updateDevis = useCallback(async (id, data) => {
+    // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
+    if (data.client_id === null || data.client_id === undefined) {
+      delete data.client_id; // Keep existing client_id
+    }
     setDevis(prev => prev.map(d =>
       d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
     ));
