@@ -177,7 +177,7 @@ export const FIELD_MAPPINGS = {
         client_id: item.client_id,
         client_nom: item.client_nom || null,
         chantier_id: item.chantier_id || null,
-        numero: item.numero,
+        numero: normalizeNumero(item.numero) || item.numero,
         type: item.type,
         statut,
         date: item.date,
@@ -936,12 +936,21 @@ export async function loadAllData(userId) {
 }
 
 /**
+ * In-memory high-water mark per prefix-year to prevent race conditions
+ * when multiple devis are created rapidly before state updates propagate.
+ * Key: "DEV-2026" → highest sequence handed out (e.g. 5)
+ */
+const _numeroCursor = {};
+
+/**
  * Get the next available numero for a devis or facture
- * Queries Supabase for the max sequence to avoid duplicates
+ * Queries Supabase for the max sequence to avoid duplicates.
+ * Uses an in-memory cursor to guarantee monotonic numbers even under rapid creation.
  */
 export async function getNextNumero(type, userId, localDevis = []) {
   const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
   const year = new Date().getFullYear();
+  const cursorKey = `${prefix}-${year}`;
   const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
 
   // Local max from in-memory devis
@@ -973,7 +982,13 @@ export async function getNextNumero(type, userId, localDevis = []) {
     }
   }
 
-  const nextSeq = Math.max(localMax, supabaseMax) + 1;
+  // Take the highest of: local state, Supabase DB, and the in-memory cursor
+  const cursorMax = _numeroCursor[cursorKey] || 0;
+  const nextSeq = Math.max(localMax, supabaseMax, cursorMax) + 1;
+
+  // Update cursor so the next call within the same session sees this number
+  _numeroCursor[cursorKey] = nextSeq;
+
   return `${prefix}-${year}-${String(nextSeq).padStart(5, '0')}`;
 }
 

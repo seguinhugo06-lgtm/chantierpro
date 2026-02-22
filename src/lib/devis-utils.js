@@ -13,22 +13,35 @@ export function roundEuro(value) {
 }
 
 /**
+ * In-memory high-water mark per prefix-year to prevent race conditions
+ * when multiple documents are created rapidly.
+ */
+const _localCursor = {};
+
+/**
  * Generate unique document number
- * @param {string} type - 'devis' or 'facture'
+ * @param {string} type - 'devis', 'facture', or 'avoir'
  * @param {Array} existingDocuments - Existing devis/factures to check for uniqueness
- * @returns {string} Generated numero (e.g., 'DEV-2024-00001')
+ * @returns {string} Generated numero (e.g., 'DEV-2026-00001')
  */
 export function generateNumero(type, existingDocuments = []) {
-  const prefix = type === 'facture' ? 'FAC' : 'DEV';
+  const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
   const year = new Date().getFullYear();
+  const cursorKey = `${prefix}-${year}`;
   const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
 
   const maxSeq = existingDocuments
-    .filter(d => (d.type || 'devis') === type)
+    .filter(d => type === 'avoir'
+      ? d.facture_type === 'avoir'
+      : (d.type || 'devis') === type && d.facture_type !== 'avoir')
     .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
     .reduce((max, n) => Math.max(max, n), 0);
 
-  return `${prefix}-${year}-${String(maxSeq + 1).padStart(5, '0')}`;
+  const cursorMax = _localCursor[cursorKey] || 0;
+  const nextSeq = Math.max(maxSeq, cursorMax) + 1;
+  _localCursor[cursorKey] = nextSeq;
+
+  return `${prefix}-${year}-${String(nextSeq).padStart(5, '0')}`;
 }
 
 /**

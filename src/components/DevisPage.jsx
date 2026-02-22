@@ -416,9 +416,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Génération numéro unique garanti (format: DEV-2026-00001 / FAC-2026-00001)
   // Version synchrone (fallback local)
+  // In-memory cursor for local fallback to prevent race conditions
+  const numeroCursorRef = useRef({});
   const generateNumeroLocal = (type) => {
     const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
     const year = new Date().getFullYear();
+    const cursorKey = `${prefix}-${year}`;
     const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
     const maxSeq = devis
       .filter(d => type === 'avoir'
@@ -426,7 +429,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         : (d.type || 'devis') === type && d.facture_type !== 'avoir')
       .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
       .reduce((max, n) => Math.max(max, n), 0);
-    return `${prefix}-${year}-${String(maxSeq + 1).padStart(5, '0')}`;
+    const cursorMax = numeroCursorRef.current[cursorKey] || 0;
+    const nextSeq = Math.max(maxSeq, cursorMax) + 1;
+    numeroCursorRef.current[cursorKey] = nextSeq;
+    return `${prefix}-${year}-${String(nextSeq).padStart(5, '0')}`;
   };
   // Version async qui vérifie aussi Supabase
   const generateNumero = async (type) => {
@@ -4339,8 +4345,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         isOpen={showDevisExpressModal}
         onClose={() => setShowDevisExpressModal(false)}
         onCreateDevis={async (devisData) => {
-          const numero = await generateNumero(devisData.type);
-          const newDevis = await onSubmit({ ...devisData, numero });
+          const numero = await generateNumero(devisData.type || 'devis');
+          const client = clients.find(c => c.id === devisData.client_id);
+          const newDevis = await onSubmit({
+            ...devisData,
+            numero,
+            client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+          });
           if (newDevis?.id) {
             setSelected(newDevis);
             setMode('preview');
@@ -4348,6 +4359,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           }
         }}
         clients={clients}
+        addClient={addClient}
         isDark={isDark}
         couleur={couleur}
         tvaDefaut={entreprise?.tvaDefaut || 10}
