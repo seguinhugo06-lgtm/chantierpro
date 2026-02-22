@@ -810,14 +810,31 @@ export default function App() {
       clients: 'Clients',
       planning: 'Planning',
       memos: 'Mémos',
+      equipe: 'Équipe',
       catalogue: 'Catalogue',
       finances: 'Finances',
+      analytique: 'Analytique',
       settings: 'Paramètres',
       pricing: 'Tarifs',
       billing: 'Abonnement',
       changelog: 'Changelog',
+      soustraitants: 'Sous-traitants',
+      commandes: 'Commandes',
+      tresorerie: 'Trésorerie',
+      'ia-devis': 'IA Devis',
+      entretien: "Carnet d'entretien",
+      signatures: 'Signatures',
+      export: 'Export comptable',
+      ouvrages: "Bibliothèque d'ouvrages",
+      admin: 'Administration',
+      'design-system': 'Design System',
+      cgv: 'CGV',
+      cgu: 'CGU',
+      confidentialite: 'Confidentialité',
+      'mentions-legales': 'Mentions légales',
+      'checkout-success': 'Paiement confirmé',
     };
-    const title = PAGE_TITLES[page] || page;
+    const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
     document.title = `${title} — ChantierPro`;
   }, [page]);
 
