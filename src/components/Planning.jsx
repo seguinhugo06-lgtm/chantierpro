@@ -350,189 +350,6 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   };
 
   // Formulaire création / Quick add
-  if (showAdd || quickAdd) return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-          <ArrowLeft size={20} className={textPrimary} />
-        </button>
-        <h2 className={`text-2xl font-bold ${textPrimary}`}>Nouvel événement</h2>
-      </div>
-
-      {/* Quick type selection — P1.1: includes Chantier */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {Object.entries(TYPE_LABELS).map(([key, label]) => {
-          const Icon = TYPE_ICONS[key];
-          const isSelected = form.type === key;
-          return (
-            <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`p-3 rounded-xl border flex items-center gap-2 transition-all ${isSelected ? 'text-white border-transparent' : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-200 hover:border-slate-300'}`} style={isSelected ? { background: typeColors[key] } : {}}>
-              <Icon size={18} />
-              <span className="text-sm font-medium">{label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className={`${cardBg} rounded-2xl border p-5`}>
-        <div className="space-y-4">
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Titre *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Ex: RDV devis M. Dupont" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date *</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Heure</label><input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
-          </div>
-          {/* Duration quick picker — P2.1: custom duration */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Durée</label>
-            <div className="flex flex-wrap gap-2">
-              {DURATIONS.map(d => (
-                <button key={d.value} type="button" onClick={() => {
-                  if (d.value === 480) {
-                    // Journée: clear time, set duration
-                    setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
-                  } else if (d.value === -1) {
-                    // Custom: keep time, show end time picker
-                    setForm(p => ({...p, duration: -1}));
-                  } else {
-                    setForm(p => ({...p, duration: d.value, endTime: ''}));
-                  }
-                }}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${form.duration === d.value ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                  style={form.duration === d.value ? { background: couleur } : {}}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            {/* P2.1: Custom end time field */}
-            {form.duration === -1 && (
-              <div className="mt-3 flex items-center gap-3">
-                <div className="flex-1">
-                  <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Heure de fin</label>
-                  <input type="time" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
-                </div>
-                {form.time && form.endTime && (() => {
-                  const [sh, sm] = form.time.split(':').map(Number);
-                  const [eh, em] = form.endTime.split(':').map(Number);
-                  const diff = (eh * 60 + em) - (sh * 60 + sm);
-                  if (diff > 0) return <span className={`text-sm font-medium mt-5 ${textSecondary}`}>Durée : {formatDuration(diff)}</span>;
-                  return null;
-                })()}
-              </div>
-            )}
-          </div>
-          {/* Recurrence */}
-          <div>
-            <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Récurrence</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
-                  <option value="never">Jamais</option>
-                  <option value="daily">Chaque jour</option>
-                  <option value="weekly">Chaque semaine</option>
-                  <option value="biweekly">Toutes les 2 semaines</option>
-                  <option value="monthly">Chaque mois</option>
-                  <option value="custom">Personnalisé</option>
-                </select>
-              </div>
-              {form.recurrence !== 'never' && (
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Fin de récurrence</label>
-                  <div className="flex gap-1 mb-1.5">
-                    <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                      style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
-                    <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                      style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>Après N fois</button>
-                  </div>
-                  {form.recurrenceEndType === 'count' ? (
-                    <input type="number" min="1" max="365" placeholder="Ex : 12" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceOccurrences} onChange={e => setForm(p => ({...p, recurrenceOccurrences: e.target.value}))} />
-                  ) : (
-                    <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
-                  )}
-                </div>
-              )}
-            </div>
-            {/* Weekday picker for custom recurrence */}
-            {form.recurrence === 'custom' && (
-              <div className="mt-3">
-                <label className={`block text-xs font-medium mb-1.5 ${textMuted}`}>Jours de la semaine</label>
-                <div className="flex gap-1.5">
-                  {JOURS.map((j, i) => (
-                    <button key={i} type="button" onClick={() => {
-                      setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
-                    }}
-                      className={`w-10 h-10 rounded-full text-xs font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white shadow-md' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                      style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
-                      {j}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
-                <option value="">Moi-même</option>
-                {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
-                  <option value="" disabled>— Aucun employé configuré —</option>
-                )}
-              </select>
-              {equipe.length === 0 && setPage && (
-                <button type="button" onClick={() => setPage('equipe')} className="text-xs mt-1 hover:underline" style={{ color: couleur }}>
-                  Configurer votre équipe →
-                </button>
-              )}
-            </div>
-            {clients.length > 0 && (
-              <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Client</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}><option value="">— Aucun —</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}</select></div>
-            )}
-          </div>
-          {/* P2.2: Date de fin — available for all types */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de fin <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
-              <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
-            </div>
-            {/* P2.5: Rappel */}
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Rappel</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}>
-                <option value="">Aucun</option>
-                <option value="15">15 min avant</option>
-                <option value="30">30 min avant</option>
-                <option value="60">1h avant</option>
-                <option value="1440">La veille</option>
-                <option value="2880">2 jours avant</option>
-              </select>
-            </div>
-          </div>
-          {/* P2.4: Chantier associé — when type is chantier OR when a client is selected */}
-          {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier associé <span className={`text-xs font-normal ${textMuted}`}>(optionnel)</span></label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
-                <option value="">— Aucun —</option>
-                {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => {
-                  const cl = clients.find(c => c.id === ch.client_id);
-                  return <option key={ch.id} value={ch.id}>{ch.nom}{cl ? ` — ${cl.nom}` : ''}</option>;
-                })}
-              </select>
-            </div>
-          )}
-          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Adresse, infos utiles..." /></div>
-        </div>
-        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
-          <button onClick={() => { setShowAdd(false); setQuickAdd(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
-          <button onClick={submit} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
-            <Check size={16} /> Créer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   // Today stats
   const todayStr = formatLocalDate(new Date());
   const todayEvents = getEventsForDay(todayStr);
@@ -1557,6 +1374,192 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           </div>
         );
       })()}
+
+      {/* Drawer création événement — slide-over */}
+      {(showAdd || quickAdd) && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className={`relative w-full max-w-md h-full overflow-y-auto shadow-2xl ${isDark ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <h2 className={`text-base font-bold ${textPrimary}`}>Nouvel événement</h2>
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Type selection */}
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(TYPE_LABELS).map(([key, label]) => {
+                  const Icon = TYPE_ICONS[key];
+                  const isSelected = form.type === key;
+                  return (
+                    <button key={key} onClick={() => setForm(p => ({...p, type: key}))} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${isSelected ? 'text-white' : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={isSelected ? { background: typeColors[key] } : {}}>
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Title */}
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Titre *</label>
+                <input className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Ex: RDV devis M. Dupont" autoFocus />
+              </div>
+              {/* Date + Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Date *</label><input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
+                <div><label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Heure</label><input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.time} onChange={e => setForm(p => ({...p, time: e.target.value}))} /></div>
+              </div>
+              {/* Duration */}
+              <div>
+                <label className={`block text-xs font-medium mb-1.5 ${textPrimary}`}>Durée</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DURATIONS.map(d => (
+                    <button key={d.value} type="button" onClick={() => {
+                      if (d.value === 480) setForm(p => ({...p, duration: 480, time: '', endTime: ''}));
+                      else if (d.value === -1) setForm(p => ({...p, duration: -1}));
+                      else setForm(p => ({...p, duration: d.value, endTime: ''}));
+                    }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${form.duration === d.value ? 'text-white' : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      style={form.duration === d.value ? { background: couleur } : {}}>
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
+                {form.duration === -1 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1">
+                      <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Heure de fin</label>
+                      <input type="time" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.endTime} onChange={e => setForm(p => ({...p, endTime: e.target.value}))} />
+                    </div>
+                    {form.time && form.endTime && (() => {
+                      const [sh, sm] = form.time.split(':').map(Number);
+                      const [eh, em] = form.endTime.split(':').map(Number);
+                      const diff = (eh * 60 + em) - (sh * 60 + sm);
+                      if (diff > 0) return <span className={`text-xs font-medium mt-4 ${textSecondary}`}>{formatDuration(diff)}</span>;
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+              {/* Recurrence */}
+              <div>
+                <div className={`grid ${form.recurrence !== 'never' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Récurrence</label>
+                    <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.recurrence} onChange={e => setForm(p => ({...p, recurrence: e.target.value}))}>
+                      <option value="never">Jamais</option>
+                      <option value="daily">Chaque jour</option>
+                      <option value="weekly">Chaque semaine</option>
+                      <option value="biweekly">Toutes les 2 sem.</option>
+                      <option value="monthly">Chaque mois</option>
+                      <option value="custom">Personnalisé</option>
+                    </select>
+                  </div>
+                  {form.recurrence !== 'never' && (
+                    <div>
+                      <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Fin récurrence</label>
+                      <div className="flex gap-1 mb-1">
+                        <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'date'}))}
+                          className={`px-2 py-0.5 rounded text-[10px] font-medium ${form.recurrenceEndType !== 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          style={form.recurrenceEndType !== 'count' ? { background: couleur } : {}}>Date</button>
+                        <button type="button" onClick={() => setForm(p => ({...p, recurrenceEndType: 'count'}))}
+                          className={`px-2 py-0.5 rounded text-[10px] font-medium ${form.recurrenceEndType === 'count' ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          style={form.recurrenceEndType === 'count' ? { background: couleur } : {}}>N fois</button>
+                      </div>
+                      {form.recurrenceEndType === 'count' ? (
+                        <input type="number" min="1" max="365" placeholder="12" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.recurrenceOccurrences} onChange={e => setForm(p => ({...p, recurrenceOccurrences: e.target.value}))} />
+                      ) : (
+                        <input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.recurrenceEnd} onChange={e => setForm(p => ({...p, recurrenceEnd: e.target.value}))} />
+                      )}
+                    </div>
+                  )}
+                </div>
+                {form.recurrence === 'custom' && (
+                  <div className="mt-2">
+                    <label className={`block text-[10px] font-medium mb-1 ${textMuted}`}>Jours</label>
+                    <div className="flex gap-1">
+                      {JOURS.map((j, i) => (
+                        <button key={i} type="button" onClick={() => {
+                          setForm(p => ({...p, recurrenceDays: (p.recurrenceDays || []).includes(i) ? p.recurrenceDays.filter(d => d !== i) : [...(p.recurrenceDays || []), i]}));
+                        }}
+                          className={`w-8 h-8 rounded-full text-[10px] font-bold transition-all ${(form.recurrenceDays || []).includes(i) ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          style={(form.recurrenceDays || []).includes(i) ? { background: couleur } : {}}>
+                          {j}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Assign + Client */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Assigner à</label>
+                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}>
+                    <option value="">Moi</option>
+                    {equipe.length > 0 ? equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>) : (
+                      <option value="" disabled>Aucun employé</option>
+                    )}
+                  </select>
+                </div>
+                {clients.length > 0 && (
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Client</label>
+                    <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value, chantierId: ''}))}>
+                      <option value="">—</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              {/* Date fin + Rappel */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Date de fin</label>
+                  <input type="date" className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.dateEnd} min={form.date} onChange={e => setForm(p => ({...p, dateEnd: e.target.value}))} />
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Rappel</label>
+                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.rappel} onChange={e => setForm(p => ({...p, rappel: e.target.value}))}>
+                    <option value="">Aucun</option>
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="60">1h</option>
+                    <option value="1440">Veille</option>
+                    <option value="2880">2 jours</option>
+                  </select>
+                </div>
+              </div>
+              {/* Chantier associé */}
+              {(form.type === 'chantier' || form.clientId) && (chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).length > 0 && (
+                <div>
+                  <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Chantier</label>
+                  <select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}>
+                    <option value="">—</option>
+                    {(chantiers || []).filter(ch => ch.statut !== 'termine' && (!form.clientId || ch.client_id === form.clientId)).map(ch => {
+                      const cl = clients.find(c => c.id === ch.client_id);
+                      return <option key={ch.id} value={ch.id}>{ch.nom}{cl ? ` — ${cl.nom}` : ''}</option>;
+                    })}
+                  </select>
+                </div>
+              )}
+              {/* Notes */}
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Notes</label>
+                <textarea className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Adresse, infos..." />
+              </div>
+            </div>
+            {/* Footer sticky */}
+            <div className={`sticky bottom-0 flex gap-3 px-4 py-3 border-t ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Annuler</button>
+              <button onClick={submit} className="flex-1 py-2.5 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{background: couleur}}>
+                <Check size={14} /> Créer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
