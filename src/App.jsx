@@ -692,9 +692,18 @@ export default function App() {
     setUsageData(liveUsage);
   }, [clients.length, devis.length, chantiers.length, equipe.length, setUsageData]);
 
-  const stats = { 
-    devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length, 
-    chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours').length 
+  // isDraftChantier — exclude test/draft chantiers from badge counts (aligned with Chantiers page)
+  const isDraftChantier = (ch) => {
+    const testNames = ['test', 'test1', 'test2', 'test3', 'essai', 'brouillon', 'zzz'];
+    const nom = (ch.nom || '').toLowerCase().trim();
+    if (testNames.includes(nom)) return true;
+    const hasNoData = !ch.adresse && !ch.budget_estime && !ch.budgetPrevu && (!ch.taches || ch.taches.length === 0) && !ch.client_id;
+    if (hasNoData && nom.length <= 5) return true;
+    return false;
+  };
+  const stats = {
+    devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length,
+    chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c)).length
   };
 
   // Auth handlers
@@ -1069,7 +1078,7 @@ export default function App() {
 
   // Calculate stats for badges
   const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
-  const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
+  const devisEnAttenteCount = devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length;
   const todayEvents = planningEvents.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
   const memosOverdueCount = memos.filter(m => !m.is_done && m.due_date && m.due_date < new Date().toISOString().split('T')[0]).length;
 

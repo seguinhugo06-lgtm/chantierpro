@@ -2180,10 +2180,10 @@ export default function TresorerieModule({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Mouvements de trésorerie">
+              <table className="w-full text-sm" aria-label="Prévisions de trésorerie">
                 <thead>
                   <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
-                    <th className="text-left py-3 pr-4 font-semibold">Date</th>
+                    <th className="text-left py-3 pr-4 font-semibold">Échéance</th>
                     <th className="text-left py-3 pr-4 font-semibold">Description</th>
                     <th className="text-left py-3 pr-4 font-semibold">Type</th>
                     <th className="text-left py-3 pr-4 font-semibold">Catégorie</th>

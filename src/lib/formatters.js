@@ -12,14 +12,17 @@
  * @param {number} [decimals=0] - Nombre de décimales
  * @returns {string} Montant formaté (ex: "57 060 €")
  */
-export function formatMoney(amount, decimals = 0) {
+export function formatMoney(amount, decimals) {
   if (amount == null || isNaN(amount)) return '0 €';
+
+  // Auto-detect: show centimes only if the amount has non-zero decimals
+  const d = decimals !== undefined ? decimals : (Math.round(amount * 100) % 100 !== 0 ? 2 : 0);
 
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
+    minimumFractionDigits: d,
+    maximumFractionDigits: d
   }).format(amount);
 }
 
@@ -84,6 +87,23 @@ export function getTrendBgColor(value, inverted = false) {
   return isPositive
     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
     : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+}
+
+// ============ CLIENT NAME FORMATTING ============
+
+/**
+ * Formate un nom de client de façon uniforme : "Prénom Nom" avec capitalisation
+ * @param {Object} client - Objet client avec .prenom et .nom
+ * @param {string} [fallback='Client'] - Texte de secours si pas de nom
+ * @returns {string} Nom formaté (ex: "Jean Dupont")
+ */
+export function formatClientName(client, fallback = 'Client') {
+  if (!client) return fallback;
+  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
+  const prenom = capitalize((client.prenom || '').trim());
+  const nom = capitalize((client.nom || '').trim());
+  const full = `${prenom} ${nom}`.trim();
+  return full || client.entreprise || fallback;
 }
 
 // ============ NUMBER FORMATTING ============
