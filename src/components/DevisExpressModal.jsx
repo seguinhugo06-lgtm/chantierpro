@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2 } from 'lucide-react';
 import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge } from '../lib/data/modeles-devis';
+import { formatClientName } from '../lib/formatters';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
 
@@ -475,7 +476,7 @@ export default function DevisExpressModal({
                       }`}
                       style={{ backgroundColor: selectedClient?.id === client.id ? couleur : undefined }}
                     >
-                      {client.nom} {client.prenom}
+                      {formatClientName(client)}
                     </button>
                   ))}
                 </div>
