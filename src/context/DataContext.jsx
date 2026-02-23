@@ -314,7 +314,10 @@ export function DataProvider({ children, initialData = {} }) {
           const clean = (arr) => sanitizeRecords(dedup(arr));
           setClients(clean(data.clients));
           setChantiers(clean(data.chantiers));
-          setDevis(clean(data.devis));
+          // Compute 'vu' status from viewed_at (DB constraint doesn't allow 'vu' statut)
+          setDevis(clean(data.devis).map(d =>
+            (d.statut === 'envoye' && d.viewed_at) ? { ...d, statut: 'vu' } : d
+          ));
           setDepenses(clean(data.depenses));
           setEquipe(clean(data.equipe));
           setPointages(clean(data.pointages));
@@ -500,8 +503,17 @@ export function DataProvider({ children, initialData = {} }) {
         const current = devis.find(d => d.id === id);
         try {
           if (current) {
-            logger.debug('💾 updateDevis: saving to Supabase, statut=', data.statut || current.statut);
-            await saveItem('devis', { ...current, ...data }, userId);
+            // DB constraint doesn't allow 'vu' statut — save as 'envoye' + viewed_at
+            const dbData = { ...data };
+            if (dbData.statut === 'vu') {
+              dbData.statut = 'envoye'; // Keep 'envoye' in DB, 'vu' computed from viewed_at at load
+            }
+            const merged = { ...current, ...dbData };
+            if (merged.statut === 'vu') {
+              merged.statut = 'envoye';
+            }
+            logger.debug('💾 updateDevis: saving to Supabase, statut=', merged.statut);
+            await saveItem('devis', merged, userId);
             logger.debug('✅ updateDevis: saved successfully');
           }
         } catch (error) {
