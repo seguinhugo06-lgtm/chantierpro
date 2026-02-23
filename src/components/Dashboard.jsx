@@ -104,8 +104,9 @@ import {
   generateSuggestionsFromContext,
   transformSuggestions,
 } from '../lib/actionSuggestions';
-import { normalizeDevisRef, formatDevisNumber } from '../lib/formatters';
+import { normalizeDevisRef, formatDevisNumber, formatClientName } from '../lib/formatters';
 import { calcConversion } from '../lib/statsUtils';
+import { isDraftChantier } from '../lib/utils';
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
@@ -998,7 +999,7 @@ export default function Dashboard({
 
   const chantiersEnCours = useMemo(() => {
     return safeChantiers
-      .filter(c => c.statut === 'en_cours')
+      .filter(c => c.statut === 'en_cours' && !isDraftChantier(c))
       .map(c => {
         const client = safeClients.find(cl => cl.id === (c.client_id || c.clientId));
         const avancement = c.avancement || 0;
@@ -1006,7 +1007,7 @@ export default function Dashboard({
         const prochEch = c.date_fin_prevue
           ? new Date(c.date_fin_prevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
           : null;
-        return { ...c, clientNom: client?.nom || client?.prenom || '', avancement, prochEch };
+        return { ...c, clientNom: formatClientName(client, ''), avancement, prochEch };
       })
       .sort((a, b) => (b.avancement || 0) - (a.avancement || 0))
       .slice(0, 3);
@@ -1175,19 +1176,20 @@ export default function Dashboard({
         {/* ========== HERO DUO — Devis IA + Devis Express ========== */}
         <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
-            {/* Devis IA */}
-            <button
-              onClick={() => setShowAIChat(true)}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 outline-none"
-              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`, '--tw-ring-color': couleur }}
+            {/* Devis IA — BIENTÔT */}
+            <div
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white opacity-60 cursor-not-allowed"
+              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+              title="Bientôt disponible"
             >
               <div className="relative z-10">
                 <MessageCircle size={26} className="mb-2 text-white/90" />
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
                 <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">Décrivez vos travaux</p>
               </div>
+              <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/25 text-white backdrop-blur-sm z-10">BIENTÔT</span>
               <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10" />
-            </button>
+            </div>
 
             {/* Devis Express */}
             <button

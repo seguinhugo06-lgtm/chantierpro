@@ -70,3 +70,17 @@ export function findDuplicateChantiers(chantiers) {
   }
   return duplicates;
 }
+
+/**
+ * Detect test/draft chantiers that should be hidden from counts and lists
+ * @param {object} ch - Chantier object
+ * @returns {boolean} True if chantier is a test/draft
+ */
+export function isDraftChantier(ch) {
+  const testNames = ['test', 'test1', 'test2', 'test3', 'essai', 'brouillon', 'zzz'];
+  const nom = (ch.nom || '').toLowerCase().trim();
+  if (testNames.includes(nom)) return true;
+  const hasNoData = !ch.adresse && !ch.budget_estime && !ch.budgetPrevu && (!ch.taches || ch.taches.length === 0) && !ch.client_id;
+  if (hasNoData && nom.length <= 5) return true;
+  return false;
+}

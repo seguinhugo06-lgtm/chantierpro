@@ -523,7 +523,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <ArrowLeft size={20} className={textPrimary} />
             </button>
             <div className="flex-1 min-w-0">
-              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} leading-tight`}>{client.nom} {client.prenom}</h2>
+              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} leading-tight`}>{formatClientName(client)}</h2>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-xs`}><Building2 size={12} />{client.entreprise}</span>}
                 {/* Status badge */}
@@ -1876,7 +1876,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}><HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} /></h3>
+                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}><HighlightText text={formatClientName(c)} query={debouncedSearch} /></h3>
                       </div>
                       {c.entreprise && (
                         <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
@@ -2003,7 +2003,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {/* Name + company + status */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
+                      <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
                         {CLIENT_STATUS_LABELS[status]}
@@ -2079,7 +2079,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <HighlightText text={`${c.nom} ${c.prenom || ''}`.trim()} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
+                      <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">

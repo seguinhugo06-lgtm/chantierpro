@@ -11,6 +11,7 @@ import TaskGeneratorModal from './TaskGeneratorModal';
 import SituationsTravaux from './chantiers/SituationsTravaux';
 import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
+import { formatClientName } from '../lib/formatters';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
@@ -2634,7 +2635,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   >
                     <option value="">Tous les clients</option>
                     {clients.map(c => (
-                      <option key={c.id} value={c.id}>{c.nom} {c.prenom || ''}</option>
+                      <option key={c.id} value={c.id}>{formatClientName(c)}</option>
                     ))}
                   </select>
                 )}
@@ -2741,27 +2742,27 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             return (
               <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500' : 'hover:border-orange-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
                 {/* Row 1: Nom + Health dot + Badges */}
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {/* P0.1: Health indicator dot */}
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
                     <h3 className={`font-semibold text-sm leading-tight truncate ${textPrimary}`}>{ch.nom}</h3>
                     <span className={`text-[10px] font-mono shrink-0 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {/* P3.9: Days countdown badge */}
                     {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
                     {isDraftChantier(ch) && (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
                         Brouillon
                       </span>
                     )}
-                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${statusColor}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusColor}`}>
                       {statusLabel}
                     </span>
                     {duplicateMap.has(ch.id) && (
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
-                        ⚠ Doublon probable
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
+                        ⚠ Doublon
                       </span>
                     )}
                   </div>
@@ -2769,7 +2770,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Row 2: Client · Dates · Address */}
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className={`text-xs ${textMuted}`}>{client ? `${client.nom}${client.prenom ? ' ' + client.prenom : ''}` : 'Sans client'}</span>
+                  <span className={`text-xs ${textMuted}`}>{client ? formatClientName(client, 'Sans client') : 'Sans client'}</span>
                   {dateRange && (
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>

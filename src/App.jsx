@@ -73,6 +73,7 @@ import TrialBanner from './components/subscription/TrialBanner';
 import FeatureGuard, { UpgradeBadge } from './components/subscription/FeatureGuard';
 import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionStore';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
+import { isDraftChantier } from './lib/utils';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
@@ -692,15 +693,6 @@ export default function App() {
     setUsageData(liveUsage);
   }, [clients.length, devis.length, chantiers.length, equipe.length, setUsageData]);
 
-  // isDraftChantier — exclude test/draft chantiers from badge counts (aligned with Chantiers page)
-  const isDraftChantier = (ch) => {
-    const testNames = ['test', 'test1', 'test2', 'test3', 'essai', 'brouillon', 'zzz'];
-    const nom = (ch.nom || '').toLowerCase().trim();
-    if (testNames.includes(nom)) return true;
-    const hasNoData = !ch.adresse && !ch.budget_estime && !ch.budgetPrevu && (!ch.taches || ch.taches.length === 0) && !ch.client_id;
-    if (hasNoData && nom.length <= 5) return true;
-    return false;
-  };
   const stats = {
     devisAttente: devis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)).length,
     chantiersEnCours: chantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c)).length
