@@ -1595,10 +1595,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         });
 
         const kpiItems = [
-          { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}` },
-          { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null },
-          { key: 'top', value: modeDiscret ? '···' : formatClientName(topClient, '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA) },
-          { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null },
+          { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}`, tooltip: 'Clients avec un chantier en cours ou un devis actif' },
+          { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null, tooltip: 'Factures payées uniquement' },
+          { key: 'top', value: modeDiscret ? '···' : formatClientName(topClient, '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA), tooltip: 'Client avec le plus gros CA (encaissé + en cours)' },
+          { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null, tooltip: 'Devis envoyés ou vus, en attente de réponse' },
         ];
 
         return (
@@ -1615,6 +1615,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   }}
                   className={`${cardBg} rounded-xl border px-2 py-2 text-center transition-all ${isActive ? 'ring-1 shadow-sm' : 'hover:shadow-sm'}`}
                   style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
+                  title={kpi.tooltip}
                 >
                   <p className={`text-base font-bold truncate`} style={{ color: couleur }}>{kpi.value}</p>
                   <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
@@ -2034,10 +2035,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                       (() => {
                         const lastAct = getLastActivity(c.id);
                         if (!lastAct) return <span className={`text-xs ${textMuted}`}>—</span>;
-                        const days = Math.floor((Date.now() - lastAct) / (1000 * 60 * 60 * 24));
-                        const label = days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : days < 30 ? `${days}j` : days < 365 ? `${Math.floor(days / 30)}m` : `${Math.floor(days / 365)}a`;
+                        const days = Math.max(0, Math.floor((Date.now() - lastAct) / (1000 * 60 * 60 * 24)));
+                        const label = days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : days < 30 ? `il y a ${days}j` : days < 365 ? `il y a ${Math.floor(days / 30)}m` : `il y a ${Math.floor(days / 365)}a`;
                         const colorCls = days < 30 ? 'text-emerald-500' : days < 90 ? textSecondary : days < 180 ? 'text-amber-500' : 'text-red-400';
-                        return <span className={`text-xs font-medium ${colorCls}`}>{label}</span>;
+                        return <span className={`text-xs font-medium ${colorCls}`} title={new Date(lastAct).toLocaleDateString('fr-FR')}>{label}</span>;
                       })()
                     )}
                   </div>

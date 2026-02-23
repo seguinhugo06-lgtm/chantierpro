@@ -1847,7 +1847,7 @@ export default function TresorerieModule({
             </div>
             <button onClick={() => setShowEncaisserWidget(false)}
               className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
-              title="Masquer">
+              title="Fermer le widget d'encaissement">
               <X size={16} />
             </button>
           </div>
