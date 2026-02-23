@@ -1306,7 +1306,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{isSousTraitants ? 'Sous-traitants' : 'Équipe & Heures'}</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
           {!isSousTraitants && <span className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium" style={{ background: `${couleur}20`, color: couleur }}>{employesList.length} membre{employesList.length > 1 ? 's' : ''}</span>}
         </div>
 
@@ -1418,7 +1418,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{isSousTraitants ? 'Sous-traitants' : 'Équipe & Heures'}</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
           {/* Online indicator — #9: tooltip explaining sync status */}
           <span
             className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs cursor-help ${
@@ -1796,7 +1796,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
                 if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
               }}
-              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
+              className={`relative flex items-center gap-1.5 px-2.5 sm:px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
                 tab === key
                   ? 'text-white shadow-lg'
                   : isDark
@@ -1806,7 +1806,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               style={tab === key ? { background: couleur } : {}}
             >
               <Icon size={16} />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="text-[11px] sm:text-sm">{label}</span>
               {count !== undefined && count > 0 && (
                 <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                   tab === key

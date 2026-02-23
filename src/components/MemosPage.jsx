@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Plus, Search, X, ChevronDown, ChevronRight, Calendar, Clock,
   ClipboardList, Trash2, AlertCircle, CheckCircle2, Star, Archive,
-  Building2, Users, Tag, StickyNote, ChevronLeft, Filter,
+  Building2, Users, Tag, StickyNote, ChevronLeft, Filter, ArrowLeft,
   ArrowUpDown, GripVertical, RefreshCw, CheckSquare, Square,
   Mic, MicOff, Send, Share2, Copy, ExternalLink, PartyPopper
 } from 'lucide-react';
@@ -1412,7 +1412,14 @@ export default function MemosPage({
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className={`text-2xl font-bold ${tc.text}`}>Tâches</h1>
+        <div className="flex items-center gap-3">
+          {setPage && (
+            <button onClick={() => setPage('dashboard')} className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} aria-label="Retour">
+              <ArrowLeft size={20} className={tc.text} />
+            </button>
+          )}
+          <h1 className={`text-2xl font-bold ${tc.text}`}>Tâches</h1>
+        </div>
         <p className={`text-sm mt-1 ${tc.muted}`}>
           {activeCount > 0
             ? `${activeCount} tâche${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}${overdueCount > 0 ? ` · ${overdueCount} en retard` : ''}`

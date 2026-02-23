@@ -389,7 +389,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </button>
           )}
           <h1 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>Planning</h1>
-          <span className={`text-xs ${textMuted} hidden sm:inline`}>{(() => {
+          <span className={`text-xs ${textMuted}`}>{(() => {
             if (viewMode === 'month') {
               const monthEvts = allEvents.filter(e => {
                 if (filterEmploye && e.employeId !== filterEmploye) return false;
