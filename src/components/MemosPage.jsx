@@ -1294,7 +1294,6 @@ export default function MemosPage({
   const tabs = [
     { id: 'inbox', label: 'Inbox', count: activeCount },
     { id: 'today', label: "Aujourd'hui" },
-    { id: 'calendar', label: 'Calendrier' },
   ];
 
   // Section renderer
@@ -1608,6 +1607,16 @@ export default function MemosPage({
               </button>
             ))}
           </div>
+          {/* Planning link */}
+          {setPage && (
+            <button
+              onClick={() => setPage('planning')}
+              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            >
+              <Calendar size={12} />
+              Planning
+            </button>
+          )}
 
           {/* Controls */}
           <div className="flex items-center gap-1">
@@ -1819,19 +1828,7 @@ export default function MemosPage({
             </>
           )}
 
-          {activeTab === 'calendar' && (
-            <MemoCalendarView
-              memos={filteredMemos}
-              onSelectMemo={setSelectedMemoId}
-              selectedMemoId={selectedMemoId}
-              toggleMemo={handleToggle}
-              addMemo={addMemo}
-              chantiers={chantiers}
-              clients={clients}
-              couleur={couleur}
-              isDark={isDark}
-            />
-          )}
+          {/* Calendar tab removed — use Planning module */}
         </div>
       </div>
 
