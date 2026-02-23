@@ -406,6 +406,26 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               <option value="" disabled>Aucun employé</option>
             )}
           </select>
+          <select
+            className={`px-2 py-1 border rounded-lg text-xs ${inputBg}`}
+            value={filterTypes.size === 0 ? '' : filterTypes.size === 1 ? [...filterTypes][0] : '__multi__'}
+            onChange={e => {
+              const val = e.target.value;
+              if (val === '') setFilterTypes(new Set());
+              else setFilterTypes(new Set([val]));
+            }}
+            aria-label="Filtrer par type"
+          >
+            <option value="">Tous types</option>
+            {Object.entries(TYPE_LABELS).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          {filterTypes.size > 0 && (
+            <button onClick={() => setFilterTypes(new Set())} className={`p-1 rounded-lg ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`} title="Réinitialiser filtre type">
+              <X size={12} />
+            </button>
+          )}
           <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
             <button onClick={() => { setViewMode('month'); }} className={`px-2 py-1 text-xs ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
             <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2 py-1 text-xs ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
