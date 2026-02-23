@@ -1200,7 +1200,7 @@ export default function Dashboard({
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis Express</p>
                 <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">3 clics, c'est chiffré</p>
               </div>
-              <FileText size={44} className="absolute -top-1 -right-1 text-white/10" />
+              <FileText size={40} className="absolute top-2 right-2 text-white/10 pointer-events-none" />
             </button>
           </div>
         </section>

@@ -1419,20 +1419,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </button>
           )}
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
-          {/* Online indicator — #9: tooltip explaining sync status */}
-          <span
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs cursor-help ${
-              isOnline
-                ? isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                : isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'
-            }`}
-            title={isOnline ? 'Synchronisation active — les pointages sont sauvegardés en temps réel' : 'Mode hors ligne — les pointages seront synchronisés à la reconnexion'}
-            role="status"
-            aria-label={isOnline ? 'En ligne : synchronisation active' : 'Hors ligne : synchronisation en attente'}
-          >
-            {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {isOnline ? 'En ligne' : 'Hors ligne'}
-          </span>
+          {/* Offline indicator — only shown when disconnected */}
+          {!isOnline && (
+            <span
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium animate-pulse ${
+                isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700'
+              }`}
+              title="Mode hors ligne — les pointages seront synchronisés à la reconnexion"
+              role="status"
+              aria-label="Hors ligne : synchronisation en attente"
+            >
+              <WifiOff size={12} />
+              Hors ligne
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           {/* Équipe / Sous-traitants toggle */}
@@ -2016,9 +2016,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       key={e.id}
                       className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-500 transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
                       style={isCurrentlyTiming ? { ringColor: couleur } : {}}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0.7, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ duration: 0.15, delay: index * 0.02 }}
                       whileHover={{ y: -2 }}
                       tabIndex={0}
                       aria-label={`Fiche de ${e.prenom || ''} ${e.nom} — ${e.role || 'Employé'}`}
