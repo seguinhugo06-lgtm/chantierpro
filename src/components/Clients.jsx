@@ -1580,6 +1580,51 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         </div>
       </div>
 
+      {/* KPI Cards — compact, clickable */}
+      {displayClients.length > 0 && (() => {
+        const caFacture = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
+        const caEnAttente = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.caEnCours, 0);
+        const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
+        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
+        let topClient = null;
+        let topCA = 0;
+        clientStatsMap.forEach((v, cid) => {
+          const totalClientCA = v.ca + v.caEnCours;
+          if (totalClientCA > topCA) { topCA = totalClientCA; topClient = clients.find(c => c.id === cid); }
+        });
+
+        const kpiItems = [
+          { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}` },
+          { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null },
+          { key: 'top', value: modeDiscret ? '···' : (topClient?.nom?.split(' ')[0] || '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA) },
+          { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null },
+        ];
+
+        return (
+          <div className="grid grid-cols-4 gap-2">
+            {kpiItems.map(kpi => {
+              const isActive = kpiFilter === kpi.key;
+              return (
+                <button
+                  key={kpi.key}
+                  onClick={() => {
+                    if (kpi.key === 'top' && topClient) setViewId(topClient.id);
+                    else if (kpi.key === 'devis_attente' && !isActive && setPage) setPage('devis');
+                    else setKpiFilter(isActive ? null : kpi.key);
+                  }}
+                  className={`${cardBg} rounded-xl border px-2 py-2 text-center transition-all ${isActive ? 'ring-1 shadow-sm' : 'hover:shadow-sm'}`}
+                  style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
+                >
+                  <p className={`text-base font-bold truncate`} style={{ color: couleur }}>{kpi.value}</p>
+                  <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
+                  {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* === DUPLICATE BANNER — compact + dismissable === */}
       {!duplicateDismissed && duplicateMap.size > 0 && !kpiFilter && (
         <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/10 border-amber-800/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
