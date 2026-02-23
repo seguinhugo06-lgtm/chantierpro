@@ -1272,7 +1272,7 @@ export default function Dashboard({
             const client = safeClients.find(c => c.id === d.client_id);
             const days = daysSince(d.date);
             const displayNum = formatDevisNumber(d);
-            const clientNom = client?.nom || client?.prenom || 'Client';
+            const clientNom = formatClientName(client, 'Client');
             actions.push({
               id: `devis-${d.id}`,
               priority: days > 14 ? 1 : 2,

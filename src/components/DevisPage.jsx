@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
-import { formatMoney as fmtMoney, filterValidLignes } from '../lib/formatters';
+import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { useDebounce } from '../hooks/useDebounce';
@@ -291,11 +291,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
   const cleanClientName = (client) => {
     if (!client) return '';
-    const nom = `${client.prenom || ''} ${client.nom || ''}`.trim();
     if (/^(ClientPersist|Test_|test_)/i.test(client.nom || '')) return client.prenom || '';
-    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) return nom || '';
-    if (!nom && !client.entreprise) return '';
-    return nom || client.entreprise || '';
+    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) {
+      return formatClientName(client, '') || '';
+    }
+    return formatClientName(client, '') || '';
   };
 
   // Helper: compute line total robustly (handles montant, camelCase, snake_case)
