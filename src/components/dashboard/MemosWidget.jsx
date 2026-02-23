@@ -137,7 +137,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
   return (
     <Widget isDark={isDark}>
       <WidgetHeader
-        title="Mémos du jour"
+        title="Tâches du jour"
         icon={<StickyNote />}
         isDark={isDark}
         badge={displayedMemos.length > 0 ? displayedMemos.filter((m) => !m.done).length : undefined}
@@ -152,7 +152,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ajouter un mémo..."
+            placeholder="Ajouter une tâche..."
             maxLength={140}
             disabled={memos.length >= MAX_MEMOS}
             className={`
@@ -176,7 +176,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
               hover:opacity-90 active:scale-95
             `}
             style={{ background: accentColor }}
-            aria-label="Ajouter mémo"
+            aria-label="Ajouter tâche"
           >
             <Plus size={18} />
           </button>
@@ -254,7 +254,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
                       : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
                     }
                   `}
-                  aria-label="Supprimer mémo"
+                  aria-label="Supprimer tâche"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -272,7 +272,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
               <StickyNote size={20} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
             </div>
             <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              Aucun mémo
+              Aucune tâche
             </p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
               Ajoutez vos notes rapides ici
@@ -283,7 +283,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
         {/* Capacity hint */}
         {memos.length >= MAX_MEMOS && (
           <p className={`text-xs text-center mt-3 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-            Limite de {MAX_MEMOS} mémos atteinte
+            Limite de {MAX_MEMOS} tâches atteinte
           </p>
         )}
       </WidgetContent>

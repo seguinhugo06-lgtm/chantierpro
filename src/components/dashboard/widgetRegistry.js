@@ -40,7 +40,7 @@ export const WIDGET_REGISTRY = {
     category: 'finance',
   },
   'suggestions': {
-    title: 'À faire (Actions + Mémos)',
+    title: 'À faire (Actions + Tâches)',
     icon: Sparkles,
     defaultSize: 'full',
     priority: 4,
@@ -103,7 +103,7 @@ export const WIDGET_REGISTRY = {
     category: 'overview',
   },
   'memos': {
-    title: 'Mémos du jour (ancien)',
+    title: 'Tâches du jour (ancien)',
     icon: StickyNote,
     defaultSize: 'third',
     priority: 13,

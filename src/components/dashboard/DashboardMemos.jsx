@@ -29,7 +29,7 @@ export default function DashboardMemos({ memos = [], toggleMemo, setPage, couleu
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <ClipboardList size={16} style={{ color: couleur }} />
-          <h2 className={`text-sm font-semibold ${tc.text}`}>Mémos du jour</h2>
+          <h2 className={`text-sm font-semibold ${tc.text}`}>Tâches du jour</h2>
           {overdueCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs text-red-500 font-medium">
               <AlertCircle size={11} />

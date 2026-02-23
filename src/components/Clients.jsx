@@ -778,7 +778,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
               { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
               { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
-              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Mémos', badge: memoCount },
+              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
             ];
 
             return tabs.map(tab => (
@@ -1231,7 +1231,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     <input
                       type="text"
                       id={`memo-client-${client.id}`}
-                      placeholder="Nouveau mémo pour ce client..."
+                      placeholder="Nouvelle tâche pour ce client..."
                       className={`flex-1 px-3 py-2 border rounded-xl text-sm ${inputBg}`}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && e.target.value.trim()) {
@@ -1296,7 +1296,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   {clientMemos.length === 0 && (
                     <div className="text-center py-8">
                       <ClipboardList size={28} className={`mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                      <p className={textMuted}>Aucun mémo pour ce client</p>
+                      <p className={textMuted}>Aucune tâche pour ce client</p>
                     </div>
                   )}
                 </div>

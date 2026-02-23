@@ -457,7 +457,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
   const handleDelete = async () => {
     const ok = await confirm({
-      title: 'Supprimer ce mémo ?',
+      title: 'Supprimer cette tâche ?',
       message: `"${memo.text?.substring(0, 50)}${memo.text?.length > 50 ? '...' : ''}"`,
       confirmText: 'Supprimer',
       confirmColor: '#ef4444',
@@ -465,7 +465,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
     if (ok) {
       onDelete(memo.id);
       onClose();
-      showToast('Mémo supprimé', 'success');
+      showToast('Tâche supprimée', 'success');
     }
   };
 
@@ -476,7 +476,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
   const getShareMessage = () => {
     const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
     const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
-    const parts = ['[Mémo ChantierPro]', memo.text];
+    const parts = ['[Tâche ChantierPro]', memo.text];
     if (memo.due_date) parts.push(`📅 ${formatDateFR(memo.due_date)}${memo.due_time ? ' à ' + formatTimeFR(memo.due_time) : ''}`);
     if (chantier) parts.push(`🏗️ ${chantier.nom}`);
     if (client) parts.push(`👤 ${client.nom || ''} ${client.prenom || ''}`);
@@ -495,7 +495,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
   const handleNativeShare = async () => {
     try {
-      await navigator.share({ title: 'Mémo ChantierPro', text: getShareMessage() });
+      await navigator.share({ title: 'Tâche ChantierPro', text: getShareMessage() });
     } catch (err) {
       if (err.name !== 'AbortError') showToast('Partage annulé', 'info');
     }
@@ -524,7 +524,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Détail du mémo"
+        aria-label="Détail de la tâche"
         className={`fixed top-0 right-0 h-full w-full md:max-w-md ${tc.bg} shadow-2xl z-50 flex flex-col animate-slide-in-right`}
       >
         {/* Header */}
@@ -551,7 +551,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
               </span>
             )}
             {saveStatus === 'idle' && (
-              <span className={`font-semibold text-sm ${tc.text}`}>Détail du mémo</span>
+              <span className={`font-semibold text-sm ${tc.text}`}>Détail de la tâche</span>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -559,7 +559,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
               <button
                 onClick={() => setShowShareMenu(!showShareMenu)}
                 className={`p-1.5 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
-                aria-label="Partager le mémo"
+                aria-label="Partager la tâche"
                 title="Partager"
               >
                 <Share2 size={18} />
@@ -593,7 +593,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
             <button
               onClick={handleDelete}
               className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-              aria-label="Supprimer ce mémo définitivement"
+              aria-label="Supprimer cette tâche définitivement"
             >
               <Trash2 size={18} />
             </button>
@@ -602,16 +602,16 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Mémo */}
+          {/* Tâche */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Mémo</label>
+            <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Tâche</label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
               className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 ${tc.input}`}
               style={{ '--tw-ring-color': couleur }}
-              placeholder="Contenu du mémo..."
+              placeholder="Contenu de la tâche..."
             />
           </div>
 
@@ -980,7 +980,7 @@ export default function MemosPage({
           if (trimmed) {
             addMemo({ text: trimmed });
             setNewMemoText('');
-            showToast('Mémo vocal ajouté', 'success');
+            showToast('Tâche vocale ajoutée', 'success');
           }
         }, 2000);
       }
@@ -1075,7 +1075,7 @@ export default function MemosPage({
     setNewMemoText('');
     // #9: Toast with link to open detail for setting a date
     showToast(
-      newId ? 'Mémo ajouté · Cliquez ici pour définir une date' : 'Mémo ajouté',
+      newId ? 'Tâche ajoutée · Cliquez ici pour définir une date' : 'Tâche ajoutée',
       'success',
       newId ? 4000 : 3000
     );
@@ -1108,14 +1108,14 @@ export default function MemosPage({
   const handleQuickDelete = async (id) => {
     const memo = memos.find(m => m.id === id);
     const ok = await confirm({
-      title: 'Supprimer ce mémo ?',
+      title: 'Supprimer cette tâche ?',
       message: `"${memo?.text?.substring(0, 50)}${memo?.text?.length > 50 ? '...' : ''}"`,
       confirmText: 'Supprimer',
       confirmColor: '#ef4444',
     });
     if (ok) {
       deleteMemo(id);
-      showToast('Mémo supprimé', 'success');
+      showToast('Tâche supprimée', 'success');
     }
   };
 
@@ -1131,38 +1131,38 @@ export default function MemosPage({
 
   const handleBulkDate = (date) => {
     selectedIds.forEach(id => updateMemo(id, { due_date: date || null }));
-    showToast(`Date mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    showToast(`Date mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
     setSelectedIds(new Set());
     setSelectionMode(false);
   };
   const handleBulkCategory = (cat) => {
     selectedIds.forEach(id => updateMemo(id, { category: cat || null }));
-    showToast(`Catégorie mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    showToast(`Catégorie mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
     setSelectedIds(new Set());
     setSelectionMode(false);
   };
   const handleBulkPriority = (p) => {
     selectedIds.forEach(id => updateMemo(id, { priority: p || null }));
-    showToast(`Priorité mise à jour pour ${selectedIds.size} mémo(s)`, 'success');
+    showToast(`Priorité mise à jour pour ${selectedIds.size} tâche(s)`, 'success');
     setSelectedIds(new Set());
     setSelectionMode(false);
   };
   const handleBulkComplete = () => {
     selectedIds.forEach(id => handleToggle(id));
-    showToast(`${selectedIds.size} mémo(s) terminé(s)`, 'success');
+    showToast(`${selectedIds.size} tâche(s) terminée(s)`, 'success');
     setSelectedIds(new Set());
     setSelectionMode(false);
   };
   const handleBulkDelete = async () => {
     const ok = await confirm({
-      title: 'Supprimer les mémos ?',
-      message: `${selectedIds.size} mémo(s) seront supprimés.`,
+      title: 'Supprimer les tâches ?',
+      message: `${selectedIds.size} tâche(s) seront supprimées.`,
       confirmText: 'Supprimer',
       confirmColor: '#ef4444',
     });
     if (ok) {
       selectedIds.forEach(id => deleteMemo(id));
-      showToast(`${selectedIds.size} mémo(s) supprimé(s)`, 'success');
+      showToast(`${selectedIds.size} tâche(s) supprimée(s)`, 'success');
       setSelectedIds(new Set());
       setSelectionMode(false);
     }
@@ -1324,12 +1324,12 @@ export default function MemosPage({
             <div className="flex items-center gap-1">
               <input
                 type="date"
-                aria-label="Date pour planifier tous les mémos"
+                aria-label="Date pour planifier toutes les tâches"
                 className={`text-[10px] px-1.5 py-1 rounded-md border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-700'}`}
                 onChange={(e) => {
                   if (!e.target.value) return;
                   items.forEach(m => updateMemo(m.id, { due_date: e.target.value }));
-                  showToast(`${items.length} mémo${items.length > 1 ? 's' : ''} planifié${items.length > 1 ? 's' : ''} au ${new Date(e.target.value).toLocaleDateString('fr-FR')}`, 'success');
+                  showToast(`${items.length} tâche${items.length > 1 ? 's' : ''} planifiée${items.length > 1 ? 's' : ''} au ${new Date(e.target.value).toLocaleDateString('fr-FR')}`, 'success');
                   e.target.value = '';
                 }}
               />
@@ -1345,7 +1345,7 @@ export default function MemosPage({
         {/* #12: Info line for unsorted section */}
         {key === 'undated' && !isCollapsed && (
           <p className={`text-[10px] px-2 mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            💡 Ces mémos n'ont pas de date. Cliquez pour les planifier.
+            💡 Ces tâches n'ont pas de date. Cliquez pour les planifier.
           </p>
         )}
         {!isCollapsed && (
@@ -1413,11 +1413,11 @@ export default function MemosPage({
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className={`text-2xl font-bold ${tc.text}`}>Mémos</h1>
+        <h1 className={`text-2xl font-bold ${tc.text}`}>Tâches</h1>
         <p className={`text-sm mt-1 ${tc.muted}`}>
           {activeCount > 0
-            ? `${activeCount} mémo${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''}${overdueCount > 0 ? ` · ${overdueCount} en retard` : ''}`
-            : 'Aucun mémo actif'}
+            ? `${activeCount} tâche${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}${overdueCount > 0 ? ` · ${overdueCount} en retard` : ''}`
+            : 'Aucune tâche active'}
         </p>
       </div>
 
@@ -1448,19 +1448,19 @@ export default function MemosPage({
             value={newMemoText}
             onChange={(e) => setNewMemoText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? 'En écoute... parlez maintenant' : 'Nouveau mémo...'}
+            placeholder={isListening ? 'En écoute... parlez maintenant' : 'Nouvelle tâche...'}
             className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
-            aria-label="Créer un nouveau mémo"
+            aria-label="Créer une nouvelle tâche"
             aria-describedby="memo-input-hint"
           />
-          <span id="memo-input-hint" className="sr-only">Appuyez sur Entrée pour créer le mémo, ou utilisez le bouton microphone pour la dictée vocale</span>
+          <span id="memo-input-hint" className="sr-only">Appuyez sur Entrée pour créer la tâche, ou utilisez le bouton microphone pour la dictée vocale</span>
           {/* Always-visible add button (44px touch target) */}
           <button
             onClick={handleQuickAdd}
             disabled={!newMemoText.trim()}
             className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white transition-all disabled:opacity-40"
             style={{ backgroundColor: couleur }}
-            aria-label="Ajouter le mémo"
+            aria-label="Ajouter la tâche"
           >
             <Plus size={20} strokeWidth={2.5} />
           </button>
@@ -1489,7 +1489,7 @@ export default function MemosPage({
               <span className="text-lg flex-shrink-0">📂</span>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
-                  {undatedActive.length} mémo{undatedActive.length > 1 ? 's' : ''} sans date
+                  {undatedActive.length} tâche{undatedActive.length > 1 ? 's' : ''} sans date
                 </p>
                 <p className={`text-xs ${isDark ? 'text-amber-300/70' : 'text-amber-600'}`}>Les planifier maintenant ?</p>
               </div>
@@ -1522,7 +1522,7 @@ export default function MemosPage({
           return (
             <div className={`${tc.card} rounded-xl border ${tc.border} p-6 mb-4 text-center`}>
               <span className="text-4xl block mb-3">🎉</span>
-              <p className={`font-medium ${tc.text}`}>Tous les mémos sont triés !</p>
+              <p className={`font-medium ${tc.text}`}>Toutes les tâches sont triées !</p>
               <button
                 onClick={() => setFocusSortIndex(null)}
                 className="mt-3 px-4 py-2 rounded-lg text-white text-sm"
@@ -1754,13 +1754,13 @@ export default function MemosPage({
                     onClick={async () => {
                       const ok = await confirm({
                         title: 'Archiver les terminés',
-                        message: `Supprimer définitivement ${inboxSections.done.length} mémo${inboxSections.done.length > 1 ? 's' : ''} terminé${inboxSections.done.length > 1 ? 's' : ''} ?`,
+                        message: `Supprimer définitivement ${inboxSections.done.length} tâche${inboxSections.done.length > 1 ? 's' : ''} terminée${inboxSections.done.length > 1 ? 's' : ''} ?`,
                         confirmText: 'Archiver',
                         variant: 'danger',
                       });
                       if (ok) {
                         inboxSections.done.forEach(m => deleteMemo(m.id));
-                        showToast(`${inboxSections.done.length} mémos archivés`, 'success');
+                        showToast(`${inboxSections.done.length} tâches archivées`, 'success');
                       }
                     }}
                     className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
@@ -1774,8 +1774,8 @@ export default function MemosPage({
               {filteredMemos.length === 0 && (
                 <div className={`text-center py-12 ${tc.muted}`}>
                   <ClipboardList size={40} className="mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">Aucun mémo</p>
-                  <p className="text-xs mt-1">Tapez ci-dessus pour créer votre premier mémo</p>
+                  <p className="font-medium">Aucune tâche</p>
+                  <p className="text-xs mt-1">Tapez ci-dessus pour créer votre première tâche</p>
                 </div>
               )}
             </>
@@ -1811,7 +1811,7 @@ export default function MemosPage({
                   icon={PartyPopper}
                   title="Tout est à jour pour aujourd'hui !"
                   description="Ajoutez une tâche ou consultez votre inbox."
-                  actionLabel="+ Nouveau mémo"
+                  actionLabel="+ Nouvelle tâche"
                   onAction={() => inputRef.current?.focus()}
                   isDark={isDark}
                 />

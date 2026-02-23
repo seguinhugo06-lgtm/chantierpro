@@ -842,7 +842,7 @@ export default function App() {
       chantiers: 'Chantiers',
       clients: 'Clients',
       planning: 'Planning',
-      memos: 'Mémos',
+      memos: 'Tâches',
       equipe: 'Équipe',
       catalogue: 'Catalogue',
       finances: 'Finances',
@@ -1108,10 +1108,10 @@ export default function App() {
     {
       id: 'memos',
       icon: ClipboardList,
-      label: 'Mémos',
+      label: 'Tâches',
       badge: memosOverdueCount,
       badgeColor: '#ef4444',
-      badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} mémo${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
+      badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
@@ -1449,7 +1449,7 @@ export default function App() {
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
                       { label: 'Nouveau chantier', icon: Building2, p: 'chantiers', create: 'chantier' },
-                      { label: 'Nouveau mémo', icon: ClipboardList, p: 'memos' }
+                      { label: 'Nouvelle tâche', icon: ClipboardList, p: 'memos' }
                     ].map(item => (
                       <button
                         key={item.label}
@@ -1545,7 +1545,7 @@ export default function App() {
               { id: 'dashboard', icon: Home, label: 'Accueil' },
               { id: 'devis', icon: FileText, label: 'Devis' },
               { id: 'chantiers', icon: Building2, label: 'Chantiers' },
-              { id: 'memos', icon: ClipboardList, label: 'Mémos' },
+              { id: 'memos', icon: ClipboardList, label: 'Tâches' },
               { id: 'plus', icon: Plus, label: 'Nouveau' },
             ].map(item => {
               const isActive = item.id === page;

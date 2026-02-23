@@ -160,7 +160,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const JOURS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', memo: 'Mémo', autre: 'Autre' };
+  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', memo: 'Tâche', autre: 'Autre' };
   const TYPE_ICONS = { chantier: Home, rdv: User, relance: Phone, urgence: Zap, memo: ClipboardList, autre: Calendar };
 
   // Couleurs cohérentes avec la légende - chantiers toujours bleus
@@ -186,7 +186,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     chantierId: ch.id, color: getChantierColor(ch), isChantier: true, description: ch.adresse || ''
   }));
   const getMemoEvents = () => memos.filter(m => m.due_date && !m.is_done).map(m => ({
-    id: `memo_${m.id}`, title: m.text?.substring(0, 50) || 'Mémo', date: m.due_date,
+    id: `memo_${m.id}`, title: m.text?.substring(0, 50) || 'Tâche', date: m.due_date,
     time: m.due_time || '', type: 'memo', isMemo: true, description: m.notes || '',
     color: '#f59e0b',
   }));
@@ -1167,7 +1167,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="chantier">Chantier</option><option value="memo">Mémo</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
+                      <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Type</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="rdv">RDV</option><option value="chantier">Chantier</option><option value="memo">Tâche</option><option value="relance">Relance</option><option value="urgence">Urgence</option><option value="autre">Autre</option></select></div>
                       <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Employé</label><select className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.employeId} onChange={e => setForm(p => ({...p, employeId: e.target.value}))}><option value="">Moi</option>{equipe.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}</select></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">

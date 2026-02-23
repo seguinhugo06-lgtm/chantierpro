@@ -25,7 +25,7 @@ const STEPS = [
   },
   {
     key: 'memo',
-    label: 'Ajouter un mémo',
+    label: 'Ajouter une tâche',
     icon: ClipboardList,
     page: 'memos',
     check: (data) => data.memos.length > 0,
