@@ -497,8 +497,8 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo) {
       if (userId) {
+        const current = devis.find(d => d.id === id);
         try {
-          const current = devis.find(d => d.id === id);
           if (current) {
             logger.debug('💾 updateDevis: saving to Supabase, statut=', data.statut || current.statut);
             await saveItem('devis', { ...current, ...data }, userId);
@@ -511,7 +511,9 @@ export function DataProvider({ children, initialData = {} }) {
           if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
             toast.error('Erreur de statut', `Le statut "${data.statut || 'inconnu'}" n'est pas valide. Modification non enregistrée.`);
             // Revert the optimistic update
-            setDevis(prev => prev.map(d => d.id === id ? current : d));
+            if (current) {
+              setDevis(prev => prev.map(d => d.id === id ? current : d));
+            }
           } else {
             toast.error('Erreur mise à jour', msg);
             await queueOffline('update', 'devis', { id, ...data });
