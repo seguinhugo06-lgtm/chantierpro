@@ -1228,9 +1228,10 @@ export default function App() {
           {/* Separator */}
           <div className="my-2 mx-3 border-t border-slate-800" />
 
-          {/* Secondary navigation */}
-          <nav className="space-y-0.5" aria-label="Gestion">
-            {nav.slice(4).map(n => (
+          {/* Planning & Tâches group */}
+          <nav className="space-y-0.5 mb-1" aria-label="Organisation">
+            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Organisation</p>
+            {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
@@ -1240,6 +1241,41 @@ export default function App() {
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
+                {n.badge > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
+                    style={{ background: n.badgeColor || '#ef4444' }}
+                    title={n.badgeTitle}
+                  >
+                    {n.badge > 99 ? '99+' : n.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Secondary navigation */}
+          <nav className="space-y-0.5" aria-label="Gestion">
+            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Gestion</p>
+            {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos'].includes(n.id)).map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: couleur} : {}}
+                aria-current={page === n.id ? 'page' : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="flex-1 text-left truncate">{n.label}</span>
+                {(n.badge > 0 || n.badge === '!') && (
+                  <span
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
+                    style={{ background: n.badgeColor || '#ef4444' }}
+                    title={n.badgeTitle}
+                  >
+                    {n.badge === '!' ? '!' : n.badge > 99 ? '99+' : n.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -1491,7 +1527,7 @@ export default function App() {
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} />}
-              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} />}
+              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} />}
               {page === 'memos' && <MemosPage memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} chantiers={chantiers} clients={clients} setPage={setPage} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}

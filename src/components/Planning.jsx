@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList, Settings } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList, Settings, CheckCircle2, Tag, ListChecks } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 
@@ -20,6 +20,21 @@ const formatDuration = (mins) => {
   return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
 };
 
+// Memo enrichment constants
+const MEMO_PRIORITIES = [
+  { value: 'haute', label: 'Haute', color: '#ef4444', dot: '\ud83d\udd34' },
+  { value: 'moyenne', label: 'Moyenne', color: '#f59e0b', dot: '\ud83d\udfe1' },
+  { value: 'basse', label: 'Basse', color: '#22c55e', dot: '\ud83d\udfe2' },
+];
+const MEMO_CATEGORIES = [
+  { value: 'rappel', label: 'Rappel', color: '#3b82f6' },
+  { value: 'achat', label: 'Achat', color: '#f59e0b' },
+  { value: 'rdv', label: 'RDV', color: '#8b5cf6' },
+  { value: 'admin', label: 'Admin', color: '#6366f1' },
+  { value: 'idee', label: 'Idée', color: '#22c55e' },
+  { value: 'urgent', label: 'Urgent', color: '#ef4444' },
+];
+
 // Helper: round current time to next half-hour
 const getNextHalfHour = () => {
   const now = new Date();
@@ -31,7 +46,7 @@ const getNextHalfHour = () => {
   return `${String(next.getHours()).padStart(2, '0')}:00`;
 };
 
-export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
+export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo, couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -186,9 +201,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     chantierId: ch.id, color: getChantierColor(ch), isChantier: true, description: ch.adresse || ''
   }));
   const getMemoEvents = () => memos.filter(m => m.due_date && !m.is_done).map(m => ({
-    id: `memo_${m.id}`, title: m.text?.substring(0, 50) || 'Tâche', date: m.due_date,
+    id: `memo_${m.id}`, memoId: m.id, title: m.text?.substring(0, 50) || 'Tâche', date: m.due_date,
     time: m.due_time || '', type: 'memo', isMemo: true, description: m.notes || '',
     color: '#f59e0b',
+    // Enriched memo data for detail popover
+    priority: m.priority || '', category: m.category || '',
+    subtasks: m.subtasks || [], chantier_id: m.chantier_id || '',
+    is_done: m.is_done || false, fullText: m.text || '',
   }));
   // Expand recurring events into virtual instances within visible range
   const expandRecurringEvents = (evts) => {
@@ -1205,6 +1224,100 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                     <div><label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Notes</label><textarea className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} /></div>
                   </div>
+                ) : showDetail.isMemo ? (
+                  /* ── Enriched memo detail view ── */
+                  <div className="space-y-3">
+                    {/* Full text */}
+                    <p className={`text-sm leading-relaxed ${textPrimary}`}>{showDetail.fullText || showDetail.title}</p>
+
+                    {/* Priority + Category badges */}
+                    {(showDetail.priority || showDetail.category) && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {showDetail.priority && (() => {
+                          const p = MEMO_PRIORITIES.find(pr => pr.value === showDetail.priority);
+                          return p ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: p.color + '18', color: p.color }}>
+                              {p.dot} {p.label}
+                            </span>
+                          ) : null;
+                        })()}
+                        {showDetail.category && (() => {
+                          const cat = MEMO_CATEGORIES.find(c => c.value === showDetail.category);
+                          return cat ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ backgroundColor: cat.color + '18', color: cat.color }}>
+                              <Tag size={10} /> {cat.label}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Date + time */}
+                    <div className="flex items-center gap-2.5">
+                      <Calendar size={14} className={textMuted} />
+                      <span className={`text-sm ${textPrimary}`}>{new Date(showDetail.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                    </div>
+                    {showDetail.time && (
+                      <div className="flex items-center gap-2.5">
+                        <Clock size={14} className={textMuted} />
+                        <span className={`text-sm ${textPrimary}`}>{showDetail.time}</span>
+                      </div>
+                    )}
+
+                    {/* Chantier link */}
+                    {showDetail.chantier_id && (() => {
+                      const ch = (chantiers || []).find(c => c.id === showDetail.chantier_id);
+                      return ch ? (
+                        <div className="flex items-center gap-2.5">
+                          <Home size={14} className={textMuted} />
+                          <button onClick={() => goToChantier(ch.id)} className="text-sm hover:underline" style={{ color: couleur }}>{ch.nom}</button>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Subtasks */}
+                    {showDetail.subtasks && showDetail.subtasks.length > 0 && (() => {
+                      const stDone = showDetail.subtasks.filter(s => s.done).length;
+                      const stTotal = showDetail.subtasks.length;
+                      const pct = Math.round((stDone / stTotal) * 100);
+                      return (
+                        <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-xs font-medium ${textSecondary}`}><ListChecks size={12} className="inline mr-1" />Sous-tâches</span>
+                            <span className={`text-[11px] font-semibold ${stDone === stTotal ? 'text-emerald-500' : textMuted}`}>{stDone}/{stTotal}</span>
+                          </div>
+                          <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} mb-2`}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: stDone === stTotal ? '#22c55e' : couleur }} />
+                          </div>
+                          <div className="space-y-1">
+                            {showDetail.subtasks.map(st => (
+                              <div key={st.id} className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (updateMemo && showDetail.memoId) {
+                                      const newSubs = showDetail.subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s);
+                                      updateMemo(showDetail.memoId, { subtasks: newSubs });
+                                      setShowDetail(prev => prev ? { ...prev, subtasks: newSubs } : null);
+                                    }
+                                  }}
+                                  className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${st.done ? 'text-white' : isDark ? 'border-slate-500' : 'border-slate-300'}`}
+                                  style={st.done ? { background: couleur, borderColor: couleur } : {}}
+                                >
+                                  {st.done && <Check size={10} />}
+                                </button>
+                                <span className={`text-xs ${st.done ? `line-through ${textMuted}` : textPrimary}`}>{st.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Notes */}
+                    {showDetail.description && (
+                      <div className={`p-3 rounded-lg text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-50'} ${textSecondary} whitespace-pre-wrap`}>{showDetail.description}</div>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-2.5">
                     <div className="flex items-center gap-2.5">
@@ -1261,6 +1374,27 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                   <button onClick={() => goToChantier(showDetail.chantierId)} className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{ background: couleur }}>
                     <Home size={14} /> Voir le chantier
                   </button>
+                ) : showDetail.isMemo ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (toggleMemo && showDetail.memoId) {
+                          toggleMemo(showDetail.memoId);
+                          setShowDetail(null);
+                        }
+                      }}
+                      className="flex-1 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 transition-colors"
+                    >
+                      <CheckCircle2 size={14} /> Terminer
+                    </button>
+                    <button
+                      onClick={() => { if (setPage) setPage('memos'); setShowDetail(null); }}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
+                      title="Voir dans Tâches"
+                    >
+                      <ClipboardList size={12} />
+                    </button>
+                  </>
                 ) : editMode ? (
                   <>
                     <button onClick={() => setEditMode(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200'}`}>Annuler</button>
