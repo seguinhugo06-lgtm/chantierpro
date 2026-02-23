@@ -2,7 +2,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { generateFacturXML, isFacturXCompliant } from '../lib/facturx';
-import { filterValidLignes } from '../lib/formatters';
+import { filterValidLignes, formatClientName } from '../lib/formatters';
 import QRCode from 'qrcode';
 
 const styles = StyleSheet.create({
@@ -249,7 +249,7 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
           <Text style={styles.sectionTitle}>CLIENT</Text>
           <View style={styles.clientInfo}>
             <Text style={styles.clientName}>
-              {client.nom} {client.prenom}
+              {formatClientName(client)}
             </Text>
             {client.entreprise && (
               <Text style={styles.clientDetail}>{client.entreprise}</Text>

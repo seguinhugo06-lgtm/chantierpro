@@ -556,7 +556,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
               {client ? (
                 <div className="space-y-1.5">
-                  <p className={`font-semibold ${textPrimary}`}>{client.nom} {client.prenom || ''}</p>
+                  <p className={`font-semibold ${textPrimary}`}>{formatClientName(client)}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     {client.telephone && (
                       <a href={`tel:${client.telephone}`} className={`flex items-center gap-1.5 text-sm ${textSecondary} hover:opacity-80 min-h-[36px] px-3 py-1 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>

@@ -4,6 +4,7 @@ import FormError from './ui/FormError';
 import QuickClientModal from './QuickClientModal';
 import CatalogBrowser from './CatalogBrowser';
 import { generateId } from '../lib/utils';
+import { formatClientName } from '../lib/formatters';
 import useConfirm from '../hooks/useConfirm';
 
 // Draft localStorage key
@@ -575,7 +576,7 @@ export default function DevisWizard({
                             {client.nom?.[0]?.toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className={`font-medium text-sm truncate ${textPrimary}`}>{client.nom} {client.prenom}</p>
+                            <p className={`font-medium text-sm truncate ${textPrimary}`}>{formatClientName(client)}</p>
                             {client.entreprise && <p className={`text-xs truncate ${textMuted}`}>{client.entreprise}</p>}
                           </div>
                         </div>
@@ -612,7 +613,7 @@ export default function DevisWizard({
                         {client.nom?.[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium text-sm truncate ${textPrimary}`}>{client.nom} {client.prenom}</p>
+                        <p className={`font-medium text-sm truncate ${textPrimary}`}>{formatClientName(client)}</p>
                         {client.entreprise && <p className={`text-xs truncate ${textMuted}`}>{client.entreprise}</p>}
                       </div>
                     </div>
@@ -640,7 +641,7 @@ export default function DevisWizard({
                     {selectedClient.nom?.[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <p className={`font-medium ${textPrimary}`}>{selectedClient.nom} {selectedClient.prenom}</p>
+                    <p className={`font-medium ${textPrimary}`}>{formatClientName(selectedClient)}</p>
                     <p className={`text-xs ${textMuted}`}>{selectedClient.telephone}</p>
                   </div>
                   <button onClick={() => setStep(1)} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
@@ -721,7 +722,7 @@ export default function DevisWizard({
               {selectedClient && (
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                   <p className={`text-sm ${textMuted} mb-1`}>Client</p>
-                  <p className={`font-medium ${textPrimary}`}>{selectedClient.nom} {selectedClient.prenom}</p>
+                  <p className={`font-medium ${textPrimary}`}>{formatClientName(selectedClient)}</p>
                   {selectedClient.adresse && <p className={`text-sm ${textSecondary} whitespace-pre-line`}>{selectedClient.adresse}</p>}
                 </div>
               )}
