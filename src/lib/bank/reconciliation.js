@@ -19,6 +19,8 @@
  * - Score < 50: no match (statut = 'non_rapproche')
  */
 
+import { formatClientName } from '../formatters';
+
 const AMOUNT_THRESHOLD_EXACT = 0.01;
 const AMOUNT_THRESHOLD_CLOSE = 1.00;
 const SCORE_AUTO_MATCH = 80;
@@ -128,7 +130,7 @@ export function autoReconcile(transactions, factures, clients) {
           facture_id: fac.id,
           facture_numero: fac.numero,
           facture_total: facTotal,
-          client_nom: client ? `${client.nom} ${client.prenom}`.trim() : 'Inconnu',
+          client_nom: formatClientName(client, 'Inconnu'),
           score,
           reasons,
         });

@@ -10,6 +10,7 @@
  */
 
 import { useCallback } from 'react';
+import { formatClientName } from '../lib/formatters';
 
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 
@@ -85,7 +86,7 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
 
     factures.forEach(f => {
       const client = clients.find(c => c.id === f.client_id);
-      const clientName = client ? `${client.nom} ${client.prenom || ''}`.trim() : 'N/A';
+      const clientName = formatClientName(client, 'N/A');
       const rate = f.tvaRate || f.tva_rate || 20;
       const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
       const tva = (f.total_ttc || 0) - ht;
@@ -168,7 +169,7 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
     yearReglements.forEach(r => {
       const linkedDevis = devis.find(d => d.id === r.devisId);
       const client = linkedDevis ? clients.find(c => c.id === linkedDevis.client_id) : null;
-      const clientName = client ? `${client.nom} ${client.prenom || ''}`.trim() : 'N/A';
+      const clientName = formatClientName(client, 'N/A');
 
       rows.push([
         r.dateReglement || r.date || '',
@@ -205,7 +206,7 @@ export function useExportComptable({ devis = [], depenses = [], reglements = [],
 
     factures.forEach(f => {
       const client = clients.find(c => c.id === f.client_id);
-      const clientName = client ? `${client.nom} ${client.prenom || ''}`.trim() : '';
+      const clientName = formatClientName(client, '');
       const rate = f.tvaRate || f.tva_rate || 20;
       const ht = f.total_ht || (f.total_ttc ? f.total_ttc / (1 + rate / 100) : 0);
       const tva = (f.total_ttc || 0) - ht;

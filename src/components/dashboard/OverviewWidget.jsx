@@ -32,6 +32,7 @@ import { cn } from '../../lib/utils';
 import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../context/DataContext';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
 import { calcConversion, formatConversion } from '../../lib/statsUtils';
+import { formatClientName } from '../../lib/formatters';
 
 /**
  * Format currency — exact amounts for consistency across Dashboard
@@ -311,7 +312,7 @@ function OverviewWidget({ setPage, isDark = false, className }) {
     // Find top client name
     const topClientEntry = Object.entries(clientRevenue).sort((a, b) => b[1] - a[1])[0];
     const topClientObj = topClientEntry ? clients.find(c => c.id === topClientEntry[0]) : null;
-    const topClientName = topClientObj ? (topClientObj.nom || topClientObj.entreprise || '—') : '—';
+    const topClientName = topClientObj ? formatClientName(topClientObj, topClientObj?.entreprise || '—') : '—';
     const topClientRevenue = topClientEntry ? topClientEntry[1] : 0;
 
     // Devis (from cleaned data)

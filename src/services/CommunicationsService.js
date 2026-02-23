@@ -10,6 +10,7 @@
  */
 
 import { supabase } from '../supabaseClient';
+import { formatClientName } from '../lib/formatters';
 
 // ============================================================================
 // CONFIGURATION
@@ -599,7 +600,7 @@ export async function notifyDevisEnvoye(devisId) {
     }
 
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       devis_number: devis.numero,
       amount: formatCurrency(devis.total_ttc),
       link: `${CONFIG.baseUrl}/portal/devis/${devisId}`,
@@ -671,7 +672,7 @@ export async function notifyDevisAccepte(devisId) {
 
     const client = devis.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       devis_number: devis.numero,
     };
 
@@ -731,7 +732,7 @@ export async function notifyChantierDemarre(chantierId) {
     const client = chantier.client;
     const now = new Date();
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       chantier_name: chantier.nom,
       time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       date: formatDate(now),
@@ -797,7 +798,7 @@ export async function notifyChantierTermine(chantierId) {
 
     const client = chantier.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       chantier_name: chantier.nom,
       link: `${CONFIG.baseUrl}/portal/chantier/${chantierId}/photos`,
     };
@@ -864,7 +865,7 @@ export async function notifyFactureEnvoyee(factureId) {
     const client = facture.client;
     const echeance = facture.date_validite || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       facture_number: facture.numero,
       amount: formatCurrency(facture.total_ttc),
       date_echeance: formatDate(echeance),
@@ -937,7 +938,7 @@ export async function notifyPaiementRecu(factureId) {
 
     const client = facture.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       facture_number: facture.numero,
       amount: formatCurrency(facture.total_ttc),
       date: formatDate(new Date()),

@@ -186,7 +186,7 @@ export default function App() {
           const cn = clientName(d.client_id);
           items.push({
             id: `devis-stale-${d.id}`,
-            message: `Devis ${d.numero || ''} envoyé à ${cn || 'un client'} depuis ${age} jours — à relancer`,
+            message: `${(d.numero || '').startsWith('FAC') ? 'Facture' : 'Devis'} ${d.numero || ''} envoyé${(d.numero || '').startsWith('FAC') ? 'e' : ''} à ${cn || 'un client'} depuis ${age} jours — à relancer`,
             date: relDate(d.date),
             type: 'warning',
             link: 'devis',
@@ -228,7 +228,7 @@ export default function App() {
           const cn = clientName(d.client_id);
           items.push({
             id: `devis-accepte-${d.id}`,
-            message: `Devis ${d.numero || ''} accepté${cn ? ` par ${cn}` : ''}`,
+            message: `${(d.numero || '').startsWith('FAC') ? 'Facture' : 'Devis'} ${d.numero || ''} accepté${(d.numero || '').startsWith('FAC') ? 'e' : ''}${cn ? ` par ${cn}` : ''}`,
             date: relDate(d.date),
             type: 'success',
             link: 'devis',

@@ -28,6 +28,7 @@ import {
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
+import { formatClientName } from '../../lib/formatters';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -795,7 +796,7 @@ export default function TresorerieModule({
       newPrevisions.push({
         id: genId(),
         type: 'entree',
-        description: `Facture ${f.numero || f.id?.slice(-6) || '—'} – ${client?.nom || 'Client'}`,
+        description: `Facture ${f.numero || f.id?.slice(-6) || '—'} – ${formatClientName(client)}`,
         montant: reste,
         date: f.date_echeance || f.date_validite || f.date || new Date().toISOString().slice(0, 10),
         categorie: 'Client',
@@ -869,7 +870,7 @@ export default function TresorerieModule({
       newPrevisions.push({
         id: genId(),
         type: 'entree',
-        description: `Devis signé ${d.numero || d.id?.slice(-6) || '—'} – ${client?.nom || 'Client'}`,
+        description: `Devis signé ${d.numero || d.id?.slice(-6) || '—'} – ${formatClientName(client)}`,
         montant: d.total_ttc || 0,
         date: d.date_validite || d.date || new Date().toISOString().slice(0, 10),
         categorie: 'Client',
@@ -1313,7 +1314,7 @@ export default function TresorerieModule({
       const isOverdue = new Date(f.date_echeance || f.date_validite || f.date) < now;
       payments.push({
         id: `fac_${f.id}`, date: f.date_echeance || f.date_validite || f.date,
-        description: `Facture ${f.numero || f.id?.slice(-6) || '---'} – ${client?.nom || 'Client'}`,
+        description: `Facture ${f.numero || f.id?.slice(-6) || '---'} – ${formatClientName(client)}`,
         type: 'entree', montant: reste,
         statut: isOverdue ? 'En retard' : 'En attente',
         source: 'facture', categorie: 'Client',
@@ -1327,7 +1328,7 @@ export default function TresorerieModule({
       if (reste <= 0) return;
       payments.push({
         id: `devis_${d.id}`, date: d.date_validite || d.date || new Date().toISOString(),
-        description: `Devis signé ${d.numero || d.id?.slice(-6) || '---'} – ${client?.nom || d.client_nom || 'Client'}`,
+        description: `Devis signé ${d.numero || d.id?.slice(-6) || '---'} – ${formatClientName(client, d.client_nom || 'Client')}`,
         type: 'entree', montant: reste,
         statut: 'Signé',
         source: 'devis_accepte', categorie: 'Client',

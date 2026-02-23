@@ -7,6 +7,7 @@ import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
+import { formatClientName } from '../lib/formatters';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -1596,7 +1597,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         const kpiItems = [
           { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}` },
           { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null },
-          { key: 'top', value: modeDiscret ? '···' : (topClient?.nom?.split(' ')[0] || '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA) },
+          { key: 'top', value: modeDiscret ? '···' : formatClientName(topClient, '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA) },
           { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null },
         ];
 
