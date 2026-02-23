@@ -2415,7 +2415,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       {(() => {
         const today = new Date().toISOString().split('T')[0];
         const chantiersToday = chantiers.filter(c => {
-          if (c.statut !== 'en_cours') return false;
+          if (c.statut !== 'en_cours' || isDraftChantier(c)) return false;
           const debut = c.date_debut ? c.date_debut.split('T')[0] : null;
           const fin = c.date_fin ? c.date_fin.split('T')[0] : null;
           if (!debut) return true;
@@ -2471,7 +2471,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.nom}</p>
                         <p className={`text-xs ${textMuted} truncate`}>
-                          {[cl ? `${cl.nom} ${cl.prenom || ''}`.trim() : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
+                          {[cl ? formatClientName(cl, '') : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
                         </p>
                       </div>
                       {(c.adresse || c.ville) && (

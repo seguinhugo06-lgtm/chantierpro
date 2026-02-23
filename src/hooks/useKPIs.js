@@ -9,6 +9,7 @@
 import { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { calcConversion } from '../lib/statsUtils';
+import { isDraftChantier } from '../lib/utils';
 
 /**
  * @param {Object} [options]
@@ -89,7 +90,7 @@ export function useKPIs({ period = 'month', clientId, chantierId } = {}) {
     // === CHANTIERS ===
     let scopedChantiers = chantiers;
     if (clientId) scopedChantiers = scopedChantiers.filter(c => c.client_id === clientId);
-    const chantiersActifs = scopedChantiers.filter(c => c.statut === 'en_cours').length;
+    const chantiersActifs = scopedChantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c)).length;
     const chantiersProspect = scopedChantiers.filter(c => c.statut === 'prospect').length;
 
     // === CLIENTS ===
