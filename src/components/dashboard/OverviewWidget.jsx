@@ -28,7 +28,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { cn } from '../../lib/utils';
+import { cn, isDraftChantier } from '../../lib/utils';
 import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../context/DataContext';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
 import { calcConversion, formatConversion } from '../../lib/statsUtils';
@@ -264,7 +264,7 @@ function OverviewWidget({ setPage, isDark = false, className }) {
     });
 
     // Chantiers
-    const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours');
+    const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c));
     const chantiersProspect = chantiers.filter(c => c.statut === 'prospect').length;
     const chantiersTermines = chantiers.filter(c => c.statut === 'termine').length;
     const totalChantiers = chantiers.length;
