@@ -1176,20 +1176,19 @@ export default function Dashboard({
         {/* ========== HERO DUO — Devis IA + Devis Express ========== */}
         <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
-            {/* Devis IA — BIENTÔT */}
-            <div
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white opacity-60 cursor-not-allowed"
+            {/* Devis IA */}
+            <button
+              onClick={() => setPage('ia-devis')}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none"
               style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
-              title="Bientôt disponible"
             >
               <div className="relative z-10">
                 <MessageCircle size={26} className="mb-2 text-white/90" />
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
                 <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">Décrivez vos travaux</p>
               </div>
-              <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/25 text-white backdrop-blur-sm z-10">BIENTÔT</span>
-              <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10" />
-            </div>
+              <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10 pointer-events-none" />
+            </button>
 
             {/* Devis Express */}
             <button
