@@ -760,79 +760,60 @@ export default function IADevisAnalyse({
             )}
           </div>
 
-          {/* Editable lines table */}
-          <div className={`rounded-xl border overflow-hidden mb-4 ${cardBg}`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                    <th className={`text-left px-3 py-2 text-xs font-medium ${textMuted}`}>Désignation</th>
-                    <th className={`text-right px-2 py-2 text-xs font-medium ${textMuted} w-16`}>Qté</th>
-                    <th className={`text-center px-2 py-2 text-xs font-medium ${textMuted} w-20`}>Unité</th>
-                    <th className={`text-right px-2 py-2 text-xs font-medium ${textMuted} w-20`}>P.U. HT</th>
-                    <th className={`text-right px-3 py-2 text-xs font-medium ${textMuted} w-20`}>Total</th>
-                    <th className="w-8" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {editableLines.map((line, idx) => (
-                    <tr key={line.id} className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                      <td className="px-3 py-2">
-                        <input
-                          type="text"
-                          value={line.designation}
-                          onChange={e => updateLine(idx, 'designation', e.target.value)}
-                          className={`w-full bg-transparent text-sm ${textPrimary} outline-none`}
-                          placeholder="Poste..."
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          value={line.quantite}
-                          onChange={e => updateLine(idx, 'quantite', parseFloat(e.target.value) || 0)}
-                          className={`w-14 text-right bg-transparent text-sm ${textPrimary} outline-none`}
-                          min="0"
-                          step="0.1"
-                        />
-                      </td>
-                      <td className="px-2 py-2">
-                        <select
-                          value={line.unite}
-                          onChange={e => updateLine(idx, 'unite', e.target.value)}
-                          className={`w-full bg-transparent text-xs text-center ${textPrimary} outline-none`}
-                        >
-                          {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-2 py-2">
-                        <input
-                          type="number"
-                          value={line.prixUnitaire}
-                          onChange={e => updateLine(idx, 'prixUnitaire', parseFloat(e.target.value) || 0)}
-                          className={`w-16 text-right bg-transparent text-sm ${textPrimary} outline-none`}
-                          min="0"
-                          step="0.01"
-                        />
-                      </td>
-                      <td className={`px-3 py-2 text-right text-sm font-medium ${textPrimary}`}>
-                        {fmtCurrency.format(line.quantite * line.prixUnitaire)}
-                      </td>
-                      <td className="pr-2">
-                        <button onClick={() => removeLine(idx)} className="p-1 text-red-400 hover:text-red-600 rounded">
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Editable lines — card layout for mobile */}
+          <div className="space-y-2 mb-4">
+            {editableLines.map((line, idx) => (
+              <div key={line.id} className={`rounded-xl border p-3 ${cardBg}`}>
+                {/* Row 1: Designation + delete */}
+                <div className="flex items-start gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={line.designation}
+                    onChange={e => updateLine(idx, 'designation', e.target.value)}
+                    className={`flex-1 bg-transparent text-sm font-medium ${textPrimary} outline-none`}
+                    placeholder="Poste..."
+                  />
+                  <button onClick={() => removeLine(idx)} className="p-1 text-red-400 hover:text-red-600 rounded shrink-0">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                {/* Row 2: Qté × Unité × P.U. = Total */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={line.quantite}
+                    onChange={e => updateLine(idx, 'quantite', parseFloat(e.target.value) || 0)}
+                    className={`w-14 text-center rounded-lg px-1 py-1 text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                    min="0"
+                    step="0.1"
+                  />
+                  <select
+                    value={line.unite}
+                    onChange={e => updateLine(idx, 'unite', e.target.value)}
+                    className={`rounded-lg px-1 py-1 text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                  >
+                    {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <span className={`text-xs ${textMuted}`}>×</span>
+                  <input
+                    type="number"
+                    value={line.prixUnitaire}
+                    onChange={e => updateLine(idx, 'prixUnitaire', parseFloat(e.target.value) || 0)}
+                    className={`w-20 text-right rounded-lg px-2 py-1 text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                    min="0"
+                    step="0.01"
+                  />
+                  <span className={`ml-auto text-sm font-semibold whitespace-nowrap ${textPrimary}`}>
+                    {fmtCurrency.format(line.quantite * line.prixUnitaire)}
+                  </span>
+                </div>
+              </div>
+            ))}
 
             {/* Add line */}
             <button
               onClick={addLine}
-              className={`w-full px-3 py-2 text-xs font-medium flex items-center gap-1 border-t ${isDark ? 'border-slate-700 text-slate-400 hover:bg-slate-700/50' : 'border-slate-100 text-slate-500 hover:bg-slate-50'}`}
+              className={`w-full rounded-xl border border-dashed px-3 py-3 text-xs font-medium flex items-center justify-center gap-1 ${isDark ? 'border-slate-600 text-slate-400 hover:bg-slate-800' : 'border-slate-300 text-slate-500 hover:bg-slate-50'}`}
             >
               <Plus size={14} />
               Ajouter un poste

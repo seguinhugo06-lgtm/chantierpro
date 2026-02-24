@@ -40,7 +40,17 @@ export async function analyseTranscript(transcript, catalogue = []) {
     await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000));
     return mockAnalyse(transcript);
   }
-  return callEdgeFunction(transcript, catalogue);
+
+  try {
+    return await callEdgeFunction(transcript, catalogue);
+  } catch (err) {
+    // Fallback to local mock if Edge Function not deployed or API key missing
+    console.warn('[ai-devis] Edge Function failed, falling back to local analysis:', err.message);
+    await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+    const result = mockAnalyse(transcript);
+    result.notes = 'Estimation locale (IA non configurée)';
+    return result;
+  }
 }
 
 // ============================================================================
