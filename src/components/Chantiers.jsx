@@ -165,6 +165,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [todayCollapsed, setTodayCollapsed] = useState(false); // Étape 1: collapsible today banner
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
+  // Sync view → selectedChantier so App.jsx can hide global FABMenu
+  useEffect(() => { setSelectedChantier?.(view || null); }, [view, setSelectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
   // Fetch weather for active chantier
