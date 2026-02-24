@@ -2746,7 +2746,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {/* P0.1: Health indicator dot */}
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
-                    <h3 className={`font-semibold text-sm leading-tight truncate ${textPrimary}`}>{ch.nom}</h3>
+                    <h3 className={`font-semibold text-sm leading-tight line-clamp-2 ${textPrimary}`}>{ch.nom}</h3>
                     <span className={`text-[10px] font-mono shrink-0 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">

@@ -1617,7 +1617,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
                   title={kpi.tooltip}
                 >
-                  <p className={`text-base font-bold truncate`} style={{ color: couleur }}>{kpi.value}</p>
+                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
                   <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
                   {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
                 </button>

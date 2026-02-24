@@ -1351,10 +1351,10 @@ export default function Dashboard({
                       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} role="status" />
                       {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
+                        <p className={`text-sm font-semibold line-clamp-2 ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
                           {item.title}
                         </p>
-                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
+                        <p className={`text-[11px] line-clamp-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
                           {item.subtitle}
                         </p>
                       </div>

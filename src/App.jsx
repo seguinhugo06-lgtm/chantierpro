@@ -1414,10 +1414,10 @@ export default function App() {
               <HelpCircle size={18} />
             </button>
 
-            {/* Mode discret toggle */}
+            {/* Mode discret toggle — hidden on small mobile, visible sm+ */}
             <button
               onClick={() => setModeDiscret(!modeDiscret)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
               style={modeDiscret ? {background: couleur} : {}}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
@@ -1436,7 +1436,7 @@ export default function App() {
                     showToast('Sur iOS: Partager → "Sur l\'écran d\'accueil"', 'info');
                   }
                 }}
-                className={`w-11 h-11 lg:w-auto lg:h-11 lg:px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
+                className={`hidden sm:flex w-11 h-11 lg:w-auto lg:h-11 lg:px-3 rounded-xl items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
                   isDark
                     ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50'
                     : 'border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
@@ -1583,42 +1583,26 @@ export default function App() {
               { id: 'devis', icon: FileText, label: 'Devis' },
               { id: 'chantiers', icon: Building2, label: 'Chantiers' },
               { id: 'memos', icon: ClipboardList, label: 'Tâches' },
-              { id: 'plus', icon: Plus, label: 'Nouveau' },
             ].map(item => {
               const isActive = item.id === page;
-              const isPlus = item.id === 'plus';
               return (
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (isPlus) {
-                      setShowFABDevisWizard(true);
-                    } else {
-                      setPage(item.id);
-                      setSidebarOpen(false);
-                      setSelectedChantier(null);
-                      setSelectedDevis(null);
-                    }
+                    setPage(item.id);
+                    setSidebarOpen(false);
+                    setSelectedChantier(null);
+                    setSelectedDevis(null);
                   }}
                   className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                    isPlus
+                    isActive
                       ? ''
-                      : isActive
-                        ? ''
-                        : isDark ? 'text-slate-500' : 'text-slate-400'
+                      : isDark ? 'text-slate-500' : 'text-slate-400'
                   }`}
-                  style={isActive && !isPlus ? { color: couleur } : {}}
+                  style={isActive ? { color: couleur } : {}}
                 >
-                  {isPlus ? (
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white -mt-4 shadow-lg" style={{ backgroundColor: couleur }}>
-                      <item.icon size={22} />
-                    </div>
-                  ) : (
-                    <>
-                      <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-                      <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
-                    </>
-                  )}
+                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
                 </button>
               );
             })}
