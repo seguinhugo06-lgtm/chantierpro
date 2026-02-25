@@ -503,11 +503,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
               title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
             >
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
                 <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
               </div>
-              <div className={`w-32 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+              <div className={`w-16 sm:w-32 h-3 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
               </div>
               {completude < 100 && <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>▼</span>}
@@ -581,18 +581,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className={`rounded-xl p-4 flex items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-          <span className="text-xl">📝</span>
-          <div className="flex-1">
-            <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
+        <div className={`rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <span className="text-xl shrink-0">📝</span>
+            <div className="min-w-0">
+              <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
+            </div>
           </div>
           <button
             onClick={() => { setShowSetupWizard(true); setWizardStep(0); }}
-            className="px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap"
+            className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0"
             style={{ background: couleur }}
           >
-            🪄 Assistant de configuration
+            🪄 Assistant config
           </button>
         </div>
       )}

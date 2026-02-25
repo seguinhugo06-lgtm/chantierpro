@@ -309,20 +309,22 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
 
       {/* ────── Brouillons banner (if any) ────── */}
       {kpis.brouillonsCount > 0 && (
-        <div className={`${cardClass} flex items-center gap-4`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}15` }}>
-            <FileEdit size={20} style={{ color: couleur }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-semibold ${textPrimary}`}>
-              Potentiel non comptabilisé : <span style={{ color: couleur }}>{formatEUR(kpis.brouillonsMontant)} TTC</span>
-            </p>
-            <p className={`text-xs mt-0.5 ${textSecondary}`}>
-              {kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''} non inclus dans les statistiques — convertissez-les en devis envoyés
-            </p>
+        <div className={`${cardClass} flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${couleur}15` }}>
+              <FileEdit size={20} style={{ color: couleur }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold ${textPrimary}`}>
+                Potentiel non comptabilisé : <span style={{ color: couleur }}>{formatEUR(kpis.brouillonsMontant)} TTC</span>
+              </p>
+              <p className={`text-xs mt-0.5 ${textSecondary}`}>
+                {kpis.brouillonsCount} brouillon{kpis.brouillonsCount > 1 ? 's' : ''} non inclus dans les statistiques — convertissez-les en devis envoyés
+              </p>
+            </div>
           </div>
           <button onClick={() => setPage('devis')}
-            className="flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 shadow-sm"
+            className="self-end sm:self-auto flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90 shadow-sm"
             style={{ backgroundColor: couleur }}>
             Voir les brouillons
           </button>
