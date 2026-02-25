@@ -1606,18 +1606,23 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     aria-label="Filtrer par catégorie"
                   >
                     <style>{`#catFilterBar::-webkit-scrollbar { display: none; }`}</style>
-                    {CATEGORIES.map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setCatFilter(cat)}
-                        role="tab"
-                        aria-selected={catFilter === cat}
-                        className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                        style={catFilter === cat ? {background: couleur} : {}}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                    {CATEGORIES.map(cat => {
+                      const SHORT_LABELS = { 'Plomberie': 'Plomb.', 'Électricité': 'Élec.', 'Maçonnerie': 'Maçon.', 'Carrelage': 'Carrel.', 'Menuiserie': 'Menuis.', 'Matériaux': 'Matér.', 'Isolation': 'Isol.', "Main d'œuvre": 'M.O.' };
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setCatFilter(cat)}
+                          role="tab"
+                          aria-selected={catFilter === cat}
+                          title={cat}
+                          className={`whitespace-nowrap px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium min-h-[36px] transition-colors ${catFilter === cat ? 'text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                          style={catFilter === cat ? {background: couleur} : {}}
+                        >
+                          <span className="sm:hidden">{SHORT_LABELS[cat] || cat}</span>
+                          <span className="hidden sm:inline">{cat}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1626,10 +1631,10 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
 
           {/* Sort */}
           {catalogue.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <span className={`text-sm ${textMuted} flex items-center gap-1`}><ArrowUpDown size={14} /> Trier:</span>
-              {[{ key: 'name', label: 'Nom' }, { key: 'price', label: 'Prix' }, { key: 'stock', label: 'Stock' }, { key: 'margin', label: 'Marge' }, { key: 'usage', label: 'Plus utilisé' }].map(opt => (
-                <button key={opt.key} onClick={() => setSortBy(opt.key)} className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={sortBy === opt.key ? { background: couleur } : {}}>
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1">
+              <span className={`text-xs sm:text-sm ${textMuted} flex items-center gap-1 shrink-0`}><ArrowUpDown size={14} /> Trier:</span>
+              {[{ key: 'name', label: 'Nom' }, { key: 'price', label: 'Prix' }, { key: 'stock', label: 'Stock' }, { key: 'margin', label: 'Marge' }, { key: 'usage', label: 'Utilisé' }].map(opt => (
+                <button key={opt.key} onClick={() => setSortBy(opt.key)} className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`} style={sortBy === opt.key ? { background: couleur } : {}}>
                   {opt.label}
                 </button>
               ))}

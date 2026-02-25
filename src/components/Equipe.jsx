@@ -4165,7 +4165,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               }`}
                             >
                               {isRunning ? <Square size={14} fill="white" /> : <Play size={14} fill="currentColor" />}
-                              <span className="leading-tight text-left line-clamp-2 max-w-[120px]">{ch.nom}</span>
+                              <span className="leading-tight text-left line-clamp-2 max-w-[200px]">{ch.nom}</span>
                             </button>
                           );
                         })}

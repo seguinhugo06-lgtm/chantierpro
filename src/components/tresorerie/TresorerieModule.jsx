@@ -2125,10 +2125,11 @@ export default function TresorerieModule({
 
       {/* ── Tabs ───────────────────────────────────────────────────── */}
       <div className={`rounded-2xl border ${cardBg}`}>
-        <div className={`flex items-center gap-1 px-5 pt-4 border-b ${borderColor}`}>
+        <div className={`flex items-center gap-0.5 sm:gap-1 px-2 sm:px-5 pt-3 sm:pt-4 border-b overflow-x-auto scrollbar-hide ${borderColor}`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
           {TABS.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors relative ${activeTab === tab.key ? `${textPrimary} font-semibold` : `${textSecondary} hover:${isDark ? 'text-gray-200' : 'text-gray-700'}`}`}>
+              className={`px-2 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-t-lg transition-colors relative whitespace-nowrap shrink-0 ${activeTab === tab.key ? `${textPrimary} font-semibold` : `${textSecondary} hover:${isDark ? 'text-gray-200' : 'text-gray-700'}`}`}>
               {tab.label}
               {activeTab === tab.key && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />}
             </button>
@@ -2202,7 +2203,7 @@ export default function TresorerieModule({
                     return (
                       <tr key={p.id} className={`border-b last:border-b-0 transition-colors ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
-                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-xs truncate`}>
+                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={p.description}>
                           {p.description}
                           {p.recurrence && p.recurrence !== 'unique' && (
                             <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
@@ -2374,7 +2375,7 @@ export default function TresorerieModule({
                     return (
                       <tr key={m.id} className={`border-b last:border-b-0 transition-colors ${isDark ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-gray-100 hover:bg-gray-50'}`}>
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
-                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-xs truncate`}>
+                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={m.description}>
                           {m.description}
                           {m.isRecurring && (
                             <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
@@ -2954,13 +2955,16 @@ export default function TresorerieModule({
 
       {/* ── Auto-sync indicator ──────────────────────────────────────── */}
       {(autoSyncCount.factures > 0 || autoSyncCount.depenses > 0) && (activeTab === 'apercu') && (
-        <div className={`flex items-center gap-3 p-3 rounded-xl border text-xs ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+        <div className={`flex items-center gap-3 p-3 pr-20 rounded-xl border text-xs ${isDark ? 'bg-slate-800/50 border-slate-700 text-slate-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
           <Link2 size={14} className="flex-shrink-0" />
           <span>
             Synchronisation auto : <strong>{autoSyncCount.factures}</strong> facture{autoSyncCount.factures > 1 ? 's' : ''} et <strong>{autoSyncCount.depenses}</strong> dépense{autoSyncCount.depenses > 1 ? 's' : ''} liées aux prévisions
           </span>
         </div>
       )}
+
+      {/* Spacer to avoid FAB overlap */}
+      <div className="h-20" />
 
       {/* ── Quick Add FAB ──────────────────────────────────────────── */}
       {activeTab === 'mouvements' ? (
