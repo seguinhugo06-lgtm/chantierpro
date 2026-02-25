@@ -861,33 +861,33 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               onClick={() => { setView('list'); setSelectedId(null); }}
-              className={`p-2 rounded-xl ${hoverBg} transition-colors`}
+              className={`p-2 rounded-xl shrink-0 ${hoverBg} transition-colors`}
             >
               <X size={20} className={textPrimary} />
             </button>
-            <div>
-              <h1 className={`text-xl font-bold ${textPrimary}`}>{selected.nom}</h1>
-              <div className="flex items-center gap-2 mt-1">
+            <div className="min-w-0">
+              <h1 className={`text-xl font-bold truncate ${textPrimary}`}>{selected.nom}</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <CorpsMetierBadge corpsMetier={selected.corpsMetier} />
                 <ComplianceBadge status={compliance} small />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => openForm(selected.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-medium transition-colors ${cardBg} ${textPrimary}`}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border font-medium transition-colors ${cardBg} ${textPrimary}`}
             >
               <Edit3 size={16} />
-              Modifier
+              <span className="hidden sm:inline">Modifier</span>
             </button>
             <button
               onClick={() => handleDelete(selected.id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-red-600 font-medium hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border border-red-200 text-red-600 font-medium hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
             >
               <Trash2 size={16} />
             </button>
@@ -1160,19 +1160,19 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl" style={{ backgroundColor: `${couleur}20` }}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2.5 rounded-xl shrink-0" style={{ backgroundColor: `${couleur}20` }}>
             <HardHat size={24} style={{ color: couleur }} />
           </div>
-          <div>
-            <h1 className={`text-2xl font-bold ${textPrimary}`}>Sous-Traitants</h1>
-            <p className={`text-sm ${textMuted}`}>Gestion des sous-traitants et conformité</p>
+          <div className="min-w-0">
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Sous-Traitants</h1>
+            <p className={`text-xs sm:text-sm ${textMuted} truncate`}>Gestion des sous-traitants et conformité</p>
           </div>
         </div>
         <button
           onClick={() => openForm()}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-medium transition-all hover:shadow-lg"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white font-medium transition-all hover:shadow-lg shrink-0"
           style={{ backgroundColor: couleur }}
         >
           <Plus size={18} />
@@ -1284,12 +1284,12 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <h3 className={`font-semibold truncate ${textPrimary}`}>{st.nom}</h3>
+                    <div className="flex items-center gap-2 mb-1.5 min-w-0">
+                      <h3 className={`font-semibold truncate min-w-0 flex-1 ${textPrimary}`}>{st.nom}</h3>
                       <CorpsMetierBadge corpsMetier={st.corpsMetier} />
                       {expiringDocs.length > 0 && (
                         <span
-                          className="inline-flex items-center gap-1 text-amber-500"
+                          className="inline-flex items-center gap-1 text-amber-500 shrink-0"
                           title={`Documents expirant bientôt : ${expiringDocs.map(d => d.nom || d.type).join(', ')}`}
                         >
                           <AlertTriangle size={14} />

@@ -409,12 +409,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             return todayEvents.length > 0 ? `· ${todayEvents.length} évén.` : '';
           })()}</span>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button onClick={goToToday} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button onClick={goToToday} className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
             Aujourd'hui
           </button>
           <select
-            className={`px-2 py-1 border rounded-lg text-xs ${inputBg}`}
+            className={`px-2 py-1 border rounded-lg text-xs shrink-0 max-w-[100px] ${inputBg}`}
             value={filterEmploye}
             onChange={e => setFilterEmploye(e.target.value)}
             aria-label="Filtrer par collaborateur"
@@ -426,7 +426,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             )}
           </select>
           <select
-            className={`px-2 py-1 border rounded-lg text-xs ${inputBg}`}
+            className={`px-2 py-1 border rounded-lg text-xs shrink-0 max-w-[100px] ${inputBg}`}
             value={filterTypes.size === 0 ? '' : filterTypes.size === 1 ? [...filterTypes][0] : '__multi__'}
             onChange={e => {
               const val = e.target.value;
@@ -441,15 +441,15 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             ))}
           </select>
           {filterTypes.size > 0 && (
-            <button onClick={() => setFilterTypes(new Set())} className={`p-1 rounded-lg ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`} title="Réinitialiser filtre type">
+            <button onClick={() => setFilterTypes(new Set())} className={`p-1 rounded-lg shrink-0 ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`} title="Réinitialiser filtre type">
               <X size={12} />
             </button>
           )}
-          <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <button onClick={() => { setViewMode('month'); }} className={`px-2 py-1 text-xs ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2 py-1 text-xs ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
-            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2 py-1 text-xs ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
-            <button onClick={() => setViewMode('agenda')} className={`px-2 py-1 text-xs ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+          <div className={`flex rounded-lg overflow-hidden border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <button onClick={() => { setViewMode('month'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+            <button onClick={() => setViewMode('agenda')} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
           </div>
           <div className="relative">
             <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}

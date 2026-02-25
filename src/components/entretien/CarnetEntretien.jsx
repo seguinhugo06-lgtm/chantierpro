@@ -1104,32 +1104,32 @@ export default function CarnetEntretien({ chantiers = [], clients = [], isDark =
       <div className="space-y-4">
         {/* Header */}
         <div className={`p-4 rounded-xl border ${cardCls}`}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 onClick={() => { setView('list'); setSelectedCarnetId(null); setTaskFilter('toutes'); }}
-                className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
+                className={`p-2 rounded-lg shrink-0 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
               >
                 <ArrowLeft size={18} />
               </button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className={`text-lg font-bold ${textCls}`}>{selectedCarnet.nom}</h2>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h2 className={`text-lg font-bold truncate ${textCls}`}>{selectedCarnet.nom}</h2>
                   <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
                     style={{ color: typeColor, backgroundColor: typeColor + '18' }}
                   >
                     {typeLabel}
                   </span>
                 </div>
-                <div className={`flex items-center gap-3 mt-1 text-xs ${textMuted}`}>
+                <div className={`flex items-center gap-3 mt-1 text-xs ${textMuted} truncate`}>
                   {client && (
-                    <span>{client.nom || `${client.prenom || ''} ${client.nom_famille || ''}`.trim()}</span>
+                    <span className="truncate">{client.nom || `${client.prenom || ''} ${client.nom_famille || ''}`.trim()}</span>
                   )}
                   {selectedCarnet.adresse && (
-                    <span className="flex items-center gap-1">
-                      <MapPin size={11} />
-                      {selectedCarnet.adresse}
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin size={11} className="shrink-0" />
+                      <span className="truncate">{selectedCarnet.adresse}</span>
                     </span>
                   )}
                 </div>

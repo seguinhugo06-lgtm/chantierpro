@@ -538,7 +538,7 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
         <div className="flex items-center gap-3">
           <button
             onClick={backToDashboard}
-            className={`p-2 rounded-lg border transition-colors ${
+            className={`p-2 rounded-lg border transition-colors shrink-0 ${
               isDark
                 ? 'border-slate-700 hover:bg-slate-700 text-slate-300'
                 : 'border-slate-200 hover:bg-slate-50 text-slate-600'
@@ -546,11 +546,11 @@ export default function SignatureModule({ devis = [], chantiers = [], clients = 
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h2 className={`text-lg font-bold ${textClass}`}>
               Détail de la signature
             </h2>
-            <p className={`text-sm ${mutedClass}`}>{sig.document_ref}</p>
+            <p className={`text-sm truncate ${mutedClass}`}>{sig.document_ref}</p>
           </div>
           <StatusBadge statut={sig.statut} isDark={isDark} />
         </div>
