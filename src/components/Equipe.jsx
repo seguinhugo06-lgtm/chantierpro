@@ -1769,19 +1769,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         <div className="flex gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
           {(isSousTraitants ? [
-            { key: 'overview', label: 'Sous-traitants', icon: UserCheck, count: sousTraitantsList.length },
+            { key: 'overview', label: 'Sous-traitants', mobileLabel: 'S-T', icon: UserCheck, count: sousTraitantsList.length },
             { key: 'couts', label: 'Coûts', icon: Euro },
           ] : [
             { key: 'overview', label: 'Équipe', icon: Users, count: employesList.length },
             { key: 'planning', label: 'Planning', icon: CalendarDays },
             { key: 'pointage', label: 'Pointage', icon: Timer },
-            { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
+            { key: 'validation', label: 'Valid.', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0, fullLabel: 'Validation' },
             { key: 'conges', label: 'Congés', icon: CalendarOff, count: conges.filter(c => c.status === 'pending').length, alert: conges.filter(c => c.status === 'pending').length > 0 },
-            { key: 'chat', label: 'WhatsApp', icon: Phone },
-            { key: 'competences', label: 'Compétences', icon: Award },
-            { key: 'productivite', label: 'Productivité', icon: BarChart3 },
+            { key: 'chat', label: 'WhatsApp', mobileLabel: 'Chat', icon: Phone },
+            { key: 'competences', label: 'Compét.', icon: Award, fullLabel: 'Compétences' },
+            { key: 'productivite', label: 'Prod.', icon: BarChart3, fullLabel: 'Productivité' },
             { key: 'historique', label: 'Export', icon: FileSpreadsheet }
-          ]).map(({ key, label, icon: Icon, count, alert, badge }) => (
+          ]).map(({ key, label, mobileLabel, fullLabel, icon: Icon, count, alert, badge }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -1790,13 +1790,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               aria-controls={`panel-${key}`}
               id={`tab-${key}`}
               tabIndex={tab === key ? 0 : -1}
+              title={fullLabel || label}
               onKeyDown={(e) => {
                 const tabKeys = (isSousTraitants ? ['overview', 'couts'] : ['overview', 'planning', 'pointage', 'validation', 'conges', 'chat', 'competences', 'productivite', 'historique']);
                 const idx = tabKeys.indexOf(key);
                 if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabKeys[(idx + 1) % tabKeys.length]); }
                 if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabKeys[(idx - 1 + tabKeys.length) % tabKeys.length]); }
               }}
-              className={`relative flex items-center gap-1.5 px-2.5 sm:px-4 py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[44px] transition-all ${
+              className={`relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl font-medium whitespace-nowrap min-h-[40px] sm:min-h-[44px] transition-all ${
                 tab === key
                   ? 'text-white shadow-lg'
                   : isDark
@@ -1805,8 +1806,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               }`}
               style={tab === key ? { background: couleur } : {}}
             >
-              <Icon size={16} />
-              <span className="text-[11px] sm:text-sm">{label}</span>
+              <Icon size={15} />
+              <span className="text-[10px] sm:text-sm">{mobileLabel || label}</span>
               {count !== undefined && count > 0 && (
                 <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                   tab === key

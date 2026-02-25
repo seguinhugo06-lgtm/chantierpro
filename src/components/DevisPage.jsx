@@ -3696,7 +3696,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         return (
           <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
             <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-            <span className="flex-1 min-w-0 truncate">Non conforme — {missingLegal.join(', ')}</span>
+            <span className="flex-1 min-w-0">Non conforme — {missingLegal.join(', ')}</span>
             {setPage && (
               <button onClick={() => setPage('settings')} className="shrink-0 underline font-medium hover:opacity-80">Compléter</button>
             )}
@@ -3729,38 +3729,38 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
 
         return (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {/* CA encaissé */}
-            <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
-              <p className="text-sm sm:text-base font-bold leading-tight mt-0.5" style={{ color: couleur }}>{modeDiscret ? '···' : formatMoney(montantPayees)}</p>
+            <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
+              <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{modeDiscret ? '···' : formatMoney(montantPayees)}</p>
               <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
             </button>
 
             {/* En cours */}
-            <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
-              <p className="text-sm sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
+            <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
+              <p className="text-xs sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
             </button>
 
             {/* Conversion */}
-            <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Conversion</p>
-              <p className={`text-sm sm:text-base font-bold leading-tight mt-0.5 ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
+            <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Conversion</p>
+              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
                 {formatConversion(tauxConversion)}
               </p>
               <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{conversionResult.signes}/{totalEnvoyes}</p>
             </button>
 
             {/* À encaisser */}
-            <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
-              <p className={`text-sm sm:text-base font-bold leading-tight mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
+            <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
+              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 truncate ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
                 {modeDiscret ? '···' : formatMoney(montantAEncaisser)}
               </p>
               <p className={`text-[10px] leading-none mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
-                {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} en retard` : `${facturesEnAttente.length} att.`}
+                {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} retard` : `${facturesEnAttente.length} att.`}
               </p>
             </button>
           </div>
@@ -3787,7 +3787,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
           >
             <option value="recent">Récent</option>
             <option value="status">Statut</option>
@@ -3831,7 +3831,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </button>
             );
           })}
-          <span className={`text-[10px] ${textMuted} self-center ml-1`}>{filtered.length} doc.</span>
+          <span className={`text-[10px] ${textMuted} self-center ml-1 whitespace-nowrap shrink-0`}>{filtered.length} doc.</span>
         </div>
       </div>
       {filtered.length === 0 ? (

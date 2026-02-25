@@ -172,12 +172,12 @@ function MemoItem({
           )}
           {chantier && (
             <span
-              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
+              className={`inline-flex items-center gap-1 text-xs hover:underline cursor-pointer max-w-[180px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
               onClick={(e) => { e.stopPropagation(); setPage?.('chantiers'); }}
               title={chantier.nom}
             >
-              <Building2 size={10} />
-              {chantier.nom}
+              <Building2 size={10} className="shrink-0" />
+              <span className="truncate">{chantier.nom}</span>
             </span>
           )}
           {client && (
@@ -204,9 +204,9 @@ function MemoItem({
         </div>
       </div>
 
-      {/* Quick actions (hover) */}
+      {/* Quick actions (hover) — hidden on mobile to give more text space */}
       {!selectionMode && (
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity">
+        <div className="hidden sm:flex opacity-0 group-hover:opacity-100 items-center gap-0.5 flex-shrink-0 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
             className={`p-1 rounded text-xs ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'}`}

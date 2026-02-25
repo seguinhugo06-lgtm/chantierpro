@@ -2471,7 +2471,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   return (
                     <div key={c.id} className={`px-4 py-2 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors cursor-pointer`} onClick={() => setView(c.id)}>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.nom}</p>
+                        <p className={`text-sm font-medium line-clamp-2 ${textPrimary}`}>{c.nom}</p>
                         <p className={`text-xs ${textMuted} truncate`}>
                           {[cl ? formatClientName(cl, '') : '', c.ville || c.adresse].filter(Boolean).join(' · ')}
                         </p>
@@ -2590,10 +2590,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           {/* Status Filter Tabs + Sorting */}
           <div className="flex flex-col gap-3 mb-4">
             {/* Filtres de statut */}
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
               {[
                 { key: 'all', label: 'Tous', color: couleur },
-                { key: 'cette_semaine', label: 'Cette semaine', color: '#8b5cf6' },
+                { key: 'cette_semaine', label: 'Cette sem.', color: '#8b5cf6' },
                 { key: 'en_cours', label: 'En cours', color: '#f97316' },
                 { key: 'prospect', label: 'Prospects', color: '#3b82f6' },
                 { key: 'termine', label: 'Terminés', color: '#22c55e' },
@@ -2603,7 +2604,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <button
                   key={tab.key}
                   onClick={() => setFilterStatus(tab.key)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all min-h-[40px] flex items-center gap-2 ${
+                  className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium whitespace-nowrap transition-all min-h-[36px] sm:min-h-[40px] flex items-center gap-1.5 ${
                     filterStatus === tab.key
                       ? 'text-white shadow-md'
                       : isDark
@@ -2613,7 +2614,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   style={filterStatus === tab.key ? { backgroundColor: tab.color } : {}}
                 >
                   {tab.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filterStatus === tab.key ? 'bg-white/25' : isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                     {statusCounts[tab.key]}
                   </span>
                 </button>
@@ -2743,31 +2744,32 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             return (
               <div key={ch.id} onClick={() => setView(ch.id)} className={`${cardBg} rounded-xl border px-4 py-3 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 ${isDark ? 'hover:border-slate-500' : 'hover:border-orange-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: borderLeftColor }}>
-                {/* Row 1: Nom + Health dot + Badges */}
-                <div className="flex items-start justify-between gap-2 mb-1.5">
+                {/* Row 1: Nom + Health dot */}
+                <div className="flex items-start gap-2 mb-1">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {/* P0.1: Health indicator dot */}
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
+                    <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: listHealthColor }} title={listAlerts.length ? listAlerts.map(a => a.label).join(', ') : 'OK'} />
                     <h3 className={`font-semibold text-sm leading-tight line-clamp-2 ${textPrimary}`}>{ch.nom}</h3>
-                    <span className={`text-[10px] font-mono shrink-0 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    {/* P3.9: Days countdown badge */}
-                    {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
-                    {isDraftChantier(ch) && (
-                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
-                        Brouillon
-                      </span>
-                    )}
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusColor}`}>
-                      {statusLabel}
+                  <span className={`text-[10px] font-mono shrink-0 mt-0.5 ${textMuted}`}>#{String(chantiers.indexOf(ch) + 1).padStart(3, '0')}</span>
+                </div>
+                {/* Row 1b: Badges */}
+                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${statusColor}`}>
+                    {statusLabel}
+                  </span>
+                  {/* P3.9: Days countdown badge */}
+                  {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
+                  {isDraftChantier(ch) && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
+                      Brouillon
                     </span>
-                    {duplicateMap.has(ch.id) && (
-                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
-                        ⚠ Doublon
-                      </span>
-                    )}
-                  </div>
+                  )}
+                  {duplicateMap.has(ch.id) && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
+                      ⚠ Doublon
+                    </span>
+                  )}
                 </div>
 
                 {/* Row 2: Client · Dates · Address */}
@@ -2785,7 +2787,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   {(ch.adresse || ch.ville) ? (
                     <>
                       <span className={`text-xs ${textMuted}`}>·</span>
-                      <span className={`text-xs ${textMuted} flex items-center gap-1 truncate max-w-[180px]`} title={[ch.adresse, ch.ville].filter(Boolean).join(', ')}>
+                      <span className={`text-xs ${textMuted} flex items-center gap-1 truncate max-w-[50%]`} title={[ch.adresse, ch.ville].filter(Boolean).join(', ')}>
                         <MapPin size={10} className="shrink-0" />
                         {ch.ville || ch.adresse}
                       </span>
