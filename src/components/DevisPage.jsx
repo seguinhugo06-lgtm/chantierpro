@@ -86,9 +86,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     showTemplateSelector, setShowTemplateSelector,
     showSmartWizard, setShowSmartWizard,
     showSignaturePad, setShowSignaturePad,
-    showDevisWizard, setShowDevisWizard,
     showCatalogBrowser, setShowCatalogBrowser,
   } = useDevisModals();
+
+  // DevisWizard uses direct useState (NOT useDevisModals) to avoid centralized modal conflicts
+  const [showDevisWizard, setShowDevisWizard] = useState(false);
 
   const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
@@ -1571,6 +1573,47 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     </div>
   );
 
+  // === DEVIS WIZARD (extracted so it's available in ALL mode returns) ===
+  const devisWizardElement = (
+    <DevisWizard
+      isOpen={showDevisWizard}
+      onClose={() => { setShowDevisWizard(false); setEditingDevis(null); }}
+      initialData={editingDevis}
+      onSubmit={async (devisData) => {
+        const numero = await generateNumero(devisData.type);
+        const newDevis = await onSubmit({ ...devisData, numero });
+        if (!newDevis?.id) {
+          throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
+        }
+        setSelected(newDevis);
+        setMode('preview');
+        setShowCreationSuccess({ devis: newDevis, numero });
+        return newDevis;
+      }}
+      onUpdate={async (id, devisData) => {
+        await onUpdate(id, devisData);
+        setSelected(prev => prev ? { ...prev, ...devisData } : prev);
+        setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
+        setEditingDevis(null);
+        setShowDevisWizard(false);
+        showToast('Document modifié avec succès', 'success');
+      }}
+      clients={clients}
+      addClient={(data) => {
+        const c = { id: generateId(), ...data };
+        setClients(prev => [...prev, c]);
+        return c;
+      }}
+      catalogue={catalogue}
+      chantiers={chantiers}
+      entreprise={entreprise}
+      isDark={isDark}
+      couleur={couleur}
+      onSwitchToAI={() => { setPage('ia-devis'); }}
+      onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
+    />
+  );
+
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
@@ -1715,6 +1758,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const primaryCTA = getPrimaryCTA();
 
     return (
+    <>
       <div className="space-y-4">
         {/* ============ ZONE 1: UNIFIED HEADER ============ */}
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
@@ -1787,13 +1831,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
                 <button
                   onClick={() => {
-                    // Force close→reopen cycle to ensure wizard always opens fresh
-                    setShowDevisWizard(false);
-                    setEditingDevis(null);
-                    requestAnimationFrame(() => {
-                      setEditingDevis(selected);
-                      setShowDevisWizard(true);
-                    });
+                    setEditingDevis(selected);
+                    setShowDevisWizard(true);
                   }}
                   className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
                   style={{ backgroundColor: couleur }}
@@ -3213,6 +3252,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           couleur={couleur}
         />
       </div>
+      {devisWizardElement}
+    </>
     );
   }
 
@@ -4273,50 +4314,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         couleur={couleur}
       />
 
-      {/* Devis Wizard - Step-by-step devis creation */}
-      <DevisWizard
-        isOpen={showDevisWizard}
-        onClose={() => { setShowDevisWizard(false); setEditingDevis(null); }}
-        initialData={editingDevis}
-        onSubmit={async (devisData) => {
-          const numero = await generateNumero(devisData.type);
-          const newDevis = await onSubmit({ ...devisData, numero });
-          if (!newDevis?.id) {
-            throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
-          }
-          setSelected(newDevis);
-          setMode('preview');
-          // Show creation success modal instead of simple toast
-          setShowCreationSuccess({ devis: newDevis, numero });
-          return newDevis;
-        }}
-        onUpdate={async (id, devisData) => {
-          await onUpdate(id, devisData);
-          // Refresh the selected devis with updated data — use functional update to avoid stale closure
-          setSelected(prev => prev ? { ...prev, ...devisData } : prev);
-          setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
-          setEditingDevis(null);
-          setShowDevisWizard(false); // Explicitly close wizard (belt-and-suspenders)
-          showToast('Document modifié avec succès', 'success');
-        }}
-        clients={clients}
-        addClient={(data) => {
-          const c = { id: generateId(), ...data };
-          setClients(prev => [...prev, c]);
-          return c;
-        }}
-        catalogue={catalogue}
-        chantiers={chantiers}
-        entreprise={entreprise}
-        isDark={isDark}
-        couleur={couleur}
-        onSwitchToAI={() => {
-          setPage('ia-devis');
-        }}
-        onSwitchToExpress={() => {
-          setShowDevisExpressModal(true);
-        }}
-      />
+      {/* Devis Wizard - uses extracted variable (shared with preview mode) */}
+      {devisWizardElement}
 
       {/* Signature Pad Modal */}
       <SignaturePad
