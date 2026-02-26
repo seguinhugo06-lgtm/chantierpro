@@ -1787,8 +1787,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
                 <button
                   onClick={() => {
-                    setEditingDevis(selected);
-                    setShowDevisWizard(true);
+                    // Force close→reopen cycle to ensure wizard always opens fresh
+                    setShowDevisWizard(false);
+                    setEditingDevis(null);
+                    requestAnimationFrame(() => {
+                      setEditingDevis(selected);
+                      setShowDevisWizard(true);
+                    });
                   }}
                   className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
                   style={{ backgroundColor: couleur }}
