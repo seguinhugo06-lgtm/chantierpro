@@ -1134,7 +1134,7 @@ export default function Dashboard({
   }
 
   return (
-    <div className={isDark ? 'bg-slate-900' : 'bg-slate-100'}>
+    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
       {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
         userName={entreprise?.nom?.split(' ')[0] || 'Artisan'}
@@ -1152,7 +1152,7 @@ export default function Dashboard({
           <section className="px-4 sm:px-6 pb-3">
             <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
               <div className="p-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                   <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${isDark ? 'bg-red-500/20' : 'bg-red-100'}`}>
                     {urgentAction.type === 'payment_late' ? <Banknote size={18} className="text-red-500" /> : <FileText size={18} className="text-red-500" />}
                   </div>
@@ -1162,7 +1162,7 @@ export default function Dashboard({
                   </div>
                   <button
                     onClick={urgentAction.ctaAction}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 outline-none"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 outline-none"
                   >
                     {urgentAction.ctaLabel}
                     <ArrowRight size={14} />
@@ -1185,7 +1185,7 @@ export default function Dashboard({
               <div className="relative z-10">
                 <MessageCircle size={26} className="mb-2 text-white/90" />
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
-                <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">Décrivez vos travaux</p>
+                <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">Décrivez vos travaux</p>
               </div>
               <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10 pointer-events-none" />
             </button>
@@ -1199,7 +1199,7 @@ export default function Dashboard({
               <div className="relative z-10">
                 <Zap size={26} className="mb-2 text-white/90" />
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis Express</p>
-                <p className="text-[11px] sm:text-xs text-white/70 mt-0.5">3 clics, c'est chiffré</p>
+                <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">3 clics, c'est chiffré</p>
               </div>
               <FileText size={40} className="absolute top-2 right-2 text-white/10 pointer-events-none" />
             </button>
@@ -1346,21 +1346,21 @@ export default function Dashboard({
                   {sorted.map(item => (
                     <div
                       key={item.id}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                      className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
                     >
                       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} role="status" />
                       {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold line-clamp-2 ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
+                      <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
+                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
                           {item.title}
                         </p>
-                        <p className={`text-[11px] line-clamp-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
+                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
                           {item.subtitle}
                         </p>
                       </div>
                       <button
                         onClick={item.action}
-                        className="flex-shrink-0 px-3 py-1.5 min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                        className="ml-auto px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                         style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
                       >
                         {item.actionLabel}
@@ -1505,7 +1505,7 @@ export default function Dashboard({
                   ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
                   : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
             }`}>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
                   profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
                 }`}>
@@ -1524,7 +1524,7 @@ export default function Dashboard({
                 </div>
                 <button
                   onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   style={{ backgroundColor: couleur }}
                 >
                   Compléter →
@@ -1576,7 +1576,7 @@ export default function Dashboard({
                   ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
                   : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
               }`}>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-lg ${
                     f26score < 50 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
                   }`}>
@@ -1600,7 +1600,7 @@ export default function Dashboard({
                         setPage('settings');
                       }
                     }}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0 transition-opacity hover:opacity-90"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                     style={{ backgroundColor: f26score < 50 ? '#ef4444' : '#f59e0b' }}
                   >
                     Compléter

@@ -42,7 +42,7 @@ export default function FABMenu({
       )}
 
       {/* FAB Container - mobile only (hidden on desktop where header has "+ Nouveau" button) */}
-      <div className="lg:hidden fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
+      <div className="lg:hidden fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
         {/* Action buttons */}
         {isOpen && actions.map((action, i) => (
           <button
