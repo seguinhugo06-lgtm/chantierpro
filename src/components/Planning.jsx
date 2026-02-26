@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check, ChevronLeft, ChevronRight, AlertCircle, CalendarDays, Bell, Home, Briefcase, Phone, RefreshCw, Zap, CalendarCheck, Filter, Info, Building2, ClipboardList, Settings, CheckCircle2, Tag, ListChecks } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
+import { usePermissions } from '../hooks/usePermissions';
 
 const DURATIONS = [
   { label: '30min', value: 30 },
@@ -49,6 +50,11 @@ const getNextHalfHour = () => {
 export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo, couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // RBAC permissions
+  const { canPerform, getPermission } = usePermissions();
+  const planningPerm = getPermission('planning');
+  const isViewOnly = planningPerm === 'view' || planningPerm === 'own';
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -483,12 +489,14 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               </div>
             )}
           </div>
+          {canPerform('planning', 'create') && (
           <button onClick={() => {
             setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
             setShowAdd(true);
           }} className="w-9 h-9 sm:w-auto sm:h-8 sm:px-3 text-white rounded-lg flex items-center justify-center sm:gap-1.5 hover:shadow-lg transition-all text-xs" style={{background: couleur}}>
             <Plus size={14} /><span className="hidden sm:inline">Événement</span>
           </button>
+          )}
         </div>
       </div>
 

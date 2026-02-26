@@ -13,6 +13,8 @@ import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
+import { usePermissions } from '../hooks/usePermissions';
+import { ReadOnlyBanner } from './ui/PermissionGate';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -56,6 +58,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const isOnline = useOnlineStatus();
+
+  // RBAC permissions
+  const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
+  const chantierPerm = getPermission('chantiers');
+  const isViewOnly = chantierPerm === 'view' || chantierPerm === 'assigned';
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -2407,9 +2414,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <Map size={16} />
             </button>
           </div>
+          {canPerform('chantier', 'create') && (
           <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
           </button>
+          )}
         </div>
       </div>
 

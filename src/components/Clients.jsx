@@ -8,6 +8,8 @@ import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
+import { usePermissions } from '../hooks/usePermissions';
+import { ReadOnlyBanner } from './ui/PermissionGate';
 
 // Skeleton loader for client cards
 function ClientSkeleton({ isDark, count = 6 }) {
@@ -70,6 +72,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
   const [showDupeConfirm, setShowDupeConfirm] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);
+
+  // RBAC permissions
+  const { canPerform, canEditData } = usePermissions();
+  const isViewOnly = !canEditData;
 
   // Format money with modeDiscret support
   const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
@@ -1569,6 +1575,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <Upload size={16} />
             </button>
           )}
+          {canPerform('client', 'create') && (
           <button
             onClick={() => setShowQuickModal(true)}
             className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
@@ -1578,6 +1585,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             <span className="hidden sm:inline">Nouveau client</span>
             <span className="sm:hidden">Nouveau</span>
           </button>
+          )}
         </div>
       </div>
 

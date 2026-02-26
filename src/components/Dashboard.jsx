@@ -112,6 +112,9 @@ import { useToast } from '../context/AppContext';
 import DashboardMemos from './dashboard/DashboardMemos';
 import OnboardingChecklist from './dashboard/OnboardingChecklist';
 
+// RBAC
+import { usePermissions } from '../hooks/usePermissions';
+
 // Subscription
 import UsageAlerts from './subscription/UsageAlerts';
 
@@ -553,6 +556,12 @@ export default function Dashboard({
   // Access dataLoading + addClient from context
   const { dataLoading, addClient } = useData();
   const { showToast } = useToast();
+
+  // RBAC permissions
+  const { canAccess, canPerform, canViewPrices, getPermission } = usePermissions();
+  const dashPerm = getPermission('dashboard'); // 'full'|'finance'|'chantier'|'pointage'|'view'
+  const canSeeFinances = canAccess('finances');
+  const canCreateDevis = canPerform('devis', 'create');
 
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -1173,7 +1182,8 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* ========== HERO DUO — Devis IA + Devis Express ========== */}
+        {/* ========== HERO DUO — Devis IA + Devis Express — hidden for non-devis roles ========== */}
+        {canCreateDevis && (
         <section className="px-4 sm:px-6 pb-3">
           <div className="grid grid-cols-2 gap-3">
             {/* Devis IA */}
@@ -1205,9 +1215,10 @@ export default function Dashboard({
             </button>
           </div>
         </section>
+        )}
 
-        {/* ========== MINI KPI DUO — À encaisser + Ce mois ========== */}
-        <section className="px-4 sm:px-6 pb-4">
+        {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
+        {canSeeFinances && <section className="px-4 sm:px-6 pb-4">
           <div className="grid grid-cols-2 gap-3">
             {/* À encaisser */}
             <button
@@ -1260,7 +1271,7 @@ export default function Dashboard({
               )}
             </button>
           </div>
-        </section>
+        </section>}
 
         {/* ========== ACTIONS DU JOUR — Unified priority list ========== */}
         {(() => {
@@ -1697,8 +1708,8 @@ export default function Dashboard({
           </section>
         )}
 
-        {/* Revenue Chart - Full width */}
-        {isWidgetVisible('revenue') && (
+        {/* Revenue Chart - Full width — finance roles only */}
+        {canSeeFinances && isWidgetVisible('revenue') && (
           <section className="px-4 sm:px-6 pb-8">
             <RevenueChartWidget
               setPage={setPage}
@@ -1710,8 +1721,8 @@ export default function Dashboard({
         {/* Operational Widgets Grid */}
         <section className="px-4 sm:px-6 pb-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {/* Devis Widget - Actions required */}
-            {isWidgetVisible('devis') && (
+            {/* Devis Widget - Actions required — hidden for ouvrier */}
+            {canAccess('devis') && isWidgetVisible('devis') && (
               <DevisWidget
                 setPage={setPage}
                 setSelectedDevis={setSelectedDevis}
@@ -1729,8 +1740,8 @@ export default function Dashboard({
               />
             )}
 
-            {/* Tresorerie Widget */}
-            {isWidgetVisible('tresorerie') && (
+            {/* Tresorerie Widget — finance roles only */}
+            {canSeeFinances && isWidgetVisible('tresorerie') && (
               <TresorerieWidget
                 setPage={setPage}
                 isDark={isDark}
@@ -2003,8 +2014,8 @@ export default function Dashboard({
               );
             })()}
 
-            {/* Bank Widget — hidden if no bank connected to reduce scroll */}
-            {(entreprise?.iban || entreprise?.banque) && (
+            {/* Bank Widget — hidden if no bank connected or no finance access */}
+            {canSeeFinances && (entreprise?.iban || entreprise?.banque) && (
               <BankWidget
                 isDark={isDark}
                 onConnectBank={() => setPage('settings')}

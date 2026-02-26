@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Wallet, Download, BarChart3, Landmark, Eye, EyeOff } from 'lucide-react';
+import { usePermissions } from '../hooks/usePermissions';
 
 // Lazy load the 4 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
@@ -27,6 +28,10 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   const [activeTab, setActiveTab] = useState('tresorerie');
   const [localDiscret, setLocalDiscret] = useState(false);
   const modeDiscret = modeDiscretGlobal || localDiscret;
+
+  // RBAC permissions
+  const { getPermission, canExportData } = usePermissions();
+  const finPerm = getPermission('finances');
 
   return (
     <div>

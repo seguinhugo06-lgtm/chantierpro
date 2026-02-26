@@ -10,6 +10,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 import MemoCalendarView from './MemoCalendarView';
+import { usePermissions } from '../hooks/usePermissions';
 
 // ── Catégories disponibles ──
 const CATEGORIES = [
@@ -920,6 +921,11 @@ export default function MemosPage({
   couleur = '#f97316',
   isDark = false,
 }) {
+  // RBAC permissions
+  const { canPerform, getPermission } = usePermissions();
+  const memosPerm = getPermission('memos');
+  const isViewOnly = memosPerm === 'view' || memosPerm === 'assigned';
+
   const [activeTab, setActiveTab] = useState('inbox');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('');

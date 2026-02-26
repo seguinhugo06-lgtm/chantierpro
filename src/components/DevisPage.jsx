@@ -20,6 +20,8 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
 import { getDocumentEmailStatus } from '../services/CommunicationsService';
+import { usePermissions } from '../hooks/usePermissions';
+import { ReadOnlyBanner } from './ui/PermissionGate';
 
 // Valid status transitions — enforced on buttons and dropdown
 const VALID_TRANSITIONS = {
@@ -52,6 +54,11 @@ const CONDITIONS_PAIEMENT = {
 export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // RBAC permissions
+  const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
+  const devisPermission = getPermission('devis');
+  const isViewOnly = devisPermission === 'view' || devisPermission === 'view_no_prices';
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -1847,8 +1854,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Eye size={18} className="flex-shrink-0" />
                 <span className="hidden sm:inline text-sm font-medium">Aperçu</span>
               </button>
-              {/* Modifier button - only for editable statuses */}
-              {['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
+              {/* Modifier button - only for editable statuses + edit permission */}
+              {canPerform('devis', 'edit') && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
                 <button
                   onClick={() => {
                     setEditingDevis(selected);
@@ -1875,25 +1882,31 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
                     <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                      {canPerform('devis', 'create') && (
                       <button onClick={async () => { setActionLoading('duplicate'); setShowActionsMenu(false); try { await duplicateDocument(selected); } finally { setActionLoading(null); } }} disabled={actionLoading === 'duplicate'} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                         {actionLoading === 'duplicate' ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} Dupliquer
                       </button>
-                      {selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
+                      )}
+                      {canPerform('devis', 'edit') && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
                         <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                           <Edit3 size={16} /> Créer un avenant
                         </button>
                       )}
-                      {selected.type === 'facture' && selected.facture_type !== 'avoir' && (
+                      {canPerform('devis', 'create') && selected.type === 'facture' && selected.facture_type !== 'avoir' && (
                         <button onClick={() => { createAvoir(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                           <Receipt size={16} /> Créer un avoir
                         </button>
                       )}
+                      {canPerform('devis', 'edit') && (
                       <button onClick={() => { setShowSaveTemplateModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                         <Star size={16} /> Sauvegarder comme modèle
                       </button>
+                      )}
+                      {canPerform('devis', 'delete') && (
                       <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                         <Trash2 size={16} /> Supprimer
                       </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -1995,10 +2008,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 );
               })()}
 
-              {/* Primary CTA - single orange/green action */}
+              {/* Primary CTA - single orange/green action — gated by send permission */}
               {isDevis ? (
                 <>
-                  {selected.statut === 'brouillon' && (
+                  {canPerform('devis', 'send') && selected.statut === 'brouillon' && (
                     <div className="relative flex items-center">
                       <button
                         onClick={() => trySend(selected, sendEmail)}
@@ -3699,7 +3712,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
         </div>
 
-        {/* Split-button: + Nouveau devis */}
+        {/* Split-button: + Nouveau devis — hidden for view-only roles */}
+        {canPerform('devis', 'create') && (
         <div className="relative">
           <div className="flex items-stretch">
             <button
@@ -3759,7 +3773,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </>
           )}
         </div>
+        )}
       </div>
+
+      {/* RBAC: ReadOnly banner for view-only users */}
+      {isViewOnly && <ReadOnlyBanner />}
 
       {/* === COMPLIANCE BANNER — compact + dismissable === */}
       {!complianceDismissed && (() => {
@@ -3809,7 +3827,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             {/* CA encaissé */}
             <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
               <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
-              <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{modeDiscret ? '···' : formatMoney(montantPayees)}</p>
+              <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantPayees)}</p>
               <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
             </button>
 
@@ -3817,7 +3835,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
               <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
               <p className="text-xs sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
             </button>
 
             {/* Conversion */}
@@ -3833,7 +3851,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
               <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
               <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 truncate ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
-                {modeDiscret ? '···' : formatMoney(montantAEncaisser)}
+                {!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantAEncaisser)}
               </p>
               <p className={`text-[10px] leading-none mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
                 {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} retard` : `${facturesEnAttente.length} att.`}
@@ -4021,14 +4039,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             : d.statut === 'refuse' ? '#ef4444'
             : '#94a3b8';
 
-          // Contextual CTAs by status
+          // Contextual CTAs by status — gated by RBAC permissions
           const getQuickAction = () => {
-            if (d.statut === 'brouillon' && getDevisTTC(d) > 0) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
-            if (d.statut === 'brouillon' && getDevisTTC(d) <= 0) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (['envoye', 'vu'].includes(d.statut)) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            if (isViewOnly) return null; // No actions for view-only roles
+            if (d.statut === 'brouillon' && getDevisTTC(d) > 0 && canPerform('devis', 'send')) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
+            if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
+            if (['envoye', 'vu'].includes(d.statut) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
             if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
             if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.statut === 'refuse') return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
+            if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
             if (d.statut === 'payee') return null;
             return null;
           };
@@ -4110,7 +4129,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
                   )}
-                  {getDevisTTC(d) <= 0 ? (
+                  {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
                     <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
                       0 €
                     </span>

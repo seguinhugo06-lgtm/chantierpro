@@ -13,6 +13,8 @@ import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import ArticlePicker from './ArticlePicker';
 import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie } from '../lib/data';
+import { usePermissions } from '../hooks/usePermissions';
+import { ReadOnlyBanner } from './ui/PermissionGate';
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
 const UNITES = [
@@ -33,6 +35,11 @@ const DEFAULT_COEFFICIENTS = {
 export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // RBAC permissions
+  const { canPerform, getPermission } = usePermissions();
+  const catPerm = getPermission('catalogue');
+  const isViewOnly = catPerm === 'view';
 
   // Format money with modeDiscret support
   const fmtPrice = (n) => modeDiscret ? '·····' : `${parseFloat(n || 0).toFixed(2)} €`;
@@ -1405,9 +1412,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
             <Sparkles size={16} className="animate-pulse" /><span className="hidden sm:inline">Référentiel BTP</span>
             <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${couleur}20`, color: couleur }}>2 000+</span>
           </button>
+          {canPerform('catalogue', 'create') && (
           <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl flex items-center justify-center sm:gap-2 shadow-lg" style={{background: couleur}}>
             <Plus size={16} /><span className="hidden sm:inline">Ajouter</span>
           </button>
+          )}
         </div>
       </div>
 

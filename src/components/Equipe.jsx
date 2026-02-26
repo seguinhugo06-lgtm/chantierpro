@@ -14,6 +14,8 @@ import {
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
+import { usePermissions } from '../hooks/usePermissions';
+import { ReadOnlyBanner } from './ui/PermissionGate';
 
 // Lazy-load optional heavy dependencies to prevent crashes
 let NoteModal = null;
@@ -54,6 +56,11 @@ const formatLocalDate = (dateObj) => {
 export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp, updateEmployee: updateEmployeeProp, deleteEmployee: deleteEmployeeProp, pointages, setPointages, addPointage: addPointageProp, chantiers, planningEvents = [], couleur, isDark, modeDiscret, setPage }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+
+  // RBAC permissions
+  const { canPerform, canEditData, getPermission } = usePermissions();
+  const equipePerm = getPermission('equipe');
+  const isViewOnly = equipePerm === 'view';
 
   // Form validation
   const employeeFullSchema = {
@@ -1470,9 +1477,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               </button>
             </>
           )}
+          {canPerform('equipe', 'create') && (
           <button onClick={() => setShowAdd(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2" style={{background: isSousTraitants ? '#7c3aed' : couleur}}>
             <Plus size={16} /> <span className="hidden sm:inline">{isSousTraitants ? 'Sous-traitant' : 'Employé'}</span>
           </button>
+          )}
         </div>
       </div>
 
