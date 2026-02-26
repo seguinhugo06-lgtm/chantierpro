@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
+import { OrgProvider } from './context/OrgContext'
 import { DataProvider } from './context/DataContext'
 import { DEMO_DATA, seedSecondaryDemoData } from './lib/demo-data'
 import { EMPTY_DATA } from './lib/empty-data'
@@ -114,9 +115,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </Suspense>
     ) : (
       <AppProvider>
-        <DataProvider initialData={initialData}>
-          <App />
-        </DataProvider>
+        <OrgProvider>
+          <DataProvider initialData={initialData}>
+            <App />
+          </DataProvider>
+        </OrgProvider>
       </AppProvider>
     )}
   </React.StrictMode>,
