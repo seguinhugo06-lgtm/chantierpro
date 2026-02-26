@@ -152,6 +152,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (setSelectedDevis) setSelectedDevis(null);
     }
   }, [selectedDevis, setSelectedDevis]);
+
+  // Sync selected with fresh devis data (prevents stale selected after DB updates)
+  useEffect(() => {
+    if (selected?.id && mode === 'preview') {
+      const fresh = devis.find(d => d.id === selected.id);
+      if (fresh && fresh !== selected) {
+        setSelected(fresh);
+      }
+    }
+  }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const [form, setForm] = useState({
     type: 'devis',
@@ -4277,11 +4287,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         }}
         onUpdate={async (id, devisData) => {
           await onUpdate(id, devisData);
-          // Refresh the selected devis with updated data
-          const updated = { ...selected, ...devisData };
-          setSelected(updated);
-          setDevis(prev => prev.map(d => d.id === id ? updated : d));
+          // Refresh the selected devis with updated data — use functional update to avoid stale closure
+          setSelected(prev => prev ? { ...prev, ...devisData } : prev);
+          setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
           setEditingDevis(null);
+          setShowDevisWizard(false); // Explicitly close wizard (belt-and-suspenders)
           showToast('Document modifié avec succès', 'success');
         }}
         clients={clients}
