@@ -3,6 +3,7 @@ import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
+import { useOrg } from './OrgContext';
 import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
@@ -87,6 +88,9 @@ const DEMO_SEED_CATALOGUE = [
 ];
 
 export function DataProvider({ children, initialData = {} }) {
+  // Organization context (RBAC)
+  const { orgId, loading: orgLoading } = useOrg();
+
   // User ID from Supabase auth
   const [userId, setUserId] = useState(null);
 
@@ -288,7 +292,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     pending.forEach(async ({ table, item }) => {
       try {
-        await saveItem(table, item, userId);
+        await saveItem(table, item, userId, orgId);
         logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
       } catch (error) {
         console.error(`❌ Failed to flush pending save for ${table}:`, error);
@@ -297,17 +301,18 @@ export function DataProvider({ children, initialData = {} }) {
     });
   }, [userId]);
 
-  // Load data from Supabase when userId is available
+  // Load data from Supabase when userId + orgId are available
   useEffect(() => {
     if (isDemo) { setDataLoading(false); return; }
     if (!userId) return; // Still waiting for auth — keep dataLoading true
+    if (orgLoading) return; // Still resolving organization
     if (dataLoaded) { setDataLoading(false); return; } // Already loaded
 
     const loadData = async () => {
       setDataLoading(true);
       try {
-        logger.debug('📥 Loading data from Supabase...');
-        const data = await loadAllData(userId);
+        logger.debug('📥 Loading data from Supabase... (org:', orgId, ')');
+        const data = await loadAllData(userId, orgId);
         if (data) {
           // Deduplicate by ID and sanitize to remove ghost records with non-UUID IDs
           const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
@@ -345,7 +350,7 @@ export function DataProvider({ children, initialData = {} }) {
     };
 
     loadData();
-  }, [userId, dataLoaded]);
+  }, [userId, orgId, orgLoading, dataLoaded]);
 
   // ============ CLIENT OPERATIONS ============
   const addClient = useCallback(async (data) => {
@@ -364,7 +369,7 @@ export function DataProvider({ children, initialData = {} }) {
       if (userId) {
         try {
           logger.debug('💾 addClient: saving to Supabase, userId=', userId, 'clientId=', newClient.id);
-          const saved = await saveItem('clients', newClient, userId);
+          const saved = await saveItem('clients', newClient, userId, orgId);
           if (saved) {
             setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
             logger.debug('✅ addClient: saved successfully');
@@ -394,7 +399,7 @@ export function DataProvider({ children, initialData = {} }) {
         try {
           const current = clients.find(c => c.id === id);
           if (current) {
-            await saveItem('clients', { ...current, ...data }, userId);
+            await saveItem('clients', { ...current, ...data }, userId, orgId);
           }
         } catch (error) {
           console.error('Error updating client in Supabase:', error);
@@ -414,7 +419,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('clients', id, userId);
+        await deleteItem('clients', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting client from Supabase:', error);
         await queueOffline('delete', 'clients', { id });
@@ -462,7 +467,7 @@ export function DataProvider({ children, initialData = {} }) {
       if (userId) {
         try {
           logger.debug('💾 addDevis: saving to Supabase, userId=', userId, 'numero=', newDevis.numero);
-          const saved = await saveItem('devis', newDevis, userId);
+          const saved = await saveItem('devis', newDevis, userId, orgId);
           if (saved) {
             setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
             logger.debug('✅ addDevis: saved successfully');
@@ -513,7 +518,7 @@ export function DataProvider({ children, initialData = {} }) {
               merged.statut = 'envoye';
             }
             logger.debug('💾 updateDevis: saving to Supabase, statut=', merged.statut);
-            await saveItem('devis', merged, userId);
+            await saveItem('devis', merged, userId, orgId);
             logger.debug('✅ updateDevis: saved successfully');
           }
         } catch (error) {
@@ -547,7 +552,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('devis', id, userId);
+        await deleteItem('devis', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting devis from Supabase:', error);
         await queueOffline('delete', 'devis', { id });
@@ -584,7 +589,7 @@ export function DataProvider({ children, initialData = {} }) {
     if (!isDemo) {
       if (userId) {
         try {
-          const saved = await saveItem('chantiers', newChantier, userId);
+          const saved = await saveItem('chantiers', newChantier, userId, orgId);
           if (saved) {
             setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
             return saved;
@@ -613,7 +618,7 @@ export function DataProvider({ children, initialData = {} }) {
           const current = chantiers.find(c => c.id === id);
           if (current) {
             logger.debug('💾 updateChantier: saving, taches count=', (data.taches || current.taches || []).length);
-            await saveItem('chantiers', { ...current, ...data }, userId);
+            await saveItem('chantiers', { ...current, ...data }, userId, orgId);
             logger.debug('✅ updateChantier: saved successfully');
           }
         } catch (error) {
@@ -635,7 +640,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('chantiers', id, userId);
+        await deleteItem('chantiers', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting chantier from Supabase:', error);
         await queueOffline('delete', 'chantiers', { id });
@@ -659,7 +664,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('depenses', newDepense, userId);
+        const saved = await saveItem('depenses', newDepense, userId, orgId);
         if (saved) {
           setDepenses(prev => prev.map(d => d.id === newDepense.id ? saved : d));
           return saved;
@@ -682,7 +687,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = depenses.find(d => d.id === id);
         if (current) {
-          await saveItem('depenses', { ...current, ...data }, userId);
+          await saveItem('depenses', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating depense in Supabase:', error);
@@ -696,7 +701,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('depenses', id, userId);
+        await deleteItem('depenses', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting depense from Supabase:', error);
         await queueOffline('delete', 'depenses', { id });
@@ -721,7 +726,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('pointages', newPointage, userId);
+        const saved = await saveItem('pointages', newPointage, userId, orgId);
         if (saved) {
           setPointages(prev => prev.map(p => p.id === newPointage.id ? saved : p));
           return saved;
@@ -744,7 +749,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = pointages.find(p => p.id === id);
         if (current) {
-          await saveItem('pointages', { ...current, ...data }, userId);
+          await saveItem('pointages', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating pointage in Supabase:', error);
@@ -758,7 +763,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('pointages', id, userId);
+        await deleteItem('pointages', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting pointage from Supabase:', error);
         await queueOffline('delete', 'pointages', { id });
@@ -781,7 +786,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('ajustements', newAjustement, userId);
+        const saved = await saveItem('ajustements', newAjustement, userId, orgId);
         if (saved) {
           setAjustements(prev => prev.map(a => a.id === newAjustement.id ? saved : a));
           return saved;
@@ -799,7 +804,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('ajustements', id, userId);
+        await deleteItem('ajustements', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting ajustement from Supabase:', error);
         await queueOffline('delete', 'ajustements', { id });
@@ -823,7 +828,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('equipe', newEmployee, userId);
+        const saved = await saveItem('equipe', newEmployee, userId, orgId);
         if (saved) {
           setEquipe(prev => prev.map(e => e.id === newEmployee.id ? saved : e));
           return saved;
@@ -846,7 +851,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = equipe.find(e => e.id === id);
         if (current) {
-          await saveItem('equipe', { ...current, ...data }, userId);
+          await saveItem('equipe', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating employee in Supabase:', error);
@@ -860,7 +865,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('equipe', id, userId);
+        await deleteItem('equipe', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting employee from Supabase:', error);
         await queueOffline('delete', 'equipe', { id });
@@ -882,7 +887,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('catalogue', newItem, userId);
+        const saved = await saveItem('catalogue', newItem, userId, orgId);
         if (saved) {
           setCatalogue(prev => prev.map(c => c.id === newItem.id ? saved : c));
           return saved;
@@ -905,7 +910,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = catalogue.find(c => c.id === id);
         if (current) {
-          await saveItem('catalogue', { ...current, ...data }, userId);
+          await saveItem('catalogue', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating catalogue item in Supabase:', error);
@@ -919,7 +924,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('catalogue', id, userId);
+        await deleteItem('catalogue', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting catalogue item from Supabase:', error);
         await queueOffline('delete', 'catalogue', { id });
@@ -944,7 +949,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('paiements', newPaiement, userId);
+        const saved = await saveItem('paiements', newPaiement, userId, orgId);
         if (saved) {
           setPaiements(prev => prev.map(p => p.id === newPaiement.id ? saved : p));
           return saved;
@@ -972,7 +977,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('echanges', newEchange, userId);
+        const saved = await saveItem('echanges', newEchange, userId, orgId);
         if (saved) {
           setEchanges(prev => prev.map(e => e.id === newEchange.id ? saved : e));
           return saved;
@@ -996,7 +1001,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('events', newEvent, userId);
+        await saveItem('events', newEvent, userId, orgId);
       } catch (error) {
         console.error('Error saving planning event to Supabase:', error);
         await queueOffline('create', 'events', newEvent);
@@ -1011,7 +1016,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('events', updated, userId);
+        await saveItem('events', updated, userId, orgId);
       } catch (error) {
         console.error('Error updating planning event:', error);
         await queueOffline('update', 'events', updated);
@@ -1024,7 +1029,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('events', id, userId);
+        await deleteItem('events', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting planning event:', error);
         await queueOffline('delete', 'events', { id });
@@ -1043,7 +1048,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('ouvrages', newOuvrage, userId);
+        const saved = await saveItem('ouvrages', newOuvrage, userId, orgId);
         if (saved) {
           setOuvrages(prev => prev.map(o => o.id === newOuvrage.id ? saved : o));
           return saved;
@@ -1065,7 +1070,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = ouvrages.find(o => o.id === id);
         if (current) {
-          await saveItem('ouvrages', { ...current, ...data }, userId);
+          await saveItem('ouvrages', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating ouvrage in Supabase:', error);
@@ -1079,7 +1084,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('ouvrages', id, userId);
+        await deleteItem('ouvrages', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting ouvrage from Supabase:', error);
         await queueOffline('delete', 'ouvrages', { id });
@@ -1113,7 +1118,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        const saved = await saveItem('memos', newMemo, userId);
+        const saved = await saveItem('memos', newMemo, userId, orgId);
         if (saved) {
           setMemos(prev => prev.map(m => m.id === newMemo.id ? saved : m));
           return saved;
@@ -1135,7 +1140,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         const current = memos.find(m => m.id === id);
         if (current) {
-          await saveItem('memos', { ...current, ...updates }, userId);
+          await saveItem('memos', { ...current, ...updates }, userId, orgId);
         }
       } catch (error) {
         console.error('Error updating memo in Supabase:', error);
@@ -1149,7 +1154,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await deleteItem('memos', id, userId);
+        await deleteItem('memos', id, userId, orgId);
       } catch (error) {
         console.error('Error deleting memo from Supabase:', error);
         await queueOffline('delete', 'memos', { id });
@@ -1173,7 +1178,7 @@ export function DataProvider({ children, initialData = {} }) {
 
     if (!isDemo && userId) {
       try {
-        await saveItem('memos', { ...memo, ...updates }, userId);
+        await saveItem('memos', { ...memo, ...updates }, userId, orgId);
       } catch (error) {
         console.error('Error toggling memo in Supabase:', error);
         await queueOffline('update', 'memos', { id, ...updates });

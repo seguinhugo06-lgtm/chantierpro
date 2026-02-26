@@ -7,6 +7,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
 import { logger } from '../lib/logger';
 import { normalizeNumero } from '../lib/devis-utils';
+import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
 /**
  * Deep-sanitize a value so it is safely JSON-serializable.
@@ -860,14 +861,17 @@ export const FIELD_MAPPINGS = {
 /**
  * Load all data from Supabase for the current user
  */
-export async function loadAllData(userId) {
+export async function loadAllData(userId, orgId) {
   if (isDemo || !supabase || !userId) {
     logger.debug('Skipping Supabase load - demo mode or no user');
     return null;
   }
 
   try {
-    logger.debug('Loading data from Supabase for user:', userId);
+    logger.debug('Loading data from Supabase for user:', userId, 'org:', orgId);
+
+    // Helper: scope query to org (falls back to user_id if no orgId)
+    const scoped = (table) => scopeToOrg(supabase.from(table).select('*'), orgId, userId);
 
     const [
       clientsRes,
@@ -894,29 +898,29 @@ export async function loadAllData(userId) {
       ouvragesRes,
       memosRes,
     ] = await Promise.all([
-      supabase.from('clients').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; }),
-      supabase.from('chantiers').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; }),
-      supabase.from('devis').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; }),
-      supabase.from('depenses').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [] }; }),
-      supabase.from('equipe').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [] }; }),
-      supabase.from('pointages').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [] }; }),
-      supabase.from('catalogue').select('*').eq('user_id', userId).then(r => r, (e) => { console.error('Load catalogue failed:', e); return { data: [] }; }),
-      supabase.from('fournisseurs').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('fournisseur_articles').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('packs').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('pack_items').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('stock_mouvements').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(200).then(r => r, () => ({ data: [] })),
-      supabase.from('catalogue_coefficients').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('tresorerie_previsions').select('*').eq('user_id', userId).order('date_prevue', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('tresorerie_settings').select('*').eq('user_id', userId).maybeSingle().then(r => r, () => ({ data: null })),
-      supabase.from('reglements').select('*').eq('user_id', userId).order('date_reglement', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('tresorerie_mouvements').select('*').eq('user_id', userId).order('date', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('events').select('*').eq('user_id', userId).order('start_date', { ascending: true }).then(r => r, () => ({ data: [] })),
-      supabase.from('paiements').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('echanges').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('ajustements').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
-      supabase.from('ouvrages').select('*').eq('user_id', userId).then(r => r, () => ({ data: [] })),
-      supabase.from('memos').select('*').eq('user_id', userId).order('position', { ascending: true }).then(r => r, () => ({ data: [] })),
+      scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; }),
+      scoped('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; }),
+      scoped('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; }),
+      scoped('depenses').then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [] }; }),
+      scoped('equipe').then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [] }; }),
+      scoped('pointages').then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [] }; }),
+      scoped('catalogue').then(r => r, (e) => { console.error('Load catalogue failed:', e); return { data: [] }; }),
+      scoped('fournisseurs').then(r => r, () => ({ data: [] })),
+      scoped('fournisseur_articles').then(r => r, () => ({ data: [] })),
+      scoped('packs').then(r => r, () => ({ data: [] })),
+      scoped('pack_items').then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('stock_mouvements').select('*'), orgId, userId).order('created_at', { ascending: false }).limit(200).then(r => r, () => ({ data: [] })),
+      scoped('catalogue_coefficients').then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('tresorerie_previsions').select('*'), orgId, userId).order('date_prevue', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('tresorerie_settings').select('*'), orgId, userId).maybeSingle().then(r => r, () => ({ data: null })),
+      scopeToOrg(supabase.from('reglements').select('*'), orgId, userId).order('date_reglement', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('tresorerie_mouvements').select('*'), orgId, userId).order('date', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('events').select('*'), orgId, userId).order('start_date', { ascending: true }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('paiements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('echanges').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('ajustements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
+      scoped('ouvrages').then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('memos').select('*'), orgId, userId).order('position', { ascending: true }).then(r => r, () => ({ data: [] })),
     ]);
 
     // Log any query errors from core tables
@@ -1054,7 +1058,7 @@ function extractBadColumn(msg) {
  * Resilient: if a column doesn't exist (or a trigger references a missing column),
  * strips it from the payload and retries (up to 5 times).
  */
-export async function saveItem(table, item, userId) {
+export async function saveItem(table, item, userId, orgId) {
   if (isDemo || !supabase || !userId) return item;
 
   const mapping = FIELD_MAPPINGS[table];
@@ -1065,24 +1069,22 @@ export async function saveItem(table, item, userId) {
 
   let supabaseData;
   try {
-    supabaseData = {
+    supabaseData = withOrgScope({
       ...mapping.toSupabase(item),
-      user_id: userId,
       // Always include updated_at — many tables have a BEFORE UPDATE trigger
       // (update_updated_at_column) that sets NEW.updated_at = NOW().
       // If the column exists, the trigger overwrites this value; if it doesn't,
       // the retry logic below will strip it automatically.
       updated_at: new Date().toISOString(),
-    };
+    }, userId, orgId);
     // Verify serializable — if not, deep-sanitize
     JSON.stringify(supabaseData);
   } catch (serErr) {
     console.warn(`⚠️ ${table}: payload not serializable, sanitizing...`, serErr.message);
-    supabaseData = sanitizeForJSON({
+    supabaseData = sanitizeForJSON(withOrgScope({
       ...mapping.toSupabase(item),
-      user_id: userId,
       updated_at: new Date().toISOString(),
-    });
+    }, userId, orgId));
   }
 
   const MAX_ATTEMPTS = 8;
@@ -1161,15 +1163,14 @@ export async function saveItem(table, item, userId) {
 /**
  * Delete an item from Supabase
  */
-export async function deleteItem(table, itemId, userId) {
+export async function deleteItem(table, itemId, userId, orgId) {
   if (isDemo || !supabase || !userId) return true;
 
   try {
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .eq('id', itemId)
-      .eq('user_id', userId);
+    const { error } = await scopeToOrg(
+      supabase.from(table).delete().eq('id', itemId),
+      orgId, userId
+    );
 
     if (error) {
       console.error(`Error deleting from ${table}:`, error);

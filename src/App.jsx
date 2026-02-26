@@ -108,7 +108,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, role: userRole, loading: orgLoading } = usePermissions();
+  const { canAccess, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -553,11 +553,14 @@ export default function App() {
     if (isDemo || !supabase || !user?.id) return;
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from('entreprise')
-          .select('settings_json')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Use organization_id if available, fallback to user_id
+        let query = supabase.from('entreprise').select('settings_json');
+        if (orgId && orgId !== 'demo-org-id') {
+          query = query.eq('organization_id', orgId);
+        } else {
+          query = query.eq('user_id', user.id);
+        }
+        const { data, error } = await query.maybeSingle();
         if (error) { console.warn('Failed to load entreprise from Supabase:', error.message); return; }
         if (data?.settings_json && typeof data.settings_json === 'object') {
           const cloud = data.settings_json;
@@ -577,7 +580,7 @@ export default function App() {
         }
       } catch (e) { console.warn('Entreprise Supabase sync error:', e.message); }
     })();
-  }, [user?.id]);
+  }, [user?.id, orgId]);
 
   useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
@@ -1172,8 +1175,10 @@ export default function App() {
     // Sync to Supabase
     if (supabase && user?.id) {
       try {
+        const upsertData = { user_id: user.id, settings_json: updated };
+        if (orgId && orgId !== 'demo-org-id') upsertData.organization_id = orgId;
         await supabase.from('entreprise')
-          .upsert({ user_id: user.id, settings_json: updated }, { onConflict: 'user_id' });
+          .upsert(upsertData, { onConflict: 'user_id' });
       } catch (e) { console.warn('CGU acceptance Supabase sync failed:', e.message); }
     }
   };
