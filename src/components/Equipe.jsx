@@ -1775,13 +1775,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             { key: 'overview', label: 'Équipe', icon: Users, count: employesList.length },
             { key: 'planning', label: 'Planning', icon: CalendarDays },
             { key: 'pointage', label: 'Pointage', icon: Timer },
-            { key: 'validation', label: 'Valid.', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0, fullLabel: 'Validation' },
+            { key: 'validation', label: 'Validation', mobileLabel: 'Valid.', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
             { key: 'conges', label: 'Congés', icon: CalendarOff, count: conges.filter(c => c.status === 'pending').length, alert: conges.filter(c => c.status === 'pending').length > 0 },
             { key: 'chat', label: 'WhatsApp', mobileLabel: 'Chat', icon: Phone },
-            { key: 'competences', label: 'Compét.', icon: Award, fullLabel: 'Compétences' },
-            { key: 'productivite', label: 'Prod.', icon: BarChart3, fullLabel: 'Productivité' },
+            { key: 'competences', label: 'Compétences', mobileLabel: 'Compét.', icon: Award },
+            { key: 'productivite', label: 'Productivité', mobileLabel: 'Prod.', icon: BarChart3 },
             { key: 'historique', label: 'Export', icon: FileSpreadsheet }
-          ]).map(({ key, label, mobileLabel, fullLabel, icon: Icon, count, alert, badge }) => (
+          ]).map(({ key, label, mobileLabel, icon: Icon, count, alert, badge }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -1790,7 +1790,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               aria-controls={`panel-${key}`}
               id={`tab-${key}`}
               tabIndex={tab === key ? 0 : -1}
-              title={fullLabel || label}
+              title={label}
               onKeyDown={(e) => {
                 const tabKeys = (isSousTraitants ? ['overview', 'couts'] : ['overview', 'planning', 'pointage', 'validation', 'conges', 'chat', 'competences', 'productivite', 'historique']);
                 const idx = tabKeys.indexOf(key);
@@ -1807,7 +1807,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               style={tab === key ? { background: couleur } : {}}
             >
               <Icon size={15} />
-              <span className="text-[10px] sm:text-sm">{mobileLabel || label}</span>
+              {mobileLabel ? (
+                <>
+                  <span className="text-[10px] sm:hidden">{mobileLabel}</span>
+                  <span className="hidden sm:inline text-sm">{label}</span>
+                </>
+              ) : (
+                <span className="text-[10px] sm:text-sm">{label}</span>
+              )}
               {count !== undefined && count > 0 && (
                 <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
                   tab === key
@@ -1830,8 +1837,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             </button>
           ))}
         </div>
-        {/* Mobile scroll fade indicator */}
-        <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none rounded-r-2xl sm:hidden ${isDark ? 'bg-gradient-to-l from-slate-800' : 'bg-gradient-to-l from-slate-100'}`} />
+        {/* Scroll fade indicator */}
+        <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none rounded-r-2xl ${isDark ? 'bg-gradient-to-l from-slate-800' : 'bg-gradient-to-l from-slate-100'}`} />
       </div>
 
       {/* Overview / Equipe Tab */}
