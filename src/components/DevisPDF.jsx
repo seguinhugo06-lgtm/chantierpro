@@ -414,12 +414,22 @@ export async function downloadDevisPDF(devis, client, entreprise) {
   URL.revokeObjectURL(url);
 }
 
-// Fonction pour télécharger PDF + XML Factur-X (pour factures)
+// Fonction pour télécharger PDF Factur-X conforme (PDF/A-3 avec XML embarqué)
 export async function downloadFacturXBundle(devis, client, entreprise) {
-  // Generate PDF (includes QR code)
+  if (devis.type === 'facture') {
+    try {
+      // Use the real Factur-X PDF/A-3 pipeline
+      const { generateAndDownloadFacturX } = await import('../lib/facturx-pdf.js');
+      await generateAndDownloadFacturX(devis, client, entreprise);
+      return;
+    } catch (err) {
+      console.error('Factur-X PDF/A-3 generation failed, falling back to separate files:', err);
+    }
+  }
+
+  // Fallback: download PDF + separate XML (non-conforme but functional)
   await downloadDevisPDF(devis, client, entreprise);
 
-  // Generate XML only for invoices
   if (devis.type === 'facture') {
     const xml = generateFacturXML(devis, client, entreprise);
     const blob = new Blob([xml], { type: 'application/xml' });

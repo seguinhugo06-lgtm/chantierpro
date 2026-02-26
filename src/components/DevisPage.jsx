@@ -1205,17 +1205,40 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
   };
 
-  // Print/Download PDF
-  const printPDF = (doc) => {
+  // Print/Download PDF — routes factures through Factur-X PDF/A-3 pipeline
+  const printPDF = async (doc) => {
     const content = downloadPDF(doc);
+
+    // Factures: generate real Factur-X PDF/A-3 with embedded XML
+    if (doc.type === 'facture') {
+      try {
+        setActionLoading('pdf');
+        const { generateAndDownloadFacturX } = await import('../lib/facturx-pdf.js');
+        const client = clients.find(c => c.id === doc.client_id);
+        await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
+        showToast('Facture Factur-X téléchargée ✓', 'success');
+      } catch (err) {
+        console.error('Factur-X generation failed, fallback to HTML:', err);
+        showToast('Erreur Factur-X, export HTML de secours', 'warning');
+        fallbackHtmlPrint(content, doc);
+      } finally {
+        setActionLoading(null);
+      }
+      return;
+    }
+
+    // Devis & autres: comportement HTML existant
+    fallbackHtmlPrint(content, doc);
+  };
+
+  // Legacy HTML print/download (used for devis and as fallback)
+  const fallbackHtmlPrint = (content, doc) => {
     const filename = `${doc.facture_type === 'avoir' ? 'Avoir' : doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
 
     if (isMobile()) {
-      // Mobile: Download as HTML file that opens in browser for PDF conversion
       const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
 
-      // Try native share first if available
       if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: 'text/html' });
         if (navigator.canShare({ files: [file] })) {
@@ -1223,18 +1246,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             files: [file],
             title: `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`,
           }).catch(() => {
-            // Fallback to download
             triggerDownload(url, filename);
           });
           return;
         }
       }
 
-      // Fallback: trigger download
       triggerDownload(url, filename);
       showToast('Fichier téléchargé - Ouvrez-le et utilisez "Imprimer" > "Enregistrer en PDF"', 'info');
     } else {
-      // Desktop: Open and print as before
       const w = window.open('', '_blank');
       if (!w) {
         showToast('Veuillez autoriser les popups pour générer le PDF', 'error');
@@ -1809,7 +1829,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             {/* Header actions - with labels for better accessibility */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={() => tryDownload(selected, (doc) => { setActionLoading('pdf'); try { printPDF(doc); } finally { setTimeout(() => setActionLoading(null), 500); } })}
+                onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { console.error(e); } finally { setActionLoading(null); } })}
                 disabled={actionLoading === 'pdf'}
                 className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 title="Télécharger le PDF"
