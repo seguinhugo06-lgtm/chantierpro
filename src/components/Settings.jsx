@@ -21,6 +21,8 @@ import {
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import MultiEntreprise from './settings/MultiEntreprise';
+import TeamManagement from './settings/TeamManagement';
+import { usePermissions } from '../hooks/usePermissions';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -38,6 +40,9 @@ const TAB_GROUPS = [
   { id: 'finance', label: '💶 Finance', tabs: [
     { key: 'comptabilite', label: '🧮 Comptabilité' },
     { key: 'rentabilite', label: '📊 Rentabilité' },
+  ]},
+  { id: 'equipe', label: '👥 Équipe', tabs: [
+    { key: 'team', label: '👥 Équipe & Accès' },
   ]},
   { id: 'avance', label: '⚙️ Avancé', tabs: [
     { key: 'donnees', label: '💾 Données' },
@@ -70,6 +75,7 @@ const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
+  const { canManageTeam } = usePermissions();
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -1977,6 +1983,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </button>
           </div>
         </div>
+      )}
+
+      {/* Team Management Tab */}
+      {tab === 'team' && (
+        <TeamManagement isDark={isDark} couleur={entreprise.couleur || couleur} />
       )}
 
       {/* Multi-entreprise Tab */}

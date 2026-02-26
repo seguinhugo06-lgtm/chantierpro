@@ -52,6 +52,7 @@ window.addEventListener('unhandledrejection', (event) => {
 // Lazy load public pages (separate from main app — no AuthGuard, no DataProvider)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
 const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
+const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation'))
 
 // Check if this is a portal URL
 function getPortalToken() {
@@ -67,6 +68,13 @@ function getSignatureToken() {
   return match ? match[1] : null
 }
 
+// Check if this is an invitation URL: /invitation/{uuid}
+function getInvitationToken() {
+  const path = window.location.pathname
+  const match = path.match(/^\/invitation\/([a-f0-9-]+)$/i)
+  return match ? match[1] : null
+}
+
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
 function shouldUseDemoData() {
   const params = new URLSearchParams(window.location.search)
@@ -75,6 +83,7 @@ function shouldUseDemoData() {
 
 const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
+const invitationToken = getInvitationToken()
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -112,6 +121,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : portalToken ? (
       <Suspense fallback={<PublicFallback />}>
         <ClientPortal accessToken={portalToken} />
+      </Suspense>
+    ) : invitationToken ? (
+      <Suspense fallback={<PublicFallback />}>
+        <AcceptInvitation token={invitationToken} />
       </Suspense>
     ) : (
       <AppProvider>
