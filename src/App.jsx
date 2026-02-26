@@ -72,6 +72,8 @@ import UpgradeModal from './components/subscription/UpgradeModal';
 import TrialBanner from './components/subscription/TrialBanner';
 import FeatureGuard, { UpgradeBadge } from './components/subscription/FeatureGuard';
 import { useSubscriptionStore, PAGE_FEATURE_MAP } from './stores/subscriptionStore';
+import { usePermissions } from './hooks/usePermissions';
+import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
@@ -104,6 +106,9 @@ export default function App() {
   // Global context hooks
   const { confirmModal, closeConfirm } = useConfirm();
   const { showToast, toast, hideToast } = useToast();
+
+  // RBAC: organization role + permissions
+  const { canAccess, role: userRole, loading: orgLoading } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -581,6 +586,16 @@ export default function App() {
     console.log('[NAV] page changed to:', page);
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
   }, [page]);
+
+  // RBAC: redirect to dashboard if user accesses a restricted page
+  useEffect(() => {
+    if (orgLoading) return; // Wait for org resolution
+    const publicPages = ['dashboard', 'pricing', 'billing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    if (!publicPages.includes(page) && !canAccess(page)) {
+      console.log('[RBAC] Redirecting from restricted page:', page, '→ dashboard');
+      setPage('dashboard');
+    }
+  }, [page, canAccess, orgLoading]);
 
   // Bank callback handler - detect /bank/callback?ref=xxx and process
   useEffect(() => {
@@ -1077,7 +1092,8 @@ export default function App() {
   // Navigation items - full sidebar with all sections
   // Badges now include explicit context for clarity
   // Simplified sidebar: 7 core modules + settings (was 18 items)
-  const nav = [
+  // Filtered by role-based permissions (RBAC Phase 3)
+  const allNav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     {
       id: 'devis',
@@ -1139,6 +1155,8 @@ export default function App() {
       };
     })(),
   ];
+  // Filter nav by role-based permissions (RBAC)
+  const nav = allNav.filter(item => canAccess(item.id));
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
@@ -1583,7 +1601,7 @@ export default function App() {
               { id: 'devis', icon: FileText, label: 'Devis' },
               { id: 'chantiers', icon: Building2, label: 'Chantiers' },
               { id: 'memos', icon: ClipboardList, label: 'Tâches' },
-            ].map(item => {
+            ].filter(item => canAccess(item.id)).map(item => {
               const isActive = item.id === page;
               return (
                 <button
