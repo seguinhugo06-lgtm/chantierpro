@@ -7,6 +7,7 @@ import { useOrg } from '../../context/OrgContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { getRoleLabel, getRoleDescription, getInvitableRoles } from '../../lib/permissions';
 import { useConfirm, useToast } from '../../context/AppContext';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
@@ -15,6 +16,15 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const { isOwner, isAdmin, canManageTeam } = usePermissions();
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+  const checkLimit = useSubscriptionStore((s) => s.checkLimit);
+  const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
+
+  // Check team member limit from plan
+  const memberLimit = checkLimit('equipe');
+  // Count members excluding owner (owner doesn't count against limit)
+  const nonOwnerCount = members.filter(m => m.role !== 'owner').length;
+  const pendingCount = invitations?.filter(i => i.status === 'pending')?.length || 0;
+  const teamLimitReached = memberLimit.limit !== -1 && (nonOwnerCount + pendingCount) >= memberLimit.limit;
 
   // State
   const [invitations, setInvitations] = useState([]);
@@ -54,6 +64,10 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const handleInvite = async () => {
     if (!inviteForm.email && !inviteForm.phone) {
       showToast('Veuillez saisir un email ou un numéro de téléphone', 'error');
+      return;
+    }
+    if (teamLimitReached) {
+      openUpgradeModal('equipe');
       return;
     }
     setInviteLoading(true);
@@ -178,16 +192,30 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
           <h2 className={`text-lg font-bold ${textPrimary}`}>Équipe & Accès</h2>
           <p className={`text-sm ${textMuted}`}>
             {members.length} membre{members.length > 1 ? 's' : ''} dans {orgName || 'votre organisation'}
+            {memberLimit.limit !== -1 && (
+              <span className="ml-1">
+                ({nonOwnerCount}/{memberLimit.limit} places utilisées)
+              </span>
+            )}
           </p>
         </div>
         {canManageTeam && (
-          <button
-            onClick={() => setShowInviteForm(true)}
-            className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
-            style={{ background: couleur }}
-          >
-            <UserPlus size={16} /> Inviter
-          </button>
+          teamLimitReached ? (
+            <button
+              onClick={() => openUpgradeModal('equipe')}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 bg-amber-100 text-amber-800 hover:bg-amber-200 transition-all"
+            >
+              <UserPlus size={16} /> Limite atteinte — Upgrader
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowInviteForm(true)}
+              className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
+              style={{ background: couleur }}
+            >
+              <UserPlus size={16} /> Inviter
+            </button>
+          )
         )}
       </div>
 

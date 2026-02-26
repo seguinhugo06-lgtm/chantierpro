@@ -64,10 +64,11 @@ export async function fetchPlans() {
 // ─── Subscription API ───────────────────────────────────────────────────────
 
 /**
- * Get the current user's subscription
+ * Get the current user's (or org's) subscription
+ * @param {string} [orgId] - Organization ID for org-level billing
  * @returns {Promise<{ data: Object|null, error: any }>}
  */
-export async function fetchSubscription() {
+export async function fetchSubscription(orgId) {
   if (isDemo || !supabase) {
     // In demo, check localStorage for plan override
     const savedPlan = localStorage.getItem('cp_demo_plan');
@@ -81,6 +82,20 @@ export async function fetchSubscription() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: null, error: { message: 'Non authentifié' } };
 
+    // Try org-level subscription first (if orgId provided)
+    if (orgId && orgId !== 'demo-org-id') {
+      const { data: orgSub, error: orgErr } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!orgErr && orgSub) return { data: orgSub, error: null };
+    }
+
+    // Fallback to user-level subscription
     const { data, error } = await supabase
       .from('subscriptions')
       .select('*')
@@ -88,10 +103,13 @@ export async function fetchSubscription() {
       .single();
 
     if (error && error.code === 'PGRST116') {
-      // No subscription found — create a free one
+      // No subscription found — create a free one (linked to org if available)
+      const insertData = { user_id: user.id, plan: 'gratuit', status: 'active' };
+      if (orgId && orgId !== 'demo-org-id') insertData.organization_id = orgId;
+
       const { data: newSub, error: insertError } = await supabase
         .from('subscriptions')
-        .insert({ user_id: user.id, plan: 'gratuit', status: 'active' })
+        .insert(insertData)
         .select()
         .single();
 

@@ -108,7 +108,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  const { canAccess, canAccessBilling, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -593,12 +593,18 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'pricing', 'billing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    const publicPages = ['dashboard', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    // Billing is restricted to owner only
+    if ((page === 'billing') && !canAccessBilling) {
+      console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
+      setPage('dashboard');
+      return;
+    }
     if (!publicPages.includes(page) && !canAccess(page)) {
       console.log('[RBAC] Redirecting from restricted page:', page, '→ dashboard');
       setPage('dashboard');
     }
-  }, [page, canAccess, orgLoading]);
+  }, [page, canAccess, canAccessBilling, orgLoading]);
 
   // Bank callback handler - detect /bank/callback?ref=xxx and process
   useEffect(() => {
@@ -656,7 +662,7 @@ export default function App() {
     let cancelled = false;
     const initSubscription = async () => {
       try {
-        const { data: subData } = await fetchSubscription();
+        const { data: subData } = await fetchSubscription(orgId);
         if (!cancelled && subData) setSubscriptionData(subData);
         const { data: usageData } = await fetchUsage();
         if (!cancelled && usageData) setUsageData(usageData);
@@ -666,7 +672,7 @@ export default function App() {
     };
     if (user) initSubscription();
     return () => { cancelled = true; };
-  }, [user, setSubscriptionData, setUsageData]);
+  }, [user, orgId, setSubscriptionData, setUsageData]);
 
   // Handle ?billing=success redirect from Stripe Checkout
   useEffect(() => {

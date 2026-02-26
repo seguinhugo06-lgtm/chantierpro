@@ -97,6 +97,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [showFraisCalc, setShowFraisCalc] = useState(false);
   const [fraisCharges, setFraisCharges] = useState({});
 
+  // Filter tab groups based on permissions (hide Équipe tab if not team manager)
+  const visibleTabGroups = TAB_GROUPS.filter(g => g.id !== 'equipe' || canManageTeam);
+
   // Persist wizard step
   useEffect(() => {
     if (showSetupWizard) {
@@ -609,7 +612,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Level 1: Group pills (hidden on mobile) */}
       <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         <div className="flex gap-1">
-          {TAB_GROUPS.map(group => {
+          {visibleTabGroups.map(group => {
             const activeInGroup = group.tabs.some(t => t.key === tab);
             return (
               <button
@@ -625,7 +628,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
         {/* Level 2: Sub-tabs within active group */}
         {(() => {
-          const activeGroup = TAB_GROUPS.find(g => g.tabs.some(t => t.key === tab));
+          const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
           if (!activeGroup || activeGroup.tabs.length <= 1) return null;
           return (
             <div className={`flex gap-1 px-2 py-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
@@ -647,7 +650,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* Mobile tabs — grouped accordion (visible < 640px) */}
       <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        {TAB_GROUPS.map(group => {
+        {visibleTabGroups.map(group => {
           const isOpen = mobileGroupOpen === group.id;
           const activeInGroup = group.tabs.some(t => t.key === tab);
           return (
