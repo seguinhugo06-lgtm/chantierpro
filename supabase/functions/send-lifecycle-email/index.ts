@@ -311,7 +311,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'ChantierPro <onboarding@resend.dev>',
+        from: 'ChantierPro <noreply@chantierpro.fr>',
         to: [to],
         subject: type === 'invitation' && data?.orgName
           ? `Invitation à rejoindre ${data.orgName} sur ChantierPro`

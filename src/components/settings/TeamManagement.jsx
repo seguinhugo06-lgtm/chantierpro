@@ -85,15 +85,13 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
       if (error) throw error;
 
-      // Send invitation email
+      // Send invitation email via Edge Function (Resend)
       if (data.email && data.token) {
         const inviteLink = `${window.location.origin}/invitation/${data.token}`;
         const roleLabel = getRoleLabel(data.role);
-        let emailSent = false;
 
-        // Try Edge Function first (if deployed with Resend)
         try {
-          const { error: fnError } = await supabase.functions.invoke('send-lifecycle-email', {
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('send-lifecycle-email', {
             body: {
               type: 'invitation',
               to: data.email,
@@ -105,19 +103,15 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               },
             },
           });
-          if (!fnError) emailSent = true;
-          else console.warn('[TeamManagement] Edge Function error:', fnError);
+          if (fnError) {
+            console.warn('[TeamManagement] Edge Function error:', fnError);
+            showToast('Invitation créée mais l\'email n\'a pas pu être envoyé', 'warning');
+          } else {
+            console.log('[TeamManagement] Email sent successfully:', fnData);
+          }
         } catch (fnErr) {
           console.warn('[TeamManagement] Edge Function unavailable:', fnErr.message);
-        }
-
-        // Fallback: open mailto: link so user can send manually
-        if (!emailSent) {
-          const subject = encodeURIComponent(`Invitation à rejoindre ${orgName || 'ChantierPro'}`);
-          const body = encodeURIComponent(
-            `Bonjour,\n\nVous êtes invité(e) à rejoindre ${orgName || 'notre organisation'} sur ChantierPro en tant que ${roleLabel}.\n\nCliquez sur ce lien pour accepter :\n${inviteLink}\n\nCette invitation expire le ${new Date(data.expires_at).toLocaleDateString('fr-FR')}.\n\nÀ bientôt !`
-          );
-          window.open(`mailto:${data.email}?subject=${subject}&body=${body}`, '_blank');
+          showToast('Invitation créée mais l\'email n\'a pas pu être envoyé', 'warning');
         }
       }
 
