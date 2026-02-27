@@ -1331,13 +1331,15 @@ export default function App() {
               <span className="hidden sm:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
             </button>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-900/50 hover:text-red-400 text-sm transition-colors"
-          >
-            <LogOut size={16} />
-            <span>Déconnexion</span>
-          </button>
+          <div className="border-t border-slate-700 pt-1.5 mt-1">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:bg-red-900/50 hover:text-red-400 text-xs transition-colors"
+            >
+              <LogOut size={14} />
+              <span>Déconnexion</span>
+            </button>
+          </div>
         </div>
       </aside>
 

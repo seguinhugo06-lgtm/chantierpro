@@ -11,6 +11,18 @@ import { useSubscriptionStore } from '../../stores/subscriptionStore';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
+function getMemberDisplayName(member, currentUserEmail) {
+  // Try equipe join data first
+  if (member.equipe?.nom || member.equipe?.prenom) {
+    return [member.equipe.prenom, member.equipe.nom].filter(Boolean).join(' ');
+  }
+  if (member.equipe?.email) return member.equipe.email;
+  // If this is the current user, show their email
+  if (currentUserEmail && member.isCurrentUser) return currentUserEmail;
+  // Fallback
+  return member.user_id?.slice(0, 8) + '...';
+}
+
 export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const { orgId, orgName, members, refreshOrg } = useOrg();
   const { isOwner, isAdmin, canManageTeam } = usePermissions();
@@ -18,6 +30,16 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const { showToast } = useToast();
   const checkLimit = useSubscriptionStore((s) => s.checkLimit);
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
+
+  // Get current user email for display fallback
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
+  useEffect(() => {
+    supabase?.auth.getUser().then(({ data }) => {
+      setCurrentUserEmail(data?.user?.email || '');
+      setCurrentUserId(data?.user?.id || '');
+    });
+  }, []);
 
   // State (must be declared before derived values that reference them)
   const [invitations, setInvitations] = useState([]);
@@ -327,17 +349,19 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
         </div>
         <div className="divide-y divide-slate-200 dark:divide-slate-700">
           {members.map(member => {
-            const isCurrentUserOwner = member.role === 'owner';
+            const isMe = member.user_id === currentUserId;
+            const displayName = getMemberDisplayName({ ...member, isCurrentUser: isMe }, currentUserEmail);
+            const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
             return (
               <div key={member.id} className={`px-4 py-3 flex items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
                   style={{ background: member.role === 'owner' ? '#f59e0b' : couleur }}>
-                  <Shield size={16} />
+                  {initials}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium truncate ${textPrimary}`}>
-                    {member.user_id?.slice(0, 8)}...
-                    {isCurrentUserOwner && <span className={`ml-2 text-xs ${textMuted}`}>(vous)</span>}
+                    {displayName}
+                    {isMe && <span className={`ml-2 text-xs ${textMuted}`}>(vous)</span>}
                   </p>
                   <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium ${roleBadge(member.role)}`}>
                     {getRoleLabel(member.role)}
@@ -356,7 +380,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
                       ))}
                     </select>
                     <button
-                      onClick={() => handleRemoveMember(member.id, member.user_id?.slice(0, 8))}
+                      onClick={() => handleRemoveMember(member.id, displayName)}
                       className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
                       title="Retirer ce membre"
                     >

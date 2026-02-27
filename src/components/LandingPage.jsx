@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import {
   FileText, Building2, Calendar, Users, Wallet, ShieldCheck,
-  CheckCircle, ArrowRight, Star, ChevronDown, ChevronUp,
+  CheckCircle, ArrowRight, ChevronDown, ChevronUp,
   Smartphone, Zap, Clock, BarChart3, PenTool, Package
 } from 'lucide-react';
 
@@ -24,11 +24,7 @@ const FEATURES = [
   { icon: BarChart3, title: 'Analytique', desc: 'Tableaux de bord, KPI et rapports pour piloter votre activité.' },
 ];
 
-const TESTIMONIALS = [
-  { name: 'Jean-Pierre M.', role: 'Maçon, Toulouse', text: 'Je gagne au moins 5 heures par semaine sur mes devis. L\u2019outil est simple et vraiment adapté au BTP.', stars: 5 },
-  { name: 'Sophie L.', role: 'Électricienne, Lyon', text: 'Mes factures partent le jour même. Le portail client a impressionné mes clients particuliers.', stars: 5 },
-  { name: 'Marc D.', role: 'Plombier, Paris', text: 'Enfin un outil abordable et complet. Le suivi de trésorerie m\u2019a évité des problèmes de trésorerie.', stars: 4 },
-];
+// Testimonials will be added once real beta users provide feedback
 
 const FAQ = [
   { q: 'Puis-je essayer gratuitement\u00a0?', a: 'Oui\u00a0! Le plan Découverte est 100% gratuit, sans limite de durée. Vous pouvez créer jusqu\u2019à 3 devis et gérer 5 clients.' },
@@ -159,27 +155,29 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
         </div>
       </section>
 
-      {/* ─── Testimonials ─── */}
+      {/* ─── Beta CTA ─── */}
       <section className="bg-slate-50 py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ils nous font confiance</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="bg-white rounded-2xl p-6 border border-slate-200">
-                <div className="flex gap-0.5 mb-3">
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} size={16} className="text-amber-400 fill-amber-400" />
-                  ))}
-                </div>
-                <p className="text-slate-700 text-sm leading-relaxed mb-4 italic">&laquo;&nbsp;{t.text}&nbsp;&raquo;</p>
-                <div>
-                  <p className="font-semibold text-sm">{t.name}</p>
-                  <p className="text-slate-500 text-xs">{t.role}</p>
-                </div>
-              </div>
-            ))}
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <div className="bg-white rounded-2xl p-8 sm:p-12 border border-slate-200 shadow-sm">
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
+              <Zap size={14} />
+              Lancement en cours
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Rejoignez les premiers utilisateurs</h2>
+            <p className="text-slate-600 text-lg mb-8 max-w-xl mx-auto">
+              ChantierPro est en phase de lancement. Inscrivez-vous gratuitement et participez
+              au futur de la gestion de chantier pour artisans.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={onGetStarted}
+                className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors"
+              >
+                Essayer gratuitement
+                <ArrowRight size={20} />
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mt-4">Gratuit, sans engagement, sans carte bancaire</p>
           </div>
         </div>
       </section>

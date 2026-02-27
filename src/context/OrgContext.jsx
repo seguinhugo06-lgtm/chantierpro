@@ -145,7 +145,7 @@ export function OrgProvider({ children }) {
           .eq('user_id', uid)
           .maybeSingle(),
         supabase.from('organization_members')
-          .select('id, user_id, role, joined_at, equipe_member_id')
+          .select('id, user_id, role, joined_at, equipe_member_id, equipe:equipe_member_id(nom, prenom, email)')
           .eq('organization_id', resolvedOrgId)
           .order('joined_at', { ascending: true }),
       ]);
