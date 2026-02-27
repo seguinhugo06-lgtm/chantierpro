@@ -170,7 +170,7 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
-                onClick={onGetStarted}
+                onClick={onSignUp}
                 className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors"
               >
                 Essayer gratuitement
