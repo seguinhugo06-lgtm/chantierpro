@@ -183,6 +183,54 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
 </html>`
   },
 
+  invitation: {
+    subject: 'Invitation à rejoindre une organisation sur ChantierPro',
+    html: (data) => `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;">
+  <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
+    <div style="background:white;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="width:56px;height:56px;background:#f97316;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;">
+          <span style="font-size:28px;">👥</span>
+        </div>
+      </div>
+      <h1 style="font-size:22px;font-weight:700;color:#0f172a;text-align:center;margin:0 0 8px;">
+        Vous êtes invité(e) !
+      </h1>
+      <p style="color:#64748b;text-align:center;margin:0 0 24px;font-size:15px;">
+        Rejoignez <strong>${data?.orgName || 'une organisation'}</strong> sur ChantierPro
+      </p>
+      <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:0 12px 12px 0;padding:16px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;font-size:14px;color:#334155;">
+          <strong>Organisation :</strong> ${data?.orgName || 'ChantierPro'}
+        </p>
+        <p style="margin:0 0 4px;font-size:14px;color:#334155;">
+          <strong>Rôle :</strong> ${data?.roleLabel || 'Membre'}
+        </p>
+        <p style="margin:0;font-size:13px;color:#64748b;">
+          Expire le ${data?.expiresAt || '—'}
+        </p>
+      </div>
+      <div style="text-align:center;">
+        <a href="${data?.inviteLink || 'https://chantierpro.vercel.app'}" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:14px 36px;border-radius:10px;text-decoration:none;font-size:15px;">
+          Accepter l'invitation
+        </a>
+      </div>
+      <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:24px;">
+        Si vous n'attendiez pas cette invitation, ignorez cet email.
+      </p>
+    </div>
+    <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
+      ChantierPro — Gestion de chantier pour artisans BTP
+    </p>
+  </div>
+</body>
+</html>`
+  },
+
   payment_failed: {
     subject: 'Échec de paiement — Action requise',
     html: (data) => `
@@ -265,7 +313,9 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'ChantierPro <noreply@chantierpro.fr>',
         to: [to],
-        subject: template.subject,
+        subject: type === 'invitation' && data?.orgName
+          ? `Invitation à rejoindre ${data.orgName} sur ChantierPro`
+          : template.subject,
         html: template.html(data || {}),
       }),
     });
