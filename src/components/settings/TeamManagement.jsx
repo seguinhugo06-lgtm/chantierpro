@@ -19,20 +19,19 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const checkLimit = useSubscriptionStore((s) => s.checkLimit);
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
 
-  // Check team member limit from plan
-  const memberLimit = checkLimit('equipe');
-  // Count members excluding owner (owner doesn't count against limit)
-  const nonOwnerCount = members.filter(m => m.role !== 'owner').length;
-  const pendingCount = invitations?.filter(i => i.status === 'pending')?.length || 0;
-  const teamLimitReached = memberLimit.limit !== -1 && (nonOwnerCount + pendingCount) >= memberLimit.limit;
-
-  // State
+  // State (must be declared before derived values that reference them)
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', phone: '', role: 'ouvrier' });
   const [inviteLoading, setInviteLoading] = useState(false);
   const [changingRole, setChangingRole] = useState(null);
+
+  // Check team member limit from plan
+  const memberLimit = checkLimit('equipe');
+  const nonOwnerCount = members.filter(m => m.role !== 'owner').length;
+  const pendingCount = invitations.filter(i => i.status === 'pending').length;
+  const teamLimitReached = memberLimit.limit !== -1 && (nonOwnerCount + pendingCount) >= memberLimit.limit;
 
   // Theme
   const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
