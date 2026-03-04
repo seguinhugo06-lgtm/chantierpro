@@ -30,7 +30,16 @@ const PERMISSION_MATRIX = {
   equipe:     { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
   catalogue:  { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
   finances:   { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
-  settings:   { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
+  'ia-devis':     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
+  tresorerie:     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
+  admin:          { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
+  soustraitants:  { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
+  commandes:      { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: 'view', ouvrier: false, readonly: 'view' },
+  ouvrages:       { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
+  entretien:      { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'full', ouvrier: 'view', readonly: 'view' },
+  signatures:     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
+  export:         { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
+  settings:       { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
 };
 
 /**
