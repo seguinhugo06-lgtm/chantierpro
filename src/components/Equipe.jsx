@@ -6,21 +6,25 @@ import {
   History, Download, MapPin, UserPlus, AlertCircle, TrendingUp, Zap,
   HardHat, Wrench, Plug, Paintbrush, Building2, UserCheck, PhoneCall,
   Pause, RotateCcw, ChevronDown, Sparkles, Target, Calendar, Search,
-  ChevronLeft, Coffee, Wifi, WifiOff, Filter, Navigation, Smartphone
+  ChevronLeft, Coffee, Wifi, WifiOff, Filter, Navigation, Smartphone,
+  Briefcase, Shield, FileText, AlertTriangle
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
+import { SOUS_TRAITANT_SPECIALITES, TARIF_TYPES } from '../lib/constants';
+import { computeSousTraitantAlerts, getSousTraitantWorstAlert } from '../lib/sousTraitantAlerts';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import NoteModal from './NoteModal';
 import SmartClockingWidget from './SmartClockingWidget';
 import PointageNotification, { GeofenceArrivalToast } from './PointageNotification';
 import useSmartClocking from '../hooks/useSmartClocking';
+import EmptyState from './ui/EmptyState';
 
 // Storage key for timer persistence
-const TIMER_STORAGE_KEY = 'chantierpro_equipe_timer';
+const TIMER_STORAGE_KEY = 'batigesti_equipe_timer';
 
-export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, couleur, isDark, modeDiscret }) {
+export default function Equipe({ equipe, setEquipe, pointages, setPointages, chantiers, depenses = [], couleur, isDark, modeDiscret }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -33,9 +37,15 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
 
   // Core state
   const [tab, setTab] = useState('overview');
+  const [viewMode, setViewMode] = useState('employes'); // 'employes' | 'sous_traitants'
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' });
+  const [form, setForm] = useState({
+    nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '',
+    // Sous-traitant fields
+    entreprise: '', siret: '', specialite: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '',
+    tarif_type: 'horaire', tarif_forfait: ''
+  });
   const [sortBy, setSortBy] = useState('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -374,27 +384,47 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     }));
   };
 
+  const resetForm = () => setForm({
+    nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '',
+    entreprise: '', siret: '', specialite: '', decennale_numero: '', decennale_expiration: '', urssaf_date: '',
+    tarif_type: 'horaire', tarif_forfait: ''
+  });
+
   const addEmploye = () => {
-    if (!form.nom.trim()) {
-      showToast('Le nom est requis', 'error');
-      return;
+    if (viewMode === 'sous_traitants') {
+      // Sous-traitant: entreprise or nom required
+      if (!form.entreprise?.trim() && !form.nom?.trim()) {
+        showToast('Le nom de l\'entreprise est requis', 'error');
+        return;
+      }
+    } else {
+      if (!form.nom.trim()) {
+        showToast('Le nom est requis', 'error');
+        return;
+      }
     }
+
+    const isST = viewMode === 'sous_traitants';
     const data = {
       id: editId || generateId(),
       ...form,
-      tauxHoraire: parseFloat(form.tauxHoraire) || 45,
-      coutHoraireCharge: parseFloat(form.coutHoraireCharge) || parseFloat(form.tauxHoraire) * 0.6 || 28
+      type: isST ? 'sous_traitant' : 'employe',
+      tauxHoraire: parseFloat(form.tauxHoraire) || (isST ? 0 : 45),
+      coutHoraireCharge: parseFloat(form.coutHoraireCharge) || (isST ? 0 : parseFloat(form.tauxHoraire) * 0.6 || 28),
+      tarif_forfait: parseFloat(form.tarif_forfait) || null,
+      decennale_expiration: form.decennale_expiration || null,
+      urssaf_date: form.urssaf_date || null,
     };
     if (editId) {
       setEquipe(equipe.map(e => e.id === editId ? data : e));
-      showToast('Employé modifié', 'success');
+      showToast(isST ? 'Sous-traitant modifié' : 'Employé modifié', 'success');
     } else {
       setEquipe([...equipe, data]);
-      showToast('Employé ajouté', 'success');
+      showToast(isST ? 'Sous-traitant ajouté' : 'Employé ajouté', 'success');
     }
     setShowAdd(false);
     setEditId(null);
-    setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' });
+    resetForm();
   };
 
   const startEdit = (emp) => {
@@ -406,17 +436,30 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       role: emp.role || '',
       contrat: emp.contrat || '',
       tauxHoraire: emp.tauxHoraire?.toString() || '',
-      coutHoraireCharge: emp.coutHoraireCharge?.toString() || ''
+      coutHoraireCharge: emp.coutHoraireCharge?.toString() || '',
+      // Sous-traitant fields
+      entreprise: emp.entreprise || '',
+      siret: emp.siret || '',
+      specialite: emp.specialite || '',
+      decennale_numero: emp.decennale_numero || '',
+      decennale_expiration: emp.decennale_expiration || '',
+      urssaf_date: emp.urssaf_date || '',
+      tarif_type: emp.tarif_type || 'horaire',
+      tarif_forfait: emp.tarif_forfait?.toString() || ''
     });
+    // Switch viewMode to match the employee type
+    if (emp.type === 'sous_traitant') setViewMode('sous_traitants');
     setEditId(emp.id);
     setShowAdd(true);
   };
 
   const deleteEmploye = async (id) => {
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet employe ?' });
+    const member = equipe.find(e => e.id === id);
+    const isST = member?.type === 'sous_traitant';
+    const confirmed = await confirm({ title: 'Supprimer', message: isST ? 'Supprimer ce sous-traitant ?' : 'Supprimer cet employe ?' });
     if (confirmed) {
       setEquipe(equipe.filter(e => e.id !== id));
-      showToast('Employé supprimé', 'success');
+      showToast(isST ? 'Sous-traitant supprimé' : 'Employé supprimé', 'success');
     }
   };
 
@@ -453,9 +496,14 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     window.location.href = `tel:${tel.replace(/\s/g, '')}`;
   };
 
-  // Filtered and sorted employees
+  // Derived lists: employes vs sous-traitants
+  const employes = useMemo(() => equipe.filter(e => e.type !== 'sous_traitant'), [equipe]);
+  const sousTraitants = useMemo(() => equipe.filter(e => e.type === 'sous_traitant'), [equipe]);
+  const sousTraitantAlerts = useMemo(() => computeSousTraitantAlerts(sousTraitants), [sousTraitants]);
+
+  // Filtered and sorted employees / sous-traitants
   const getFilteredEquipe = useMemo(() => {
-    let filtered = [...equipe];
+    let filtered = viewMode === 'sous_traitants' ? [...sousTraitants] : [...employes];
 
     // Search filter
     if (searchQuery.trim()) {
@@ -464,19 +512,29 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         e.nom?.toLowerCase().includes(q) ||
         e.prenom?.toLowerCase().includes(q) ||
         e.role?.toLowerCase().includes(q) ||
-        e.telephone?.includes(q)
+        e.telephone?.includes(q) ||
+        e.entreprise?.toLowerCase().includes(q) ||
+        e.specialite?.toLowerCase().includes(q) ||
+        e.siret?.includes(q)
       );
     }
 
-    // Role filter
+    // Role filter (for employes) / specialite filter (for sous-traitants)
     if (filterRole) {
-      filtered = filtered.filter(e => e.role === filterRole);
+      if (viewMode === 'sous_traitants') {
+        filtered = filtered.filter(e => e.specialite === filterRole);
+      } else {
+        filtered = filtered.filter(e => e.role === filterRole);
+      }
     }
 
     // Sort
     return filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
+          if (viewMode === 'sous_traitants') {
+            return (a.entreprise || a.nom || '').localeCompare(b.entreprise || b.nom || '');
+          }
           return `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`);
         case 'hours':
           return getHeuresMois(b.id) - getHeuresMois(a.id);
@@ -490,94 +548,202 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           return 0;
       }
     });
-  }, [equipe, searchQuery, filterRole, sortBy, activeEmployeesToday]);
+  }, [equipe, employes, sousTraitants, viewMode, searchQuery, filterRole, sortBy, activeEmployeesToday]);
 
-  // Get unique roles for filter
+  // Get unique roles for filter (adapts to viewMode)
   const uniqueRoles = useMemo(() => {
-    return [...new Set(equipe.map(e => e.role).filter(Boolean))];
-  }, [equipe]);
+    if (viewMode === 'sous_traitants') {
+      return [...new Set(sousTraitants.map(e => e.specialite).filter(Boolean))];
+    }
+    return [...new Set(employes.map(e => e.role).filter(Boolean))];
+  }, [employes, sousTraitants, viewMode]);
 
-  // Employee add/edit form
-  if (showAdd) return (
+  // Employee / Sous-traitant add/edit form
+  if (showAdd) {
+    const isST = viewMode === 'sous_traitants';
+    const formValid = isST ? (form.entreprise?.trim() || form.nom?.trim()) : form.nom?.trim();
+
+    return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => { setShowAdd(false); setEditId(null); setForm({ nom: '', prenom: '', telephone: '', email: '', role: '', contrat: '', tauxHoraire: '', coutHoraireCharge: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShowAdd(false); setEditId(null); resetForm(); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} employe</h1>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>
+          {editId ? 'Modifier' : isST ? 'Nouveau sous-traitant' : 'Nouvel employe'}
+        </h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+
+        {/* SOUS-TRAITANT: Entreprise section */}
+        {isST && (
+          <>
+            <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}>
+              <Briefcase size={16} style={{ color: couleur }} /> Entreprise
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l'entreprise *</label>
+                <input
+                  className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${!form.entreprise?.trim() && form.entreprise !== '' ? 'border-red-400' : ''}`}
+                  value={form.entreprise}
+                  onChange={e => setForm(p => ({...p, entreprise: e.target.value}))}
+                  placeholder="Ex: Plomberie Martin SARL"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.siret} onChange={e => setForm(p => ({...p, siret: e.target.value}))} placeholder="123 456 789 00012" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Specialite</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.specialite} onChange={e => setForm(p => ({...p, specialite: e.target.value}))}>
+                  <option value="">Selectionner...</option>
+                  {SOUS_TRAITANT_SPECIALITES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className={`border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} mb-6`} />
+          </>
+        )}
+
+        {/* Contact section */}
+        <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}>
+          <User size={16} style={{ color: couleur }} /> {isST ? 'Contact' : 'Identite'}
+        </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label>
+            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{isST ? 'Nom du contact' : 'Nom *'}</label>
             <input
-              className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${!form.nom.trim() && form.nom !== '' ? 'border-red-400' : ''}`}
+              className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${!isST && !form.nom.trim() && form.nom !== '' ? 'border-red-400' : ''}`}
               value={form.nom}
               onChange={e => setForm(p => ({...p, nom: e.target.value}))}
               placeholder="Dupont"
             />
-            {!form.nom.trim() && form.nom !== '' && (
+            {!isST && !form.nom.trim() && form.nom !== '' && (
               <p className="text-red-500 text-xs mt-1">Le nom est requis</p>
             )}
           </div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prenom</label><input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} placeholder="Marie" /></div>
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Role / Poste</label>
-            <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))}>
-              <option value="">Sélectionner...</option>
-              <option value="Chef de chantier">Chef de chantier</option>
-              <option value="Ouvrier qualifie">Ouvrier qualifie</option>
-              <option value="Electricien">Electricien</option>
-              <option value="Plombier">Plombier</option>
-              <option value="Peintre">Peintre</option>
-              <option value="Macon">Macon</option>
-              <option value="Carreleur">Carreleur</option>
-              <option value="Menuisier">Menuisier</option>
-              <option value="Apprenti">Apprenti</option>
-              <option value="Autre">Autre</option>
-            </select>
-          </div>
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de contrat</label>
-            <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.contrat} onChange={e => setForm(p => ({...p, contrat: e.target.value}))}>
-              <option value="">Sélectionner...</option>
-              <option value="CDI">CDI</option>
-              <option value="CDD">CDD</option>
-              <option value="Interim">Interim</option>
-              <option value="Apprentissage">Apprentissage</option>
-              <option value="Stage">Stage</option>
-              <option value="Auto-entrepreneur">Auto-entrepreneur</option>
-            </select>
-          </div>
+
+          {/* Role & contrat - only for employes */}
+          {!isST && (
+            <>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Role / Poste</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))}>
+                  <option value="">Selectionner...</option>
+                  <option value="Chef de chantier">Chef de chantier</option>
+                  <option value="Ouvrier qualifie">Ouvrier qualifie</option>
+                  <option value="Electricien">Electricien</option>
+                  <option value="Plombier">Plombier</option>
+                  <option value="Peintre">Peintre</option>
+                  <option value="Macon">Macon</option>
+                  <option value="Carreleur">Carreleur</option>
+                  <option value="Menuisier">Menuisier</option>
+                  <option value="Apprenti">Apprenti</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de contrat</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.contrat} onChange={e => setForm(p => ({...p, contrat: e.target.value}))}>
+                  <option value="">Selectionner...</option>
+                  <option value="CDI">CDI</option>
+                  <option value="CDD">CDD</option>
+                  <option value="Interim">Interim</option>
+                  <option value="Apprentissage">Apprentissage</option>
+                  <option value="Stage">Stage</option>
+                  <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                </select>
+              </div>
+            </>
+          )}
+
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Telephone</label><input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" /></div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" /></div>
         </div>
 
-        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} style={{ color: couleur }} /> Tarification</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux facturation (EUR/h)</label>
-              <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" />
-              <p className={`text-xs ${textMuted} mt-1`}>Prix facture au client</p>
-            </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Cout horaire charge (EUR/h) *</label>
-              <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
-              <p className={`text-xs ${textMuted} mt-1`}>Salaire brut + charges (~45%)</p>
+        {/* SOUS-TRAITANT: Assurances section */}
+        {isST && (
+          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}>
+              <Shield size={16} style={{ color: couleur }} /> Assurances & conformite
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° assurance decennale</label>
+                <input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.decennale_numero} onChange={e => setForm(p => ({...p, decennale_numero: e.target.value}))} placeholder="Ex: DEC-2024-XXXXX" />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date d'expiration decennale</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.decennale_expiration} onChange={e => setForm(p => ({...p, decennale_expiration: e.target.value}))} />
+                {form.decennale_expiration && new Date(form.decennale_expiration) < new Date() && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertTriangle size={12} /> Expiree !</p>
+                )}
+                {form.decennale_expiration && new Date(form.decennale_expiration) >= new Date() && new Date(form.decennale_expiration) < new Date(Date.now() + 30 * 86400000) && (
+                  <p className="text-amber-500 text-xs mt-1 flex items-center gap-1"><AlertTriangle size={12} /> Expire bientot</p>
+                )}
+              </div>
+              <div className="sm:col-span-2">
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date attestation URSSAF</label>
+                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.urssaf_date} onChange={e => setForm(p => ({...p, urssaf_date: e.target.value}))} />
+                {form.urssaf_date && new Date(form.urssaf_date) < new Date(Date.now() - 6 * 30 * 86400000) && (
+                  <p className="text-amber-500 text-xs mt-1 flex items-center gap-1"><AlertTriangle size={12} /> Plus de 6 mois - a renouveler</p>
+                )}
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Tarification section */}
+        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Euro size={16} style={{ color: couleur }} /> Tarification</h4>
+          {isST ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Type de tarif</label>
+                <select className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tarif_type} onChange={e => setForm(p => ({...p, tarif_type: e.target.value}))}>
+                  {TARIF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>
+                  {form.tarif_type === 'horaire' ? 'Taux horaire (EUR/h)' : 'Montant forfaitaire (EUR)'}
+                </label>
+                {form.tarif_type === 'horaire' ? (
+                  <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="55" />
+                ) : (
+                  <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tarif_forfait} onChange={e => setForm(p => ({...p, tarif_forfait: e.target.value}))} placeholder="2500" />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux facturation (EUR/h)</label>
+                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.tauxHoraire} onChange={e => setForm(p => ({...p, tauxHoraire: e.target.value}))} placeholder="45" />
+                <p className={`text-xs ${textMuted} mt-1`}>Prix facture au client</p>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Cout horaire charge (EUR/h) *</label>
+                <input type="number" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.coutHoraireCharge} onChange={e => setForm(p => ({...p, coutHoraireCharge: e.target.value}))} placeholder="28" />
+                <p className={`text-xs ${textMuted} mt-1`}>Salaire brut + charges (~45%)</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={`flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <button onClick={() => { setShowAdd(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
-          <button onClick={addEmploye} disabled={!form.nom.trim()} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50" style={{background: couleur}}>
+          <button onClick={() => { setShowAdd(false); setEditId(null); resetForm(); }} className={`px-4 py-2.5 rounded-xl min-h-[44px] ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>Annuler</button>
+          <button onClick={addEmploye} disabled={!formValid} className="px-6 py-2.5 text-white rounded-xl min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50" style={{background: couleur}}>
             <Check size={16} /> {editId ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
       </div>
     </div>
   );
+  }
 
   // Bulk entry modal
   if (showBulkEntry) return (
@@ -677,62 +843,27 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
     </div>
   );
 
-  // Empty state
+  // Empty state (no team members at all)
   if (equipe.length === 0) return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe & Heures</h1>
       </div>
 
-      <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-        <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-            <Users size={40} className="text-white" />
-          </div>
-          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Gérez votre équipe</h2>
-          <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-            Ajoutez vos employés, suivez leurs heures et calculez la rentabilité de vos chantiers.
-          </p>
-        </div>
-
-        <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-          <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Timer size={18} style={{ color: couleur }} />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Chronomètre</p>
-                <p className={`text-xs ${textMuted}`}>Pointage en temps réel</p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <TrendingUp size={18} style={{ color: couleur }} />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Coût de revient</p>
-                <p className={`text-xs ${textMuted}`}>Rentabilité par chantier</p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Download size={18} style={{ color: couleur }} />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Export CSV</p>
-                <p className={`text-xs ${textMuted}`}>Pour votre comptable</p>
-              </div>
-            </div>
-          </div>
-
-          <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-            <UserPlus size={18} />
-            Ajouter mon premier employe
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        illustration="team"
+        title="Ajoutez vos employés pour gérer les plannings et le pointage"
+        description="Suivez leurs heures et calculez la rentabilité de vos chantiers."
+        isDark={isDark}
+        couleur={couleur}
+        features={[
+          { icon: Timer, title: 'Chronomètre', description: 'Pointage en temps réel' },
+          { icon: TrendingUp, title: 'Coût de revient', description: 'Rentabilité par chantier' },
+          { icon: Download, title: 'Export CSV', description: 'Pour votre comptable' }
+        ]}
+        action={{ label: '+ Ajouter un employé', icon: UserPlus, onClick: () => setShowAdd(true) }}
+        secondaryAction={{ label: '+ Ajouter un sous-traitant', icon: Briefcase, onClick: () => { setViewMode('sous_traitants'); setShowAdd(true); } }}
+      />
     </div>
   );
 
@@ -767,16 +898,64 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           </span>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowBulkEntry(true)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-            <Zap size={16} /> <span className="hidden sm:inline">Saisie groupee</span>
-          </button>
+          {viewMode === 'employes' && (
+            <button onClick={() => setShowBulkEntry(true)} className={`px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              <Zap size={16} /> <span className="hidden sm:inline">Saisie groupee</span>
+            </button>
+          )}
           <button onClick={() => setShowAdd(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-2" style={{background: couleur}}>
-            <Plus size={16} /> <span className="hidden sm:inline">Employe</span>
+            <Plus size={16} /> <span className="hidden sm:inline">{viewMode === 'sous_traitants' ? 'Sous-traitant' : 'Employe'}</span>
           </button>
         </div>
       </div>
 
-      {/* Visual Stats Dashboard */}
+      {/* Employes / Sous-traitants toggle */}
+      <div className={`flex p-1 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+        <button
+          onClick={() => { setViewMode('employes'); setSearchQuery(''); setFilterRole(''); }}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            viewMode === 'employes'
+              ? 'text-white shadow-md'
+              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+          }`}
+          style={viewMode === 'employes' ? { background: couleur } : {}}
+        >
+          <Users size={16} />
+          Equipe
+          <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
+            viewMode === 'employes' ? 'bg-white/20 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+          }`}>
+            {employes.length}
+          </span>
+        </button>
+        <button
+          onClick={() => { setViewMode('sous_traitants'); setSearchQuery(''); setFilterRole(''); }}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all relative ${
+            viewMode === 'sous_traitants'
+              ? 'text-white shadow-md'
+              : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+          }`}
+          style={viewMode === 'sous_traitants' ? { background: couleur } : {}}
+        >
+          <Briefcase size={16} />
+          Sous-traitants
+          <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${
+            viewMode === 'sous_traitants' ? 'bg-white/20 text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+          }`}>
+            {sousTraitants.length}
+          </span>
+          {/* Alert dot for expired assurances */}
+          {viewMode !== 'sous_traitants' && sousTraitantAlerts.some(a => a.severity === 'critical') && (
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+          )}
+          {viewMode !== 'sous_traitants' && !sousTraitantAlerts.some(a => a.severity === 'critical') && sousTraitantAlerts.length > 0 && (
+            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
+          )}
+        </button>
+      </div>
+
+      {/* Visual Stats Dashboard - only for Employes mode */}
+      {viewMode === 'employes' && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Week Hero Card with Navigation */}
         <motion.div
@@ -904,10 +1083,40 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
           </div>
         </motion.div>
       </div>
+      )}
 
-      {/* Active Timer Banner */}
+      {/* Sous-traitant alerts banner */}
+      {viewMode === 'sous_traitants' && sousTraitantAlerts.length > 0 && (
+        <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${
+          sousTraitantAlerts.some(a => a.severity === 'critical')
+            ? isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'
+            : isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className={sousTraitantAlerts.some(a => a.severity === 'critical') ? 'text-red-500' : 'text-amber-500'} />
+            <div>
+              <p className={`font-medium ${
+                sousTraitantAlerts.some(a => a.severity === 'critical')
+                  ? isDark ? 'text-red-300' : 'text-red-800'
+                  : isDark ? 'text-amber-300' : 'text-amber-800'
+              }`}>
+                {sousTraitantAlerts.length} alerte{sousTraitantAlerts.length > 1 ? 's' : ''} conformite
+              </p>
+              <p className={`text-sm ${
+                sousTraitantAlerts.some(a => a.severity === 'critical')
+                  ? isDark ? 'text-red-400' : 'text-red-700'
+                  : isDark ? 'text-amber-400' : 'text-amber-700'
+              }`}>
+                {sousTraitantAlerts[0].message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Timer Banner - Employes only */}
       <AnimatePresence>
-        {chrono.running && (
+        {viewMode === 'employes' && chrono.running && (
           <motion.div
             className="rounded-2xl p-4 text-white relative overflow-hidden"
             style={{ background: chrono.paused ? '#64748b' : `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
@@ -963,9 +1172,9 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         )}
       </AnimatePresence>
 
-      {/* Quick Team Overview - Who's working where today */}
+      {/* Quick Team Overview - Who's working where today - Employes only */}
       <AnimatePresence>
-        {activeEmployeesToday.length > 0 && (
+        {viewMode === 'employes' && activeEmployeesToday.length > 0 && (
           <motion.div
             className={`${cardBg} rounded-2xl border p-4 sm:p-5`}
             initial={{ opacity: 0, height: 0 }}
@@ -1032,8 +1241,8 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
         )}
       </AnimatePresence>
 
-      {/* Pending validations alert */}
-      {pointagesEnAttente.length > 0 && (
+      {/* Pending validations alert - Employes only */}
+      {viewMode === 'employes' && pointagesEnAttente.length > 0 && (
         <div className={`rounded-xl p-4 flex items-center justify-between gap-4 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
           <div className="flex items-center gap-3">
             <AlertCircle size={20} className="text-amber-500" />
@@ -1052,11 +1261,15 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
       <div className={`p-1.5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         <div className="flex gap-1 overflow-x-auto">
           {[
-            { key: 'overview', label: 'Équipe', icon: Users, count: equipe.length },
-            { key: 'smart', label: 'GPS', icon: Navigation, badge: 'Nouveau' },
-            { key: 'pointage', label: 'Pointage', icon: Timer },
-            { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
-            { key: 'historique', label: 'Historique', icon: History }
+            { key: 'overview', label: viewMode === 'sous_traitants' ? 'Sous-traitants' : 'Équipe', icon: viewMode === 'sous_traitants' ? Briefcase : Users, count: viewMode === 'sous_traitants' ? sousTraitants.length : employes.length },
+            ...(viewMode === 'employes' ? [
+              { key: 'smart', label: 'GPS', icon: Navigation, badge: 'Nouveau' },
+              { key: 'pointage', label: 'Pointage', icon: Timer },
+              { key: 'validation', label: 'Validation', icon: CheckSquare, count: pointagesEnAttente.length, alert: pointagesEnAttente.length > 0 },
+              { key: 'historique', label: 'Historique', icon: History }
+            ] : [
+              { key: 'couts_st', label: 'Coûts', icon: Euro }
+            ])
           ].map(({ key, label, icon: Icon, count, alert, badge }) => (
             <button
               key={key}
@@ -1115,7 +1328,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher un employe..."
+                  placeholder={viewMode === 'sous_traitants' ? "Rechercher un sous-traitant..." : "Rechercher un employe..."}
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
               </div>
@@ -1210,7 +1423,7 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             {/* Results count */}
             <div className="flex items-center justify-between px-1">
               <span className={`text-sm ${textMuted}`}>
-                {getFilteredEquipe.length} employe{getFilteredEquipe.length > 1 ? 's' : ''}
+                {getFilteredEquipe.length} {viewMode === 'sous_traitants' ? 'sous-traitant' : 'employe'}{getFilteredEquipe.length > 1 ? 's' : ''}
                 {searchQuery && ` pour "${searchQuery}"`}
                 {filterRole && ` • ${filterRole}`}
               </span>
@@ -1224,20 +1437,194 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
               )}
             </div>
 
-            {/* Employee Cards Grid */}
+            {/* Employee / Sous-traitant Cards Grid */}
             {getFilteredEquipe.length === 0 ? (
-              <motion.div
-                className={`${cardBg} rounded-2xl border p-12 text-center`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
-                <p className={`font-medium ${textPrimary}`}>Aucun employe trouve</p>
-                <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres criteres</p>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                {(searchQuery || filterRole) ? (
+                  <EmptyState
+                    compact
+                    icon={Search}
+                    title={viewMode === 'sous_traitants' ? "Aucun sous-traitant trouve" : "Aucun employé trouvé"}
+                    description="Essayez avec d'autres critères"
+                    isDark={isDark}
+                    couleur={couleur}
+                    className={`${cardBg} rounded-2xl border`}
+                  />
+                ) : viewMode === 'sous_traitants' ? (
+                  <EmptyState
+                    illustration="team"
+                    title="Gerez vos sous-traitants"
+                    description="Ajoutez vos sous-traitants pour suivre leurs assurances, tarifs et interventions."
+                    isDark={isDark}
+                    couleur={couleur}
+                    features={[
+                      { icon: Shield, title: 'Conformite', description: 'Decennale & URSSAF' },
+                      { icon: AlertTriangle, title: 'Alertes', description: 'Expirations automatiques' },
+                      { icon: Euro, title: 'Couts', description: 'Suivi par chantier' }
+                    ]}
+                    action={{ label: '+ Ajouter un sous-traitant', icon: Briefcase, onClick: () => setShowAdd(true) }}
+                  />
+                ) : null}
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getFilteredEquipe.map((e, index) => {
+                  // Sous-traitant card
+                  if (e.type === 'sous_traitant') {
+                    const stAlert = getSousTraitantWorstAlert(e);
+                    const borderClass = stAlert?.severity === 'critical'
+                      ? 'border-red-500/50 ring-1 ring-red-500/20'
+                      : stAlert?.severity === 'warning'
+                        ? 'border-amber-500/50 ring-1 ring-amber-500/20'
+                        : '';
+
+                    return (
+                      <motion.div
+                        key={e.id}
+                        className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl transition-all ${borderClass}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        whileHover={{ y: -2 }}
+                      >
+                        {/* ST Card Header */}
+                        <div
+                          className="relative p-4 pb-12"
+                          style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed20, #7c3aed05)' : 'linear-gradient(135deg, #7c3aed15, #7c3aed05)' }}
+                        >
+                          {/* Alert badge */}
+                          {stAlert && (
+                            <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                              stAlert.severity === 'critical'
+                                ? isDark ? 'bg-red-900/70 text-red-300' : 'bg-red-100 text-red-700'
+                                : isDark ? 'bg-amber-900/70 text-amber-300' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              <AlertTriangle size={12} />
+                              {stAlert.severity === 'critical' ? 'Expire' : 'Attention'}
+                            </div>
+                          )}
+
+                          {/* Action buttons */}
+                          <div className="absolute top-3 right-3 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            {e.telephone && (
+                              <button
+                                onClick={() => callPhone(e.telephone)}
+                                className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-emerald-900/50 text-emerald-400' : 'bg-white hover:bg-emerald-50 text-emerald-600'}`}
+                                title="Appeler"
+                              >
+                                <Phone size={14} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => startEdit(e)}
+                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-500'}`}
+                              title="Modifier"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              onClick={() => deleteEmploye(e.id)}
+                              className={`p-2 rounded-lg transition-colors shadow-sm ${isDark ? 'bg-slate-700 hover:bg-red-900/50 text-red-400' : 'bg-white hover:bg-red-50 text-red-500'}`}
+                              title="Supprimer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* Avatar and Name */}
+                          <div className="flex items-center gap-3 mt-6 sm:mt-0">
+                            <div className="relative">
+                              <div
+                                className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold shadow-lg"
+                                style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
+                              >
+                                <Briefcase size={22} />
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className={`font-bold text-lg ${textPrimary}`}>{e.entreprise || e.nom}</h3>
+                              <p className={`text-sm ${textMuted}`}>
+                                {e.nom && e.entreprise ? `${e.nom} ${e.prenom || ''}`.trim() : e.specialite || 'Sous-traitant'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ST Card Body */}
+                        <div className="p-4 -mt-8">
+                          {/* Badges */}
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {e.specialite && (
+                              <span className="text-xs px-2.5 py-1 rounded-lg font-medium text-white" style={{ background: '#7c3aed' }}>
+                                {e.specialite}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-100 border-slate-300 text-slate-700'}`}>
+                              {e.tarif_type === 'forfaitaire' ? 'Forfait' : 'Horaire'}
+                            </span>
+                            {e.siret && (
+                              <span className={`text-xs px-2.5 py-1 rounded-lg ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+                                SIRET: {e.siret.slice(-5)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Assurance alerts inline */}
+                          {stAlert && (
+                            <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-4 ${
+                              stAlert.severity === 'critical'
+                                ? isDark ? 'bg-red-900/30' : 'bg-red-50'
+                                : isDark ? 'bg-amber-900/30' : 'bg-amber-50'
+                            }`}>
+                              <AlertTriangle size={14} className={stAlert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'} />
+                              <span className={`text-xs font-medium ${
+                                stAlert.severity === 'critical'
+                                  ? isDark ? 'text-red-400' : 'text-red-700'
+                                  : isDark ? 'text-amber-400' : 'text-amber-700'
+                              }`}>
+                                {stAlert.type === 'decennale_expired' ? 'Decennale expiree' : stAlert.type === 'decennale_expiring' ? 'Decennale bientot expiree' : 'URSSAF a renouveler'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Stats Grid for ST */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                              <p className={`text-xs font-medium ${textMuted} mb-1`}>Tarif</p>
+                              <p className={`text-xl font-bold ${textPrimary}`}>
+                                {modeDiscret ? '**' : (e.tarif_type === 'forfaitaire' ? (e.tarif_forfait || 0) : (e.tauxHoraire || 0))}
+                                <span className="text-sm font-normal">{e.tarif_type === 'forfaitaire' ? '€' : '€/h'}</span>
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-xl text-center" style={{ background: `${couleur}15` }}>
+                              <p className={`text-xs font-medium ${textMuted} mb-1`}>Decennale</p>
+                              <p className="text-sm font-bold" style={{ color: e.decennale_expiration && new Date(e.decennale_expiration) < new Date() ? '#ef4444' : couleur }}>
+                                {e.decennale_expiration ? new Date(e.decennale_expiration).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '-'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Contact info */}
+                          {(e.telephone || e.email) && (
+                            <div className={`mt-3 flex items-center gap-3 p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/50'}`}>
+                              {e.telephone && (
+                                <button onClick={() => callPhone(e.telephone)} className={`flex items-center gap-1 text-xs ${isDark ? 'text-slate-400 hover:text-emerald-400' : 'text-slate-500 hover:text-emerald-600'}`}>
+                                  <Phone size={12} /> {e.telephone}
+                                </button>
+                              )}
+                              {e.email && (
+                                <span className={`flex items-center gap-1 text-xs ${textMuted} truncate`}>
+                                  <Mail size={12} /> {e.email}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  }
+
+                  // Employee card (existing)
                   const config = getRoleConfig(e.role);
                   const RoleIcon = config.icon;
                   const isActiveToday = activeEmployeesToday.includes(e.id);
@@ -1407,6 +1794,166 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
                 })}
               </div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sous-traitant Costs Tab */}
+      <AnimatePresence mode="wait">
+        {tab === 'couts_st' && viewMode === 'sous_traitants' && (
+          <motion.div
+            className="space-y-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {(() => {
+              // Compute ST costs by chantier and by month
+              const stDepenses = depenses.filter(d => d.categorie === 'Sous-traitance');
+
+              if (stDepenses.length === 0) {
+                return (
+                  <EmptyState
+                    compact
+                    illustration="receipt"
+                    title="Aucune depense sous-traitance"
+                    description="Les depenses en categorie 'Sous-traitance' apparaitront ici, groupees par chantier et par mois."
+                    isDark={isDark}
+                    couleur={couleur}
+                  />
+                );
+              }
+
+              // Total
+              const totalST = stDepenses.reduce((s, d) => s + (d.montant || 0), 0);
+
+              // Group by chantier
+              const byChantier = {};
+              stDepenses.forEach(d => {
+                const key = d.chantierId || 'sans-chantier';
+                if (!byChantier[key]) byChantier[key] = { depenses: [], total: 0 };
+                byChantier[key].depenses.push(d);
+                byChantier[key].total += (d.montant || 0);
+              });
+
+              // Group by month
+              const byMonth = {};
+              stDepenses.forEach(d => {
+                const date = new Date(d.date);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (!byMonth[key]) byMonth[key] = { depenses: [], total: 0 };
+                byMonth[key].depenses.push(d);
+                byMonth[key].total += (d.montant || 0);
+              });
+
+              const sortedMonths = Object.keys(byMonth).sort().reverse();
+              const sortedChantiers = Object.entries(byChantier).sort((a, b) => b[1].total - a[1].total);
+
+              return (
+                <>
+                  {/* Total card */}
+                  <div
+                    className="rounded-2xl p-5 text-white relative overflow-hidden"
+                    style={{ background: `linear-gradient(135deg, #7c3aed, #6d28d9)` }}
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -mr-10 -mt-10" />
+                    <p className="text-sm text-white/80 mb-1">Total sous-traitance</p>
+                    <p className="text-4xl font-black">
+                      {modeDiscret ? '***' : totalST.toLocaleString('fr-FR', { maximumFractionDigits: 0 })}
+                      <span className="text-xl font-normal ml-1">€</span>
+                    </p>
+                    <p className="text-sm text-white/70 mt-2">
+                      {stDepenses.length} depense{stDepenses.length > 1 ? 's' : ''} · {sousTraitants.length} sous-traitant{sousTraitants.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+
+                  {/* By chantier */}
+                  <div className={`${cardBg} rounded-2xl border p-5`}>
+                    <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
+                      <Building2 size={16} style={{ color: couleur }} /> Par chantier
+                    </h3>
+                    <div className="space-y-3">
+                      {sortedChantiers.map(([chantierId, data]) => {
+                        const ch = chantiers.find(c => c.id === chantierId);
+                        const pct = totalST > 0 ? (data.total / totalST) * 100 : 0;
+                        return (
+                          <div key={chantierId}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-sm font-medium ${textPrimary}`}>{ch?.nom || 'Sans chantier'}</span>
+                              <span className={`text-sm font-bold ${textPrimary}`}>
+                                {modeDiscret ? '***' : data.total.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                              </span>
+                            </div>
+                            <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${pct}%`, background: '#7c3aed' }}
+                              />
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <span className={`text-xs ${textMuted}`}>{data.depenses.length} depense{data.depenses.length > 1 ? 's' : ''}</span>
+                              <span className={`text-xs ${textMuted}`}>{pct.toFixed(0)}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* By month */}
+                  <div className={`${cardBg} rounded-2xl border p-5`}>
+                    <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
+                      <Calendar size={16} style={{ color: couleur }} /> Par mois
+                    </h3>
+                    <div className="space-y-2">
+                      {sortedMonths.map(month => {
+                        const data = byMonth[month];
+                        const [y, m] = month.split('-');
+                        const label = new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                        const maxMonth = Math.max(...Object.values(byMonth).map(m => m.total));
+                        const pct = maxMonth > 0 ? (data.total / maxMonth) * 100 : 0;
+
+                        // Group depenses by sous-traitant for this month
+                        const bySTInMonth = {};
+                        data.depenses.forEach(d => {
+                          const stId = d.sousTraitantId || 'unknown';
+                          if (!bySTInMonth[stId]) bySTInMonth[stId] = 0;
+                          bySTInMonth[stId] += (d.montant || 0);
+                        });
+
+                        return (
+                          <div key={month} className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`text-sm font-medium capitalize ${textPrimary}`}>{label}</span>
+                              <span className={`text-sm font-bold ${textPrimary}`}>
+                                {modeDiscret ? '***' : data.total.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                              </span>
+                            </div>
+                            <div className={`h-1.5 rounded-full overflow-hidden mb-2 ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${pct}%`, background: '#7c3aed' }}
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              {Object.entries(bySTInMonth).map(([stId, montant]) => {
+                                const st = equipe.find(e => e.id === stId);
+                                return (
+                                  <span key={stId} className={`text-xs ${textMuted}`}>
+                                    {st?.entreprise || st?.nom || 'Non attribue'}: {modeDiscret ? '**' : montant.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
@@ -2125,17 +2672,18 @@ export default function Equipe({ equipe, setEquipe, pointages, setPointages, cha
             {/* Pointages List */}
             {weekPointages.length === 0 ? (
               <motion.div
-                className={`${cardBg} rounded-2xl border p-12 text-center`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <div className="w-20 h-20 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-4">
-                  <History size={40} className={textMuted} />
-                </div>
-                <p className={`font-semibold text-lg ${textPrimary}`}>Aucun pointage cette semaine</p>
-                <p className={`text-sm ${textMuted} mt-2`}>
-                  Les pointages apparaitront ici une fois saisis.
-                </p>
+                <EmptyState
+                  compact
+                  illustration="clock"
+                  title="Aucun pointage cette semaine"
+                  description="Les pointages apparaîtront ici une fois saisis."
+                  isDark={isDark}
+                  couleur={couleur}
+                  className={`${cardBg} rounded-2xl border`}
+                />
               </motion.div>
             ) : (
               <div className={`${cardBg} rounded-2xl border overflow-hidden`}>

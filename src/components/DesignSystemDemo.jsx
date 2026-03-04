@@ -38,7 +38,7 @@ export default function DesignSystemDemo() {
     <div className="p-8 space-y-12 bg-gray-50 dark:bg-slate-900 min-h-screen">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          ChantierPro Design System
+          BatiGesti Design System
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-8">
           Composants UI de base pour l'application

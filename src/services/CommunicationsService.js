@@ -23,8 +23,8 @@ const CONFIG = {
   },
   sendgrid: {
     apiKey: import.meta.env.VITE_SENDGRID_API_KEY || '',
-    fromEmail: import.meta.env.VITE_SENDGRID_FROM_EMAIL || 'noreply@chantierpro.fr',
-    fromName: import.meta.env.VITE_SENDGRID_FROM_NAME || 'ChantierPro',
+    fromEmail: import.meta.env.VITE_SENDGRID_FROM_EMAIL || 'noreply@batigesti.fr',
+    fromName: import.meta.env.VITE_SENDGRID_FROM_NAME || 'BatiGesti',
   },
   rateLimits: {
     smsPerMinute: 10,
@@ -34,7 +34,7 @@ const CONFIG = {
     maxAttempts: 3,
     baseDelayMs: 1000,
   },
-  baseUrl: import.meta.env.VITE_APP_URL || 'https://app.chantierpro.fr',
+  baseUrl: import.meta.env.VITE_APP_URL || 'https://app.batigesti.fr',
 };
 
 // Rate limiting state
@@ -320,7 +320,7 @@ function getEmailWrapper(content, preheader = '') {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>ChantierPro</title>
+  <title>BatiGesti</title>
   <style type="text/css">
     body { margin: 0; padding: 0; min-width: 100%; background-color: #f4f4f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
@@ -343,14 +343,14 @@ function getEmailWrapper(content, preheader = '') {
   <center style="width: 100%; background-color: #f4f4f5; padding: 24px 0;">
     <div class="email-container" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
       <div class="email-header">
-        <h1>ChantierPro</h1>
+        <h1>BatiGesti</h1>
       </div>
       <div class="email-body">
         ${content}
       </div>
       <div class="email-footer">
-        <p>Cet email a été envoyé automatiquement par ChantierPro.</p>
-        <p>&copy; ${new Date().getFullYear()} ChantierPro. Tous droits réservés.</p>
+        <p>Cet email a été envoyé automatiquement par BatiGesti.</p>
+        <p>&copy; ${new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
       </div>
     </div>
   </center>
@@ -525,30 +525,43 @@ export async function notifyDevisEnvoye(devisId) {
       return { sms: { success: false, error: 'Client not found' }, email: { success: false, error: 'Client not found' } };
     }
 
+    // Generate signature token if not already present
+    let signatureLink = `${CONFIG.baseUrl}/portal/devis/${devisId}`;
+    if (devis.type === 'devis' && supabase) {
+      try {
+        if (devis.signature_token && devis.signature_expires_at && new Date(devis.signature_expires_at) > new Date()) {
+          signatureLink = `${CONFIG.baseUrl}/devis/signer/${devis.signature_token}`;
+        } else {
+          const { data: token } = await supabase.rpc('generate_signature_token', { p_devis_id: devisId });
+          if (token) signatureLink = `${CONFIG.baseUrl}/devis/signer/${token}`;
+        }
+      } catch (err) { console.warn('Could not generate signature token:', err); }
+    }
+
     const variables = {
       client_name: client.nom || 'Client',
       devis_number: devis.numero,
       amount: formatCurrency(devis.total_ttc),
-      link: `${CONFIG.baseUrl}/portal/devis/${devisId}`,
+      link: signatureLink,
     };
 
     // SMS
     const smsMessage = renderTemplate(
-      'Bonjour {{client_name}}, votre devis #{{devis_number}} est prêt. Montant: {{amount}}. Consultez-le: {{link}}',
+      'Bonjour {{client_name}}, votre devis #{{devis_number}} est prêt. Montant: {{amount}}. Signez en ligne: {{link}}',
       variables
     );
 
     // Email
     const emailHtml = renderTemplate(`
       <h2>Bonjour {{client_name}},</h2>
-      <p>Votre devis est prêt et disponible pour consultation.</p>
+      <p>Votre devis est prêt et disponible pour consultation et signature.</p>
       <div class="highlight">
         <p><strong>Devis #{{devis_number}}</strong></p>
         <p class="amount">{{amount}}</p>
       </div>
-      <p>Cliquez sur le bouton ci-dessous pour consulter et accepter votre devis :</p>
+      <p>Cliquez sur le bouton ci-dessous pour consulter et signer votre devis en ligne :</p>
       <center>
-        <a href="{{link}}" class="btn">Voir mon devis</a>
+        <a href="{{link}}" class="btn">Signer mon devis</a>
       </center>
       <p>Ce devis est valable 30 jours. N'hésitez pas à nous contacter pour toute question.</p>
     `, variables);

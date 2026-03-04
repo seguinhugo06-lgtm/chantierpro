@@ -12,8 +12,8 @@ export default function PortalLayout({ clientName, children }) {
   useEffect(() => {
     // Set page title
     document.title = clientName
-      ? `Espace Client - ${clientName} | ChantierPro`
-      : 'Espace Client | ChantierPro';
+      ? `Espace Client - ${clientName} | BatiGesti`
+      : 'Espace Client | BatiGesti';
 
     // Add noindex meta tag
     let metaRobots = document.querySelector('meta[name="robots"]');
@@ -26,7 +26,7 @@ export default function PortalLayout({ clientName, children }) {
 
     // Cleanup on unmount
     return () => {
-      document.title = 'ChantierPro';
+      document.title = 'BatiGesti';
       if (metaRobots) {
         metaRobots.content = 'index, follow';
       }
@@ -45,7 +45,7 @@ export default function PortalLayout({ clientName, children }) {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
-                ChantierPro
+                BatiGesti
               </span>
             </div>
 
@@ -69,7 +69,7 @@ export default function PortalLayout({ clientName, children }) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-slate-500">
-              &copy; {new Date().getFullYear()} ChantierPro. Tous droits reserves.
+              &copy; {new Date().getFullYear()} BatiGesti. Tous droits reserves.
             </p>
             <div className="flex items-center gap-6 text-sm text-slate-500">
               <a href="#" className="hover:text-orange-600 transition-colors">

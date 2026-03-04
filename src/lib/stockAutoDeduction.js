@@ -665,8 +665,8 @@ export async function handleDevisStatusChange(devisId, oldStatus, newStatus, use
 
   // Deduct when starting work
   if (
-    (newStatus === 'accepte' || newStatus === 'en_cours') &&
-    !['accepte', 'en_cours', 'facture', 'payee'].includes(oldStatus)
+    (newStatus === 'accepte' || newStatus === 'signe' || newStatus === 'en_cours') &&
+    !['accepte', 'signe', 'en_cours', 'facture', 'payee'].includes(oldStatus)
   ) {
     return await deductStockFromDevis(devisId, userId);
   }

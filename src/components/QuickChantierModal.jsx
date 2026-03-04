@@ -91,7 +91,7 @@ export default function QuickChantierModal({
   }, [isOpen, editChantier]);
 
   // MRU (Most Recently Used) clients from localStorage
-  const MRU_KEY = 'chantierpro_recent_clients';
+  const MRU_KEY = 'batigesti_recent_clients';
   const MAX_RECENT = 5;
 
   const getRecentClientIds = () => {
@@ -125,7 +125,7 @@ export default function QuickChantierModal({
   const selectedClient = clients.find(c => c.id === form.client_id);
 
   // Get devis for selected client (for budget suggestion)
-  const clientDevis = devis.filter(d => d.client_id === form.client_id && d.statut === 'accepte');
+  const clientDevis = devis.filter(d => d.client_id === form.client_id && ['accepte', 'signe'].includes(d.statut));
 
   const handleSubmit = (e) => {
     e?.preventDefault();

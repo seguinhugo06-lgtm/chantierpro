@@ -8,13 +8,29 @@ import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
 import './index.css'
 
-// Lazy load portal (separate from main app)
+// Lazy load portal, signature page, and payment page (separate from main app)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
+const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
+const FacturePaymentPage = lazy(() => import('./components/payment/FacturePaymentPage'))
 
 // Check if this is a portal URL
 function getPortalToken() {
   const path = window.location.pathname
   const match = path.match(/^\/portal\/([a-f0-9-]+)$/i)
+  return match ? match[1] : null
+}
+
+// Check if this is a signature URL: /devis/signer/{token}
+function getSignatureToken() {
+  const path = window.location.pathname
+  const match = path.match(/^\/devis\/signer\/([a-f0-9-]+)$/i)
+  return match ? match[1] : null
+}
+
+// Check if this is a payment URL: /facture/payer/{token}
+function getPaymentToken() {
+  const path = window.location.pathname
+  const match = path.match(/^\/facture\/payer\/([a-f0-9-]+)$/i)
   return match ? match[1] : null
 }
 
@@ -25,6 +41,8 @@ function shouldUseDemoData() {
 }
 
 const portalToken = getPortalToken()
+const signatureToken = getSignatureToken()
+const paymentToken = getPaymentToken()
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -40,15 +58,26 @@ if (isDemo) {
   console.log('🔐 Production mode - data from Supabase')
 }
 
-// Render portal or main app based on URL
+// Loading spinner component
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+  </div>
+)
+
+// Render payment page, signature page, portal, or main app based on URL
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {portalToken ? (
-      <Suspense fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-        </div>
-      }>
+    {paymentToken ? (
+      <Suspense fallback={<LoadingSpinner />}>
+        <FacturePaymentPage paymentToken={paymentToken} />
+      </Suspense>
+    ) : signatureToken ? (
+      <Suspense fallback={<LoadingSpinner />}>
+        <DevisSignaturePage signatureToken={signatureToken} />
+      </Suspense>
+    ) : portalToken ? (
+      <Suspense fallback={<LoadingSpinner />}>
         <ClientPortal accessToken={portalToken} />
       </Suspense>
     ) : (

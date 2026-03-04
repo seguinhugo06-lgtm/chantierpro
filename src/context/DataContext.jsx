@@ -13,7 +13,7 @@ import { isDemo, auth } from '../supabaseClient';
 const DataContext = createContext(null);
 
 // localStorage keys for demo mode persistence
-const DEMO_STORAGE_KEY = 'chantierpro_demo_data';
+const DEMO_STORAGE_KEY = 'batigesti_demo_data';
 
 // Cache for demo data to avoid multiple reads
 let cachedDemoData = null;
@@ -222,18 +222,42 @@ export function DataProvider({ children, initialData = {} }) {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        console.log('📥 Loading data from Supabase...');
+        console.log('Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
-          setClients(data.clients);
-          setChantiers(data.chantiers);
-          setDevis(data.devis);
-          setDepenses(data.depenses);
-          setEquipe(data.equipe);
-          setPointages(data.pointages);
-          setCatalogue(data.catalogue);
+          // --- DIAGNOSTIC: Validate data shapes to catch #310 ---
+          const validateDataArray = (arr, name, stringFields) => {
+            if (!Array.isArray(arr)) {
+              console.error(`[DIAGNOSTIC #310] ${name} is NOT an array!`, typeof arr, arr);
+              return [];
+            }
+            arr.forEach((item, i) => {
+              if (item && typeof item === 'object') {
+                stringFields.forEach(field => {
+                  if (item[field] != null && typeof item[field] === 'object') {
+                    console.error(
+                      `[DIAGNOSTIC #310] ${name}[${i}].${field} is an OBJECT!`,
+                      `Type: ${typeof item[field]}`,
+                      `IsArray: ${Array.isArray(item[field])}`,
+                      `Value:`, item[field],
+                      `Full item keys:`, Object.keys(item)
+                    );
+                  }
+                });
+              }
+            });
+            return arr;
+          };
+
+          setClients(validateDataArray(data.clients, 'clients', ['nom', 'prenom', 'email', 'telephone', 'adresse']));
+          setChantiers(validateDataArray(data.chantiers, 'chantiers', ['nom', 'description', 'adresse', 'ville', 'statut', 'type']));
+          setDevis(validateDataArray(data.devis, 'devis', ['numero', 'type', 'statut', 'date', 'objet', 'conditions']));
+          setDepenses(validateDataArray(data.depenses, 'depenses', ['description', 'categorie', 'fournisseur', 'date']));
+          setEquipe(validateDataArray(data.equipe, 'equipe', ['nom', 'prenom', 'role', 'email', 'telephone']));
+          setPointages(validateDataArray(data.pointages, 'pointages', ['date', 'description']));
+          setCatalogue(validateDataArray(data.catalogue, 'catalogue', ['nom', 'description', 'categorie', 'unite']));
           setDataLoaded(true);
-          console.log('✅ Data loaded from Supabase:', {
+          console.log('Data loaded from Supabase:', {
             clients: data.clients.length,
             chantiers: data.chantiers.length,
             devis: data.devis.length,

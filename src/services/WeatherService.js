@@ -10,7 +10,7 @@
  */
 
 // Cache weather data to avoid excessive API calls
-const WEATHER_CACHE_KEY = 'chantierpro_weather_cache';
+const WEATHER_CACHE_KEY = 'batigesti_weather_cache';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // OpenWeatherMap condition mapping

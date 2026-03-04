@@ -246,7 +246,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, className 
       }
 
       // Comptabilise CA (devis acceptés + factures)
-      if (d.statut === 'accepte' || d.type === 'facture') {
+      if (['accepte', 'signe'].includes(d.statut) || d.type === 'facture') {
         const date = new Date(d.date);
         const monthData = months.find(
           m => m.month === date.getMonth() && m.year === date.getFullYear()

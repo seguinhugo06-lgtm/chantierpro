@@ -28,6 +28,7 @@ import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
+import { safeString, validateRenderableFields } from './lib/formatters';
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -94,7 +95,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('chantierpro_onboarding_complete'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('batigesti_onboarding_complete'));
 
   // Settings state
   const [theme, setTheme] = useState('light');
@@ -132,6 +133,128 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
   useEffect(() => { try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); } }, [page]);
+
+  // Bank callback handler - detect /bank/callback?ref=xxx and process
+  useEffect(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+
+    if (path === '/bank/callback' && ref) {
+      // Clean URL immediately
+      window.history.replaceState({}, '', '/');
+      setPage('dashboard');
+
+      // Process the bank connection callback
+      import('./lib/integrations/gocardless').then(async ({ checkConnection }) => {
+        try {
+          const result = await checkConnection(ref);
+          if (result.status === 'linked') {
+            // Show success notification
+            console.log('[BANK] Connection successful:', result.details);
+          }
+        } catch (e) {
+          console.error('[BANK] Callback error:', e);
+        }
+      });
+    }
+  }, []);
+
+  // Generate notifications from data (with diagnostic logging for error #310)
+  useEffect(() => {
+    const notifs = [];
+    const now = new Date();
+
+    // --- DIAGNOSTIC: Validate data types before rendering ---
+    if (process.env.NODE_ENV === 'development' || true) {
+      // Check if any devis fields are objects when they should be strings
+      devis.forEach((d, i) => {
+        const stringFields = ['numero', 'type', 'statut', 'date', 'objet', 'titre', 'conditions'];
+        stringFields.forEach(field => {
+          if (d[field] != null && typeof d[field] === 'object') {
+            console.error(
+              `[DIAGNOSTIC #310] devis[${i}].${field} is an OBJECT!`,
+              `Type: ${typeof d[field]}`,
+              `IsArray: ${Array.isArray(d[field])}`,
+              `Value:`, d[field],
+              `Full devis:`, d
+            );
+          }
+        });
+      });
+      // Check entreprise fields
+      const entFields = ['nom', 'adresse', 'siret', 'tel', 'email', 'rcProValidite', 'decennaleValidite', 'couleur'];
+      entFields.forEach(field => {
+        if (entreprise[field] != null && typeof entreprise[field] === 'object') {
+          console.error(
+            `[DIAGNOSTIC #310] entreprise.${field} is an OBJECT!`,
+            `Type: ${typeof entreprise[field]}`,
+            `Value:`, entreprise[field]
+          );
+        }
+      });
+    }
+
+    // Overdue invoices (factures unpaid > 30 days)
+    devis.filter(d => d.type === 'facture' && d.statut !== 'payee').forEach(f => {
+      const days = Math.floor((now - new Date(f.date)) / 86400000);
+      if (days > 30) {
+        notifs.push({
+          id: `overdue-${safeString(f.id, 'unknown', 'notif.overdue.id')}`,
+          message: `Facture ${safeString(f.numero, '#', 'notif.overdue.numero')} impayee depuis ${days} jours`,
+          date: `${days}j de retard`,
+          read: false,
+          type: 'urgent'
+        });
+      }
+    });
+
+    // Stale devis (sent > 10 days without response)
+    devis.filter(d => d.type === 'devis' && d.statut === 'envoye').forEach(d => {
+      const days = Math.floor((now - new Date(d.date)) / 86400000);
+      if (days > 10) {
+        notifs.push({
+          id: `stale-${safeString(d.id, 'unknown', 'notif.stale.id')}`,
+          message: `Devis ${safeString(d.numero, '#', 'notif.stale.numero')} sans reponse depuis ${days} jours`,
+          date: 'A relancer',
+          read: false,
+          type: 'warning'
+        });
+      }
+    });
+
+    // Expired insurance
+    if (entreprise.rcProValidite && new Date(entreprise.rcProValidite) < now) {
+      notifs.push({ id: 'rc-expired', message: 'Votre assurance RC Pro est expiree', date: 'Action requise', read: false, type: 'urgent' });
+    }
+    if (entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) < now) {
+      notifs.push({ id: 'dec-expired', message: 'Votre assurance Decennale est expiree', date: 'Action requise', read: false, type: 'urgent' });
+    }
+
+    // Incomplete profile
+    const requiredFields = ['nom', 'adresse', 'siret', 'tel', 'email'];
+    const missingFields = requiredFields.filter(k => !entreprise[k] || String(entreprise[k]).trim() === '');
+    if (missingFields.length > 0) {
+      notifs.push({
+        id: 'profile-incomplete',
+        message: `${missingFields.length} champ${missingFields.length > 1 ? 's' : ''} obligatoire${missingFields.length > 1 ? 's' : ''} manquant${missingFields.length > 1 ? 's' : ''} dans votre profil`,
+        date: 'Parametres',
+        read: false,
+        type: 'info'
+      });
+    }
+
+    // Validate all notification fields are strings before setting state
+    const validatedNotifs = notifs.map(n =>
+      validateRenderableFields(n, ['id', 'message', 'date', 'type'], 'notification')
+    );
+
+    // Preserve read status from previous notifications
+    setNotifications(prev => {
+      const readIds = new Set(prev.filter(n => n.read).map(n => n.id));
+      return validatedNotifs.map(n => ({ ...n, read: readIds.has(n.id) }));
+    });
+  }, [devis, entreprise.rcProValidite, entreprise.decennaleValidite, entreprise.nom, entreprise.adresse, entreprise.siret, entreprise.tel, entreprise.email]);
 
   // Auth state listener - persists session across page refreshes
   useEffect(() => {
@@ -312,7 +435,7 @@ export default function App() {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
               <Building2 size={32} className="text-white" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-4">ChantierPro</h1>
+            <h1 className="text-5xl font-bold text-white mb-4">BatiGesti</h1>
             <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
             <div className="space-y-6">
               {[
@@ -340,7 +463,7 @@ export default function App() {
             <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
               <Building2 size={24} className="text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">ChantierPro</span>
+            <span className="text-2xl font-bold text-white">BatiGesti</span>
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
@@ -381,7 +504,7 @@ export default function App() {
               {!showSignUp && (
                 <button
                   type="button"
-                  onClick={() => showToast('Contactez support@chantierpro.fr', 'info')}
+                  onClick={() => showToast('Contactez support@batigesti.fr', 'info')}
                   className="text-sm text-slate-400 hover:text-orange-400 mt-2 transition-colors self-end"
                 >
                   Mot de passe oublié ?
@@ -490,13 +613,13 @@ export default function App() {
             <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-white font-semibold text-sm truncate">{entreprise.nom || 'ChantierPro'}</h1>
-            <p className="text-slate-500 text-xs truncate">{user?.email}</p>
+            <span className="text-white font-semibold text-sm truncate">{safeString(entreprise.nom, 'BatiGesti', 'sidebar.entreprise.nom')}</span>
+            <p className="text-slate-500 text-xs truncate">{safeString(user?.email, '', 'sidebar.user.email')}</p>
           </div>
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="lg:hidden p-2 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -511,7 +634,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: couleur} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
@@ -539,7 +662,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: couleur} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
@@ -551,11 +674,11 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-0.5">
+        <div className="relative z-10 flex-shrink-0 p-2 border-t border-slate-800 space-y-0.5">
           <div className="flex gap-1">
             <button
               onClick={() => setModeDiscret(!modeDiscret)}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
               title={modeDiscret ? 'Désactiver mode discret' : 'Activer mode discret'}
             >
               {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -563,7 +686,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
@@ -572,7 +695,7 @@ export default function App() {
           </div>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-red-900/50 hover:text-red-400 text-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] rounded-xl text-slate-400 hover:bg-red-900/50 hover:text-red-400 text-sm transition-colors"
           >
             <LogOut size={16} />
             <span>Déconnexion</span>
@@ -587,7 +710,7 @@ export default function App() {
           {/* Menu button - mobile only */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`lg:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+            className={`lg:hidden p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
             aria-label="Ouvrir le menu"
           >
             <Menu size={20} />
@@ -602,7 +725,7 @@ export default function App() {
               <Building2 size={16} className="text-white" />
             </div>
             <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
-              {entreprise.nom || 'ChantierPro'}
+              {safeString(entreprise.nom, 'BatiGesti', 'header.entreprise.nom')}
             </span>
           </div>
 
@@ -638,7 +761,7 @@ export default function App() {
           {/* Search button - mobile only (icon) */}
           <button
             onClick={() => setShowSearch(true)}
-            className={`md:hidden p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+            className={`md:hidden p-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
             aria-label="Rechercher"
           >
             <Search size={18} />
@@ -647,7 +770,7 @@ export default function App() {
           {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className={`hidden sm:flex p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400' : 'hover:bg-slate-200 text-slate-600'}`}
+            className={`hidden sm:flex p-2 rounded-xl min-w-[44px] min-h-[44px] items-center justify-center transition-all ${isDark ? 'hover:bg-slate-700 text-amber-400' : 'hover:bg-slate-200 text-slate-600'}`}
             title={isDark ? 'Mode clair' : 'Mode sombre'}
           >
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
@@ -745,8 +868,8 @@ export default function App() {
                           <div className="flex items-start gap-3">
                             {!n.read && <span className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: couleur}}></span>}
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${tc.text}`}>{n.message}</p>
-                              <p className={`text-xs mt-1 ${tc.textMuted}`}>{n.date}</p>
+                              <p className={`text-sm ${tc.text}`}>{safeString(n.message, '', 'notif.message')}</p>
+                              <p className={`text-xs mt-1 ${tc.textMuted}`}>{safeString(n.date, '', 'notif.date')}</p>
                             </div>
                           </div>
                         </div>
@@ -807,7 +930,7 @@ export default function App() {
         </header>
 
         {/* Page content */}
-        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto`}>
+        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} pb-20 lg:pb-0 ${tc.text} max-w-[1800px] mx-auto`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={events} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} entreprise={entreprise} getChantierBilan={getChantierBilan} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} />}
@@ -816,7 +939,7 @@ export default function App() {
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
-              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} couleur={couleur} isDark={isDark} />}
+              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} depenses={depenses} couleur={couleur} isDark={isDark} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
               {page === 'design-system' && <DesignSystemDemo />}
@@ -956,7 +1079,7 @@ export default function App() {
             {toast.type === 'error' && <AlertCircle size={18} />}
             {toast.type === 'warning' && <AlertCircle size={18} />}
             {toast.type === 'info' && <Info size={18} />}
-            <span className="text-sm font-medium">{toast.message}</span>
+            <span className="text-sm font-medium">{safeString(toast.message, '', 'toast.message')}</span>
             <button onClick={hideToast} className="ml-2 opacity-70 hover:opacity-100" aria-label="Fermer la notification">
               <X size={16} />
             </button>
@@ -1000,15 +1123,15 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const helpSections = {
     overview: {
       title: "Bienvenue",
-      titleFull: "Bienvenue dans ChantierPro",
+      titleFull: "Bienvenue dans BatiGesti",
       icon: "🏠",
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <p className={textSecondary}>BatiGesti est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>💡 Exemple concret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+              Jean, plombier, utilise BatiGesti pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -1114,7 +1237,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
         <div className="space-y-4">
           <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📱 Utilisez le sur mobile</h4>
-            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>ChantierPro fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>BatiGesti fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>🎨 Personnalisez</h4>
@@ -1143,7 +1266,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               </div>
               <div>
                 <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
-                <p className={`text-sm ${textSecondary}`}>Tout savoir sur ChantierPro</p>
+                <p className={`text-sm ${textSecondary}`}>Tout savoir sur BatiGesti</p>
               </div>
             </div>
             <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
@@ -1224,7 +1347,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const steps = [
     {
       icon: "👋",
-      title: "Bienvenue sur ChantierPro",
+      title: "Bienvenue sur BatiGesti",
       subtitle: "Votre assistant de gestion pour artisan",
       content: (
         <div className="space-y-4">
@@ -1366,12 +1489,12 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 

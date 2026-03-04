@@ -564,12 +564,12 @@ export function EncaisserModal({
                 <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
               </div>
               <div className="flex-1">
-                <h4 className={cn(
+                <h3 className={cn(
                   'font-semibold',
                   isDark ? 'text-red-400' : 'text-red-700'
                 )}>
                   Action requise
-                </h4>
+                </h3>
                 <p className={cn(
                   'text-sm mt-1',
                   isDark ? 'text-red-300' : 'text-red-600'

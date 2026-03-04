@@ -1,5 +1,5 @@
 /**
- * Module d'integration comptable pour ChantierPro
+ * Module d'integration comptable pour BatiGesti
  * Support: Pennylane, Indy, Qonto, export generique
  */
 
@@ -69,7 +69,7 @@ export const SYNC_STATUS = {
 /**
  * Stockage local des credentials (simule - en prod utiliser un vault securise)
  */
-const STORAGE_KEY = 'chantierpro_accounting_integrations';
+const STORAGE_KEY = 'batigesti_accounting_integrations';
 
 /**
  * Recupere les integrations configurees

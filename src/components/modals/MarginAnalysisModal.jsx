@@ -271,7 +271,7 @@ export function MarginAnalysisModal({
 
     // Get devis for this chantier
     const chantierDevis = devis.filter(d => d.chantier_id === chantierId);
-    const acceptedDevis = chantierDevis.find(d => d.statut === 'accepte' || d.statut === 'facture');
+    const acceptedDevis = chantierDevis.find(d => ['accepte', 'signe'].includes(d.statut) || d.statut === 'facture');
     const revenuPrevu = acceptedDevis?.total_ht || chantier.budget_estime || 0;
 
     // Get expenses for this chantier

@@ -287,7 +287,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     // CA par client (top client)
     const clientRevenue = {};
     devis.forEach(d => {
-      if (d.statut === 'accepte' || d.type === 'facture') {
+      if (['accepte', 'signe'].includes(d.statut) || d.type === 'facture') {
         clientRevenue[d.client_id] = (clientRevenue[d.client_id] || 0) + (d.total_ht || 0);
       }
     });
@@ -305,8 +305,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;
 
     // Conversion rate
-    const devisSent = devisOnly.filter(d => ['envoye', 'vu', 'accepte', 'refuse'].includes(d.statut)).length;
-    const devisAcceptes = devisOnly.filter(d => d.statut === 'accepte').length;
+    const devisSent = devisOnly.filter(d => ['envoye', 'vu', 'accepte', 'signe', 'refuse'].includes(d.statut)).length;
+    const devisAcceptes = devisOnly.filter(d => ['accepte', 'signe'].includes(d.statut)).length;
     const tauxConversion = devisSent > 0 ? Math.round((devisAcceptes / devisSent) * 100) : 0;
 
     // Factures

@@ -66,6 +66,8 @@ import {
   // Unified overview widget
   OverviewWidget,
   RevenueChartWidget,
+  // Bank Widget
+  BankWidget,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -78,6 +80,9 @@ import { Badge } from './ui/Badge';
 // Modals
 import { RelanceModal } from './modals/RelanceModal';
 import { MarginAnalysisModal } from './modals/MarginAnalysisModal';
+import RelancerDevisModal from './modals/RelancerDevisModal';
+import BankConnectionModal from './bank/BankConnectionModal';
+import BankTransactionsModal from './bank/BankTransactionsModal';
 
 // Services & Utils
 import { getPendingRelances, formatRelanceForDisplay } from '../services/RelanceService';
@@ -156,7 +161,7 @@ const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, 
             <Sparkles size={32} className="text-white" />
           </div>
           <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>
-            Bienvenue dans ChantierPro
+            Bienvenue dans BatiGesti
           </h1>
           <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>
             Votre assistant pour gérer devis, factures et chantiers. Commençons !
@@ -475,9 +480,15 @@ export default function Dashboard({
   const [kpiPeriod, setKpiPeriod] = useState('month'); // For KPI card period selector
   const [isLoading, setIsLoading] = useState(true);
   const [relanceModal, setRelanceModal] = useState({ isOpen: false, item: null });
+  const [relancerDevisModalOpen, setRelancerDevisModalOpen] = useState(false);
   const [encaisserModalOpen, setEncaisserModalOpen] = useState(false);
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
+  // Bank modals
+  const [bankConnectionModalOpen, setBankConnectionModalOpen] = useState(false);
+  const [bankTransactionsModalOpen, setBankTransactionsModalOpen] = useState(false);
+  const [bankConnection, setBankConnection] = useState(null);
+  const [bankTransactions, setBankTransactions] = useState([]);
 
   // Safe arrays
   const safeChantiers = chantiers || [];
@@ -510,14 +521,14 @@ export default function Dashboard({
       brouillon: devisOnly.filter((d) => d.statut === 'brouillon'),
       envoye: devisOnly.filter((d) => d.statut === 'envoye'),
       accepte: devisOnly.filter((d) =>
-        ['accepte', 'acompte_facture', 'facture'].includes(d.statut)
+        ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut)
       ),
       refuse: devisOnly.filter((d) => d.statut === 'refuse'),
     };
 
     // Financial stats
     const totalCA = safeDevis
-      .filter((d) => d.type === 'facture' || d.statut === 'accepte')
+      .filter((d) => d.type === 'facture' || ['accepte', 'signe'].includes(d.statut))
       .reduce((s, d) => s + (d.total_ht || 0), 0);
 
     const totalDep = safeDepenses.reduce((s, d) => s + (d.montant || 0), 0);
@@ -545,9 +556,11 @@ export default function Dashboard({
     const chantiersProspect = safeChantiers.filter((c) => c.statut === 'prospect').length;
     const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
-    // Devis stats - use total_ht for consistency (commercial potential is expressed in HT)
-    const devisEnAttente = devisPipeline.envoye.length;
-    const montantDevisEnAttente = devisPipeline.envoye.reduce((s, d) => s + (d.total_ht || 0), 0);
+    // Devis stats - include both "envoye" and "vu" (awaiting client response)
+    const devisVu = devisOnly.filter((d) => d.statut === 'vu');
+    const devisEnAttenteList = [...devisPipeline.envoye, ...devisVu];
+    const devisEnAttente = devisEnAttenteList.length;
+    const montantDevisEnAttente = devisEnAttenteList.reduce((s, d) => s + (d.total_ht || 0), 0);
 
     // Conversion rate
     const devisTotalEnvoyes =
@@ -564,7 +577,7 @@ export default function Dashboard({
           return (
             dd.getMonth() === targetMonth.getMonth() &&
             dd.getFullYear() === targetMonth.getFullYear() &&
-            (d.type === 'facture' || d.statut === 'accepte')
+            (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut))
           );
         })
         .reduce((s, d) => s + (d.total_ht || 0), 0);
@@ -660,6 +673,7 @@ export default function Dashboard({
       facturesEnAttente,
       facturesOverdue,
       devisPipeline,
+      devisEnAttenteList,
       isNewUser,
       hasRealData,
       lowStockItems,
@@ -681,13 +695,13 @@ export default function Dashboard({
       };
     }
 
-    if (stats.devisEnAttente > 3) {
+    if (stats.devisEnAttente > 0) {
       return {
         type: 'quote_pending',
-        title: `${stats.devisEnAttente} devis en attente`,
+        title: `${stats.devisEnAttente} devis en attente à relancer`,
         description: `Valeur potentielle : ${formatMoney(stats.montantDevisEnAttente)}`,
         ctaLabel: 'Relancer les devis',
-        ctaAction: () => setPage?.('devis'),
+        ctaAction: () => setRelancerDevisModalOpen(true),
       };
     }
 
@@ -731,8 +745,49 @@ export default function Dashboard({
       weatherForecasts: [],
     };
 
-    return generateSuggestionsFromContext(context);
-  }, [stats, safeChantiers, getChantierBilan]);
+    const baseSuggestions = generateSuggestionsFromContext(context);
+
+    // Add sous-traitant compliance alerts
+    const sousTraitants = equipe.filter(e => e.type === 'sous_traitant');
+    if (sousTraitants.length > 0) {
+      const now = new Date();
+      const in30Days = new Date(now.getTime() + 30 * 86400000);
+      const sixMonthsAgo = new Date(now.getTime() - 6 * 30 * 86400000);
+
+      const criticalST = sousTraitants.filter(st =>
+        st.decennale_expiration && new Date(st.decennale_expiration) < now
+      );
+      const warningST = sousTraitants.filter(st =>
+        (st.decennale_expiration && new Date(st.decennale_expiration) >= now && new Date(st.decennale_expiration) < in30Days) ||
+        (st.urssaf_date && new Date(st.urssaf_date) < sixMonthsAgo)
+      );
+
+      if (criticalST.length > 0) {
+        baseSuggestions.unshift({
+          id: 'st-critical',
+          type: 'sous_traitant_alert',
+          priority: 'high',
+          title: `Assurance${criticalST.length > 1 ? 's' : ''} sous-traitant${criticalST.length > 1 ? 's' : ''} expiree${criticalST.length > 1 ? 's' : ''}`,
+          description: `${criticalST.map(st => st.entreprise || st.nom).join(', ')} - decennale expiree`,
+          ctaLabel: 'Voir les sous-traitants',
+          ctaPage: 'equipe',
+        });
+      }
+      if (warningST.length > 0) {
+        baseSuggestions.push({
+          id: 'st-warning',
+          type: 'sous_traitant_alert',
+          priority: 'medium',
+          title: `${warningST.length} sous-traitant${warningST.length > 1 ? 's' : ''} a verifier`,
+          description: 'Documents bientot expires ou attestation URSSAF a renouveler',
+          ctaLabel: 'Verifier',
+          ctaPage: 'equipe',
+        });
+      }
+    }
+
+    return baseSuggestions;
+  }, [stats, safeChantiers, getChantierBilan, equipe]);
 
   // ============ RECENT ACTIVITY ============
 
@@ -1001,7 +1056,7 @@ export default function Dashboard({
                           .filter(d => {
                             const dd = new Date(d.date);
                             return dd.getFullYear() === now.getFullYear() &&
-                                   (d.type === 'facture' || d.statut === 'accepte');
+                                   (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
                           })
                           .reduce((s, d) => s + (d.total_ht || 0), 0);
                       })()
@@ -1011,7 +1066,7 @@ export default function Dashboard({
                           .filter(d => {
                             const dd = new Date(d.date);
                             return dd.getFullYear() >= now.getFullYear() - 4 &&
-                                   (d.type === 'facture' || d.statut === 'accepte');
+                                   (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
                           })
                           .reduce((s, d) => s + (d.total_ht || 0), 0);
                       })(),
@@ -1043,7 +1098,7 @@ export default function Dashboard({
                         const dd = new Date(d.date);
                         return dd.getMonth() === targetMonth.getMonth() &&
                                dd.getFullYear() === targetMonth.getFullYear() &&
-                               (d.type === 'facture' || d.statut === 'accepte');
+                               (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
                       })
                       .reduce((s, d) => s + (d.total_ht || 0), 0);
                     return { value: monthCA };
@@ -1058,7 +1113,7 @@ export default function Dashboard({
                         const dd = new Date(d.date);
                         return dd.getMonth() === targetMonth.getMonth() &&
                                dd.getFullYear() === targetMonth.getFullYear() &&
-                               (d.type === 'facture' || d.statut === 'accepte');
+                               (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
                       })
                       .reduce((s, d) => s + (d.total_ht || 0), 0);
                     return { value: monthCA };
@@ -1072,7 +1127,7 @@ export default function Dashboard({
                       .filter(d => {
                         const dd = new Date(d.date);
                         return dd.getFullYear() === targetYear &&
-                               (d.type === 'facture' || d.statut === 'accepte');
+                               (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
                       })
                       .reduce((s, d) => s + (d.total_ht || 0), 0);
                     return { value: yearCA };
@@ -1190,6 +1245,13 @@ export default function Dashboard({
               onActivityClick={handleActivityClick}
             />
 
+            {/* Bank Widget */}
+            <BankWidget
+              isDark={isDark}
+              onConnectBank={() => setBankConnectionModalOpen(true)}
+              onViewTransactions={() => setBankTransactionsModalOpen(true)}
+            />
+
             {/* Weather Alerts */}
             <WeatherAlertsWidget
               setPage={setPage}
@@ -1216,6 +1278,39 @@ export default function Dashboard({
         onSuccess={() => {
           setRelanceModal({ isOpen: false, item: null });
         }}
+      />
+
+      {/* Relancer Devis Modal - bulk devis follow-up */}
+      <RelancerDevisModal
+        isOpen={relancerDevisModalOpen}
+        onClose={() => setRelancerDevisModalOpen(false)}
+        pendingDevis={stats.devisEnAttenteList || []}
+        clients={safeClients}
+        isDark={isDark}
+        onRelanceSingle={(devis) => {
+          const client = safeClients.find(c => c.id === devis.client_id);
+          setRelancerDevisModalOpen(false);
+          setRelanceModal({
+            isOpen: true,
+            item: {
+              type: 'devis',
+              id: devis.id,
+              numero: devis.numero,
+              client: {
+                nom: client?.nom || 'Client',
+                email: client?.email,
+                telephone: client?.telephone,
+              },
+              montant: devis.total_ttc || 0,
+              dateEnvoi: devis.date,
+            },
+          });
+        }}
+        onOpenQuickActions={(devis) => {
+          setSelectedDevis?.(devis);
+          setPage?.('devis');
+        }}
+        onViewAllDevis={() => setPage?.('devis')}
       />
 
       {/* À Encaisser Modal */}
@@ -1271,7 +1366,7 @@ export default function Dashboard({
                 const dd = new Date(d.date);
                 return dd.getMonth() === targetMonth.getMonth() &&
                        dd.getFullYear() === targetMonth.getFullYear() &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                       (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
               })
               .reduce((s, d) => s + (d.total_ht || 0), 0);
             return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
@@ -1288,7 +1383,7 @@ export default function Dashboard({
                 const dd = new Date(d.date);
                 return dd.getMonth() === targetMonth.getMonth() &&
                        dd.getFullYear() === targetMonth.getFullYear() &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                       (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
               })
               .reduce((s, d) => s + (d.total_ht || 0), 0);
             return { label: MONTH_NAMES[targetMonth.getMonth()], revenue: monthCA };
@@ -1303,7 +1398,7 @@ export default function Dashboard({
               .filter(d => {
                 const dd = new Date(d.date);
                 return dd.getFullYear() === targetYear &&
-                       (d.type === 'facture' || d.statut === 'accepte');
+                       (d.type === 'facture' || ['accepte', 'signe'].includes(d.statut));
               })
               .reduce((s, d) => s + (d.total_ht || 0), 0);
             return { label: targetYear.toString(), revenue: yearCA };
@@ -1366,6 +1461,28 @@ export default function Dashboard({
         }}
         isDark={isDark}
         modeDiscret={modeDiscret}
+      />
+
+      {/* Bank Connection Modal */}
+      <BankConnectionModal
+        isOpen={bankConnectionModalOpen}
+        onClose={() => setBankConnectionModalOpen(false)}
+        onConnected={() => {
+          setBankConnectionModalOpen(false);
+        }}
+        isDark={isDark}
+      />
+
+      {/* Bank Transactions Modal */}
+      <BankTransactionsModal
+        isOpen={bankTransactionsModalOpen}
+        onClose={() => setBankTransactionsModalOpen(false)}
+        transactions={bankTransactions}
+        connection={bankConnection}
+        isDark={isDark}
+        onSync={async () => {
+          // Reload will happen from the widget
+        }}
       />
     </div>
   );

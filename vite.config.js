@@ -15,8 +15,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'offline.html'],
       manifest: {
-        name: 'ChantierPro',
-        short_name: 'ChantierPro',
+        name: 'BatiGesti',
+        short_name: 'BatiGesti',
         description: 'Gestion devis et facturation pour artisans BTP',
         theme_color: '#f97316',
         background_color: '#0f172a',

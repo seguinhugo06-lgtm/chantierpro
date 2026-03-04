@@ -184,7 +184,7 @@ export function emailWeatherAlert({ chantier, weather, impact, suggestion, compa
           <!-- Footer -->
           <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-              ${company?.nom || 'ChantierPro'} - Gestion de chantiers
+              ${company?.nom || 'BatiGesti'} - Gestion de chantiers
             </p>
             <p style="margin: 5px 0 0; color: #9ca3af; font-size: 12px;">
               Cet email a été envoyé automatiquement suite à une alerte météo.
@@ -286,7 +286,7 @@ export function emailChantierRescheduled({ chantier, originalDate, newDate, weat
           <!-- Footer -->
           <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-              ${company?.nom || 'ChantierPro'} - Gestion de chantiers
+              ${company?.nom || 'BatiGesti'} - Gestion de chantiers
             </p>
             <p style="margin: 5px 0 0; color: #9ca3af; font-size: 12px;">
               Si vous avez des questions, n'hésitez pas à nous contacter.
@@ -333,7 +333,7 @@ export function emailClientRescheduleNotification({ client, chantier, originalDa
           <!-- Header -->
           <div style="background-color: #1f2937; padding: 30px; text-align: center;">
             ${company?.logo ? `<img src="${company.logo}" alt="${company.nom}" style="height: 40px; margin-bottom: 10px;">` : ''}
-            <h1 style="color: white; margin: 0; font-size: 20px;">${company?.nom || 'ChantierPro'}</h1>
+            <h1 style="color: white; margin: 0; font-size: 20px;">${company?.nom || 'BatiGesti'}</h1>
           </div>
 
           <!-- Content -->
@@ -369,7 +369,7 @@ export function emailClientRescheduleNotification({ client, chantier, originalDa
 
             <p style="margin-top: 30px;">
               Cordialement,<br>
-              <strong>${company?.nom || 'L\'équipe ChantierPro'}</strong>
+              <strong>${company?.nom || 'L\'équipe BatiGesti'}</strong>
             </p>
           </div>
 
@@ -415,7 +415,7 @@ export function smsWeatherAlert({ chantier, weather, impact, company }) {
     weatherStr += `vent ${Math.round(weather.wind_speed * 3.6)}km/h`;
   }
 
-  return `[${company?.nom || 'ChantierPro'}] ALERTE METEO ${impactLabel}
+  return `[${company?.nom || 'BatiGesti'}] ALERTE METEO ${impactLabel}
 Chantier: ${chantier.nom}
 Date: ${dateStr}
 Meteo: ${weatherStr || 'conditions defavorables'}
@@ -438,7 +438,7 @@ export function smsChantierRescheduled({ chantier, originalDate, newDate, compan
   const origStr = `${origDate.getDate()}/${origDate.getMonth() + 1}`;
   const newStr = `${newD.getDate()}/${newD.getMonth() + 1}`;
 
-  return `[${company?.nom || 'ChantierPro'}] REPORT CHANTIER
+  return `[${company?.nom || 'BatiGesti'}] REPORT CHANTIER
 ${chantier.nom}
 ${origStr} -> ${newStr}
 Raison: meteo defavorable`;
@@ -460,7 +460,7 @@ export function smsClientRescheduleNotification({ client, chantier, newDate, com
 
   return `Bonjour${client.prenom ? ' ' + client.prenom : ''},
 Votre chantier "${chantier.nom}" est reporte au ${newStr} (meteo). Merci de votre comprehension.
-${company?.nom || 'ChantierPro'}`;
+${company?.nom || 'BatiGesti'}`;
 }
 
 /**

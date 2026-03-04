@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle } from 'lucide-react';
+import { Plus, ArrowLeft, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Briefcase } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -8,6 +8,7 @@ import { getTaskTemplatesForMetier, QUICK_TASKS, suggestTasksFromDevis, PHASES, 
 import TaskGeneratorModal from './TaskGeneratorModal';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
+import EmptyState from './ui/EmptyState';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -64,7 +65,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [editingChantier, setEditingChantier] = useState(null); // Chantier being edited
   const [activeTab, setActiveTab] = useState('finances');
     const [newTache, setNewTache] = useState('');
-  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+  const [newDepense, setNewDepense] = useState({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', sousTraitantId: '' });
   const [showAjustement, setShowAjustement] = useState(null);
   const [showMODetail, setShowMODetail] = useState(false);
   const [showAddMO, setShowAddMO] = useState(false);
@@ -131,10 +132,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       description: newDepense.description + (qty > 1 ? ` (x${qty})` : ''),
       montant: parseFloat(newDepense.montant),
       categorie: newDepense.categorie,
+      sousTraitantId: newDepense.sousTraitantId || null,
       date: new Date().toISOString().split('T')[0]
     }]);
     if (newDepense.catalogueId && deductStock) deductStock(newDepense.catalogueId, qty);
-    setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+    setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', sousTraitantId: '' });
     setShowQuickMateriau(false);
   };
   const handleAddAjustement = () => { if (!adjForm.libelle || !adjForm.montant_ht) return; addAjustement({ chantierId: view, type: showAjustement, libelle: adjForm.libelle, montant_ht: parseFloat(adjForm.montant_ht) }); setAdjForm({ libelle: '', montant_ht: '' }); setShowAjustement(null); };
@@ -195,8 +197,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
         {/* Header */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
-          <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold truncate ${textPrimary}`}>{ch.nom}</h1></div>
+          <button onClick={() => { setView(null); setSelectedChantier?.(null); }} className={`flex-shrink-0 p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}><ArrowLeft size={20} className={textPrimary} /></button>
+          <div className="flex-1 min-w-0"><h1 className={`text-lg sm:text-2xl font-bold break-words ${textPrimary}`}>{ch.nom}</h1></div>
+          <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setEditingChantier(ch)}
             className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center`}
@@ -226,6 +229,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <option key={status} value={status}>{CHANTIER_STATUS_LABELS[status]}</option>
             ))}
           </select>
+          </div>
         </div>
 
         {/* === SECTION: CLIENT & ADRESSE === */}
@@ -651,6 +655,12 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <span className={`text-sm ${textSecondary} flex items-center gap-2`}><UserCog size={16} /> Main d'oeuvre ({bilan.heuresTotal}h)</span>
                   <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutMO)}</span>
                 </div>
+                {(bilan.coutSousTraitance || 0) > 0 && (
+                  <div className="flex justify-between items-center min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5">
+                    <span className={`text-sm ${textSecondary} flex items-center gap-2`}><Briefcase size={16} /> Sous-traitance</span>
+                    <span className={`font-semibold ${textPrimary}`}>{formatMoney(bilan.coutSousTraitance)}</span>
+                  </div>
+                )}
                 {(bilan.coutAutres || 0) > 0 && (
                   <div className="flex justify-between items-center cursor-pointer hover:opacity-80 min-h-[44px] py-2 px-2 -mx-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setShowAjustement('DEPENSE')}>
                     <span className={`text-sm ${textSecondary}`}>Autres frais</span>
@@ -796,7 +806,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             )}
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <h3 className={`font-semibold mb-4 ${textPrimary}`}>Dépenses Matériaux</h3>
-              <div className="space-y-2 mb-4">{chDepenses.map(d => (<div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}><span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span><span className={`flex-1 ${textPrimary}`}>{d.description}</span><span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{d.categorie}</span><span className="font-bold text-red-500">{formatMoney(d.montant)}</span></div>))}{chDepenses.length === 0 && <p className={`text-center py-4 ${textMuted}`}>Aucune dépense</p>}</div>
+              <div className="space-y-2 mb-4">{chDepenses.map(d => {
+                const st = d.sousTraitantId ? equipe.find(e => e.id === d.sousTraitantId) : null;
+                return (
+                  <div key={d.id} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <span className={`text-sm w-24 ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</span>
+                    <span className={`flex-1 ${textPrimary}`}>{d.description}</span>
+                    {st && <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">{st.entreprise || st.nom}</span>}
+                    <span className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{d.categorie}</span>
+                    <span className="font-bold text-red-500">{formatMoney(d.montant)}</span>
+                  </div>
+                );
+              })}{chDepenses.length === 0 && <EmptyState compact illustration="receipt" title="Aucune dépense" description="Suivez vos dépenses matériaux et main d'oeuvre" isDark={isDark} couleur={couleur} />}</div>
               <div className="flex gap-2 flex-wrap">
                 <select value={newDepense.catalogueId} onChange={e => { const item = catalogue?.find(c => c.id === e.target.value); if (item) setNewDepense(p => ({...p, catalogueId: e.target.value, description: item.nom, montant: item.prixAchat?.toString() || '' })); }} className={`px-3 py-2.5 border rounded-xl text-sm ${inputBg}`}><option value="">Catalogue...</option>{catalogue?.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat}€)</option>)}</select>
                 <input placeholder="Ex: Carrelage, Peinture murale..." value={newDepense.description} onChange={e => setNewDepense(p => ({...p, description: e.target.value}))} className={`flex-1 min-w-[150px] px-4 py-2.5 border rounded-xl ${inputBg}`} />
@@ -834,21 +855,20 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
             {/* Photos grid with timestamp badges */}
             {(!ch.photos || ch.photos.length === 0) ? (
-              <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50 border border-dashed border-slate-300'}`}>
-                <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                  <Camera size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                </div>
-                <p className={`font-semibold mb-1 ${textPrimary}`}>Documentez votre chantier</p>
-                <p className={`text-sm mb-4 ${textMuted}`}>Les photos horodatées sont essentielles en cas de litige</p>
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'travaux')} />
-                  <span
-                    className="inline-flex items-center gap-2 px-5 min-h-[48px] rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: couleur }}
-                  >
-                    <Camera size={18} /> Prendre une photo
-                  </span>
-                </label>
+              <div className={`rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50 border border-dashed border-slate-300'}`}>
+                <EmptyState
+                  compact
+                  illustration="camera"
+                  title="Prenez des photos pour documenter l'avancement"
+                  description="Les photos horodatées sont essentielles en cas de litige"
+                  isDark={isDark}
+                  couleur={couleur}
+                  action={{
+                    label: '📷 Ajouter une photo',
+                    onClick: () => document.getElementById('empty-photo-input')?.click()
+                  }}
+                />
+                <input id="empty-photo-input" type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handlePhotoAdd(e, 'travaux')} />
               </div>
             ) : (
               <div className="space-y-5">
@@ -895,7 +915,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         {activeTab === 'notes' && (
           <div className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><StickyNote size={18} /> Notes</h3>
-            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={6} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="Contraintes d'accès, contacts sur site, détails importants..." />
+            {!ch.notes && (
+              <EmptyState
+                compact
+                illustration="pencil"
+                title="Notez les points importants de ce chantier"
+                description="Contraintes d'accès, contacts sur site, consignes..."
+                isDark={isDark}
+                couleur={couleur}
+                className="mb-4"
+              />
+            )}
+            <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={ch.notes ? 6 : 3} value={ch.notes || ''} onChange={e => updateChantier(ch.id, { notes: e.target.value })} placeholder="✏️ Écrire une note..." />
           </div>
         )}
 
@@ -907,10 +938,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             {/* Existing messages */}
             <div className="space-y-3 mb-4">
               {(!ch.messages || ch.messages.length === 0) ? (
-                <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-                  <MessageSquare size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                  <p className={textMuted}>Aucun échange enregistré</p>
-                </div>
+                <EmptyState
+                  compact
+                  illustration="chat"
+                  title="Communiquez avec votre équipe sur ce chantier"
+                  description="Centralisez vos emails, SMS et appels pour un meilleur suivi"
+                  isDark={isDark}
+                  couleur={couleur}
+                />
               ) : (
                 ch.messages.map(msg => (
                   <div key={msg.id} className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -1175,7 +1210,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Catégorie</label>
-                  <select className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value}))}>
+                  <select className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.categorie} onChange={e => setNewDepense(p => ({...p, categorie: e.target.value, sousTraitantId: e.target.value !== 'Sous-traitance' ? '' : p.sousTraitantId}))}>
                     <option value="Matériaux">Matériaux</option>
                     <option value="Outillage">Outillage</option>
                     <option value="Location">Location</option>
@@ -1184,12 +1219,39 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <option value="Autre">Autre</option>
                   </select>
                 </div>
+
+                {/* Sous-traitant dropdown when category is Sous-traitance */}
+                {newDepense.categorie === 'Sous-traitance' && (() => {
+                  const sousTraitants = equipe.filter(e => e.type === 'sous_traitant');
+                  return sousTraitants.length > 0 ? (
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Sous-traitant</label>
+                      <select className={`w-full px-4 py-3 border rounded-xl min-h-[48px] ${inputBg}`} value={newDepense.sousTraitantId} onChange={e => setNewDepense(p => ({...p, sousTraitantId: e.target.value}))}>
+                        <option value="">Selectionner un sous-traitant...</option>
+                        {sousTraitants.map(st => (
+                          <option key={st.id} value={st.id}>{st.entreprise || st.nom}{st.specialite ? ` (${st.specialite})` : ''}</option>
+                        ))}
+                      </select>
+                      {newDepense.sousTraitantId && (() => {
+                        const st = sousTraitants.find(s => s.id === newDepense.sousTraitantId);
+                        if (st?.decennale_expiration && new Date(st.decennale_expiration) < new Date()) {
+                          return (
+                            <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                              <AlertTriangle size={12} /> Assurance decennale expiree !
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               {/* Action buttons - Big touch targets */}
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' }); }}
+                  onClick={() => { setShowQuickMateriau(false); setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', sousTraitantId: '' }); }}
                   className={`flex-1 px-4 py-3 rounded-xl min-h-[52px] font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                 >
                   Annuler
@@ -1214,7 +1276,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   // Simulate urgent notification (in real app would send push/SMS)
                   showToast?.(`🚨 Demande urgente envoyée: ${newDepense.description}`, 'success');
                   setShowQuickMateriau(false);
-                  setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '' });
+                  setNewDepense({ description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', sousTraitantId: '' });
                 }}
                 disabled={!newDepense.description}
                 className={`w-full mt-3 px-4 py-3 rounded-xl min-h-[52px] font-semibold border-2 transition-all disabled:opacity-50 ${
@@ -1239,7 +1301,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <div className="flex items-center justify-between"><div className="flex items-center gap-3"><span>{p.approuve ? '[OK]' : '⏳'}</span>{p.manuel && <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded">Manuel</span>}{p.verrouille && <span className="text-xs bg-slate-400 text-white px-2 py-0.5 rounded"></span>}</div>{!p.verrouille && <button onClick={() => deletePointage(p.id)} className="text-red-400"></button>}</div>
                   <div className="grid grid-cols-4 gap-2 mt-2 text-sm"><div><p className="text-xs text-slate-500">Date</p><input type="date" value={p.date} onChange={e => handleEditPointage(p.id, 'date', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded text-xs" /></div><div><p className="text-xs text-slate-500">Employé</p><p className="font-medium">{emp?.nom}</p></div><div><p className="text-xs text-slate-500">Heures</p><input type="number" step="0.5" value={p.heures} onChange={e => handleEditPointage(p.id, 'heures', e.target.value)} disabled={p.verrouille} className="w-full px-2 py-1 border rounded" /></div><div><p className="text-xs text-slate-500">Coût</p><p className="font-bold text-blue-600">{formatMoney(p.heures * cout)}</p></div></div>
                 </div>
-              ); })}{chPointages.length === 0 && <p className="text-center text-slate-400 py-4">Aucun pointage</p>}</div>
+              ); })}{chPointages.length === 0 && <EmptyState compact illustration="clock" title="Aucun pointage" description="Les pointages apparaîtront ici une fois saisis" isDark={isDark} couleur={couleur} />}</div>
               <div className="border-t pt-4 flex justify-between items-center"><span className="font-semibold">Total</span><span className="text-xl font-bold text-blue-600">{formatMoney(bilan.coutMO)}</span></div>
               <button onClick={() => setShowMODetail(false)} className={`w-full mt-4 py-2 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Fermer</button>
             </div>
@@ -1587,63 +1649,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
       )}
 
       {chantiers.length === 0 ? (
-        <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-          {/* Header with gradient */}
-          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-
-            <div className="relative">
-              {/* Icon */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-                <Building2 size={40} className="text-white" />
-              </div>
-
-              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Commencez à suivre vos chantiers</h2>
-              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-                Gérez vos projets, suivez vos dépenses et contrôlez votre rentabilité en temps réel.
-              </p>
-            </div>
-          </div>
-
-          {/* Features grid */}
-          <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-            <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <DollarSign size={18} style={{ color: couleur }} />
-                </div>
-                <div>
-                  <p className={`font-medium text-sm ${textPrimary}`}>Suivi financier</p>
-                  <p className={`text-xs ${textMuted}`}>Dépenses, revenus et marge</p>
-                </div>
-              </div>
-              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <Camera size={18} style={{ color: couleur }} />
-                </div>
-                <div>
-                  <p className={`font-medium text-sm ${textPrimary}`}>Carnet photos</p>
-                  <p className={`text-xs ${textMuted}`}>Avant, pendant, après</p>
-                </div>
-              </div>
-              <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                  <CheckSquare size={18} style={{ color: couleur }} />
-                </div>
-                <div>
-                  <p className={`font-medium text-sm ${textPrimary}`}>Liste de tâches</p>
-                  <p className={`text-xs ${textMuted}`}>Suivez l'avancement</p>
-                </div>
-              </div>
-            </div>
-
-            <button onClick={() => setShow(true)} className="w-full sm:w-auto px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-              <Plus size={18} />
-              Créer mon premier chantier
-            </button>
-          </div>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="Commencez à suivre vos chantiers"
+          description="Gérez vos projets, suivez vos dépenses et contrôlez votre rentabilité en temps réel."
+          isDark={isDark}
+          couleur={couleur}
+          features={[
+            { icon: DollarSign, title: 'Suivi financier', description: 'Dépenses, revenus et marge' },
+            { icon: Camera, title: 'Carnet photos', description: 'Avant, pendant, après' },
+            { icon: CheckSquare, title: 'Liste de tâches', description: "Suivez l'avancement" }
+          ]}
+          action={{ label: 'Créer mon premier chantier', icon: Plus, onClick: () => setShow(true) }}
+        />
       ) : (
         <>
           {/* En Cours Card - Simplified: Progression, Équipe, Tasks only */}
@@ -2031,28 +2049,16 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
 
                 {/* Empty state with CTA */}
                 {tasks.length === 0 && (
-                  <div className={`text-center py-8 px-4 rounded-xl ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
-                    <div className={`w-14 h-14 mx-auto mb-4 rounded-xl flex items-center justify-center ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                      <CheckSquare size={24} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                    </div>
-                    <p className={`font-semibold mb-1 ${textPrimary}`}>Aucune tâche définie</p>
-                    <p className={`text-sm mb-4 ${textMuted}`}>Les tâches vous aident à suivre l'avancement du chantier</p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      <button
-                        onClick={() => setShowTaskTemplates(true)}
-                        className="px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 text-white transition-all hover:opacity-90"
-                        style={{ background: couleur }}
-                      >
-                        <Sparkles size={16} /> Utiliser un modèle
-                      </button>
-                      <button
-                        onClick={() => document.querySelector('input[placeholder="Ajouter une tâche..."]')?.focus()}
-                        className={`px-4 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
-                      >
-                        <Plus size={16} /> Créer manuellement
-                      </button>
-                    </div>
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={CheckSquare}
+                    title="Aucune tâche définie"
+                    description="Les tâches vous aident à suivre l'avancement du chantier"
+                    isDark={isDark}
+                    couleur={couleur}
+                    action={{ label: 'Utiliser un modèle', icon: Sparkles, onClick: () => setShowTaskTemplates(true) }}
+                    secondaryAction={{ label: 'Créer manuellement', icon: Plus, onClick: () => document.querySelector('input[placeholder="Ajouter une tâche..."]')?.focus() }}
+                  />
                 )}
               </div>
 

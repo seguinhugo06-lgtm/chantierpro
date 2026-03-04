@@ -1,9 +1,9 @@
 /**
- * Module de synchronisation offline pour ChantierPro
+ * Module de synchronisation offline pour BatiGesti
  * Gere la file d'attente des mutations et la synchronisation automatique
  */
 
-const DB_NAME = 'chantierpro-offline';
+const DB_NAME = 'batigesti-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'pending-mutations';
 
@@ -182,12 +182,12 @@ export const registerNetworkListeners = (onOnline, onOffline) => {
   if (typeof window === 'undefined') return () => {};
 
   const handleOnline = () => {
-    console.log('ChantierPro: Retour en ligne, synchronisation...');
+    console.log('BatiGesti: Retour en ligne, synchronisation...');
     onOnline?.();
   };
 
   const handleOffline = () => {
-    console.log('ChantierPro: Passage hors ligne');
+    console.log('BatiGesti: Passage hors ligne');
     onOffline?.();
   };
 

@@ -288,7 +288,7 @@ export function useDashboardStats({ chantiers, devis, depenses, clients }) {
     // Devis stats
     const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon').length;
     const devisEnvoyes = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
-    const devisAcceptes = devis.filter(d => d.type === 'devis' && d.statut === 'accepte').length;
+    const devisAcceptes = devis.filter(d => d.type === 'devis' && ['accepte', 'signe'].includes(d.statut)).length;
 
     // Revenue this month
     const now = new Date();

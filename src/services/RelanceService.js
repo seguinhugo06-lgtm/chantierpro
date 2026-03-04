@@ -26,7 +26,7 @@ Je me permets de vous rappeler que la facture {numero} d'un montant de {montant}
 Pour votre commodite, vous trouverez ci-joint une copie de la facture.
 
 Merci de proceder au reglement dans les meilleurs delais.
-
+{lien_paiement}
 Bien cordialement,
 {entreprise_nom}
 {entreprise_telephone}`,
@@ -46,11 +46,11 @@ Sauf erreur de notre part, nous n'avons pas encore recu le reglement de la factu
 Nous vous remercions de bien vouloir proceder au reglement sous 8 jours.
 
 En cas de difficulte, n'hesitez pas a nous contacter pour trouver une solution ensemble.
-
+{lien_paiement}
 Cordialement,
 {entreprise_nom}
 {entreprise_telephone}`,
-    sms: 'Rappel: Facture {numero} de {montant}EUR echue. Merci de regulariser. {entreprise_nom}',
+    sms: 'Rappel: Facture {numero} de {montant}EUR echue. Merci de regulariser.{sms_lien_paiement} {entreprise_nom}',
     priority: 'medium'
   },
 
@@ -66,12 +66,12 @@ Malgre nos precedents rappels, la facture {numero} d'un montant de {montant} EUR
 Cette situation nous cause un prejudice financier important.
 
 Nous vous demandons de proceder au reglement immediat ou de nous contacter sous 48h pour convenir d'un echeancier.
-
+{lien_paiement}
 A defaut de reponse, nous serons contraints d'engager des demarches de recouvrement.
 
 {entreprise_nom}
 {entreprise_telephone}`,
-    sms: 'URGENT: Facture {numero} impayee depuis 30j. Reglement immediat requis. Contactez-nous: {entreprise_telephone}',
+    sms: 'URGENT: Facture {numero} impayee depuis 30j. Reglement immediat requis.{sms_lien_paiement} Contactez-nous: {entreprise_telephone}',
     priority: 'high'
   },
 
@@ -158,7 +158,8 @@ export function getNextRelance(facture, relancesEnvoyees = []) {
  * @param {Object} entreprise - Company settings
  * @returns {Object} Generated content { subject, body, sms }
  */
-export function generateRelanceContent(template, facture, client, entreprise) {
+export function generateRelanceContent(template, facture, client, entreprise, options = {}) {
+  const { lienPaiement } = options;
   const replacements = {
     '{numero}': facture.numero || 'N/A',
     '{montant}': (facture.total_ttc || 0).toLocaleString('fr-FR'),
@@ -179,7 +180,9 @@ export function generateRelanceContent(template, facture, client, entreprise) {
     '{entreprise_telephone}': entreprise?.telephone || '',
     '{entreprise_email}': entreprise?.email || '',
     '{entreprise_siret}': entreprise?.siret || '',
-    '{entreprise_adresse}': entreprise?.adresse || ''
+    '{entreprise_adresse}': entreprise?.adresse || '',
+    '{lien_paiement}': lienPaiement ? `\nReglez en ligne : ${lienPaiement}\n` : '',
+    '{sms_lien_paiement}': lienPaiement ? ` Payez: ${lienPaiement}` : ''
   };
 
   let subject = template.subject;
@@ -236,9 +239,9 @@ export function getPendingRelances(factures, clients, relanceHistory = {}) {
  * @param {Object} entreprise - Company settings
  * @returns {Object} Formatted reminder for UI
  */
-export function formatRelanceForDisplay(relance, entreprise) {
+export function formatRelanceForDisplay(relance, entreprise, options = {}) {
   const { facture, client, template, joursRetard } = relance;
-  const content = generateRelanceContent(template, facture, client, entreprise);
+  const content = generateRelanceContent(template, facture, client, entreprise, options);
 
   return {
     id: `relance-${facture.id}-${template.id}`,

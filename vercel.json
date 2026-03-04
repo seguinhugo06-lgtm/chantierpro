@@ -2,5 +2,12 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "rewrites": [
+    { "source": "/facture/payer/(.*)", "destination": "/index.html" },
+    { "source": "/devis/signer/(.*)", "destination": "/index.html" },
+    { "source": "/portal/(.*)", "destination": "/index.html" },
+    { "source": "/bank/callback", "destination": "/index.html" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
 }

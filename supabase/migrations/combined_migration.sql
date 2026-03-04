@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS depenses (
   fournisseur TEXT,
   numero_facture TEXT,
   notes TEXT,
+  sous_traitant_id UUID REFERENCES equipe(id) ON DELETE SET NULL, -- (013)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -132,6 +133,17 @@ CREATE TABLE IF NOT EXISTS equipe (
   taux_horaire NUMERIC(8,2),
   cout_horaire_charge NUMERIC(8,2),
   actif BOOLEAN DEFAULT TRUE,
+  -- Sous-traitant fields (013)
+  type TEXT DEFAULT 'employe',
+  entreprise TEXT,
+  siret TEXT,
+  specialite TEXT,
+  decennale_numero TEXT,
+  decennale_expiration DATE,
+  urssaf_date DATE,
+  tarif_type TEXT DEFAULT 'horaire',
+  tarif_forfait NUMERIC(12,2),
+  documents JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1859,3 +1871,351 @@ BEGIN
 
   RAISE NOTICE 'Migration 006 (events_log) completed successfully';
 END $$;
+
+-- ============================================================================
+-- ============================================================================
+-- MIGRATION 011: ELECTRONIC SIGNATURE
+-- ============================================================================
+-- ============================================================================
+
+-- Update devis status constraint to include 'signe'
+ALTER TABLE devis DROP CONSTRAINT IF EXISTS valid_devis_statut;
+ALTER TABLE devis ADD CONSTRAINT valid_devis_statut
+  CHECK (statut IN (
+    'brouillon', 'envoye', 'accepte', 'refuse', 'annule',
+    'acompte_facture', 'facture', 'payee', 'en_attente', 'signe'
+  ));
+
+-- Signature columns on devis
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_token UUID UNIQUE;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_expires_at TIMESTAMPTZ;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_data TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_date TIMESTAMPTZ;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_ip TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_user_agent TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signataire_nom TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS signature_cgv_accepted BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_devis_signature_token
+  ON devis(signature_token)
+  WHERE signature_token IS NOT NULL;
+
+-- Function: Get devis data for public signature page
+CREATE OR REPLACE FUNCTION get_devis_for_signature(p_token UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result JSON;
+BEGIN
+  SELECT json_build_object(
+    'devis', json_build_object(
+      'id', d.id, 'numero', d.numero, 'type', d.type, 'statut', d.statut,
+      'date', d.date, 'date_validite', d.date_validite, 'objet', d.objet,
+      'lignes', d.lignes, 'sections', d.sections, 'conditions', d.conditions,
+      'remise_globale', d.remise_globale, 'tva_rate', d.tva_rate,
+      'total_ht', d.total_ht, 'total_tva', d.total_tva, 'total_ttc', d.total_ttc,
+      'acompte_percent', d.acompte_percent, 'acompte_montant', d.acompte_montant,
+      'already_signed', (d.signature_data IS NOT NULL)
+    ),
+    'client', json_build_object(
+      'nom', c.nom, 'prenom', c.prenom, 'email', c.email,
+      'telephone', c.telephone, 'adresse', c.adresse,
+      'ville', c.ville, 'code_postal', c.code_postal
+    ),
+    'entreprise', json_build_object(
+      'nom', e.nom, 'siret', e.siret, 'code_ape', e.code_ape,
+      'tva_intra', e.tva_intra, 'adresse', e.adresse, 'ville', e.ville,
+      'code_postal', e.code_postal, 'telephone', e.tel, 'email', e.email,
+      'site_web', e.site_web, 'logo', e.logo, 'couleur', e.couleur,
+      'forme_juridique', e.forme_juridique, 'capital', e.capital,
+      'rcs_ville', e.rcs_ville, 'rcs_numero', e.rcs_numero, 'rcs_type', e.rcs_type,
+      'iban', e.iban, 'bic', e.bic, 'cgv', e.cgv,
+      'rc_pro_assureur', e.rc_pro_assureur, 'rc_pro_numero', e.rc_pro_numero,
+      'rc_pro_validite', e.rc_pro_validite, 'decennale_assureur', e.decennale_assureur,
+      'decennale_numero', e.decennale_numero, 'decennale_validite', e.decennale_validite,
+      'validite_devis', e.validite_devis, 'delai_paiement', e.delai_paiement
+    )
+  ) INTO result
+  FROM devis d
+  LEFT JOIN clients c ON d.client_id = c.id
+  LEFT JOIN entreprise e ON e.user_id = d.user_id
+  WHERE d.signature_token = p_token
+    AND d.signature_expires_at > NOW()
+    AND d.statut IN ('envoye', 'en_attente');
+  RETURN result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_devis_for_signature TO anon;
+
+-- Function: Sign a devis (public, anonymous)
+CREATE OR REPLACE FUNCTION sign_devis(
+  p_token UUID, p_signature_data TEXT, p_signataire_nom TEXT,
+  p_ip TEXT DEFAULT NULL, p_user_agent TEXT DEFAULT NULL
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_devis_id UUID;
+  v_client_id UUID;
+BEGIN
+  SELECT d.id, d.client_id INTO v_devis_id, v_client_id
+  FROM devis d
+  WHERE d.signature_token = p_token
+    AND d.signature_expires_at > NOW()
+    AND d.statut IN ('envoye', 'en_attente')
+    AND d.signature_data IS NULL;
+  IF v_devis_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Lien invalide, expire ou deja signe');
+  END IF;
+  UPDATE devis SET
+    signature_data = p_signature_data, signature_date = NOW(),
+    signature_ip = p_ip, signature_user_agent = p_user_agent,
+    signataire_nom = p_signataire_nom, signature_cgv_accepted = true,
+    statut = 'signe', updated_at = NOW()
+  WHERE id = v_devis_id;
+  INSERT INTO portal_access_logs (client_id, action, ip_address, user_agent)
+  VALUES (v_client_id, 'signature', p_ip, p_user_agent);
+  RETURN json_build_object('success', true, 'devis_id', v_devis_id);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION sign_devis TO anon;
+
+-- Function: Generate signature token (authenticated)
+CREATE OR REPLACE FUNCTION generate_signature_token(p_devis_id UUID, p_expiry_days INTEGER DEFAULT 30)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_token UUID;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM devis WHERE id = p_devis_id AND user_id = auth.uid()) THEN
+    RAISE EXCEPTION 'Devis non trouve ou non autorise';
+  END IF;
+  v_token := gen_random_uuid();
+  UPDATE devis SET
+    signature_token = v_token,
+    signature_expires_at = NOW() + (p_expiry_days || ' days')::INTERVAL,
+    updated_at = NOW()
+  WHERE id = p_devis_id;
+  RETURN v_token;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION generate_signature_token TO authenticated;
+
+-- ============================================================================
+-- ============================================================================
+-- MIGRATION 012: STRIPE ONLINE PAYMENTS
+-- ============================================================================
+-- ============================================================================
+
+-- Payment columns on devis table
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_token UUID UNIQUE;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMPTZ;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS stripe_session_id TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_amount INTEGER;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT NULL;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_completed_at TIMESTAMPTZ;
+ALTER TABLE devis ADD COLUMN IF NOT EXISTS payment_metadata JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_devis_payment_token ON devis(payment_token) WHERE payment_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_devis_stripe_session ON devis(stripe_session_id) WHERE stripe_session_id IS NOT NULL;
+
+-- Stripe config table
+CREATE TABLE IF NOT EXISTS stripe_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) UNIQUE NOT NULL,
+  stripe_enabled BOOLEAN DEFAULT FALSE,
+  commission_model TEXT DEFAULT 'artisan' CHECK (commission_model IN ('artisan', 'client', 'partage')),
+  secret_key_vault_id UUID,
+  webhook_secret_vault_id UUID,
+  stripe_account_id TEXT,
+  last_payment_at TIMESTAMPTZ,
+  total_payments INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE stripe_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own stripe config" ON stripe_config
+  FOR ALL TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+-- Store Stripe key in Vault
+CREATE OR REPLACE FUNCTION store_stripe_key(p_secret_key TEXT, p_webhook_secret TEXT DEFAULT NULL)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_secret_key_id UUID;
+  v_webhook_secret_id UUID;
+  v_existing RECORD;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'Non authentifie'); END IF;
+  IF p_secret_key IS NOT NULL AND NOT (p_secret_key LIKE 'sk_live_%' OR p_secret_key LIKE 'sk_test_%') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Format de cle invalide');
+  END IF;
+  SELECT * INTO v_existing FROM stripe_config WHERE user_id = v_user_id;
+  IF v_existing IS NOT NULL THEN
+    IF v_existing.secret_key_vault_id IS NOT NULL THEN DELETE FROM vault.secrets WHERE id = v_existing.secret_key_vault_id; END IF;
+    IF v_existing.webhook_secret_vault_id IS NOT NULL AND p_webhook_secret IS NOT NULL THEN DELETE FROM vault.secrets WHERE id = v_existing.webhook_secret_vault_id; END IF;
+  END IF;
+  IF p_secret_key IS NOT NULL THEN
+    INSERT INTO vault.secrets (secret, name, description) VALUES (p_secret_key, 'stripe_sk_' || v_user_id::text, 'Stripe secret key') RETURNING id INTO v_secret_key_id;
+  END IF;
+  IF p_webhook_secret IS NOT NULL THEN
+    INSERT INTO vault.secrets (secret, name, description) VALUES (p_webhook_secret, 'stripe_whsec_' || v_user_id::text, 'Stripe webhook secret') RETURNING id INTO v_webhook_secret_id;
+  END IF;
+  INSERT INTO stripe_config (user_id, secret_key_vault_id, webhook_secret_vault_id, stripe_enabled, updated_at)
+  VALUES (v_user_id, v_secret_key_id, v_webhook_secret_id, TRUE, NOW())
+  ON CONFLICT (user_id) DO UPDATE SET
+    secret_key_vault_id = COALESCE(v_secret_key_id, stripe_config.secret_key_vault_id),
+    webhook_secret_vault_id = COALESCE(v_webhook_secret_id, stripe_config.webhook_secret_vault_id),
+    stripe_enabled = TRUE, updated_at = NOW();
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION store_stripe_key TO authenticated;
+
+-- Get Stripe config (service_role only)
+CREATE OR REPLACE FUNCTION get_stripe_config_for_user(p_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_config RECORD; v_secret_key TEXT; v_webhook_secret TEXT;
+BEGIN
+  SELECT * INTO v_config FROM stripe_config WHERE user_id = p_user_id;
+  IF v_config IS NULL THEN RETURN jsonb_build_object('enabled', false, 'error', 'No config'); END IF;
+  IF NOT v_config.stripe_enabled THEN RETURN jsonb_build_object('enabled', false); END IF;
+  IF v_config.secret_key_vault_id IS NOT NULL THEN
+    SELECT decrypted_secret INTO v_secret_key FROM vault.decrypted_secrets WHERE id = v_config.secret_key_vault_id;
+  END IF;
+  IF v_config.webhook_secret_vault_id IS NOT NULL THEN
+    SELECT decrypted_secret INTO v_webhook_secret FROM vault.decrypted_secrets WHERE id = v_config.webhook_secret_vault_id;
+  END IF;
+  RETURN jsonb_build_object('enabled', v_config.stripe_enabled, 'secret_key', v_secret_key, 'webhook_secret', v_webhook_secret, 'commission_model', v_config.commission_model);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION get_stripe_config_for_user FROM PUBLIC;
+
+-- Generate payment token
+CREATE OR REPLACE FUNCTION generate_payment_token(p_facture_id UUID, p_expiry_days INTEGER DEFAULT 90)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_token UUID; v_facture RECORD;
+BEGIN
+  SELECT id, type, user_id, payment_token, payment_token_expires_at INTO v_facture FROM devis WHERE id = p_facture_id AND user_id = auth.uid();
+  IF v_facture IS NULL THEN RAISE EXCEPTION 'Facture non trouvee'; END IF;
+  IF v_facture.type != 'facture' THEN RAISE EXCEPTION 'Pas une facture'; END IF;
+  IF v_facture.payment_token IS NOT NULL AND v_facture.payment_token_expires_at > NOW() THEN RETURN v_facture.payment_token; END IF;
+  v_token := gen_random_uuid();
+  UPDATE devis SET payment_token = v_token, payment_token_expires_at = NOW() + (p_expiry_days || ' days')::INTERVAL WHERE id = p_facture_id;
+  RETURN v_token;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION generate_payment_token TO authenticated;
+
+-- Get facture for payment (public)
+CREATE OR REPLACE FUNCTION get_facture_for_payment(p_token UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_facture RECORD; v_client RECORD; v_entreprise RECORD; v_stripe_config RECORD;
+BEGIN
+  SELECT * INTO v_facture FROM devis WHERE payment_token = p_token;
+  IF v_facture IS NULL THEN RETURN jsonb_build_object('error', 'Token invalide'); END IF;
+  IF v_facture.payment_token_expires_at < NOW() THEN RETURN jsonb_build_object('error', 'Lien expire'); END IF;
+  IF v_facture.type != 'facture' THEN RETURN jsonb_build_object('error', 'Document invalide'); END IF;
+  IF v_facture.statut = 'payee' THEN RETURN jsonb_build_object('error', 'already_paid', 'message', 'Deja payee', 'payment_date', v_facture.payment_completed_at); END IF;
+  SELECT id, nom, prenom, email INTO v_client FROM clients WHERE id = v_facture.client_id;
+  SELECT id, nom, siret, tva_intra, adresse, ville, code_postal, telephone, email, logo_url, couleur_principale, iban, bic INTO v_entreprise FROM entreprise WHERE user_id = v_facture.user_id;
+  SELECT stripe_enabled, commission_model INTO v_stripe_config FROM stripe_config WHERE user_id = v_facture.user_id;
+  RETURN jsonb_build_object(
+    'facture', jsonb_build_object('id', v_facture.id, 'numero', v_facture.numero, 'date', v_facture.date, 'objet', v_facture.objet, 'lignes', v_facture.lignes, 'sections', v_facture.sections, 'total_ht', v_facture.total_ht, 'total_tva', v_facture.total_tva, 'total_ttc', v_facture.total_ttc, 'tva_rate', v_facture.tva_rate, 'conditions', v_facture.conditions, 'remise_globale', v_facture.remise_globale, 'acompte_percent', v_facture.acompte_percent, 'acompte_montant', v_facture.acompte_montant, 'statut', v_facture.statut, 'user_id', v_facture.user_id),
+    'client', jsonb_build_object('nom', COALESCE(v_client.prenom || ' ', '') || COALESCE(v_client.nom, ''), 'email', v_client.email),
+    'entreprise', jsonb_build_object('nom', v_entreprise.nom, 'siret', v_entreprise.siret, 'adresse', v_entreprise.adresse, 'ville', v_entreprise.ville, 'code_postal', v_entreprise.code_postal, 'telephone', v_entreprise.telephone, 'email', v_entreprise.email, 'logo_url', v_entreprise.logo_url, 'couleur', COALESCE(v_entreprise.couleur_principale, '#f97316'), 'iban', v_entreprise.iban, 'bic', v_entreprise.bic),
+    'stripe', jsonb_build_object('enabled', COALESCE(v_stripe_config.stripe_enabled, false), 'commission_model', COALESCE(v_stripe_config.commission_model, 'artisan'))
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_facture_for_payment TO anon;
+GRANT EXECUTE ON FUNCTION get_facture_for_payment TO authenticated;
+
+-- Update Stripe config
+CREATE OR REPLACE FUNCTION update_stripe_config(p_enabled BOOLEAN DEFAULT NULL, p_commission_model TEXT DEFAULT NULL)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE v_user_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'Non authentifie'); END IF;
+  IF p_commission_model IS NOT NULL AND p_commission_model NOT IN ('artisan', 'client', 'partage') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Modele invalide');
+  END IF;
+  INSERT INTO stripe_config (user_id, stripe_enabled, commission_model, updated_at)
+  VALUES (v_user_id, COALESCE(p_enabled, FALSE), COALESCE(p_commission_model, 'artisan'), NOW())
+  ON CONFLICT (user_id) DO UPDATE SET
+    stripe_enabled = COALESCE(p_enabled, stripe_config.stripe_enabled),
+    commission_model = COALESCE(p_commission_model, stripe_config.commission_model),
+    updated_at = NOW();
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION update_stripe_config TO authenticated;
+
+-- ============================================================================
+-- ============================================================================
+-- MIGRATION 013: SOUS-TRAITANTS
+-- ============================================================================
+-- ============================================================================
+
+-- Add sous-traitant columns to equipe (IF NOT EXISTS for idempotency)
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'employe';
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS entreprise TEXT;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS siret TEXT;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS specialite TEXT;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS decennale_numero TEXT;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS decennale_expiration DATE;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS urssaf_date DATE;
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS tarif_type TEXT DEFAULT 'horaire';
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS tarif_forfait NUMERIC(12,2);
+ALTER TABLE equipe ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
+
+-- Link depenses to sous-traitants
+ALTER TABLE depenses ADD COLUMN IF NOT EXISTS sous_traitant_id UUID REFERENCES equipe(id) ON DELETE SET NULL;
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_depenses_sous_traitant ON depenses(sous_traitant_id) WHERE sous_traitant_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_equipe_type ON equipe(type);

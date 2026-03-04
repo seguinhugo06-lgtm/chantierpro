@@ -498,7 +498,7 @@ export default function AccountingIntegration({
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
                     <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                      Ce résumé TVA est indicatif et basé sur les données saisies dans ChantierPro.
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans BatiGesti.
                       Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
                   </div>

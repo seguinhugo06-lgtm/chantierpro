@@ -165,8 +165,8 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
       results.notification = await CommunicationsService.notifyDevisEnvoye(newRecord.id);
     }
 
-    // Status: accepte → Send confirmation + create suggestion
-    if (oldStatus !== 'accepte' && newStatus === 'accepte') {
+    // Status: accepte/signe → Send confirmation + create suggestion
+    if (!['accepte', 'signe'].includes(oldStatus) && ['accepte', 'signe'].includes(newStatus)) {
       results.notification = await CommunicationsService.notifyDevisAccepte(newRecord.id);
 
       // Create suggestion to convert to invoice
@@ -395,7 +395,7 @@ export async function onPhotoUploaded(record) {
           .single();
 
         if (chantier?.client?.email) {
-          const portalLink = `${import.meta.env.VITE_APP_URL || 'https://app.chantierpro.fr'}/portal/chantier/${record.chantier_id}/photos`;
+          const portalLink = `${import.meta.env.VITE_APP_URL || 'https://app.batigesti.fr'}/portal/chantier/${record.chantier_id}/photos`;
 
           await CommunicationsService.sendEmail(
             chantier.client.email,

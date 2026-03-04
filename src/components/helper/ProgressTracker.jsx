@@ -53,7 +53,7 @@ export default function ProgressTracker({
       id: 'first_payment',
       icon: CreditCard,
       label: 'Premier paiement reçu',
-      description: 'Recevoir un acompte via ChantierPro',
+      description: 'Recevoir un acompte via BatiGesti',
       points: 20,
       action: 'view_payments'
     },
@@ -259,7 +259,7 @@ export default function ProgressTracker({
           </p>
         ) : (
           <p className="text-sm text-center text-green-500 font-medium">
-            🎉 Félicitations ! Vous maîtrisez ChantierPro à 100% !
+            🎉 Félicitations ! Vous maîtrisez BatiGesti à 100% !
           </p>
         )}
       </div>

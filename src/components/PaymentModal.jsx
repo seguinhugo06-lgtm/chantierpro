@@ -3,8 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info } from 'lucide-react';
 import { createPaymentLink, formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
 
-// Check if Stripe is configured
-const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
+// Stripe is configured if the document has a payment_token (set up via Settings > Banque)
+// The old VITE_STRIPE_PUBLIC_KEY check is no longer needed since we use Edge Functions
 
 /**
  * Modal de paiement avec QR Code Stripe
@@ -47,6 +47,8 @@ export default function PaymentModal({
   if (!isOpen || !document) return null;
 
   const totalTTC = document.total_ttc || 0;
+  const hasPaymentToken = !!document.payment_token;
+  const STRIPE_CONFIGURED = hasPaymentToken;
   const amount = paymentType === 'full'
     ? totalTTC
     : parseFloat(customAmount) || 0;
@@ -61,7 +63,8 @@ export default function PaymentModal({
         amount,
         clientEmail: client?.email || '',
         description: `Paiement ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero}`,
-        type: paymentType === 'full' ? 'solde' : 'acompte'
+        type: paymentType === 'full' ? 'solde' : 'acompte',
+        paymentToken: document.payment_token || null
       });
 
       setPaymentLink(link);
@@ -138,14 +141,14 @@ export default function PaymentModal({
 
         {/* Content */}
         <div className="p-5">
-          {/* Demo Mode Banner */}
+          {/* Info Banner */}
           {!STRIPE_CONFIGURED && (
             <div className={`rounded-xl p-3 mb-4 flex items-start gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
               <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
               <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode demonstration</p>
+                <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Paiement en ligne non configuré</p>
                 <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Le paiement CB necessite une integration Stripe. Contactez le support pour activer les paiements reels.
+                  Activez Stripe dans Paramètres &gt; Banque pour permettre le paiement par carte bancaire.
                 </p>
               </div>
             </div>

@@ -240,7 +240,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className }) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-lg font-bold mb-0.5">ChantierPro</p>
+                  <p className="text-lg font-bold mb-0.5">BatiGesti</p>
                   <p className="text-xs text-slate-400 mb-3">Gestion de chantiers BTP</p>
 
                   {/* Native install button for Chrome/Android */}

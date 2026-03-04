@@ -11,7 +11,7 @@ import {
 /**
  * Storage key for recent items
  */
-const RECENT_ITEMS_KEY = 'chantierpro_recent_items';
+const RECENT_ITEMS_KEY = 'batigesti_recent_items';
 const MAX_RECENT_ITEMS = 5;
 
 /**
@@ -535,7 +535,7 @@ export default function CommandPalette({
               </div>
               <div className="flex items-center gap-1.5">
                 <Zap size={14} style={{ color: couleur }} />
-                <span className={`text-xs font-medium`} style={{ color: couleur }}>ChantierPro</span>
+                <span className={`text-xs font-medium`} style={{ color: couleur }}>BatiGesti</span>
               </div>
             </div>
           </motion.div>

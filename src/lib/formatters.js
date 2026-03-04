@@ -344,6 +344,95 @@ export function getStatusColor(status) {
   return STATUS_COLORS[status] || 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
 }
 
+// ============ SAFE STRING CONVERSION ============
+
+/**
+ * Safely converts any value to a renderable string.
+ * Prevents React error #310 ("Objects are not valid as a React child")
+ * by catching objects/arrays/dates and converting them to strings.
+ *
+ * @param {*} value - Any value that might be rendered in JSX
+ * @param {string} [fallback=''] - Fallback string if value is null/undefined
+ * @param {string} [context=''] - Optional context label for diagnostic logging
+ * @returns {string} A safe string for rendering
+ */
+export function safeString(value, fallback = '', context = '') {
+  // Null/undefined
+  if (value == null) return fallback;
+
+  // Already a string or number - safe to render
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return String(value);
+
+  // Date objects
+  if (value instanceof Date) {
+    if (context) {
+      console.warn(`[safeString] Date object rendered as string (context: ${context})`, value);
+    }
+    return isNaN(value.getTime()) ? fallback : value.toLocaleDateString('fr-FR');
+  }
+
+  // Arrays and objects - this is the #310 error case
+  if (typeof value === 'object') {
+    console.error(
+      `[safeString] Object/Array passed where string expected!`,
+      `Context: ${context || 'unknown'}`,
+      `Type: ${Array.isArray(value) ? 'Array' : 'Object'}`,
+      `Value:`, value,
+      `Keys: ${Object.keys(value).join(', ')}`
+    );
+    // Try to extract a meaningful string
+    if (value.message) return String(value.message); // Error objects
+    if (value.nom) return String(value.nom); // Named entities
+    if (value.name) return String(value.name);
+    if (value.label) return String(value.label);
+    if (value.title) return String(value.title);
+    if (Array.isArray(value)) return value.map(v => safeString(v)).join(', ');
+    // Last resort - JSON stringify (truncated)
+    try {
+      const json = JSON.stringify(value);
+      return json.length > 100 ? json.slice(0, 100) + '...' : json;
+    } catch {
+      return '[Object]';
+    }
+  }
+
+  // Functions and symbols
+  if (typeof value === 'function') {
+    console.error(`[safeString] Function passed where string expected (context: ${context})`);
+    return fallback;
+  }
+
+  return String(value);
+}
+
+/**
+ * Validates that all string-expected fields in a data object are actually strings.
+ * Logs warnings for any fields that are objects when they should be strings.
+ *
+ * @param {Object} data - The data object to validate
+ * @param {string[]} stringFields - Array of field names expected to be strings
+ * @param {string} context - Label for diagnostic logging (e.g., 'devis', 'notification')
+ * @returns {Object} The data object with object fields converted to strings
+ */
+export function validateRenderableFields(data, stringFields, context = '') {
+  if (!data || typeof data !== 'object') return data;
+
+  const cleaned = { ...data };
+  for (const field of stringFields) {
+    if (field in cleaned && cleaned[field] != null && typeof cleaned[field] === 'object') {
+      console.error(
+        `[validateRenderableFields] Field "${field}" is an object but should be a string!`,
+        `Context: ${context}`,
+        `Value:`, cleaned[field]
+      );
+      cleaned[field] = safeString(cleaned[field], '', `${context}.${field}`);
+    }
+  }
+  return cleaned;
+}
+
 // ============ PHONE FORMATTING ============
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Demo data for ChantierPro
+ * Demo data for BatiGesti
  * Extracted from App.jsx for cleaner architecture
  * Use: import { DEMO_DATA } from './lib/demo-data'
  *

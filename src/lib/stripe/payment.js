@@ -1,41 +1,70 @@
 /**
- * Module de paiement Stripe pour ChantierPro
- * Gere les paiements d'acompte et de solde via Stripe Payment Links
+ * Module de paiement Stripe pour BatiGesti
+ * Gère les paiements via Stripe Checkout Sessions (Edge Function)
+ * et conserve le mode démo pour les environnements sans Stripe
  */
 
-// Configuration Stripe (utiliser les variables d'environnement en production)
-const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_demo';
+import supabase, { isDemo } from '../../supabaseClient';
 
 /**
- * Genere un lien de paiement Stripe pour un montant donne
- * En mode demo, retourne un lien simule
- * @param {Object} params - Parametres du paiement
- * @param {string} params.devisId - ID du devis/facture
- * @param {number} params.amount - Montant en euros
- * @param {string} params.clientEmail - Email du client
- * @param {string} params.description - Description du paiement
- * @param {string} params.type - Type: 'acompte' ou 'solde'
+ * Crée une session Stripe Checkout via l'Edge Function
+ * @param {string} paymentToken - Token de paiement de la facture
+ * @returns {Object} - { url: string, session_id: string }
+ */
+export const createCheckoutSession = async (paymentToken) => {
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: {
+      payment_token: paymentToken,
+      success_url: `${window.location.origin}/facture/payer/${paymentToken}?status=success`,
+      cancel_url: `${window.location.origin}/facture/payer/${paymentToken}?status=cancel`
+    }
+  });
+
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
+  return data; // { url, session_id }
+};
+
+/**
+ * Génère un lien de paiement public pour une facture
+ * @param {string} paymentToken - Token de paiement
+ * @returns {string} - URL publique de paiement
+ */
+export const getPaymentPageUrl = (paymentToken) => {
+  return `${window.location.origin}/facture/payer/${paymentToken}`;
+};
+
+/**
+ * Génère un lien de paiement Stripe (mode démo ou via payment token)
+ * @param {Object} params - Paramètres du paiement
  * @returns {Object} - { paymentUrl, paymentId }
  */
-export const createPaymentLink = async ({ devisId, amount, clientEmail, description, type = 'acompte' }) => {
-  // En mode demo, generer un lien simule
-  const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const createPaymentLink = async ({ devisId, amount, clientEmail, description, type = 'acompte', paymentToken = null }) => {
+  // If we have a payment token, use the public payment page URL
+  if (paymentToken) {
+    const paymentUrl = getPaymentPageUrl(paymentToken);
+    return {
+      paymentId: `pt_${paymentToken.substring(0, 8)}`,
+      paymentUrl,
+      amount,
+      type,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+  }
 
-  // URL de paiement Stripe Payment Link
-  // En production, ceci serait genere via l'API Stripe
+  // Fallback: demo mode link
+  const paymentId = `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const baseUrl = 'https://buy.stripe.com/test';
   const params = new URLSearchParams({
     client_reference_id: devisId,
     prefilled_email: clientEmail || '',
-    // En production: amount serait configure via l'API
   });
-
-  // Pour demo: utiliser un lien generique
-  const paymentUrl = `${baseUrl}?${params.toString()}`;
 
   return {
     paymentId,
-    paymentUrl,
+    paymentUrl: `${baseUrl}?${params.toString()}`,
     amount,
     type,
     status: 'pending',
@@ -44,9 +73,9 @@ export const createPaymentLink = async ({ devisId, amount, clientEmail, descript
 };
 
 /**
- * Genere les donnees pour le QR Code de paiement
- * @param {string} paymentUrl - URL du paiement Stripe
- * @returns {string} - URL a encoder dans le QR code
+ * Génère les données pour le QR Code de paiement
+ * @param {string} paymentUrl - URL du paiement
+ * @returns {string} - URL à encoder dans le QR code
  */
 export const generateQRCodeData = (paymentUrl) => {
   return paymentUrl;
@@ -55,7 +84,7 @@ export const generateQRCodeData = (paymentUrl) => {
 /**
  * Formate le montant pour l'affichage
  * @param {number} amount - Montant en euros
- * @returns {string} - Montant formate
+ * @returns {string} - Montant formaté
  */
 export const formatAmount = (amount) => {
   return new Intl.NumberFormat('fr-FR', {
@@ -65,9 +94,9 @@ export const formatAmount = (amount) => {
 };
 
 /**
- * Calcule le montant d'acompte recommande
+ * Calcule le montant d'acompte recommandé
  * @param {number} totalTTC - Total TTC du devis
- * @param {number} percentage - Pourcentage d'acompte (defaut 30%)
+ * @param {number} percentage - Pourcentage d'acompte (défaut 30%)
  * @returns {number} - Montant de l'acompte
  */
 export const calculateAcompte = (totalTTC, percentage = 30) => {
@@ -75,27 +104,25 @@ export const calculateAcompte = (totalTTC, percentage = 30) => {
 };
 
 /**
- * Verifie le statut d'un paiement
- * En production, ceci interrogerait l'API Stripe
+ * Vérifie le statut d'un paiement
  * @param {string} paymentId - ID du paiement
  * @returns {Object} - Statut du paiement
  */
 export const checkPaymentStatus = async (paymentId) => {
-  // En mode demo, retourner un statut simule
   return {
     paymentId,
-    status: 'pending', // 'pending', 'succeeded', 'failed'
+    status: 'pending',
     lastChecked: new Date().toISOString()
   };
 };
 
 /**
- * Liste des montants d'acompte pre-definis
+ * Liste des montants d'acompte pré-définis
  */
 export const ACOMPTE_OPTIONS = [
   { value: 20, label: '20%', description: 'Petit chantier' },
-  { value: 30, label: '30%', description: 'Standard (recommande)' },
-  { value: 40, label: '40%', description: 'Chantier materiel' },
+  { value: 30, label: '30%', description: 'Standard (recommandé)' },
+  { value: 40, label: '40%', description: 'Chantier matériel' },
   { value: 50, label: '50%', description: 'Gros chantier' },
 ];
 
@@ -105,13 +132,15 @@ export const ACOMPTE_OPTIONS = [
 export const PAYMENT_STATUS = {
   pending: { label: 'En attente', color: 'amber', icon: 'Clock' },
   processing: { label: 'En cours', color: 'blue', icon: 'Loader' },
-  succeeded: { label: 'Paye', color: 'green', icon: 'CheckCircle' },
-  failed: { label: 'Echoue', color: 'red', icon: 'XCircle' },
-  refunded: { label: 'Rembourse', color: 'purple', icon: 'RotateCcw' }
+  succeeded: { label: 'Payé', color: 'green', icon: 'CheckCircle' },
+  failed: { label: 'Échoué', color: 'red', icon: 'XCircle' },
+  refunded: { label: 'Remboursé', color: 'purple', icon: 'RotateCcw' }
 };
 
 export default {
   createPaymentLink,
+  createCheckoutSession,
+  getPaymentPageUrl,
   generateQRCodeData,
   formatAmount,
   calculateAcompte,

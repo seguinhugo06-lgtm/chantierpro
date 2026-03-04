@@ -1,5 +1,5 @@
 /**
- * Calculateur de marge et alertes pour ChantierPro
+ * Calculateur de marge et alertes pour BatiGesti
  * Analyse la rentabilite des chantiers et detecte les risques
  *
  * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for margin calculations.
@@ -102,6 +102,12 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
     .filter(a => a.type === AJUSTEMENT_TYPE.DEPENSE)
     .reduce((sum, a) => sum + (a.montant || a.montant_ht || 0), 0);
 
+  // ===== SOUS-TRAITANCE =====
+  // Extract sous-traitance costs from depenses (informational - already included in coutMateriaux)
+  const coutSousTraitance = chantierDepenses
+    .filter(d => d.categorie === 'Sous-traitance')
+    .reduce((sum, d) => sum + (d.montant || 0), 0);
+
   // ===== TOTAUX =====
   const revenuTotal = revenuPrevu + adjRevenus;
   const totalDepenses = coutMateriaux + coutMO + adjDepenses;
@@ -135,6 +141,7 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
     // Couts
     coutMateriaux,
     coutMO,
+    coutSousTraitance,
     coutAutres: adjDepenses,
     totalDepenses,
     // Heures

@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useToast } from '../context/AppContext';
-import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2 } from 'lucide-react';
+import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, Shield, Eye, EyeOff, Loader2, Key } from 'lucide-react';
+import supabase, { isDemo } from '../supabaseClient';
 import {
   INTEGRATION_TYPES,
   SYNC_STATUS,
@@ -15,9 +16,313 @@ import {
   syncToPennylane,
   syncToIndy
 } from '../lib/integrations/accounting';
+import {
+  storeApiKeys,
+  deleteConfig,
+  getConnections,
+  disconnect as disconnectBank,
+  getStatus as getBankStatus,
+} from '../lib/integrations/gocardless';
+import BankConnectionModal from './bank/BankConnectionModal';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
+
+// ============================================================================
+// BanqueSubTab - Bank connection management in Settings
+// ============================================================================
+function BanqueSubTab({ isDark, cardBg, inputBg, textPrimary, textSecondary, textMuted, couleur, showToast }) {
+  const [connections, setConnections] = useState([]);
+  const [bankStatus, setBankStatus] = useState({ enabled: false, hasConnections: false });
+  const [loading, setLoading] = useState(true);
+  const [secretId, setSecretId] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [showKeys, setShowKeys] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(null);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadBankData();
+  }, []);
+
+  const loadBankData = async () => {
+    setLoading(true);
+    try {
+      const status = await getBankStatus();
+      setBankStatus(status);
+      if (status.enabled) {
+        const conns = await getConnections();
+        setConnections(conns);
+      }
+    } catch (e) {
+      console.error('Bank data load error:', e);
+    }
+    setLoading(false);
+  };
+
+  const handleSaveKeys = async () => {
+    if (!secretId || !secretKey) return;
+    setSaving(true);
+    try {
+      const result = await storeApiKeys(secretId, secretKey);
+      if (result?.success) {
+        setSecretId('');
+        setSecretKey('');
+        setShowKeys(false);
+        setBankStatus(prev => ({ ...prev, enabled: true }));
+        showToast('Clés GoCardless enregistrées', 'success');
+      }
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteConfig = async () => {
+    try {
+      await deleteConfig();
+      setBankStatus({ enabled: false, hasConnections: false });
+      setConnections([]);
+      showToast('Configuration bancaire supprimée', 'success');
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+  };
+
+  const handleDisconnect = async (connId) => {
+    setDisconnecting(connId);
+    try {
+      await disconnectBank(connId);
+      setConnections(prev => prev.filter(c => c.id !== connId));
+      showToast('Compte bancaire déconnecté', 'success');
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+    setDisconnecting(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className={`${cardBg} rounded-xl border p-6 h-40`} />
+        <div className={`${cardBg} rounded-xl border p-6 h-32`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
+        <div className="flex gap-3">
+          <Shield size={20} className={isDark ? 'text-blue-400 flex-shrink-0' : 'text-blue-600 flex-shrink-0'} />
+          <div>
+            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
+              Connexion bancaire sécurisée
+            </p>
+            <p className={`text-sm mt-1 ${isDark ? 'text-blue-400/80' : 'text-blue-700'}`}>
+              Connectez votre banque via GoCardless (Open Banking). L'accès est valable 90 jours et peut être renouvelé. Vos identifiants bancaires ne sont jamais stockés.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* API Key Configuration */}
+      <div className={`${cardBg} rounded-xl border p-4 sm:p-6`}>
+        <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
+          <Key size={18} style={{ color: couleur }} />
+          Clés API GoCardless
+        </h3>
+
+        {bankStatus.enabled ? (
+          <div className="space-y-3">
+            <div className={`flex items-center gap-2 p-3 rounded-lg ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+              <CheckCircle size={16} className="text-emerald-500" />
+              <span className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                Clés API configurées
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowKeys(!showKeys)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {showKeys ? 'Masquer' : 'Modifier les clés'}
+              </button>
+              <button
+                onClick={handleDeleteConfig}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                Supprimer la configuration
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className={`text-sm mb-4 ${textSecondary}`}>
+            Entrez vos identifiants API GoCardless pour activer la connexion bancaire.
+          </p>
+        )}
+
+        {(!bankStatus.enabled || showKeys) && (
+          <div className="space-y-3 mt-3">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Secret ID</label>
+              <input
+                type="text"
+                value={secretId}
+                onChange={e => setSecretId(e.target.value)}
+                className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Secret Key</label>
+              <input
+                type="password"
+                value={secretKey}
+                onChange={e => setSecretKey(e.target.value)}
+                className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveKeys}
+                disabled={saving || !secretId || !secretKey}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 disabled:opacity-50 shadow-sm transition-all"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                Enregistrer
+              </button>
+              <a
+                href="https://bankaccountdata.gocardless.com/user-secrets/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-500 hover:text-primary-600 inline-flex items-center gap-1"
+              >
+                Obtenir des clés <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Connected accounts */}
+      <div className={`${cardBg} rounded-xl border p-4 sm:p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+            <Building2 size={18} style={{ color: couleur }} />
+            Comptes connectés
+          </h3>
+          {bankStatus.enabled && (
+            <button
+              onClick={() => setConnectModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 shadow-sm transition-all"
+            >
+              <Link2 size={14} />
+              Connecter
+            </button>
+          )}
+        </div>
+
+        {connections.length === 0 ? (
+          <div className={`rounded-xl border-2 border-dashed p-8 text-center ${
+            isDark ? 'border-slate-600' : 'border-gray-300'
+          }`}>
+            <Building2 size={32} className={`mx-auto mb-3 ${isDark ? 'text-slate-500' : 'text-gray-300'}`} />
+            <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+              Aucun compte connecté
+            </p>
+            <p className={`text-xs mt-1 ${textMuted}`}>
+              {bankStatus.enabled
+                ? 'Cliquez sur "Connecter" pour ajouter votre banque'
+                : 'Configurez d\'abord vos clés API ci-dessus'
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {connections.map(conn => (
+              <div
+                key={conn.id}
+                className={`rounded-xl border p-4 ${isDark ? 'border-slate-600' : 'border-gray-200'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {conn.institution_logo && (
+                      <img src={conn.institution_logo} alt="" className="w-8 h-8 rounded-lg object-contain" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${textPrimary}`}>{conn.institution_name}</p>
+                      <p className={`text-xs font-mono ${textMuted}`}>
+                        {conn.iban ? `${conn.iban.substring(0, 4)} •••• ${conn.iban.slice(-4)}` : 'IBAN non disponible'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${
+                        conn.last_balance >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }`}>
+                        {conn.last_balance != null
+                          ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(conn.last_balance)
+                          : '—'
+                        }
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                          conn.requisition_status === 'linked' ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`} />
+                        <span className={`text-xs ${textMuted}`}>
+                          {conn.requisition_status === 'linked' ? 'Actif' :
+                           conn.requisition_status === 'expired' ? 'Expiré' : conn.requisition_status}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDisconnect(conn.id)}
+                      disabled={disconnecting === conn.id}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isDark ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-500'
+                      }`}
+                      title="Déconnecter"
+                    >
+                      {disconnecting === conn.id
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <Unlink size={16} />
+                      }
+                    </button>
+                  </div>
+                </div>
+                {conn.expires_at && (
+                  <p className={`text-xs mt-2 ${textMuted}`}>
+                    Accès expire le {new Date(conn.expires_at).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bank Connection Modal */}
+      <BankConnectionModal
+        isOpen={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        onConnected={() => {
+          setConnectModalOpen(false);
+          loadBankData();
+        }}
+        isDark={isDark}
+      />
+    </div>
+  );
+}
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur }) {
   const { showToast } = useToast();
@@ -46,6 +351,69 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       fin: now.toISOString().split('T')[0]
     };
   });
+
+  // Stripe config state
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [stripeConfigured, setStripeConfigured] = useState(false);
+  const [stripeKey, setStripeKey] = useState('');
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState('');
+  const [showStripeKey, setShowStripeKey] = useState(false);
+  const [commissionModel, setCommissionModel] = useState('artisan');
+  const [savingStripe, setSavingStripe] = useState(false);
+
+  // Load Stripe config from Supabase on mount
+  useEffect(() => {
+    if (isDemo) return;
+    (async () => {
+      try {
+        const { data } = await supabase.from('stripe_config').select('*').single();
+        if (data) {
+          setStripeEnabled(data.stripe_enabled || false);
+          setStripeConfigured(!!data.secret_key_vault_id);
+          setCommissionModel(data.commission_model || 'artisan');
+        }
+      } catch (e) {
+        // No config yet, that's fine
+      }
+    })();
+  }, []);
+
+  // Save Stripe key
+  const saveStripeKey = async () => {
+    if (!stripeKey) return;
+    setSavingStripe(true);
+    try {
+      const { data, error } = await supabase.rpc('store_stripe_key', {
+        p_secret_key: stripeKey,
+        p_webhook_secret: stripeWebhookSecret || null
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setStripeConfigured(true);
+        setStripeKey('');
+        setStripeWebhookSecret('');
+        showToast('Clé Stripe enregistrée de manière sécurisée', 'success');
+      } else {
+        showToast(data?.error || 'Erreur lors de la sauvegarde', 'error');
+      }
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+    setSavingStripe(false);
+  };
+
+  // Update Stripe config (toggle, commission model)
+  const updateStripeConfig = async (enabled, model) => {
+    if (isDemo) return;
+    try {
+      await supabase.rpc('update_stripe_config', {
+        p_enabled: enabled ?? null,
+        p_commission_model: model ?? null
+      });
+    } catch (e) {
+      console.error('Erreur mise à jour config Stripe:', e);
+    }
+  };
 
   // Debounced save notification
   const saveTimeoutRef = useRef(null);
@@ -604,7 +972,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* BANQUE */}
-      {tab === 'banque' && (
+      {tab === 'banque' && (<>
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
           <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
           <p className="text-sm text-slate-500 mb-4">Ces informations apparaîtront sur vos factures pour faciliter le paiement par virement.</p>
@@ -627,7 +995,139 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
         </div>
-      )}
+
+        {/* Stripe Payment Section */}
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 mt-4`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+              <CreditCard size={20} style={{ color: couleur }} />
+            </div>
+            <div>
+              <h3 className="font-semibold">Paiement en ligne</h3>
+              <p className={`text-sm ${textMuted}`}>Acceptez les paiements par carte bancaire via Stripe</p>
+            </div>
+          </div>
+
+          {/* Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <label className="text-sm font-medium">Activer le paiement par carte bancaire</label>
+            <button
+              onClick={() => {
+                const newState = !stripeEnabled;
+                setStripeEnabled(newState);
+                updateStripeConfig(newState, null);
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${stripeEnabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${stripeEnabled ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
+
+          {stripeEnabled && (
+            <div className="space-y-4">
+              {/* Status badge */}
+              {stripeConfigured && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-medium">Stripe configuré et actif</span>
+                </div>
+              )}
+
+              {/* Secret key input */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {stripeConfigured ? 'Remplacer la clé secrète Stripe' : 'Clé secrète Stripe'}
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showStripeKey ? 'text' : 'password'}
+                      className={`w-full px-4 py-2.5 pr-10 border rounded-xl font-mono text-sm ${inputBg}`}
+                      placeholder="sk_live_..."
+                      value={stripeKey}
+                      onChange={e => setStripeKey(e.target.value)}
+                    />
+                    <button
+                      onClick={() => setShowStripeKey(!showStripeKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showStripeKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <button
+                    onClick={saveStripeKey}
+                    disabled={!stripeKey || savingStripe}
+                    className="px-4 py-2.5 text-white rounded-xl font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+                    style={{ background: couleur }}
+                  >
+                    {savingStripe ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
+                    Sauver
+                  </button>
+                </div>
+                <p className={`text-xs mt-1 ${textMuted}`}>
+                  La clé est chiffrée et stockée de manière sécurisée (Vault). Elle n'est jamais visible après enregistrement.
+                </p>
+              </div>
+
+              {/* Webhook secret (optional, advanced) */}
+              <details className={`text-sm ${textMuted}`}>
+                <summary className="cursor-pointer hover:text-slate-500">Configuration avancée</summary>
+                <div className="mt-2">
+                  <label className="block text-sm font-medium mb-1">Secret webhook Stripe (optionnel)</label>
+                  <input
+                    type="password"
+                    className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                    placeholder="whsec_..."
+                    value={stripeWebhookSecret}
+                    onChange={e => setStripeWebhookSecret(e.target.value)}
+                  />
+                  <p className={`text-xs mt-1 ${textMuted}`}>
+                    Configurez un webhook dans votre dashboard Stripe pointant vers votre endpoint Supabase Edge Function.
+                  </p>
+                </div>
+              </details>
+
+              {/* Commission model */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Commission Stripe absorbée par</label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'artisan', label: "L'artisan", desc: 'Le client paie le montant exact TTC. Vous absorbez les frais (~1.4% + 0.25€).' },
+                    { value: 'client', label: 'Le client', desc: 'Le client paie un surplus de ~1.7% pour couvrir les frais Stripe.' },
+                    { value: 'partage', label: 'Partagé 50/50', desc: 'Les frais sont partagés (~0.85% chacun).' }
+                  ].map(opt => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        commissionModel === opt.value
+                          ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
+                          : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300')
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="commission"
+                        value={opt.value}
+                        checked={commissionModel === opt.value}
+                        onChange={() => {
+                          setCommissionModel(opt.value);
+                          updateStripeConfig(null, opt.value);
+                        }}
+                        className="mt-1"
+                        style={{ accentColor: couleur }}
+                      />
+                      <div>
+                        <span className="font-medium text-sm">{opt.label}</span>
+                        <p className={`text-xs mt-0.5 ${textMuted}`}>{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </>)}
 
       {/* DOCUMENTS */}
       {tab === 'documents' && (
@@ -744,6 +1244,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="flex gap-2 flex-wrap">
             {[
               { id: 'integrations', label: 'Intégrations', icon: Link2 },
+              { id: 'banque', label: 'Banque', icon: Building2 },
               { id: 'export', label: 'Export', icon: Download },
               { id: 'tva', label: 'Résumé TVA', icon: Calculator }
             ].map(subtab => (
@@ -866,6 +1367,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 })}
               </div>
             </div>
+          )}
+
+          {/* Banque Sub-tab */}
+          {comptaSubTab === 'banque' && (
+            <BanqueSubTab
+              isDark={isDark}
+              cardBg={cardBg}
+              inputBg={inputBg}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              textMuted={textMuted}
+              couleur={couleur}
+              showToast={showToast}
+            />
           )}
 
           {/* Export Sub-tab */}
@@ -1067,7 +1582,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
                     <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                      Ce résumé TVA est indicatif et basé sur les données saisies dans ChantierPro.
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans BatiGesti.
                       Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
                   </div>

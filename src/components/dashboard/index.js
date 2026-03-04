@@ -28,5 +28,8 @@ export { default as ActionsList } from './ActionsList';
 export { default as OverviewWidget, OverviewWidgetSkeleton } from './OverviewWidget';
 export { default as RevenueChartWidget, RevenueChartWidgetSkeleton } from './RevenueChartWidget';
 
+// Bank Widget
+export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';
