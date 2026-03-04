@@ -4,7 +4,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `Tu es l'assistant IA de ChantierPro, une application de gestion pour artisans du BTP en France.
+const SYSTEM_PROMPT = `Tu es l'assistant IA de BatiGesti, une application de gestion pour artisans du BTP en France.
 
 TON ROLE: Aider les artisans (plombiers, electriciens, peintres, macons, etc.) a creer des devis professionnels a partir de descriptions en langage naturel.
 
