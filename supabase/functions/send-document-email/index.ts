@@ -90,7 +90,7 @@ serve(async (req: Request) => {
 <head><meta charset="UTF-8"></head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 20px;">${companyName || 'ChantierPro'}</h1>
+    <h1 style="color: white; margin: 0; font-size: 20px;">${companyName || 'BatiGesti'}</h1>
   </div>
 
   <div style="border: 1px solid #e5e7eb; border-top: 0; padding: 24px; border-radius: 0 0 12px 12px;">
@@ -127,7 +127,7 @@ serve(async (req: Request) => {
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
     <p style="font-size: 11px; color: #9ca3af; text-align: center;">
       ${companyName || ''}${companyEmail ? ` — ${companyEmail}` : ''}<br/>
-      Envoyé via ChantierPro
+      Envoyé via BatiGesti
     </p>
   </div>
 </body>
@@ -142,8 +142,8 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         from: companyEmail
-          ? `${companyName || 'ChantierPro'} <onboarding@resend.dev>`
-          : 'ChantierPro <onboarding@resend.dev>',
+          ? `${companyName || 'BatiGesti'} <onboarding@resend.dev>`
+          : 'BatiGesti <onboarding@resend.dev>',
         reply_to: companyEmail || undefined,
         to: [to],
         subject,

@@ -15,7 +15,7 @@ export const PLANS = {
   gratuit: {
     id: 'gratuit',
     name: 'Gratuit',
-    description: 'Pour démarrer avec ChantierPro',
+    description: 'Pour démarrer avec BatiGesti',
     target: 'Artisans qui découvrent',
     priceMonthly: 0,
     priceYearly: 0,
@@ -43,7 +43,7 @@ export const PLANS = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    description: 'Toute la puissance ChantierPro',
+    description: 'Toute la puissance BatiGesti',
     target: 'Artisans et PME',
     priceMonthly: 14.90,
     priceYearly: 149,
@@ -189,7 +189,7 @@ export const UPGRADE_CONTEXTS = {
   },
   generic: {
     title: 'Passez au plan Pro',
-    subtitle: 'Débloquez toutes les fonctionnalités de ChantierPro',
+    subtitle: 'Débloquez toutes les fonctionnalités de BatiGesti',
     highlight: null,
     recommendedPlan: 'pro'
   }

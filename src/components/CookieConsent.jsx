@@ -202,7 +202,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
               {/* Description */}
               <div className="px-4 pb-3 sm:px-5">
                 <p className={`text-sm leading-relaxed ${textSecondary}`}>
-                  Nous utilisons des cookies pour assurer le bon fonctionnement de ChantierPro et am\u00e9liorer votre exp\u00e9rience. Vous pouvez personnaliser vos choix \u00e0 tout moment.
+                  Nous utilisons des cookies pour assurer le bon fonctionnement de BatiGesti et am\u00e9liorer votre exp\u00e9rience. Vous pouvez personnaliser vos choix \u00e0 tout moment.
                   {setPage && (
                     <>
                       {' '}

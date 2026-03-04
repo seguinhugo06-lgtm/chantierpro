@@ -105,8 +105,8 @@ export async function generateFacturXPDF(basePdfBytes, invoice, client, entrepri
   const conformanceLevel = profile === 'basic' ? 'BASIC' : 'MINIMUM';
   const xmpMetadata = buildXmpMetadata({
     title: `${invoice.type === 'facture' ? 'Facture' : 'Devis'} ${invoice.numero}`,
-    creator: entreprise?.nom || 'ChantierPro',
-    producer: 'ChantierPro / pdf-lib',
+    creator: entreprise?.nom || 'BatiGesti',
+    producer: 'BatiGesti / pdf-lib',
     conformanceLevel,
     documentType: invoice.type === 'facture' ? 'INVOICE' : 'QUOTE',
     documentFileName: 'factur-x.xml',
@@ -134,9 +134,9 @@ export async function generateFacturXPDF(basePdfBytes, invoice, client, entrepri
   // === 5. Set standard document metadata ===
 
   pdfDoc.setTitle(`${invoice.type === 'facture' ? 'Facture' : 'Devis'} ${invoice.numero}`);
-  pdfDoc.setAuthor(entreprise?.nom || 'ChantierPro');
-  pdfDoc.setCreator('ChantierPro');
-  pdfDoc.setProducer('ChantierPro / pdf-lib + jspdf');
+  pdfDoc.setAuthor(entreprise?.nom || 'BatiGesti');
+  pdfDoc.setCreator('BatiGesti');
+  pdfDoc.setProducer('BatiGesti / pdf-lib + jspdf');
   pdfDoc.setCreationDate(new Date());
   pdfDoc.setModificationDate(new Date());
 
@@ -319,7 +319,7 @@ function buildXmpMetadata({ title, creator, producer, conformanceLevel, document
     <!-- XMP Basic -->
     <rdf:Description rdf:about=""
         xmlns:xmp="http://ns.adobe.com/xap/1.0/">
-      <xmp:CreatorTool>ChantierPro</xmp:CreatorTool>
+      <xmp:CreatorTool>BatiGesti</xmp:CreatorTool>
       <xmp:CreateDate>${now}</xmp:CreateDate>
       <xmp:ModifyDate>${now}</xmp:ModifyDate>
     </rdf:Description>

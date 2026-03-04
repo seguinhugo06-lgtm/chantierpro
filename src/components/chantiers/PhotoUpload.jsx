@@ -79,7 +79,7 @@ const MAX_CONCURRENT_UPLOADS = 3;
 const STORAGE_BUCKET = 'chantier-photos';
 
 // Local storage key for offline queue
-const OFFLINE_QUEUE_KEY = 'chantierpro_photo_queue';
+const OFFLINE_QUEUE_KEY = 'batigesti_photo_queue';
 
 /**
  * PhotoUpload - Capture and upload photos for chantier documentation

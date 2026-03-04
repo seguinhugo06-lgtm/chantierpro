@@ -88,14 +88,14 @@ export default function OnboardingChecklist({
   isDark = false,
 }) {
   const [dismissed, setDismissed] = useState(() =>
-    localStorage.getItem('chantierpro_onboarding_completed') === 'true' ||
-    localStorage.getItem('chantierpro_onboarding_checklist_dismissed') === 'true'
+    localStorage.getItem('batigesti_onboarding_completed') === 'true' ||
+    localStorage.getItem('batigesti_onboarding_checklist_dismissed') === 'true'
   );
 
   // Track first time checklist was seen (for 14-day auto-dismiss)
   useEffect(() => {
-    if (!localStorage.getItem('chantierpro_onboarding_first_seen')) {
-      localStorage.setItem('chantierpro_onboarding_first_seen', Date.now().toString());
+    if (!localStorage.getItem('batigesti_onboarding_first_seen')) {
+      localStorage.setItem('batigesti_onboarding_first_seen', Date.now().toString());
     }
   }, []);
 
@@ -119,8 +119,8 @@ export default function OnboardingChecklist({
 
       const timer = setTimeout(() => {
         setDismissed(true);
-        localStorage.setItem('chantierpro_onboarding_completed', 'true');
-        localStorage.setItem('chantierpro_onboarding_checklist_dismissed', 'true');
+        localStorage.setItem('batigesti_onboarding_completed', 'true');
+        localStorage.setItem('batigesti_onboarding_checklist_dismissed', 'true');
       }, 4000);
       return () => clearTimeout(timer);
     }
@@ -135,13 +135,13 @@ export default function OnboardingChecklist({
   }, [completedCount]);
 
   // Don't show if permanently completed, dismissed, or 14 days elapsed
-  const firstSeen = parseInt(localStorage.getItem('chantierpro_onboarding_first_seen') || '0');
+  const firstSeen = parseInt(localStorage.getItem('batigesti_onboarding_first_seen') || '0');
   const daysSinceFirstSeen = firstSeen ? (Date.now() - firstSeen) / (1000 * 60 * 60 * 24) : 0;
   if (dismissed || daysSinceFirstSeen > 14) return null;
 
   const handleDismiss = () => {
     setDismissed(true);
-    localStorage.setItem('chantierpro_onboarding_checklist_dismissed', 'true');
+    localStorage.setItem('batigesti_onboarding_checklist_dismissed', 'true');
   };
 
   const tc = {

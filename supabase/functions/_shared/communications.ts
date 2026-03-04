@@ -14,10 +14,10 @@ const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
 const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER') || '';
 
 const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY') || '';
-const SENDGRID_FROM_EMAIL = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@chantierpro.fr';
-const SENDGRID_FROM_NAME = Deno.env.get('SENDGRID_FROM_NAME') || 'ChantierPro';
+const SENDGRID_FROM_EMAIL = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@batigesti.fr';
+const SENDGRID_FROM_NAME = Deno.env.get('SENDGRID_FROM_NAME') || 'BatiGesti';
 
-const APP_URL = Deno.env.get('APP_URL') || 'https://app.chantierpro.fr';
+const APP_URL = Deno.env.get('APP_URL') || 'https://app.batigesti.fr';
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -155,7 +155,7 @@ function getEmailWrapper(content: string, preheader = ''): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChantierPro</title>
+  <title>BatiGesti</title>
   <style type="text/css">
     body { margin: 0; padding: 0; min-width: 100%; background-color: #f4f4f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
@@ -173,14 +173,14 @@ function getEmailWrapper(content: string, preheader = ''): string {
   <center style="width: 100%; background-color: #f4f4f5; padding: 24px 0;">
     <div class="email-container" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
       <div class="email-header">
-        <h1>ChantierPro</h1>
+        <h1>BatiGesti</h1>
       </div>
       <div class="email-body">
         ${content}
       </div>
       <div class="email-footer">
-        <p>Cet email a été envoyé automatiquement par ChantierPro.</p>
-        <p>&copy; ${new Date().getFullYear()} ChantierPro. Tous droits réservés.</p>
+        <p>Cet email a été envoyé automatiquement par BatiGesti.</p>
+        <p>&copy; ${new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
       </div>
     </div>
   </center>

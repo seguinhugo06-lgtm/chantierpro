@@ -314,11 +314,11 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   ${subscription.isFree() ? `
   <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:flex;align-items:center;justify-content:center;">
     <div style="transform:rotate(-35deg);font-size:80px;font-weight:bold;color:rgba(249,115,22,0.08);white-space:nowrap;user-select:none;">
-      ChantierPro — Version Gratuite
+      BatiGesti — Version Gratuite
     </div>
   </div>
   <div style="text-align:center;padding:8px;background:#fff7ed;border-top:2px solid #f97316;font-size:11px;color:#c2410c;margin-top:20px;">
-    Document généré avec ChantierPro — Plan Découverte (gratuit) · Passez au plan Artisan pour supprimer ce message
+    Document généré avec BatiGesti — Plan Découverte (gratuit) · Passez au plan Artisan pour supprimer ce message
   </div>
   ` : ''}
 </body>

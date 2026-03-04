@@ -412,7 +412,7 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
 
-    const footerLeft = `${entreprise.nom || 'ChantierPro'} · Rapport ${rapport.numero || ''}`;
+    const footerLeft = `${entreprise.nom || 'BatiGesti'} · Rapport ${rapport.numero || ''}`;
     doc.text(footerLeft, margin, footerY);
     doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, footerY, { align: 'right' });
     doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, footerY, { align: 'center' });
@@ -422,7 +422,7 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
       doc.setFontSize(48);
       doc.setTextColor(249, 115, 22);
       doc.setGState(new doc.GState({ opacity: 0.06 }));
-      doc.text('ChantierPro Gratuit', pageWidth / 2, 150, { align: 'center', angle: 35 });
+      doc.text('BatiGesti Gratuit', pageWidth / 2, 150, { align: 'center', angle: 35 });
       doc.setGState(new doc.GState({ opacity: 1 }));
 
       // Bottom banner
@@ -430,7 +430,7 @@ export function generateRapportChantierPDF(rapport, chantier, options = {}) {
       doc.rect(0, 280, pageWidth, 8, 'F');
       doc.setFontSize(7);
       doc.setTextColor(194, 65, 12);
-      doc.text('Document généré avec ChantierPro — Plan Découverte (gratuit)', pageWidth / 2, 285, { align: 'center' });
+      doc.text('Document généré avec BatiGesti — Plan Découverte (gratuit)', pageWidth / 2, 285, { align: 'center' });
     }
   }
 

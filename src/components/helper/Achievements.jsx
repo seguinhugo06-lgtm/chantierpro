@@ -181,7 +181,7 @@ export const ACHIEVEMENTS = {
   FIRST_QUOTE: {
     id: 'first-quote',
     title: 'Premier devis !',
-    message: 'Vous venez de créer votre premier devis sur ChantierPro 🎉',
+    message: 'Vous venez de créer votre premier devis sur BatiGesti 🎉',
     icon: 'trophy',
     color: '#f97316',
     colorEnd: '#dc2626',
@@ -199,7 +199,7 @@ export const ACHIEVEMENTS = {
   FIRST_PAYMENT: {
     id: 'first-payment',
     title: 'Premier paiement !',
-    message: 'Vous avez reçu votre premier acompte via ChantierPro 💳',
+    message: 'Vous avez reçu votre premier acompte via BatiGesti 💳',
     icon: 'credit',
     color: '#22c55e',
     colorEnd: '#10b981',
@@ -217,7 +217,7 @@ export const ACHIEVEMENTS = {
   PRODUCTIVE: {
     id: 'productive',
     title: 'Productif ! 🎯',
-    message: '10 devis créés. Vous maîtrisez ChantierPro !',
+    message: '10 devis créés. Vous maîtrisez BatiGesti !',
     icon: 'target',
     color: '#3b82f6',
     colorEnd: '#2563eb',
@@ -244,7 +244,7 @@ export const ACHIEVEMENTS = {
   WEEK_STREAK: {
     id: 'week-streak',
     title: 'Une semaine de suite ! 🔥',
-    message: 'Vous utilisez ChantierPro depuis 7 jours consécutifs',
+    message: 'Vous utilisez BatiGesti depuis 7 jours consécutifs',
     icon: 'flame',
     color: '#f97316',
     colorEnd: '#ef4444',

@@ -69,7 +69,7 @@ export default function Header({
   onToggleSidebar,
   isDark = false,
   brandColor = '#f97316',
-  companyName = 'ChantierPro',
+  companyName = 'BatiGesti',
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);

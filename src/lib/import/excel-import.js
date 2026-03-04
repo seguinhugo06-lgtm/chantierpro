@@ -1,5 +1,5 @@
 /**
- * Module d'import Excel/CSV pour ChantierPro
+ * Module d'import Excel/CSV pour BatiGesti
  * Permet d'importer clients, devis, dépenses, équipe depuis fichiers Excel/CSV
  */
 

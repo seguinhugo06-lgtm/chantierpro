@@ -66,14 +66,14 @@ export default function CGUAcceptanceModal({ onAccept, couleur = '#f97316' }) {
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">1. Objet</h3>
             <p>
-              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service ChantierPro. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.
+              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service BatiGesti. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">2. Description du service</h3>
             <p>
-              ChantierPro est un logiciel en ligne (SaaS) de gestion de chantier destiné aux artisans et entreprises du BTP. Il permet notamment la création et gestion de devis et factures, le suivi de chantier et de rentabilité, la gestion d'équipe, le suivi de trésorerie, la gestion d'un catalogue de prestations, et la planification.
+              BatiGesti est un logiciel en ligne (SaaS) de gestion de chantier destiné aux artisans et entreprises du BTP. Il permet notamment la création et gestion de devis et factures, le suivi de chantier et de rentabilité, la gestion d'équipe, le suivi de trésorerie, la gestion d'un catalogue de prestations, et la planification.
             </p>
           </section>
 
@@ -87,42 +87,42 @@ export default function CGUAcceptanceModal({ onAccept, couleur = '#f97316' }) {
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">4. Offres et tarification</h3>
             <p>
-              ChantierPro propose plusieurs formules d'abonnement, dont une offre gratuite avec des fonctionnalités limitées. Les tarifs des offres payantes sont indiqués sur la page Tarifs et peuvent être modifiés avec un préavis de 30 jours.
+              BatiGesti propose plusieurs formules d'abonnement, dont une offre gratuite avec des fonctionnalités limitées. Les tarifs des offres payantes sont indiqués sur la page Tarifs et peuvent être modifiés avec un préavis de 30 jours.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">5. Données de l'utilisateur</h3>
             <p>
-              L'utilisateur reste propriétaire de l'ensemble des données qu'il saisit dans le service. ChantierPro s'engage à ne pas utiliser ces données à des fins commerciales. L'utilisateur peut à tout moment exporter ou supprimer ses données. En cas de résiliation, les données seront conservées pendant 30 jours puis supprimées définitivement.
+              L'utilisateur reste propriétaire de l'ensemble des données qu'il saisit dans le service. BatiGesti s'engage à ne pas utiliser ces données à des fins commerciales. L'utilisateur peut à tout moment exporter ou supprimer ses données. En cas de résiliation, les données seront conservées pendant 30 jours puis supprimées définitivement.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">6. Protection des données (RGPD)</h3>
             <p>
-              Conformément au Règlement Général sur la Protection des Données (RGPD), ChantierPro s'engage à protéger les données personnelles de ses utilisateurs. Les données sont hébergées dans l'Union Européenne. L'utilisateur dispose d'un droit d'accès, de rectification, de portabilité et de suppression de ses données, exerçable depuis les paramètres du compte ou par email à contact@chantierpro.fr.
+              Conformément au Règlement Général sur la Protection des Données (RGPD), BatiGesti s'engage à protéger les données personnelles de ses utilisateurs. Les données sont hébergées dans l'Union Européenne. L'utilisateur dispose d'un droit d'accès, de rectification, de portabilité et de suppression de ses données, exerçable depuis les paramètres du compte ou par email à contact@batigesti.fr.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">7. Responsabilité</h3>
             <p>
-              ChantierPro fournit le service "en l'état" et ne garantit pas l'absence d'erreurs ou d'interruptions. L'utilisateur est seul responsable de la vérification des montants, calculs et informations générées par le service. ChantierPro ne se substitue pas à un expert-comptable.
+              BatiGesti fournit le service "en l'état" et ne garantit pas l'absence d'erreurs ou d'interruptions. L'utilisateur est seul responsable de la vérification des montants, calculs et informations générées par le service. BatiGesti ne se substitue pas à un expert-comptable.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">8. Disponibilité</h3>
             <p>
-              ChantierPro s'efforce de maintenir le service accessible 24h/24, 7j/7, mais ne peut garantir une disponibilité permanente. Des interruptions pour maintenance pourront avoir lieu.
+              BatiGesti s'efforce de maintenir le service accessible 24h/24, 7j/7, mais ne peut garantir une disponibilité permanente. Des interruptions pour maintenance pourront avoir lieu.
             </p>
           </section>
 
           <section>
             <h3 className="text-base font-semibold text-slate-800 mb-2">9. Résiliation</h3>
             <p>
-              L'utilisateur peut résilier son compte à tout moment depuis les paramètres. ChantierPro se réserve le droit de suspendre un compte en cas de violation des CGU, après notification préalable.
+              L'utilisateur peut résilier son compte à tout moment depuis les paramètres. BatiGesti se réserve le droit de suspendre un compte en cas de violation des CGU, après notification préalable.
             </p>
           </section>
 
@@ -155,7 +155,7 @@ export default function CGUAcceptanceModal({ onAccept, couleur = '#f97316' }) {
               className="mt-0.5 w-5 h-5 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
             />
             <span className="text-sm text-slate-700">
-              J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de ChantierPro
+              J'ai lu et j'accepte les <strong>Conditions Générales d'Utilisation</strong> de BatiGesti
             </span>
           </label>
 

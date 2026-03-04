@@ -1,7 +1,7 @@
 /**
  * SousTraitantsModule.jsx
  *
- * Module de gestion des sous-traitants pour ChantierPro.
+ * Module de gestion des sous-traitants pour BatiGesti.
  * Permet de créer, modifier, visualiser et suivre les sous-traitants
  * avec gestion de la conformité (RC Pro, URSSAF), notes de qualité,
  * et association aux chantiers.

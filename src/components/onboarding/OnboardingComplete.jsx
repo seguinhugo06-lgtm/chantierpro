@@ -123,7 +123,7 @@ export default function OnboardingComplete({
             🎉 Félicitations !
           </h1>
           <p className="text-xl text-white/90 mb-2">
-            Votre ChantierPro est prêt
+            Votre BatiGesti est prêt
           </p>
           <p className="text-white/70">
             Vous allez gagner <span className="font-bold text-yellow-300">15 heures par semaine</span>

@@ -1,5 +1,5 @@
 /**
- * Module de paiement Stripe pour ChantierPro
+ * Module de paiement Stripe pour BatiGesti
  * Gere les paiements d'acompte et de solde via Stripe Payment Links
  */
 

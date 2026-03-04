@@ -14,7 +14,7 @@ export default function MentionsLegales() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-slate-900 hover:text-orange-500 transition-colors">
             <Building2 size={24} className="text-orange-500" />
-            <span className="text-lg font-bold">ChantierPro</span>
+            <span className="text-lg font-bold">BatiGesti</span>
           </a>
           <a href="/" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft size={16} />
@@ -31,7 +31,7 @@ export default function MentionsLegales() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">1. Éditeur du site</h2>
             <p className="text-slate-600 leading-relaxed">
-              Le site ChantierPro est édité par :<br />
+              Le site BatiGesti est édité par :<br />
               <strong>[Nom de la société / Nom du dirigeant]</strong><br />
               [Forme juridique] au capital de [montant] €<br />
               Siège social : [Adresse complète]<br />
@@ -39,7 +39,7 @@ export default function MentionsLegales() {
               RCS : [ville et numéro]<br />
               N° TVA intracommunautaire : [numéro]<br />
               Directeur de la publication : [Nom]<br />
-              Contact : contact@chantierpro.fr
+              Contact : contact@batigesti.fr
             </p>
           </section>
 
@@ -62,14 +62,14 @@ export default function MentionsLegales() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">3. Propriété intellectuelle</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'ensemble des contenus présents sur le site ChantierPro (textes, images, logos, icônes, logiciels, base de données) est protégé par les dispositions du Code de la propriété intellectuelle. Toute reproduction, représentation ou diffusion, totale ou partielle, du contenu de ce site, par quelque procédé que ce soit, sans l'autorisation expresse de l'éditeur, est interdite.
+              L'ensemble des contenus présents sur le site BatiGesti (textes, images, logos, icônes, logiciels, base de données) est protégé par les dispositions du Code de la propriété intellectuelle. Toute reproduction, représentation ou diffusion, totale ou partielle, du contenu de ce site, par quelque procédé que ce soit, sans l'autorisation expresse de l'éditeur, est interdite.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">4. Données personnelles</h2>
             <p className="text-slate-600 leading-relaxed">
-              Les données personnelles collectées sur ce site font l'objet d'un traitement informatique. Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, de suppression et de portabilité de vos données. Pour exercer ces droits, contactez-nous à : contact@chantierpro.fr
+              Les données personnelles collectées sur ce site font l'objet d'un traitement informatique. Conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, de suppression et de portabilité de vos données. Pour exercer ces droits, contactez-nous à : contact@batigesti.fr
             </p>
             <p className="text-slate-600 leading-relaxed mt-2">
               Pour plus d'informations, consultez notre <a href="/politique-de-confidentialite" className="text-orange-500 hover:underline">Politique de confidentialité</a>.

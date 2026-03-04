@@ -1,5 +1,5 @@
 /**
- * Calculateur de marge et alertes pour ChantierPro
+ * Calculateur de marge et alertes pour BatiGesti
  * Analyse la rentabilite des chantiers et detecte les risques
  *
  * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for margin calculations.

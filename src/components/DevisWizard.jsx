@@ -8,7 +8,7 @@ import { formatClientName } from '../lib/formatters';
 import useConfirm from '../hooks/useConfirm';
 
 // Draft localStorage key
-const DRAFT_KEY = 'chantierpro_devis_draft';
+const DRAFT_KEY = 'batigesti_devis_draft';
 
 /**
  * DevisWizard - 3-step wizard for devis/facture creation
@@ -189,7 +189,7 @@ export default function DevisWizard({
   }, [form.lignes, form.tvaDefaut, form.remise]);
 
   // MRU (Most Recently Used) clients
-  const MRU_KEY = 'chantierpro_recent_clients';
+  const MRU_KEY = 'batigesti_recent_clients';
   const MAX_RECENT = 5;
 
   const addToRecentClients = (clientId) => {

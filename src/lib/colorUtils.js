@@ -1,5 +1,5 @@
 /**
- * colorUtils.js — WCAG-compliant color utilities for ChantierPro
+ * colorUtils.js — WCAG-compliant color utilities for BatiGesti
  *
  * Provides functions to determine accessible text colors
  * based on background color luminance.

@@ -28,7 +28,7 @@ const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, 
           <div className="w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center" style={{ background: couleur }}>
             <Sparkles size={32} className="text-white" />
           </div>
-          <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>Bienvenue dans ChantierPro</h1>
+          <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>Bienvenue dans BatiGesti</h1>
           <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>Votre assistant pour gérer devis, factures et chantiers. Commençons !</p>
         </div>
 

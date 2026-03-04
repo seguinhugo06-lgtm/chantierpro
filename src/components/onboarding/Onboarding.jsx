@@ -50,15 +50,15 @@ export default function Onboarding({
     console.log('Analytics: onboarding_completed', { duration, userData });
 
     // Save to localStorage
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
-    localStorage.setItem('chantierpro_user_data', JSON.stringify(userData));
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_user_data', JSON.stringify(userData));
 
     onComplete?.(userData);
   };
 
   const handleSkip = () => {
     console.log('Analytics: onboarding_skipped', { step: currentStep });
-    localStorage.setItem('chantierpro_onboarding_skipped', 'true');
+    localStorage.setItem('batigesti_onboarding_skipped', 'true');
     onSkip?.();
   };
 

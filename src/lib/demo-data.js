@@ -1,5 +1,5 @@
 /**
- * Demo data for ChantierPro
+ * Demo data for BatiGesti
  * Comprehensive seed data for testing ALL modules
  * Use: import { DEMO_DATA } from './lib/demo-data'
  *
@@ -382,7 +382,7 @@ export const DEMO_TRESORERIE_SETTINGS = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Fournisseurs (localStorage: chantierpro_fournisseurs)
+// SECONDARY DATA: Fournisseurs (localStorage: batigesti_fournisseurs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_FOURNISSEURS = [
@@ -410,7 +410,7 @@ export const DEMO_ARTICLE_FOURNISSEURS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Stock mouvements (localStorage: chantierpro_mouvements)
+// SECONDARY DATA: Stock mouvements (localStorage: batigesti_mouvements)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_MOUVEMENTS = [
@@ -425,7 +425,7 @@ export const DEMO_MOUVEMENTS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SECONDARY DATA: Packs (localStorage: chantierpro_packs)
+// SECONDARY DATA: Packs (localStorage: batigesti_packs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DEMO_PACKS = [
@@ -504,10 +504,10 @@ export function seedSecondaryDemoData() {
   const keys = {
     'cp_tresorerie_previsions': DEMO_PREVISIONS,
     'cp_tresorerie_settings': DEMO_TRESORERIE_SETTINGS,
-    'chantierpro_fournisseurs': DEMO_FOURNISSEURS,
-    'chantierpro_article_fournisseurs': DEMO_ARTICLE_FOURNISSEURS,
-    'chantierpro_mouvements': DEMO_MOUVEMENTS,
-    'chantierpro_packs': DEMO_PACKS,
+    'batigesti_fournisseurs': DEMO_FOURNISSEURS,
+    'batigesti_article_fournisseurs': DEMO_ARTICLE_FOURNISSEURS,
+    'batigesti_mouvements': DEMO_MOUVEMENTS,
+    'batigesti_packs': DEMO_PACKS,
     'cp_entreprise': DEMO_ENTREPRISE,
   };
 

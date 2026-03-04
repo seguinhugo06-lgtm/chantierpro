@@ -14,7 +14,7 @@ export default function PolitiqueConfidentialite() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-slate-900 hover:text-orange-500 transition-colors">
             <Building2 size={24} className="text-orange-500" />
-            <span className="text-lg font-bold">ChantierPro</span>
+            <span className="text-lg font-bold">BatiGesti</span>
           </a>
           <a href="/" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft size={16} />
@@ -34,14 +34,14 @@ export default function PolitiqueConfidentialite() {
               Le responsable du traitement des données personnelles est :<br />
               <strong>[Nom de la société]</strong><br />
               [Adresse complète]<br />
-              Contact DPO : contact@chantierpro.fr
+              Contact DPO : contact@batigesti.fr
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">2. Données collectées</h2>
             <p className="text-slate-600 leading-relaxed">
-              Dans le cadre de l'utilisation du service ChantierPro, nous collectons les données suivantes :
+              Dans le cadre de l'utilisation du service BatiGesti, nous collectons les données suivantes :
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-1 mt-2">
               <li><strong>Données d'identification :</strong> nom, prénom, adresse email, mot de passe (chiffré)</li>
@@ -57,7 +57,7 @@ export default function PolitiqueConfidentialite() {
               Les données sont collectées et traitées pour les finalités suivantes :
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-1 mt-2">
-              <li>Fourniture et fonctionnement du service ChantierPro</li>
+              <li>Fourniture et fonctionnement du service BatiGesti</li>
               <li>Gestion du compte utilisateur et authentification</li>
               <li>Communication relative au service (notifications, mises à jour)</li>
               <li>Amélioration du service et statistiques d'utilisation (anonymisées)</li>
@@ -112,7 +112,7 @@ export default function PolitiqueConfidentialite() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">8. Sécurité</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro met en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données :
+              BatiGesti met en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données :
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-1 mt-2">
               <li>Chiffrement des données en transit (HTTPS/TLS)</li>
@@ -137,7 +137,7 @@ export default function PolitiqueConfidentialite() {
               <li><strong>Droit à la limitation :</strong> restreindre le traitement</li>
             </ul>
             <p className="text-slate-600 leading-relaxed mt-3">
-              Pour exercer vos droits, contactez-nous à : <a href="mailto:contact@chantierpro.fr" className="text-orange-500 hover:underline">contact@chantierpro.fr</a>
+              Pour exercer vos droits, contactez-nous à : <a href="mailto:contact@batigesti.fr" className="text-orange-500 hover:underline">contact@batigesti.fr</a>
             </p>
             <p className="text-slate-600 leading-relaxed mt-2">
               Vous disposez également du droit d'introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" className="text-orange-500 hover:underline" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>).
@@ -147,7 +147,7 @@ export default function PolitiqueConfidentialite() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">10. Cookies</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro utilise uniquement des cookies strictement nécessaires au fonctionnement du service :
+              BatiGesti utilise uniquement des cookies strictement nécessaires au fonctionnement du service :
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-1 mt-2">
               <li>Cookie d'authentification (session Supabase)</li>

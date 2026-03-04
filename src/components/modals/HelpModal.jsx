@@ -9,15 +9,15 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
   const helpSections = {
     overview: {
       title: "Bienvenue",
-      titleFull: "Bienvenue dans ChantierPro",
+      titleFull: "Bienvenue dans BatiGesti",
       icon: "🏠",
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <p className={textSecondary}>BatiGesti est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>💡 Exemple concret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+              Jean, plombier, utilise BatiGesti pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -123,7 +123,7 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
         <div className="space-y-4">
           <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📱 Utilisez le sur mobile</h4>
-            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>ChantierPro fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>BatiGesti fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>🎨 Personnalisez</h4>
@@ -152,7 +152,7 @@ export default function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }
               </div>
               <div>
                 <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
-                <p className={`text-sm ${textSecondary}`}>Tout savoir sur ChantierPro</p>
+                <p className={`text-sm ${textSecondary}`}>Tout savoir sur BatiGesti</p>
               </div>
             </div>
             <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>

@@ -477,7 +477,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
   const getShareMessage = () => {
     const chantier = memo.chantier_id ? chantiers.find(c => c.id === memo.chantier_id) : null;
     const client = memo.client_id ? clients.find(c => c.id === memo.client_id) : null;
-    const parts = ['[Tâche ChantierPro]', memo.text];
+    const parts = ['[Tâche BatiGesti]', memo.text];
     if (memo.due_date) parts.push(`📅 ${formatDateFR(memo.due_date)}${memo.due_time ? ' à ' + formatTimeFR(memo.due_time) : ''}`);
     if (chantier) parts.push(`🏗️ ${chantier.nom}`);
     if (client) parts.push(`👤 ${client.nom || ''} ${client.prenom || ''}`);
@@ -496,7 +496,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
 
   const handleNativeShare = async () => {
     try {
-      await navigator.share({ title: 'Tâche ChantierPro', text: getShareMessage() });
+      await navigator.share({ title: 'Tâche BatiGesti', text: getShareMessage() });
     } catch (err) {
       if (err.name !== 'AbortError') showToast('Partage annulé', 'info');
     }

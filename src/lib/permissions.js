@@ -1,6 +1,6 @@
 // src/lib/permissions.js
 // Pure permission functions — no React dependency
-// Role-based access control matrix for ChantierPro
+// Role-based access control matrix for BatiGesti
 
 /**
  * @typedef {'owner'|'admin'|'comptable'|'chef_chantier'|'ouvrier'|'readonly'} OrgRole

@@ -142,7 +142,7 @@ serve(async (req) => {
     const description = `${paymentType} - Facture ${facture.numero}${feeDescription}`
 
     // Determine origin for redirect URLs
-    const origin = req.headers.get('origin') || 'https://chantierpro.vercel.app'
+    const origin = req.headers.get('origin') || 'https://batigesti.vercel.app'
 
     // 6. Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({

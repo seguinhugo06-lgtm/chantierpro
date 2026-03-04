@@ -24,8 +24,8 @@ const CONFIG = {
   },
   sendgrid: {
     apiKey: import.meta.env.VITE_SENDGRID_API_KEY || '',
-    fromEmail: import.meta.env.VITE_SENDGRID_FROM_EMAIL || 'noreply@chantierpro.fr',
-    fromName: import.meta.env.VITE_SENDGRID_FROM_NAME || 'ChantierPro',
+    fromEmail: import.meta.env.VITE_SENDGRID_FROM_EMAIL || 'noreply@batigesti.fr',
+    fromName: import.meta.env.VITE_SENDGRID_FROM_NAME || 'BatiGesti',
   },
   rateLimits: {
     smsPerMinute: 10,
@@ -35,7 +35,7 @@ const CONFIG = {
     maxAttempts: 3,
     baseDelayMs: 1000,
   },
-  baseUrl: import.meta.env.VITE_APP_URL || 'https://app.chantierpro.fr',
+  baseUrl: import.meta.env.VITE_APP_URL || 'https://app.batigesti.fr',
 };
 
 // Rate limiting state
@@ -379,7 +379,7 @@ export function getDocumentEmailStatus(documentId) {
 
 function getEmailWrapper(content, preheader = '', trackingId = '') {
   const trackingPixel = trackingId
-    ? `<img src="https://chantierpro.vercel.app/api/track/${trackingId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
+    ? `<img src="https://batigesti.vercel.app/api/track/${trackingId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
     : '';
 
   return `
@@ -389,7 +389,7 @@ function getEmailWrapper(content, preheader = '', trackingId = '') {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>ChantierPro</title>
+  <title>BatiGesti</title>
   <style type="text/css">
     body { margin: 0; padding: 0; min-width: 100%; background-color: #f4f4f5; }
     .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
@@ -412,14 +412,14 @@ function getEmailWrapper(content, preheader = '', trackingId = '') {
   <center style="width: 100%; background-color: #f4f4f5; padding: 24px 0;">
     <div class="email-container" style="border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
       <div class="email-header">
-        <h1>ChantierPro</h1>
+        <h1>BatiGesti</h1>
       </div>
       <div class="email-body">
         ${content}
       </div>
       <div class="email-footer">
-        <p>Cet email a été envoyé automatiquement par ChantierPro.</p>
-        <p>&copy; ${new Date().getFullYear()} ChantierPro. Tous droits réservés.</p>
+        <p>Cet email a été envoyé automatiquement par BatiGesti.</p>
+        <p>&copy; ${new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
         ${trackingPixel}
       </div>
     </div>
@@ -1066,14 +1066,14 @@ export async function notifyArtisanSignature({ entreprise, devis, client, signat
     const montant = (devis?.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
     const subject = `Devis ${devisNumero} signé par ${clientNom}`;
-    const message = `${clientNom} a signé le devis ${devisNumero} (${montant}). Connectez-vous à ChantierPro pour voir les détails.`;
+    const message = `${clientNom} a signé le devis ${devisNumero} (${montant}). Connectez-vous à BatiGesti pour voir les détails.`;
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
         <h2 style="color:#16a34a">✅ Devis signé !</h2>
         <p><strong>${clientNom}</strong> a signé votre devis <strong>${devisNumero}</strong> d'un montant de <strong>${montant}</strong>.</p>
         <p>Signataire : ${signataire || clientNom}</p>
         <p>Date : ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-        <p style="margin-top:20px"><a href="${typeof window !== 'undefined' ? window.location.origin : 'https://chantierpro.vercel.app'}" style="background:#f97316;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Voir dans ChantierPro</a></p>
+        <p style="margin-top:20px"><a href="${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}" style="background:#f97316;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Voir dans BatiGesti</a></p>
       </div>
     `;
 

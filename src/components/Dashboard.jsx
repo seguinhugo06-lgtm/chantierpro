@@ -227,7 +227,7 @@ const NewUserWelcome = memo(function NewUserWelcome({ isDark, couleur, setPage, 
             <Sparkles size={32} className="text-white" />
           </div>
           <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>
-            Bienvenue dans ChantierPro
+            Bienvenue dans BatiGesti
           </h1>
           <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>
             Votre assistant pour gérer devis, factures et chantiers. Commençons !
@@ -589,7 +589,7 @@ export default function Dashboard({
 
   // Show profile setup wizard automatically if profile < 30% (first launch or incomplete)
   const [profileSetupDismissed, setProfileSetupDismissed] = useState(() => {
-    try { return localStorage.getItem('chantierpro_profile_setup_dismissed') === 'true'; } catch { return false; }
+    try { return localStorage.getItem('batigesti_profile_setup_dismissed') === 'true'; } catch { return false; }
   });
 
   useEffect(() => {
@@ -2252,7 +2252,7 @@ export default function Dashboard({
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {
             setShowProfileSetup(false);
             setProfileSetupDismissed(true);
-            localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+            localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
           }} />
           <div className={`relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
             {/* Header */}
@@ -2271,7 +2271,7 @@ export default function Dashboard({
                   onClick={() => {
                     setShowProfileSetup(false);
                     setProfileSetupDismissed(true);
-                    localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+                    localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
                   }}
                   className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`}
                 >
@@ -2330,7 +2330,7 @@ export default function Dashboard({
                   onClick={() => {
                     setShowProfileSetup(false);
                     setProfileSetupDismissed(true);
-                    localStorage.setItem('chantierpro_profile_setup_dismissed', 'true');
+                    localStorage.setItem('batigesti_profile_setup_dismissed', 'true');
                   }}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}`}
                 >

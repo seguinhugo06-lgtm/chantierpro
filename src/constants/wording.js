@@ -356,7 +356,7 @@ export const PAYMENT_METHODS = {
 // PWA & App
 // ============================================
 export const APP = {
-  name: 'ChantierPro',
+  name: 'BatiGesti',
   tagline: 'Gestion simplifiée pour artisans',
   installPrompt: 'Installer l\'application',
   installInstructions: {

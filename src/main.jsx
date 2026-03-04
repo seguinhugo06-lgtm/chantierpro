@@ -13,7 +13,7 @@ import './index.css'
 // When a new deployment happens, old JS chunks (e.g. DevisPage-abc123.js)
 // no longer exist on the server. Lazy imports fail with ChunkLoadError.
 // This handler auto-reloads the page once to get fresh bundles.
-const RELOAD_KEY = 'chantierpro_chunk_reload';
+const RELOAD_KEY = 'batigesti_chunk_reload';
 window.addEventListener('error', (event) => {
   const msg = event?.message || event?.error?.message || '';
   if (

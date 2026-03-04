@@ -33,7 +33,7 @@ const queueOffline = async (action, entity, data) => {
 };
 
 // localStorage keys for demo mode persistence
-const DEMO_STORAGE_KEY = 'chantierpro_demo_data';
+const DEMO_STORAGE_KEY = 'batigesti_demo_data';
 
 // Cache for demo data to avoid multiple reads
 let cachedDemoData = null;

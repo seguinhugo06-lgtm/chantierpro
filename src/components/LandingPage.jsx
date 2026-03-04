@@ -1,7 +1,7 @@
 /**
  * LandingPage.jsx
  *
- * Marketing landing page for ChantierPro.
+ * Marketing landing page for BatiGesti.
  * Shown to unauthenticated visitors. Includes hero, features,
  * testimonials, pricing CTA, and footer.
  */
@@ -29,7 +29,7 @@ const FEATURES = [
 const FAQ = [
   { q: 'Puis-je essayer gratuitement\u00a0?', a: 'Oui\u00a0! Le plan Découverte est 100% gratuit, sans limite de durée. Vous pouvez créer jusqu\u2019à 3 devis et gérer 5 clients.' },
   { q: 'Mes données sont-elles sécurisées\u00a0?', a: 'Absolument. Vos données sont hébergées en Europe (Supabase), chiffrées en transit et au repos, avec sauvegarde quotidienne.' },
-  { q: 'L\u2019application fonctionne-t-elle hors-ligne\u00a0?', a: 'Oui, ChantierPro est une PWA. Vous pouvez consulter vos données et créer des documents même sans connexion.' },
+  { q: 'L\u2019application fonctionne-t-elle hors-ligne\u00a0?', a: 'Oui, BatiGesti est une PWA. Vous pouvez consulter vos données et créer des documents même sans connexion.' },
   { q: 'Est-ce conforme à la réglementation française\u00a0?', a: 'Oui. Mentions légales obligatoires, TVA détaillée, droit de rétractation, numérotation séquentielle... tout est intégré.' },
 ];
 
@@ -43,7 +43,7 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>CP</div>
-            <span className="text-xl font-bold" style={{ color: couleur }}>ChantierPro</span>
+            <span className="text-xl font-bold" style={{ color: couleur }}>BatiGesti</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -165,7 +165,7 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Rejoignez les premiers utilisateurs</h2>
             <p className="text-slate-600 text-lg mb-8 max-w-xl mx-auto">
-              ChantierPro est en phase de lancement. Inscrivez-vous gratuitement et participez
+              BatiGesti est en phase de lancement. Inscrivez-vous gratuitement et participez
               au futur de la gestion de chantier pour artisans.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -211,7 +211,7 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
           <div className="rounded-3xl p-8 sm:p-12 text-white" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Prêt à simplifier votre gestion&nbsp;?</h2>
             <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">
-              Rejoignez les artisans qui gagnent du temps chaque jour avec ChantierPro.
+              Rejoignez les artisans qui gagnent du temps chaque jour avec BatiGesti.
             </p>
             <button
               onClick={onSignUp}
@@ -232,7 +232,7 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
             <div className="col-span-2 sm:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>CP</div>
-                <span className="text-lg font-bold">ChantierPro</span>
+                <span className="text-lg font-bold">BatiGesti</span>
               </div>
               <p className="text-slate-400 text-sm">La solution de gestion pour les artisans du bâtiment.</p>
             </div>
@@ -255,13 +255,13 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
             <div>
               <h4 className="font-semibold mb-3 text-sm">Contact</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="mailto:contact@chantierpro.fr" className="hover:text-white transition-colors">contact@chantierpro.fr</a></li>
+                <li><a href="mailto:contact@batigesti.fr" className="hover:text-white transition-colors">contact@batigesti.fr</a></li>
                 <li><button className="hover:text-white transition-colors">Support</button></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-6 text-center text-slate-500 text-sm">
-            <p>&copy; {new Date().getFullYear()} ChantierPro. Tous droits réservés.</p>
+            <p>&copy; {new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
           </div>
         </div>
       </footer>

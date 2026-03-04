@@ -4,7 +4,7 @@ import {
   ChevronRight, Download, ArrowLeft
 } from 'lucide-react';
 
-const STORAGE_KEY = 'chantierpro_document_checklists';
+const STORAGE_KEY = 'batigesti_document_checklists';
 
 /**
  * DocumentChecklist - Checklists documents obligatoires par chantier (simplifié)

@@ -14,7 +14,7 @@ export default function CGU() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-2 text-slate-900 hover:text-orange-500 transition-colors">
             <Building2 size={24} className="text-orange-500" />
-            <span className="text-lg font-bold">ChantierPro</span>
+            <span className="text-lg font-bold">BatiGesti</span>
           </a>
           <a href="/" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft size={16} />
@@ -31,14 +31,14 @@ export default function CGU() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">1. Objet</h2>
             <p className="text-slate-600 leading-relaxed">
-              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service ChantierPro, accessible à l'adresse chantierpro.vercel.app. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.
+              Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation du service BatiGesti, accessible à l'adresse batigesti.vercel.app. En créant un compte ou en utilisant le service, l'utilisateur accepte sans réserve les présentes CGU.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">2. Description du service</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro est un logiciel en ligne (SaaS) de gestion de chantier destiné aux artisans et entreprises du BTP. Il permet notamment :
+              BatiGesti est un logiciel en ligne (SaaS) de gestion de chantier destiné aux artisans et entreprises du BTP. Il permet notamment :
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-1 mt-2">
               <li>La création et gestion de devis et factures</li>
@@ -53,45 +53,45 @@ export default function CGU() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">3. Inscription et compte</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'accès au service nécessite la création d'un compte avec une adresse email valide et un mot de passe. L'utilisateur est responsable de la confidentialité de ses identifiants. Toute utilisation du compte est réputée faite par l'utilisateur. En cas de suspicion d'utilisation non autorisée, l'utilisateur doit immédiatement en informer ChantierPro.
+              L'accès au service nécessite la création d'un compte avec une adresse email valide et un mot de passe. L'utilisateur est responsable de la confidentialité de ses identifiants. Toute utilisation du compte est réputée faite par l'utilisateur. En cas de suspicion d'utilisation non autorisée, l'utilisateur doit immédiatement en informer BatiGesti.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">4. Offres et tarification</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro propose plusieurs formules d'abonnement, dont une offre gratuite avec des fonctionnalités limitées. Les tarifs des offres payantes sont indiqués sur la page Tarifs du site et peuvent être modifiés à tout moment. Les utilisateurs abonnés seront informés de tout changement de tarif au moins 30 jours avant son application.
+              BatiGesti propose plusieurs formules d'abonnement, dont une offre gratuite avec des fonctionnalités limitées. Les tarifs des offres payantes sont indiqués sur la page Tarifs du site et peuvent être modifiés à tout moment. Les utilisateurs abonnés seront informés de tout changement de tarif au moins 30 jours avant son application.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">5. Données de l'utilisateur</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'utilisateur reste propriétaire de l'ensemble des données qu'il saisit dans le service (clients, devis, factures, etc.). ChantierPro s'engage à ne pas utiliser ces données à des fins commerciales ou de prospection. L'utilisateur peut à tout moment exporter ou supprimer ses données. En cas de résiliation, les données seront conservées pendant 30 jours puis supprimées définitivement.
+              L'utilisateur reste propriétaire de l'ensemble des données qu'il saisit dans le service (clients, devis, factures, etc.). BatiGesti s'engage à ne pas utiliser ces données à des fins commerciales ou de prospection. L'utilisateur peut à tout moment exporter ou supprimer ses données. En cas de résiliation, les données seront conservées pendant 30 jours puis supprimées définitivement.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">6. Responsabilité</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro fournit le service "en l'état". L'éditeur ne garantit pas l'absence d'erreurs ou d'interruptions. L'utilisateur est seul responsable de la vérification des montants, calculs et informations générées par le service, notamment en matière de devis, factures et obligations légales.
+              BatiGesti fournit le service "en l'état". L'éditeur ne garantit pas l'absence d'erreurs ou d'interruptions. L'utilisateur est seul responsable de la vérification des montants, calculs et informations générées par le service, notamment en matière de devis, factures et obligations légales.
             </p>
             <p className="text-slate-600 leading-relaxed mt-2">
-              ChantierPro ne se substitue pas à un expert-comptable et ne fournit pas de conseil fiscal ou juridique.
+              BatiGesti ne se substitue pas à un expert-comptable et ne fournit pas de conseil fiscal ou juridique.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">7. Disponibilité</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPro s'efforce de maintenir le service accessible 24h/24, 7j/7, mais ne peut garantir une disponibilité permanente. Des interruptions pour maintenance pourront avoir lieu, si possible en dehors des heures ouvrées.
+              BatiGesti s'efforce de maintenir le service accessible 24h/24, 7j/7, mais ne peut garantir une disponibilité permanente. Des interruptions pour maintenance pourront avoir lieu, si possible en dehors des heures ouvrées.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">8. Résiliation</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'utilisateur peut résilier son compte à tout moment depuis les paramètres du service. ChantierPro se réserve le droit de suspendre ou résilier un compte en cas de violation des présentes CGU, après notification préalable.
+              L'utilisateur peut résilier son compte à tout moment depuis les paramètres du service. BatiGesti se réserve le droit de suspendre ou résilier un compte en cas de violation des présentes CGU, après notification préalable.
             </p>
           </section>
 
@@ -105,7 +105,7 @@ export default function CGU() {
           <section>
             <h2 className="text-xl font-semibold text-slate-800 mb-3">10. Contact</h2>
             <p className="text-slate-600 leading-relaxed">
-              Pour toute question relative aux présentes CGU, vous pouvez nous contacter à : <a href="mailto:contact@chantierpro.fr" className="text-orange-500 hover:underline">contact@chantierpro.fr</a>
+              Pour toute question relative aux présentes CGU, vous pouvez nous contacter à : <a href="mailto:contact@batigesti.fr" className="text-orange-500 hover:underline">contact@batigesti.fr</a>
             </p>
           </section>
         </div>

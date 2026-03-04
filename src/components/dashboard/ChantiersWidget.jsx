@@ -50,7 +50,7 @@ import supabase, { isDemo } from '../../supabaseClient';
  */
 
 // Weather cache key prefix
-const WEATHER_CACHE_PREFIX = 'chantierpro_weather_';
+const WEATHER_CACHE_PREFIX = 'batigesti_weather_';
 const WEATHER_CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 
 // Alert thresholds

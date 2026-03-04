@@ -276,7 +276,7 @@ export default function OnboardingTour({
           <div className="text-center animate-scale-in">
             <div className="text-6xl mb-4">✨</div>
             <h2 className="text-3xl font-bold text-white mb-2">Maintenant c'est à vous !</h2>
-            <p className="text-white/70">En 2 minutes, personnalisez votre ChantierPro</p>
+            <p className="text-white/70">En 2 minutes, personnalisez votre BatiGesti</p>
           </div>
         </div>
       )}
@@ -477,7 +477,7 @@ function OfflineDemo({ progress, isDark, couleur }) {
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-2 h-2 rounded-full ${isOffline ? 'bg-orange-500' : 'bg-green-500'}`} />
             <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-              ChantierPro
+              BatiGesti
             </span>
           </div>
           <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>

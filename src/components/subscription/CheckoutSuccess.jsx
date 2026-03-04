@@ -172,7 +172,7 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
 
         {/* Help text */}
         <p className={`text-xs mt-8 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-          Questions ? Consultez notre aide ou contactez support@chantierpro.com
+          Questions ? Consultez notre aide ou contactez support@batigesti.com
         </p>
       </div>
     </div>

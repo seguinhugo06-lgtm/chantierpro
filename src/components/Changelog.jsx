@@ -135,7 +135,7 @@ export default function Changelog({ isDark, couleur, setPage }) {
         </button>
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Changelog</h1>
-          <p className={`text-sm ${textMuted}`}>Historique des mises à jour de ChantierPro</p>
+          <p className={`text-sm ${textMuted}`}>Historique des mises à jour de BatiGesti</p>
         </div>
       </div>
 
@@ -210,8 +210,8 @@ export default function Changelog({ isDark, couleur, setPage }) {
 
       {/* Footer */}
       <div className={`mt-8 text-center text-sm ${textMuted}`}>
-        <p>ChantierPro est mis à jour régulièrement.</p>
-        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>support@chantierpro.fr</span></p>
+        <p>BatiGesti est mis à jour régulièrement.</p>
+        <p className="mt-1">Des questions ? Contactez-nous à <span style={{ color: couleur }}>support@batigesti.fr</span></p>
       </div>
     </div>
   );

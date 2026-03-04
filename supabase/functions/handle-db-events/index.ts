@@ -271,7 +271,7 @@ async function handlePhotoInsert(record: Record<string, unknown>, supabase: Retu
 
     if (chantier?.client?.email) {
       const { sendEmail } = await import('../_shared/communications.ts');
-      const link = `${Deno.env.get('APP_URL') || 'https://app.chantierpro.fr'}/portal/chantier/${chantierId}/photos`;
+      const link = `${Deno.env.get('APP_URL') || 'https://app.batigesti.fr'}/portal/chantier/${chantierId}/photos`;
 
       await sendEmail(
         chantier.client.email,

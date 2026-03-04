@@ -11,7 +11,7 @@ export default function OnboardingModal({ setShowOnboarding, isDark, couleur }) 
   const steps = [
     {
       icon: "\u{1F44B}",
-      title: "Bienvenue sur ChantierPro",
+      title: "Bienvenue sur BatiGesti",
       subtitle: "Votre assistant de gestion pour artisan",
       content: (
         <div className="space-y-4">
@@ -153,13 +153,13 @@ export default function OnboardingModal({ setShowOnboarding, isDark, couleur }) 
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     analytics.onboardingCompleted();
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     analytics.onboardingSkipped(step);
     setShowOnboarding(false);
   };

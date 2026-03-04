@@ -1676,7 +1676,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div>
                     <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
                     <p className={`text-sm mt-1 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                      Ce résumé TVA est indicatif et basé sur les données saisies dans ChantierPro.
+                      Ce résumé TVA est indicatif et basé sur les données saisies dans BatiGesti.
                       Pour votre déclaration officielle, consultez votre expert-comptable.
                     </p>
                   </div>
@@ -1697,7 +1697,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Export global des données
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Exportez toutes vos données ChantierPro dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
+              Exportez toutes vos données BatiGesti dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -1720,7 +1720,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const exportData = {
                     version: '3.0',
                     exportDate: new Date().toISOString(),
-                    app: 'ChantierPro',
+                    app: 'BatiGesti',
                     data: {
                       entreprise,
                       devis,
@@ -1729,7 +1729,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       depenses,
                     },
                     localStorage: (() => {
-                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
+                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
                       const obj = {};
                       keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
                       return obj;
@@ -1739,7 +1739,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const blob = new Blob([json], { type: 'application/json' });
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
-                  a.download = `chantierpro_backup_${new Date().toISOString().split('T')[0]}.json`;
+                  a.download = `batigesti_backup_${new Date().toISOString().split('T')[0]}.json`;
                   a.click();
                   URL.revokeObjectURL(a.href);
                   showToast('Export global téléchargé', 'success');
@@ -1762,7 +1762,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Import de données
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Restaurez vos données depuis un fichier d'export ChantierPro (.json). Les données existantes seront fusionnées.
+              Restaurez vos données depuis un fichier d'export BatiGesti (.json). Les données existantes seront fusionnées.
             </p>
 
             <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
@@ -1778,8 +1778,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   reader.onload = (ev) => {
                     try {
                       const data = JSON.parse(ev.target.result);
-                      if (!data.app || data.app !== 'ChantierPro') {
-                        showToast('Fichier non reconnu (pas un export ChantierPro)', 'error');
+                      if (!data.app || data.app !== 'BatiGesti') {
+                        showToast('Fichier non reconnu (pas un export BatiGesti)', 'error');
                         return;
                       }
                       // Restore localStorage keys
@@ -1806,7 +1806,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <RefreshCw size={24} className={textMuted} />
                 </div>
                 <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
-                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export ChantierPro)</p>
+                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export BatiGesti)</p>
               </label>
             </div>
           </div>
@@ -1817,12 +1817,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               🎓 Visite guidée
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
-              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de ChantierPro.
+              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de BatiGesti.
             </p>
             <button
               onClick={() => {
-                localStorage.removeItem('chantierpro_onboarding_complete');
-                localStorage.removeItem('chantierpro_onboarding_skipped');
+                localStorage.removeItem('batigesti_onboarding_complete');
+                localStorage.removeItem('batigesti_onboarding_skipped');
                 showToast('Rechargez la page pour relancer la visite guidée', 'info');
               }}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
@@ -1842,11 +1842,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length > 0 && (
+              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length > 0 && (
                 <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                   <p className={`text-xs ${textMuted}`}>Clés stockées</p>
                   <p className="text-lg font-bold" style={{ color: couleur }}>
-                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro')).length}
+                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length}
                   </p>
                 </div>
               )}
@@ -1910,7 +1910,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   const blob = new Blob([json], { type: 'application/json' });
                   const a = document.createElement('a');
                   a.href = URL.createObjectURL(blob);
-                  a.download = `chantierpro_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
+                  a.download = `batigesti_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
                   a.click();
                   URL.revokeObjectURL(a.href);
                   showToast('Export RGPD téléchargé', 'success');
@@ -1966,10 +1966,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     }
                   }
                   // Clear all localStorage
-                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('chantierpro'));
+                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
                   keys.forEach(k => localStorage.removeItem(k));
                   // Clear IndexedDB offline store
-                  try { indexedDB.deleteDatabase('chantierpro-offline'); } catch {}
+                  try { indexedDB.deleteDatabase('batigesti-offline'); } catch {}
                   // Sign out
                   await auth.signOut();
                   showToast('Compte et données supprimés définitivement', 'success');

@@ -47,7 +47,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Éditeur">
         <P>
-          Le site ChantierPro est édité par : <strong className={textPrimary}>[A REMPLIR - Raison sociale]</strong>
+          Le site BatiGesti est édité par : <strong className={textPrimary}>[A REMPLIR - Raison sociale]</strong>
         </P>
         <UL>
           <li>Forme juridique : [A REMPLIR]</li>
@@ -64,7 +64,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 2 - Objet">
         <P>
           Les présentes Conditions Générales de Vente (CGV) ont pour objet de définir les droits et obligations
-          des parties dans le cadre de la vente des services proposés par ChantierPro, plateforme de gestion
+          des parties dans le cadre de la vente des services proposés par BatiGesti, plateforme de gestion
           de chantiers et d'activité pour les professionnels du bâtiment.
         </P>
         <P>
@@ -74,7 +74,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 3 - Description des services">
         <P>
-          ChantierPro est une application web (SaaS) permettant aux professionnels du bâtiment de :
+          BatiGesti est une application web (SaaS) permettant aux professionnels du bâtiment de :
         </P>
         <UL>
           <li>Gérer leurs chantiers, clients et équipes</li>
@@ -90,9 +90,9 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       </Section>
 
       <Section title="Article 4 - Plans tarifaires">
-        <P>ChantierPro propose les plans d'abonnement suivants :</P>
+        <P>BatiGesti propose les plans d'abonnement suivants :</P>
         <div className={`border rounded-lg overflow-hidden mb-4 ${tableBorder}`}>
-          <table className="w-full text-left" aria-label="Plans tarifaires ChantierPro">
+          <table className="w-full text-left" aria-label="Plans tarifaires BatiGesti">
             <thead className={tableHeaderBg}>
               <tr>
                 <th scope="col" className={`px-4 py-3 font-semibold ${textPrimary} border-b ${tableBorder}`}>Plan</th>
@@ -136,7 +136,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         <UL>
           <li>Les paiements sont sécurisés par le protocole SSL/TLS</li>
           <li>Stripe est certifié PCI DSS niveau 1</li>
-          <li>ChantierPro ne stocke aucune donnée de carte bancaire</li>
+          <li>BatiGesti ne stocke aucune donnée de carte bancaire</li>
           <li>Une facture est émise automatiquement à chaque paiement</li>
         </UL>
       </Section>
@@ -177,8 +177,8 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 8 - Responsabilité">
         <P>
-          ChantierPro s'engage à fournir un service de qualité et à assurer la disponibilité de la plateforme.
-          Toutefois, ChantierPro ne saurait être tenu responsable :
+          BatiGesti s'engage à fournir un service de qualité et à assurer la disponibilité de la plateforme.
+          Toutefois, BatiGesti ne saurait être tenu responsable :
         </P>
         <UL>
           <li>Des interruptions temporaires du service pour maintenance ou mise à jour</li>
@@ -188,16 +188,16 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Des conséquences fiscales ou juridiques liées à l'utilisation des documents générés (devis, factures)</li>
         </UL>
         <P>
-          La responsabilité de ChantierPro est limitée au montant des sommes effectivement versées par
+          La responsabilité de BatiGesti est limitée au montant des sommes effectivement versées par
           l'utilisateur au cours des 12 derniers mois précédant le fait générateur de la responsabilité.
         </P>
       </Section>
 
       <Section title="Article 9 - Propriété intellectuelle">
         <P>
-          L'ensemble des éléments constituant la plateforme ChantierPro (logiciel, interface, textes, images,
+          L'ensemble des éléments constituant la plateforme BatiGesti (logiciel, interface, textes, images,
           base de données, algorithmes) sont protégés par le droit de la propriété intellectuelle et restent
-          la propriété exclusive de ChantierPro.
+          la propriété exclusive de BatiGesti.
         </P>
         <P>
           L'utilisateur conserve la propriété intégrale de toutes les données qu'il saisit dans la plateforme
@@ -227,7 +227,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 1 - Objet">
         <P>
           Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités
-          et conditions d'utilisation de la plateforme ChantierPro, ainsi que les droits et obligations
+          et conditions d'utilisation de la plateforme BatiGesti, ainsi que les droits et obligations
           des utilisateurs.
         </P>
         <P>
@@ -237,11 +237,11 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 2 - Acceptation des conditions">
         <P>
-          L'inscription sur ChantierPro vaut acceptation sans réserve des présentes CGU. L'utilisateur
+          L'inscription sur BatiGesti vaut acceptation sans réserve des présentes CGU. L'utilisateur
           reconnaît en avoir pris connaissance et s'engage à les respecter.
         </P>
         <P>
-          ChantierPro se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
+          BatiGesti se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs
           seront informés de toute modification par email ou notification dans l'application. La poursuite
           de l'utilisation du service après modification vaut acceptation des nouvelles conditions.
         </P>
@@ -249,7 +249,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 3 - Création de compte">
         <P>
-          Pour accéder aux services de ChantierPro, l'utilisateur doit créer un compte en fournissant :
+          Pour accéder aux services de BatiGesti, l'utilisateur doit créer un compte en fournissant :
         </P>
         <UL>
           <li>Une adresse email valide</li>
@@ -273,7 +273,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Utiliser la plateforme conformément à sa destination et aux lois en vigueur</li>
           <li>Fournir des informations exactes et à jour</li>
           <li>Ne pas porter atteinte à la sécurité ou au fonctionnement de la plateforme</li>
-          <li>Respecter les droits de propriété intellectuelle de ChantierPro et des tiers</li>
+          <li>Respecter les droits de propriété intellectuelle de BatiGesti et des tiers</li>
           <li>Ne pas utiliser le service à des fins illicites ou frauduleuses</li>
           <li>Sauvegarder régulièrement ses données importantes</li>
           <li>Signaler tout dysfonctionnement ou faille de sécurité constatée</li>
@@ -283,7 +283,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       <Section title="Article 5 - Usages interdits">
         <P>Il est strictement interdit de :</P>
         <UL>
-          <li>Tenter d'accéder de manière non autorisée au système, aux serveurs ou aux réseaux de ChantierPro</li>
+          <li>Tenter d'accéder de manière non autorisée au système, aux serveurs ou aux réseaux de BatiGesti</li>
           <li>Utiliser des robots, scrapers ou tout autre moyen automatisé pour accéder au service</li>
           <li>Reproduire, copier, vendre ou exploiter tout ou partie du service sans autorisation</li>
           <li>Transmettre des virus, malwares ou tout code malveillant</li>
@@ -296,7 +296,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 6 - Propriété intellectuelle">
         <P>
-          La plateforme ChantierPro, incluant sans s'y limiter son code source, son interface graphique,
+          La plateforme BatiGesti, incluant sans s'y limiter son code source, son interface graphique,
           ses textes, images, logos, bases de données et algorithmes, est protégée par les lois françaises
           et internationales relatives à la propriété intellectuelle.
         </P>
@@ -306,31 +306,31 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
         </P>
         <P>
           Les données saisies par l'utilisateur (informations clients, devis, factures, photos, documents)
-          restent sa propriété exclusive. L'utilisateur accorde à ChantierPro une licence limitée pour
+          restent sa propriété exclusive. L'utilisateur accorde à BatiGesti une licence limitée pour
           traiter ces données dans le cadre de la fourniture du service.
         </P>
       </Section>
 
       <Section title="Article 7 - Limitation de responsabilité">
         <P>
-          ChantierPro fournit le service « en l'état » et ne garantit pas l'absence d'erreurs,
+          BatiGesti fournit le service « en l'état » et ne garantit pas l'absence d'erreurs,
           d'interruptions ou de défauts.
         </P>
         <UL>
-          <li>ChantierPro ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
+          <li>BatiGesti ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
           <li>Les documents générés (devis, factures) doivent être vérifiés par l'utilisateur avant envoi</li>
-          <li>ChantierPro ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
+          <li>BatiGesti ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
           <li>L'utilisateur est seul responsable de la conformité fiscale et réglementaire de ses documents</li>
         </UL>
         <P>
-          En tout état de cause, la responsabilité totale de ChantierPro ne pourra excéder le montant
+          En tout état de cause, la responsabilité totale de BatiGesti ne pourra excéder le montant
           des sommes versées par l'utilisateur au cours des 12 derniers mois.
         </P>
       </Section>
 
       <Section title="Article 8 - Suspension et résiliation">
         <P>
-          ChantierPro se réserve le droit de suspendre ou de résilier l'accès d'un utilisateur en cas de :
+          BatiGesti se réserve le droit de suspendre ou de résilier l'accès d'un utilisateur en cas de :
         </P>
         <UL>
           <li>Violation des présentes CGU</li>
@@ -339,14 +339,14 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Comportement portant atteinte aux autres utilisateurs ou à la plateforme</li>
         </UL>
         <P>
-          En cas de suspension pour motif grave, ChantierPro se réserve le droit de ne pas rembourser
+          En cas de suspension pour motif grave, BatiGesti se réserve le droit de ne pas rembourser
           la période d'abonnement en cours.
         </P>
       </Section>
 
       <Section title="Article 9 - Disponibilité du service">
         <P>
-          ChantierPro s'efforce d'assurer une disponibilité optimale de la plateforme. Toutefois,
+          BatiGesti s'efforce d'assurer une disponibilité optimale de la plateforme. Toutefois,
           le service peut être temporairement interrompu pour :
         </P>
         <UL>
@@ -355,13 +355,13 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
           <li>Cas de force majeure</li>
         </UL>
         <P>
-          ChantierPro s'engage à limiter au maximum la durée et la fréquence de ces interruptions.
+          BatiGesti s'engage à limiter au maximum la durée et la fréquence de ces interruptions.
         </P>
       </Section>
 
       <Section title="Article 10 - Modifications des CGU">
         <P>
-          ChantierPro se réserve le droit de modifier les présentes CGU à tout moment. Les modifications
+          BatiGesti se réserve le droit de modifier les présentes CGU à tout moment. Les modifications
           entreront en vigueur dès leur publication sur la plateforme. Les utilisateurs seront informés
           des modifications substantielles par email au moins 30 jours avant leur entrée en vigueur.
         </P>
@@ -377,7 +377,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
     <>
       <Section title="Article 1 - Responsable du traitement">
         <P>
-          Le responsable du traitement des données à caractère personnel collectées sur ChantierPro est :
+          Le responsable du traitement des données à caractère personnel collectées sur BatiGesti est :
         </P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
@@ -389,7 +389,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 2 - Données collectées">
         <P>
-          ChantierPro collecte et traite les données suivantes, conformément au Règlement Général sur la
+          BatiGesti collecte et traite les données suivantes, conformément au Règlement Général sur la
           Protection des Données (RGPD - Règlement UE 2016/679) :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 overflow-x-auto ${tableBorder}`}>
@@ -466,7 +466,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 4 - Sous-traitants et transferts de données">
         <P>
-          ChantierPro fait appel aux sous-traitants suivants pour le traitement des données :
+          BatiGesti fait appel aux sous-traitants suivants pour le traitement des données :
         </P>
         <div className={`border rounded-lg overflow-hidden mb-4 ${tableBorder}`}>
           <table className="w-full text-left text-sm" aria-label="Sous-traitants et transferts de données">
@@ -532,20 +532,20 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
       </Section>
 
       <Section title="Article 6 - Cookies">
-        <P>ChantierPro utilise les cookies suivants :</P>
+        <P>BatiGesti utilise les cookies suivants :</P>
         <UL>
           <li><strong className={textPrimary}>Cookies essentiels :</strong> nécessaires au fonctionnement de l'application (session, authentification, préférences). Base légale : intérêt légitime.</li>
           <li><strong className={textPrimary}>Cookies de performance :</strong> mesure d'audience anonymisée pour améliorer le service. Base légale : consentement.</li>
         </UL>
         <P>
-          ChantierPro n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
+          BatiGesti n'utilise pas de cookies publicitaires ni de cookies de tracking tiers.
           L'utilisateur peut gérer ses préférences de cookies depuis les paramètres de l'application
           ou de son navigateur.
         </P>
       </Section>
 
       <Section title="Article 7 - Sécurité des données">
-        <P>ChantierPro met en oeuvre les mesures de sécurité suivantes :</P>
+        <P>BatiGesti met en oeuvre les mesures de sécurité suivantes :</P>
         <UL>
           <li><strong className={textPrimary}>Chiffrement HTTPS/TLS :</strong> toutes les communications sont chiffrées en transit</li>
           <li><strong className={textPrimary}>Row Level Security (RLS) :</strong> isolation des données au niveau de la base de données - chaque utilisateur n'accède qu'à ses propres données</li>
@@ -558,7 +558,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="Article 8 - Violation de données">
         <P>
-          En cas de violation de données à caractère personnel, ChantierPro s'engage à:
+          En cas de violation de données à caractère personnel, BatiGesti s'engage à:
         </P>
         <UL>
           <li>Notifier la CNIL dans un délai de 72 heures conformément à l'article 33 du RGPD</li>
@@ -588,7 +588,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
   const renderMentionsLegales = () => (
     <>
       <Section title="1. Éditeur du site">
-        <P>Le site ChantierPro est édité par :</P>
+        <P>Le site BatiGesti est édité par :</P>
         <UL>
           <li>Raison sociale : <strong className={textPrimary}>[A REMPLIR]</strong></li>
           <li>Forme juridique : [A REMPLIR]</li>
@@ -630,7 +630,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="4. Propriété intellectuelle">
         <P>
-          L'ensemble du contenu du site ChantierPro (textes, images, graphismes, logo, icônes,
+          L'ensemble du contenu du site BatiGesti (textes, images, graphismes, logo, icônes,
           logiciel, base de données) est protégé par les lois françaises et internationales relatives
           à la propriété intellectuelle.
         </P>
@@ -644,7 +644,7 @@ export default function LegalPages({ page, isDark, couleur, setPage }) {
 
       <Section title="5. Données personnelles">
         <P>
-          ChantierPro collecte et traite des données personnelles dans le respect du Règlement Général
+          BatiGesti collecte et traite des données personnelles dans le respect du Règlement Général
           sur la Protection des Données (RGPD) et de la loi Informatique et Libertés du 6 janvier 1978 modifiée.
         </P>
         <P>

@@ -14,7 +14,7 @@ import { generateId } from '../lib/utils';
 import { getCurrentPosition, checkGeofence, DEFAULT_RADIUS } from './GeofencingService';
 
 // IndexedDB configuration
-const DB_NAME = 'chantierpro_pointage';
+const DB_NAME = 'batigesti_pointage';
 const DB_VERSION = 1;
 const STORES = {
   SESSIONS: 'sessions',
@@ -31,7 +31,7 @@ export const SESSION_STATE = {
 };
 
 // Storage key for active session
-const ACTIVE_SESSION_KEY = 'chantierpro_active_session';
+const ACTIVE_SESSION_KEY = 'batigesti_active_session';
 
 /**
  * Initialize IndexedDB

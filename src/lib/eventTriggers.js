@@ -395,7 +395,7 @@ export async function onPhotoUploaded(record) {
           .single();
 
         if (chantier?.client?.email) {
-          const portalLink = `${import.meta.env.VITE_APP_URL || 'https://app.chantierpro.fr'}/portal/chantier/${record.chantier_id}/photos`;
+          const portalLink = `${import.meta.env.VITE_APP_URL || 'https://app.batigesti.fr'}/portal/chantier/${record.chantier_id}/photos`;
 
           await CommunicationsService.sendEmail(
             chantier.client.email,

@@ -1,7 +1,7 @@
 /**
  * CommandesFournisseurs - Module Bons de Commande Fournisseurs
  *
- * Gestion complete des commandes fournisseurs pour ChantierPro.
+ * Gestion complete des commandes fournisseurs pour BatiGesti.
  * Permet la creation, le suivi et la gestion des bons de commande
  * avec integration du catalogue articles et suivi des livraisons.
  *

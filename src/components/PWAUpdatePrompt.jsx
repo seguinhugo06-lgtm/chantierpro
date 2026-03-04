@@ -276,7 +276,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
                   <span className="text-3xl">🏗️</span>
                 </div>
                 <div>
-                  <p className={cn('text-xl font-bold', textPrimary)}>ChantierPro</p>
+                  <p className={cn('text-xl font-bold', textPrimary)}>BatiGesti</p>
                   <p className={cn('text-sm', textSecondary)}>Gestion de chantiers BTP</p>
                 </div>
               </div>

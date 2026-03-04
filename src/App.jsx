@@ -13,7 +13,7 @@ const lazyWithRetry = (importFn, name) => lazy(() =>
     const msg = err?.message || '';
     const isStale = msg.includes('Failed to fetch') || msg.includes('ChunkLoadError') || msg.includes('Importing a module script failed');
     if (isStale) {
-      const key = 'chantierpro_chunk_reload';
+      const key = 'batigesti_chunk_reload';
       const last = sessionStorage.getItem(key);
       if (!last || Date.now() - parseInt(last, 10) > 30000) {
         console.warn(`[LAZY] Stale bundle for ${name}, reloading...`, msg);
@@ -394,7 +394,7 @@ export default function App() {
   const [syncErrorDetails, setSyncErrorDetails] = useState(null); // { message, failedCount, permanentCount }
   const syncRetryTimerRef = useRef(null);
   const syncRetryAttemptRef = useRef(0);
-  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('chantierpro_onboarding_complete'));
+  const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('batigesti_onboarding_complete'));
   const [showLanding, setShowLanding] = useState(true);
   const [showImport, setShowImport] = useState(false);
   const [importType, setImportType] = useState('clients');
@@ -893,7 +893,7 @@ export default function App() {
       'checkout-success': 'Paiement confirmé',
     };
     const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
-    document.title = `${title} — ChantierPro`;
+    document.title = `${title} — BatiGesti`;
   }, [page]);
 
   // Network status listener for offline mode
@@ -981,7 +981,7 @@ export default function App() {
             <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
               <Building2 size={32} className="text-white" />
             </div>
-            <h1 className="text-5xl font-bold text-white mb-4">ChantierPro</h1>
+            <h1 className="text-5xl font-bold text-white mb-4">BatiGesti</h1>
             <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
             <div className="space-y-6">
               {[
@@ -1009,7 +1009,7 @@ export default function App() {
             <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
               <Building2 size={24} className="text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">ChantierPro</span>
+            <span className="text-2xl font-bold text-white">BatiGesti</span>
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
@@ -1050,7 +1050,7 @@ export default function App() {
               {!showSignUp && (
                 <button
                   type="button"
-                  onClick={() => showToast('Contactez support@chantierpro.fr', 'info')}
+                  onClick={() => showToast('Contactez support@batigesti.fr', 'info')}
                   className="text-sm text-slate-400 hover:text-orange-400 mt-2 transition-colors self-end"
                 >
                   Mot de passe oublié ?
@@ -1215,7 +1215,7 @@ export default function App() {
             <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'ChantierPro')}</p>
+            <p className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'BatiGesti')}</p>
             <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
           </div>
           {/* Close button - mobile only */}
@@ -1368,7 +1368,7 @@ export default function App() {
                 <Building2 size={18} className="text-white" />
               </div>
               <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
-                {safeStr(entreprise.nom, 'ChantierPro')}
+                {safeStr(entreprise.nom, 'BatiGesti')}
               </span>
             </div>
 
@@ -1985,15 +1985,15 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const helpSections = {
     overview: {
       title: "Bienvenue",
-      titleFull: "Bienvenue dans ChantierPro",
+      titleFull: "Bienvenue dans BatiGesti",
       icon: "🏠",
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <p className={textSecondary}>BatiGesti est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>💡 Exemple concret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+              Jean, plombier, utilise BatiGesti pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -2099,7 +2099,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
         <div className="space-y-4">
           <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📱 Utilisez le sur mobile</h4>
-            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>ChantierPro fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
+            <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>BatiGesti fonctionne parfaitement sur téléphone. Ajoutez-le à votre écran d'accueil pour un accès rapide.</p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>🎨 Personnalisez</h4>
@@ -2123,7 +2123,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment ajouter mon logo ?', a: 'Dans Paramètres > Identité, uploadez votre logo. Il apparaîtra sur tous vos devis et factures PDF.' },
           { q: 'Comment suivre mes dépenses ?', a: 'Dans la fiche d\'un chantier, onglet Dépenses, ajoutez chaque achat de matériel ou paiement de sous-traitant.' },
           { q: 'Comment envoyer un devis par email ?', a: 'Générez le PDF du devis puis utilisez le bouton "Envoyer" pour l\'envoyer par email directement depuis l\'application.' },
-          { q: 'Puis-je utiliser ChantierPro hors ligne ?', a: 'Oui ! ChantierPro est une PWA. Installez-la sur votre téléphone et vos données se synchronisent automatiquement.' },
+          { q: 'Puis-je utiliser BatiGesti hors ligne ?', a: 'Oui ! BatiGesti est une PWA. Installez-la sur votre téléphone et vos données se synchronisent automatiquement.' },
           { q: 'Comment fonctionne le planning ?', a: 'Le planning affiche vos chantiers et événements. Cliquez sur un jour pour ajouter un événement ou glissez-déposez pour réorganiser.' },
           { q: 'Comment gérer mes clients ?', a: 'Dans la section Clients, ajoutez les coordonnées de vos clients. Vous verrez leur historique de devis et chantiers.' },
           { q: 'Comment fonctionne le catalogue ?', a: 'Le catalogue stocke vos articles et prestations avec prix unitaires. Réutilisez-les dans vos devis en un clic.' },
@@ -2131,11 +2131,11 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
           { q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Plan Pro)' },
-          { q: 'Comment relancer un client ?', a: 'ChantierPro détecte les devis en attente et vous propose des relances automatiques par email.' },
+          { q: 'Comment relancer un client ?', a: 'BatiGesti détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },
           { q: 'Comment supprimer mon compte ?', a: 'Dans Paramètres > Données, section RGPD, vous pouvez exporter ou supprimer toutes vos données.' },
-          { q: 'Comment contacter le support ?', a: 'Envoyez un email à support@chantierpro.fr. Nous répondons sous 48h ouvrées.' },
+          { q: 'Comment contacter le support ?', a: 'Envoyez un email à support@batigesti.fr. Nous répondons sous 48h ouvrées.' },
         ];
         const filtered = searchQuery.trim()
           ? faqItems.filter(f => f.q.toLowerCase().includes(searchQuery.toLowerCase()) || f.a.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -2150,7 +2150,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'}`}
             />
             {filtered.length === 0 && (
-              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à support@chantierpro.fr</p>
+              <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à support@batigesti.fr</p>
             )}
             {filtered.map((item, i) => (
               <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -2176,7 +2176,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               <span className="text-2xl">📧</span>
               <div>
                 <p className={`font-medium ${textPrimary}`}>Email</p>
-                <p className={`text-sm ${textSecondary}`}>support@chantierpro.fr</p>
+                <p className={`text-sm ${textSecondary}`}>support@batigesti.fr</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -2195,7 +2195,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
             </div>
           </div>
           <a
-            href="mailto:support@chantierpro.fr?subject=Support ChantierPro"
+            href="mailto:support@batigesti.fr?subject=Support BatiGesti"
             className="block w-full py-3 rounded-xl text-center text-white font-semibold text-sm transition-all hover:opacity-90"
             style={{ backgroundColor: couleur }}
           >
@@ -2220,7 +2220,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               </div>
               <div>
                 <h2 className={`font-bold text-lg ${textPrimary}`}>Guide d'utilisation</h2>
-                <p className={`text-sm ${textSecondary}`}>Tout savoir sur ChantierPro</p>
+                <p className={`text-sm ${textSecondary}`}>Tout savoir sur BatiGesti</p>
               </div>
             </div>
             <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
@@ -2301,7 +2301,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const steps = [
     {
       icon: "👋",
-      title: "Bienvenue sur ChantierPro",
+      title: "Bienvenue sur BatiGesti",
       subtitle: "Votre assistant de gestion pour artisan",
       content: (
         <div className="space-y-4">
@@ -2443,12 +2443,12 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const currentStep = steps[step];
 
   const completeOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 
   const skipOnboarding = () => {
-    localStorage.setItem('chantierpro_onboarding_complete', 'true');
+    localStorage.setItem('batigesti_onboarding_complete', 'true');
     setShowOnboarding(false);
   };
 

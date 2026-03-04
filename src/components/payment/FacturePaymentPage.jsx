@@ -517,7 +517,7 @@ export default function FacturePaymentPage({ paymentToken }) {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-xs text-slate-400">
-            Propulse par <span className="font-medium text-slate-500">ChantierPro</span>
+            Propulse par <span className="font-medium text-slate-500">BatiGesti</span>
           </p>
         </div>
       </div>

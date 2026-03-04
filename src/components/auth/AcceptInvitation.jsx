@@ -123,7 +123,7 @@ export default function AcceptInvitation({ token }) {
             onClick={goToApp}
             className="px-6 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
           >
-            Retour à ChantierPro
+            Retour à BatiGesti
           </button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function AcceptInvitation({ token }) {
             onClick={goToApp}
             className="mt-6 px-6 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 transition-colors"
           >
-            Accéder à ChantierPro
+            Accéder à BatiGesti
           </button>
         </div>
       </div>

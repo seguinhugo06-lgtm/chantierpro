@@ -25,7 +25,7 @@ const corsHeaders = {
 
 const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }> = {
   welcome: {
-    subject: 'Bienvenue sur ChantierPro !',
+    subject: 'Bienvenue sur BatiGesti !',
     html: (data) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -39,7 +39,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </div>
       </div>
       <h1 style="font-size:24px;font-weight:700;color:#0f172a;text-align:center;margin:0 0 8px;">
-        Bienvenue sur ChantierPro !
+        Bienvenue sur BatiGesti !
       </h1>
       <p style="color:#64748b;text-align:center;margin:0 0 24px;font-size:15px;">
         Votre assistant de gestion pour artisans du BTP
@@ -53,13 +53,13 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </ol>
       </div>
       <div style="text-align:center;">
-        <a href="https://chantierpro.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
-          Acc\u00e9der \u00e0 ChantierPro
+        <a href="https://batigesti.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
+          Acc\u00e9der \u00e0 BatiGesti
         </a>
       </div>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -67,7 +67,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
   },
 
   trial_ending: {
-    subject: 'Votre essai ChantierPro se termine dans 3 jours',
+    subject: 'Votre essai BatiGesti se termine dans 3 jours',
     html: (data) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -91,13 +91,13 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </p>
       </div>
       <div style="text-align:center;">
-        <a href="https://chantierpro.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
+        <a href="https://batigesti.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
           Activer le plan Pro
         </a>
       </div>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -105,7 +105,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
   },
 
   trial_expired: {
-    subject: 'Votre essai ChantierPro est terminé',
+    subject: 'Votre essai BatiGesti est terminé',
     html: (data) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -132,13 +132,13 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </ul>
       </div>
       <div style="text-align:center;">
-        <a href="https://chantierpro.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
+        <a href="https://batigesti.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
           Passer au Pro — 14,90\u20ac/mois
         </a>
       </div>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -146,7 +146,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
   },
 
   payment_success: {
-    subject: 'Paiement confirmé — ChantierPro Pro',
+    subject: 'Paiement confirmé — BatiGesti Pro',
     html: (data) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -170,13 +170,13 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </p>
       </div>
       <div style="text-align:center;">
-        <a href="https://chantierpro.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
-          Continuer sur ChantierPro
+        <a href="https://batigesti.vercel.app" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
+          Continuer sur BatiGesti
         </a>
       </div>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -184,7 +184,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
   },
 
   invitation: {
-    subject: 'Invitation à rejoindre une organisation sur ChantierPro',
+    subject: 'Invitation à rejoindre une organisation sur BatiGesti',
     html: (data) => `
 <!DOCTYPE html>
 <html lang="fr">
@@ -201,11 +201,11 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         Vous êtes invité(e) !
       </h1>
       <p style="color:#64748b;text-align:center;margin:0 0 24px;font-size:15px;">
-        Rejoignez <strong>${data?.orgName || 'une organisation'}</strong> sur ChantierPro
+        Rejoignez <strong>${data?.orgName || 'une organisation'}</strong> sur BatiGesti
       </p>
       <div style="background:#fff7ed;border-left:4px solid #f97316;border-radius:0 12px 12px 0;padding:16px;margin-bottom:24px;">
         <p style="margin:0 0 4px;font-size:14px;color:#334155;">
-          <strong>Organisation :</strong> ${data?.orgName || 'ChantierPro'}
+          <strong>Organisation :</strong> ${data?.orgName || 'BatiGesti'}
         </p>
         <p style="margin:0 0 4px;font-size:14px;color:#334155;">
           <strong>Rôle :</strong> ${data?.roleLabel || 'Membre'}
@@ -215,7 +215,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </p>
       </div>
       <div style="text-align:center;">
-        <a href="${data?.inviteLink || 'https://chantierpro.vercel.app'}" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:14px 36px;border-radius:10px;text-decoration:none;font-size:15px;">
+        <a href="${data?.inviteLink || 'https://batigesti.vercel.app'}" style="display:inline-block;background:#f97316;color:white;font-weight:600;padding:14px 36px;border-radius:10px;text-decoration:none;font-size:15px;">
           Accepter l'invitation
         </a>
       </div>
@@ -224,7 +224,7 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
       </p>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -255,13 +255,13 @@ const TEMPLATES: Record<string, { subject: string; html: (data: any) => string }
         </p>
       </div>
       <div style="text-align:center;">
-        <a href="https://chantierpro.vercel.app" style="display:inline-block;background:#ef4444;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
+        <a href="https://batigesti.vercel.app" style="display:inline-block;background:#ef4444;color:white;font-weight:600;padding:12px 32px;border-radius:10px;text-decoration:none;font-size:14px;">
           Mettre \u00e0 jour mon paiement
         </a>
       </div>
     </div>
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      ChantierPro — Gestion de chantier pour artisans BTP
+      BatiGesti — Gestion de chantier pour artisans BTP
     </p>
   </div>
 </body>
@@ -311,10 +311,10 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'ChantierPro <onboarding@resend.dev>',
+        from: 'BatiGesti <onboarding@resend.dev>',
         to: [to],
         subject: type === 'invitation' && data?.orgName
-          ? `Invitation à rejoindre ${data.orgName} sur ChantierPro`
+          ? `Invitation à rejoindre ${data.orgName} sur BatiGesti`
           : template.subject,
         html: template.html(data || {}),
       }),

@@ -69,7 +69,7 @@ const CHECKLIST_ITEMS = [
   {
     id: 'facturx',
     label: 'Factur-X PDF/A-3 activé',
-    check: () => true, // Built into ChantierPro
+    check: () => true, // Built into BatiGesti
     tab: null,
     icon: Shield,
   },
@@ -246,7 +246,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
             </h2>
             <p className={`mt-1 text-sm font-medium ${isReady ? 'text-emerald-600' : 'text-amber-600'}`}>
               {isReady
-                ? 'Vous êtes prêt avec ChantierPro ✓'
+                ? 'Vous êtes prêt avec BatiGesti ✓'
                 : `${daysLeft} jours restants — actions requises pour être conforme`}
             </p>
           </div>
@@ -448,7 +448,7 @@ export default function Facture2026Tab({ entreprise, setEntreprise, isDark, coul
         <div className="space-y-3">
           <p className={`text-sm leading-relaxed ${textSecondary}`}>
             La législation française impose un archivage des factures pendant 10 ans (article L123-22
-            du Code de commerce). ChantierPro assure la conservation et l'intégrité de vos documents.
+            du Code de commerce). BatiGesti assure la conservation et l'intégrité de vos documents.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>

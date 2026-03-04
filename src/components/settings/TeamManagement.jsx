@@ -118,7 +118,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               type: 'invitation',
               to: data.email,
               data: {
-                orgName: orgName || 'ChantierPro',
+                orgName: orgName || 'BatiGesti',
                 roleLabel,
                 inviteLink,
                 expiresAt: new Date(data.expires_at).toLocaleDateString('fr-FR'),

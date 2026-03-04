@@ -1,5 +1,5 @@
 /**
- * ChantierPro AI Service
+ * BatiGesti AI Service
  * Client-side service for communicating with Claude AI via Vercel serverless functions.
  * Handles both streaming and non-streaming responses.
  */

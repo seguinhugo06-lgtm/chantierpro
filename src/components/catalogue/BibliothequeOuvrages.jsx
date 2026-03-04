@@ -1,7 +1,7 @@
 /**
  * BibliothequeOuvrages.jsx
  *
- * Bibliothèque d'Ouvrages pour ChantierPro - Gestion BTP
+ * Bibliothèque d'Ouvrages pour BatiGesti - Gestion BTP
  *
  * Composant permettant de créer et gérer des ouvrages composites
  * (assemblages de matériaux, main d'oeuvre, sous-traitance et location)

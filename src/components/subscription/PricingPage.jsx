@@ -248,7 +248,7 @@ const TESTIMONIALS = [
   {
     name: 'Martin Dubois',
     job: 'Electricien',
-    text: 'ChantierPro a transform\u00e9 ma fa\u00e7on de travailler. Fini les devis sur papier, mes clients sont impressionn\u00e9s par le professionnalisme.',
+    text: 'BatiGesti a transform\u00e9 ma fa\u00e7on de travailler. Fini les devis sur papier, mes clients sont impressionn\u00e9s par le professionnalisme.',
     stars: 5,
     color: '#F97316'
   },
@@ -272,7 +272,7 @@ function TestimonialsSection({ isDark }) {
   return (
     <section className={`py-16 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'} rounded-2xl my-8`}>
       <h2 className={`text-2xl font-bold text-center mb-10 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        Nos utilisateurs adorent ChantierPro
+        Nos utilisateurs adorent BatiGesti
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-6">
         {TESTIMONIALS.map((t, i) => (
@@ -344,7 +344,7 @@ function CTASection({ onAction }) {
         Prêt à démarrer ?
       </h2>
       <p className="text-orange-100 mb-8 max-w-md mx-auto">
-        Rejoignez les artisans qui font confiance à ChantierPro pour gérer leurs chantiers
+        Rejoignez les artisans qui font confiance à BatiGesti pour gérer leurs chantiers
       </p>
       <button
         onClick={onAction}

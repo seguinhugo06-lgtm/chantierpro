@@ -29,7 +29,7 @@ function formatMessageText(text) {
 }
 
 /**
- * AI Chat Interface for ChantierPro
+ * AI Chat Interface for BatiGesti
  * Conversational devis creation with voice, text, and photo input
  */
 export default function ChatInterface({
@@ -218,7 +218,7 @@ export default function ChatInterface({
           <Bot size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className={`font-semibold text-sm ${textPrimary}`}>Assistant IA ChantierPro</h3>
+          <h3 className={`font-semibold text-sm ${textPrimary}`}>Assistant IA BatiGesti</h3>
           <p className={`text-xs ${textSecondary}`}>
             {isStreaming ? 'Reflexion en cours...' : isAnalyzing ? 'Analyse de la photo...' : 'Parlez ou écrivez pour créer un devis'}
           </p>
