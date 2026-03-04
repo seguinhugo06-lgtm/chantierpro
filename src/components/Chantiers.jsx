@@ -74,6 +74,49 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // C1: Duplicate chantier detection
   const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
 
+  // C1b: Merge duplicates state
+  const [mergeDialog, setMergeDialog] = useState(null); // { primaryId, secondaryId }
+
+  const handleMergeDuplicates = useCallback((primaryId, secondaryId) => {
+    const primary = chantiers.find(c => c.id === primaryId);
+    const secondary = chantiers.find(c => c.id === secondaryId);
+    if (!primary || !secondary) return;
+
+    // Merge arrays (tasks, photos, documents, messages)
+    const mergedTaches = [...(primary.taches || [])];
+    (secondary.taches || []).forEach(t => {
+      if (!mergedTaches.some(mt => mt.text === t.text)) mergedTaches.push(t);
+    });
+    const mergedPhotos = [...(primary.photos || []), ...(secondary.photos || [])];
+    const mergedDocs = [...(primary.documents || [])];
+    (secondary.documents || []).forEach(d => {
+      if (!mergedDocs.some(md => md.nom === d.nom)) mergedDocs.push(d);
+    });
+    const mergedMessages = [...(primary.messages || []), ...(secondary.messages || [])];
+
+    // Merge scalar fields (keep primary, fill blanks from secondary)
+    const merged = {
+      taches: mergedTaches,
+      photos: mergedPhotos,
+      documents: mergedDocs,
+      messages: mergedMessages,
+      description: primary.description || secondary.description || '',
+      adresse: primary.adresse || secondary.adresse || '',
+      ville: primary.ville || secondary.ville || '',
+      code_postal: primary.code_postal || secondary.code_postal || '',
+      budget_estime: primary.budget_estime || primary.budgetPrevu || secondary.budget_estime || secondary.budgetPrevu || 0,
+      budgetPrevu: primary.budgetPrevu || primary.budget_estime || secondary.budgetPrevu || secondary.budget_estime || 0,
+      budget_materiaux: primary.budget_materiaux || secondary.budget_materiaux || 0,
+      heures_estimees: primary.heures_estimees || secondary.heures_estimees || 0,
+      notes: [primary.notes, secondary.notes].filter(Boolean).join('\n---\n') || '',
+    };
+
+    updateChantier(primaryId, merged);
+    updateChantier(secondaryId, { statut: 'archive', notes: `[Fusionné dans "${primary.nom}" le ${new Date().toLocaleDateString('fr-FR')}]\n${secondary.notes || ''}` });
+    setMergeDialog(null);
+    showToast(`Chantiers fusionnés — "${secondary.nom}" archivé`, 'success');
+  }, [chantiers, updateChantier, showToast]);
+
   // P0.1: Compute chantier health alerts (reusable across detail + list)
   const getChantierAlerts = React.useCallback((ch, bilan) => {
     const alerts = [];
@@ -2775,9 +2818,13 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     </span>
                   )}
                   {duplicateMap.has(ch.id) && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`} title="Chantier similaire détecté — même client et nom proche">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setMergeDialog({ primaryId: ch.id, secondaryId: duplicateMap.get(ch.id)[0] }); }}
+                      className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap cursor-pointer hover:ring-2 hover:ring-amber-400/50 transition-all ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-700'}`}
+                      title="Cliquez pour fusionner les doublons"
+                    >
                       ⚠ Doublon
-                    </span>
+                    </button>
                   )}
                 </div>
 
@@ -3137,6 +3184,59 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         couleur={couleur}
         editChantier={editingChantier}
       />
+
+      {/* Merge Duplicates Dialog */}
+      {mergeDialog && (() => {
+        const primary = chantiers.find(c => c.id === mergeDialog.primaryId);
+        const secondary = chantiers.find(c => c.id === mergeDialog.secondaryId);
+        if (!primary || !secondary) return null;
+        const clientA = clients.find(c => c.id === primary.client_id);
+        const clientB = clients.find(c => c.id === secondary.client_id);
+        return (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4" onClick={() => setMergeDialog(null)}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-5 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} onClick={e => e.stopPropagation()}>
+              <h3 className={`text-lg font-bold mb-1 ${textPrimary}`}>Fusionner les doublons</h3>
+              <p className={`text-xs mb-4 ${textMuted}`}>Les données du chantier secondaire seront ajoutées au principal, puis le secondaire sera archivé.</p>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[{ ch: primary, label: '✅ Principal', client: clientA, id: mergeDialog.primaryId }, { ch: secondary, label: '📦 Sera archivé', client: clientB, id: mergeDialog.secondaryId }].map(({ ch, label, client, id }) => (
+                  <div key={id} className={`rounded-xl border p-3 text-center ${isDark ? 'border-slate-600 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
+                    <span className={`text-[10px] font-medium block mb-1 ${id === mergeDialog.primaryId ? (isDark ? 'text-green-400' : 'text-green-700') : (isDark ? 'text-amber-400' : 'text-amber-700')}`}>{label}</span>
+                    <p className={`text-sm font-semibold truncate ${textPrimary}`}>{ch.nom}</p>
+                    <p className={`text-xs truncate ${textMuted}`}>{client ? formatClientName(client) : '—'}</p>
+                    <div className={`text-[10px] mt-2 space-y-0.5 ${textMuted}`}>
+                      <p>{(ch.taches || []).length} tâches · {(ch.photos || []).length} photos</p>
+                      <p>{(ch.documents || []).length} docs · {ch.statut}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Swap button */}
+              <button
+                onClick={() => setMergeDialog({ primaryId: mergeDialog.secondaryId, secondaryId: mergeDialog.primaryId })}
+                className={`w-full text-xs py-1.5 rounded-lg mb-4 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+              >
+                ↔ Inverser principal / secondaire
+              </button>
+
+              <div className="flex gap-2">
+                <button onClick={() => setMergeDialog(null)} className={`flex-1 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleMergeDuplicates(mergeDialog.primaryId, mergeDialog.secondaryId)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Fusionner
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

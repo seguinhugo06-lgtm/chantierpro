@@ -1578,12 +1578,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           {canPerform('client', 'create') && (
           <button
             onClick={() => setShowQuickModal(true)}
-            className="px-4 py-2.5 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
+            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:shadow-lg transition-all"
             style={{ background: couleur }}
           >
             <Plus size={16} />
             <span className="hidden sm:inline">Nouveau client</span>
-            <span className="sm:hidden">Nouveau</span>
           </button>
           )}
         </div>

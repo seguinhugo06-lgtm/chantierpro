@@ -96,8 +96,8 @@ const getThemeClasses = (isDark) => ({
   cardHover: isDark ? "hover:bg-slate-700" : "hover:bg-slate-50",
   input: isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300 text-slate-900 placeholder-slate-400",
   text: isDark ? "text-slate-100" : "text-slate-900",
-  textSecondary: isDark ? "text-slate-300" : "text-slate-700",
-  textMuted: isDark ? "text-slate-400" : "text-slate-600",
+  textSecondary: isDark ? "text-slate-200" : "text-slate-700",
+  textMuted: isDark ? "text-slate-300" : "text-slate-500",
   bg: isDark ? "bg-slate-900" : "bg-slate-100",
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
@@ -1602,7 +1602,8 @@ export default function App() {
             selectedChantier !== null ||
             showFABDevisWizard || showFABQuickClient || showFABQuickChantier ||
             showSearch ||
-            page === 'devis' || page === 'settings'
+            // Hide FAB on pages that have their own creation button
+            ['devis', 'chantiers', 'clients', 'equipe', 'catalogue', 'settings', 'ia-devis', 'memos', 'commandes'].includes(page)
           }
         />
 
@@ -1637,6 +1638,14 @@ export default function App() {
                 </button>
               );
             })}
+            {/* 5th item: Plus / Menu — opens sidebar for all pages */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+            >
+              <Menu size={20} strokeWidth={1.5} />
+              <span className="text-[10px] mt-0.5 font-normal">Plus</span>
+            </button>
           </div>
         </nav>
       </div>

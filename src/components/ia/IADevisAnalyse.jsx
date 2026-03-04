@@ -216,6 +216,7 @@ export default function IADevisAnalyse({
   const selectedAnalyse = analyses.find(a => a.id === selectedId) || null;
   const currentText = activeTab === 'voice' ? (transcript || manualText) : photoDescription;
   const [showValidationHint, setShowValidationHint] = useState(false);
+  const [undoLine, setUndoLine] = useState(null); // { line, idx, timer }
 
   const filteredAnalyses = (() => {
     let result = [...analyses];
@@ -261,7 +262,11 @@ export default function IADevisAnalyse({
 
   const handleOpenNew = () => { resetNewFlow(); setView('new'); };
 
-  const handleBackToList = () => { resetNewFlow(); setView('list'); setSelectedId(null); };
+  const handleBackToList = () => {
+    const hasWork = (manualText || transcript || '').trim().length > 0 || analyseResult || editableLines.length > 0;
+    if (hasWork && !window.confirm('Quitter sans sauvegarder ? Les données de cette analyse seront perdues.')) return;
+    resetNewFlow(); setView('list'); setSelectedId(null);
+  };
 
   const handleSelectAnalyse = (id) => { setSelectedId(id); setView('detail'); };
 
@@ -360,7 +365,23 @@ export default function IADevisAnalyse({
   };
 
   const removeLine = (idx) => {
+    const removed = editableLines[idx];
     setEditableLines(prev => prev.filter((_, i) => i !== idx));
+    // Clear previous undo timer
+    if (undoLine?.timer) clearTimeout(undoLine.timer);
+    const timer = setTimeout(() => setUndoLine(null), 5000);
+    setUndoLine({ line: removed, idx, timer });
+  };
+
+  const handleUndo = () => {
+    if (!undoLine) return;
+    clearTimeout(undoLine.timer);
+    setEditableLines(prev => {
+      const copy = [...prev];
+      copy.splice(undoLine.idx, 0, undoLine.line);
+      return copy;
+    });
+    setUndoLine(null);
   };
 
   // Create devis
@@ -835,6 +856,16 @@ export default function IADevisAnalyse({
               <Plus size={14} />
               Ajouter un poste
             </button>
+
+            {/* Undo banner */}
+            {undoLine && (
+              <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-800'}`}>
+                <span>Ligne supprimée</span>
+                <button onClick={handleUndo} className="font-semibold underline" style={{ color: couleur }}>
+                  Annuler
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Total */}
@@ -850,7 +881,7 @@ export default function IADevisAnalyse({
           {/* Actions */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { setStep(1); setAnalyseResult(null); setEditableLines([]); }}
+              onClick={() => { if (!window.confirm('Refaire l\'analyse ? Les modifications actuelles seront perdues.')) return; setStep(1); setAnalyseResult(null); setEditableLines([]); }}
               className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               <RefreshCw size={14} />
