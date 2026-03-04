@@ -102,12 +102,12 @@ function StatusBadge({ statut, isDark }) {
 
 function KpiCard({ icon: Icon, label, value, isDark, couleur }) {
   return (
-    <div className={`rounded-xl border p-3 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Icon size={15} style={{ color: couleur }} />
-        <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</span>
+    <div className={`rounded-xl border p-2.5 sm:p-3 min-w-0 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+      <div className="flex items-center gap-1.5 mb-0.5 sm:mb-1">
+        <Icon size={14} className="shrink-0" style={{ color: couleur }} />
+        <span className={`text-[11px] sm:text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</span>
       </div>
-      <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</p>
+      <p className={`text-base sm:text-lg font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</p>
     </div>
   );
 }
@@ -215,6 +215,7 @@ export default function IADevisAnalyse({
   // ---- Derived ----
   const selectedAnalyse = analyses.find(a => a.id === selectedId) || null;
   const currentText = activeTab === 'voice' ? (transcript || manualText) : photoDescription;
+  const [showValidationHint, setShowValidationHint] = useState(false);
 
   const filteredAnalyses = (() => {
     let result = [...analyses];
@@ -233,9 +234,9 @@ export default function IADevisAnalyse({
     return result;
   })();
 
-  const totalHTAll = analyses.reduce((s, a) => s + (a.analyse_resultat?.totalHT || 0), 0);
-  const avgConfiance = analyses.length > 0
-    ? Math.round(analyses.reduce((s, a) => s + (a.confiance || 0), 0) / analyses.length)
+  const totalHTAll = filteredAnalyses.reduce((s, a) => s + (a.analyse_resultat?.totalHT || 0), 0);
+  const avgConfiance = filteredAnalyses.length > 0
+    ? Math.round(filteredAnalyses.reduce((s, a) => s + (a.confiance || 0), 0) / filteredAnalyses.length)
     : 0;
 
   // Editable lines total
@@ -463,7 +464,7 @@ export default function IADevisAnalyse({
         <>
           {/* KPIs */}
           <div className="grid grid-cols-3 gap-3 mb-6">
-            <KpiCard icon={BarChart3} label="Analyses" value={analyses.length} isDark={isDark} couleur={couleur} />
+            <KpiCard icon={BarChart3} label="Analyses" value={filteredAnalyses.length} isDark={isDark} couleur={couleur} />
             <KpiCard icon={Euro} label="Total HT" value={fmtCurrency.format(totalHTAll)} isDark={isDark} couleur={couleur} />
             <KpiCard icon={ShieldCheck} label="Confiance" value={`${avgConfiance}%`} isDark={isDark} couleur={couleur} />
           </div>
@@ -542,14 +543,19 @@ export default function IADevisAnalyse({
         ].map((s, i) => (
           <React.Fragment key={s.n}>
             {i > 0 && <div className={`flex-1 h-0.5 ${step >= s.n ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`} style={step >= s.n ? { backgroundColor: couleur } : {}} />}
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+            <button
+              onClick={() => { if (s.n < step && step !== 2) setStep(s.n); }}
+              disabled={s.n >= step || step === 2}
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
                 step >= s.n ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'
-              }`}
-              style={step >= s.n ? { backgroundColor: couleur } : {}}
+              } ${s.n < step && step !== 2 ? 'cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-1' : ''}`}
+              style={{
+                ...(step >= s.n ? { backgroundColor: couleur } : {}),
+                ...(s.n < step && step !== 2 ? { '--tw-ring-color': couleur } : {}),
+              }}
             >
               {s.n}
-            </div>
+            </button>
           </React.Fragment>
         ))}
       </div>
@@ -701,20 +707,27 @@ export default function IADevisAnalyse({
             </div>
           )}
 
+          {/* Validation hint */}
+          {showValidationHint && currentText.length < 10 && (
+            <p className={`text-xs mt-3 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
+              Décrivez les travaux pour lancer l'analyse (minimum 10 caractères)
+            </p>
+          )}
+
           {/* Action buttons */}
-          <div className="flex items-center gap-3 mt-6">
-            <button onClick={handleBackToList} className={`px-4 py-2.5 rounded-lg text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
-              ← Retour
+          <div className="flex items-center gap-2 sm:gap-3 mt-4">
+            <button onClick={handleBackToList} className={`shrink-0 px-3 sm:px-4 py-2.5 rounded-lg text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
+              <span className="sm:hidden">←</span>
+              <span className="hidden sm:inline">← Retour</span>
             </button>
             <button
-              onClick={handleStartAnalysis}
-              disabled={currentText.length < 10}
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg"
+              onClick={() => { if (currentText.length < 10) { setShowValidationHint(true); return; } setShowValidationHint(false); handleStartAnalysis(); }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-white font-semibold transition-all hover:shadow-lg ${currentText.length < 10 ? 'opacity-40 cursor-not-allowed' : ''}`}
               style={{ backgroundColor: couleur }}
             >
-              <Sparkles size={18} />
+              <Sparkles size={18} className="shrink-0" />
               Analyser
-              <ArrowRight size={16} />
+              <ArrowRight size={16} className="shrink-0" />
             </button>
           </div>
         </>
@@ -756,7 +769,11 @@ export default function IADevisAnalyse({
               </span>
             </div>
             {analyseResult.notes && (
-              <p className={`text-xs ${textMuted}`}>💡 {analyseResult.notes}</p>
+              <p className={`text-xs ${textMuted}`}>
+                💡 {analyseResult.notes === 'Estimation locale (IA non configurée)'
+                  ? 'Estimation basée sur les prix moyens du marché. Ajustez les montants selon vos tarifs.'
+                  : analyseResult.notes}
+              </p>
             )}
           </div>
 
@@ -997,14 +1014,35 @@ export default function IADevisAnalyse({
           </div>
 
           {/* Total */}
-          <div className={`rounded-lg p-3 mb-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-            <div className="flex justify-between items-center">
-              <span className={`text-sm ${textMuted}`}>Total HT</span>
-              <span className="text-lg font-bold" style={{ color: couleur }}>
-                {fmtCurrency.format(editableTotalHT || analyseResult?.totalHT || 0)}
-              </span>
-            </div>
-          </div>
+          {(() => {
+            const ht = editableTotalHT || analyseResult?.totalHT || 0;
+            const tvaAmount = ht * (convertTva / 100);
+            const ttc = ht + tvaAmount;
+            return (
+              <div className={`rounded-lg p-3 mb-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className="flex justify-between items-center">
+                  <span className={`text-sm ${textMuted}`}>Total HT</span>
+                  <span className={`text-sm font-semibold ${textPrimary}`}>
+                    {fmtCurrency.format(ht)}
+                  </span>
+                </div>
+                {convertTva > 0 && (
+                  <div className="flex justify-between items-center mt-1">
+                    <span className={`text-xs ${textMuted}`}>TVA ({convertTva}%)</span>
+                    <span className={`text-xs ${textMuted}`}>
+                      {fmtCurrency.format(tvaAmount)}
+                    </span>
+                  </div>
+                )}
+                <div className={`flex justify-between items-center mt-2 pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <span className={`text-sm font-semibold ${textPrimary}`}>Total TTC</span>
+                  <span className="text-lg font-bold" style={{ color: couleur }}>
+                    {fmtCurrency.format(ttc)}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           <button
             onClick={handleConfirmCreateDevis}

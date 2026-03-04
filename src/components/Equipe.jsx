@@ -1775,8 +1775,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       {/* Enhanced Tab Navigation */}
       {/* #12: Accessible tab navigation */}
       <div className={`p-1.5 rounded-2xl relative ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`} role="tablist" aria-label="Navigation des onglets Équipe">
-        <div className="flex gap-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-0.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
+          {/* Scroll fade indicator */}
+          <div className={`absolute right-0 top-0 bottom-0 w-8 pointer-events-none z-10 rounded-r-2xl sm:hidden ${isDark ? 'bg-gradient-to-l from-slate-800' : 'bg-gradient-to-l from-slate-100'}`} />
           {(isSousTraitants ? [
             { key: 'overview', label: 'Sous-traitants', mobileLabel: 'S-T', icon: UserCheck, count: sousTraitantsList.length },
             { key: 'couts', label: 'Coûts', icon: Euro },

@@ -1769,7 +1769,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (selected.statut === 'brouillon') {
           const ttc = selected.total_ttc || 0;
           if (ttc <= 0) return { label: 'Envoyer', icon: Send, action: () => {}, color: 'bg-amber-500', disabled: true, tooltip: 'Ajoutez un montant avant d\'envoyer' };
-          return { label: 'Envoyer', icon: Send, action: () => sendEmail(selected), color: 'bg-amber-500 hover:bg-amber-600' };
+          return { label: 'Envoyer', icon: Send, action: () => trySend(selected, sendEmail), color: 'bg-amber-500 hover:bg-amber-600' };
         }
         if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
@@ -3101,13 +3101,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   >
                     Compris
                   </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale'].includes(i.id)) && (
+                  {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale'].includes(i.id)) && (
                     <button
                       onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
                       className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
                       style={{ backgroundColor: couleur }}
                     >
-                      {sendValidationIssues.isDownload ? 'Télécharger quand même' : 'Envoyer quand même'}
+                      Télécharger quand même
                     </button>
                   )}
                 </div>
@@ -3788,19 +3788,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
         if (missingLegal.length === 0) return null;
         return (
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/20 border-amber-700 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-            <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-            <span className="flex-1 min-w-0">Non conforme — {missingLegal.join(', ')}</span>
+          <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold">⚠️ Non conforme</span>
+              <span className="mx-1">—</span>
+              <span>{missingLegal.join(', ')}</span>
+              <span className={`block text-[10px] mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>Obligatoire pour la conformité Facture 2026</span>
+            </div>
             {setPage && (
-              <button onClick={() => setPage('settings')} className="shrink-0 underline font-medium hover:opacity-80">Compléter</button>
+              <button onClick={() => setPage('settings')} className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
             )}
-            <button
-              onClick={() => { setComplianceDismissed(true); localStorage.setItem('complianceDismissed', 'true'); }}
-              className={`shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
-              aria-label="Masquer l'alerte"
-            >
-              <X size={14} />
-            </button>
           </div>
         );
       })()}
