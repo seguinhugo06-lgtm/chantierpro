@@ -44,6 +44,7 @@ const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette')
 const DesignSystemDemo = lazyWithRetry(() => import('./components/DesignSystemDemo'), 'DesignSystem');
 const TresorerieModule = lazyWithRetry(() => import('./components/tresorerie/TresorerieModule'), 'Trésorerie');
 const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
+const BibliothequePrix = lazyWithRetry(() => import('./components/bibliotheque/Bibliotheque'), 'BibliothèquePrix');
 const SousTraitantsModule = lazyWithRetry(() => import('./components/soustraitants/SousTraitantsModule'), 'SousTraitants');
 const CommandesFournisseurs = lazyWithRetry(() => import('./components/commandes/CommandesFournisseurs'), 'Commandes');
 const IADevisAnalyse = lazyWithRetry(() => import('./components/ia/IADevisAnalyse'), 'IADevis');
@@ -702,7 +703,7 @@ export default function App() {
   // Must depend on [page] so redirects fire whenever page changes (not just on mount)
   useEffect(() => {
     const REDIRECTS = {
-      ouvrages: 'catalogue', commandes: 'chantiers',
+      ouvrages: 'bibliotheque', commandes: 'chantiers',
       tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
@@ -1140,6 +1141,7 @@ export default function App() {
       badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
+    { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     (() => {
@@ -1562,6 +1564,7 @@ export default function App() {
               {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} />}
               {page === 'memos' && <MemosPage memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} chantiers={chantiers} clients={clients} setPage={setPage} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
+              {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'soustraitants' && <FeatureGuard feature="sous_traitants"><SousTraitantsModule chantiers={chantiers} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
