@@ -1032,7 +1032,7 @@ export function CeMoisModal({
                 )}>
                   Pipeline commercial
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     { label: 'Brouillons', count: devisPipeline.brouillon?.length || 0, color: 'gray' },
                     { label: 'Envoyés', count: devisPipeline.envoye?.length || 0, color: 'blue' },

@@ -4192,7 +4192,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   )}
 
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
                       { label: 'Heures/mois', value: `${Math.round(stats.monthHours)}h`, color: couleur },
                       { label: 'Moy./jour', value: `${stats.avgDaily}h`, color: '#22c55e' },

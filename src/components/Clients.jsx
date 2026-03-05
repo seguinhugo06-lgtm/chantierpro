@@ -1609,7 +1609,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
         ];
 
         return (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {kpiItems.map(kpi => {
               const isActive = kpiFilter === kpi.key;
               return (
