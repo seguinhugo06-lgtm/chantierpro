@@ -337,7 +337,7 @@ export default function DevisExpressModal({
                     >
                       {metier.icon}
                     </div>
-                    <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
+                    <p className={`font-medium text-xs sm:text-sm leading-tight line-clamp-2 ${textPrimary}`}>{metier.nom}</p>
                     <p className={`text-xs ${textMuted} mt-1`}>{metier.modelesCount} modèles</p>
                   </button>
                 ))}

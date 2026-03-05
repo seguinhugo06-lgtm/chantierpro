@@ -392,7 +392,7 @@ export default function CommandPalette({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-start justify-center z-[100] pt-16 sm:pt-20 p-4"
+          className="fixed inset-0 flex items-start justify-center z-[100] pt-12 sm:pt-20 px-2 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -421,13 +421,13 @@ export default function CommandPalette({
             aria-label="Palette de commandes"
           >
             {/* Search input */}
-            <div className={`flex items-center gap-3 px-5 py-4 border-b ${borderColor}`}>
-              <Search size={22} className={textMuted} />
+            <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b ${borderColor}`}>
+              <Search size={20} className={textMuted} />
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Rechercher ou taper une commande..."
-                className={`flex-1 bg-transparent outline-none text-lg ${textPrimary} placeholder:${textMuted}`}
+                placeholder="Rechercher..."
+                className={`flex-1 bg-transparent outline-none text-base sm:text-lg ${textPrimary} placeholder:${textMuted}`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 aria-label="Rechercher"
@@ -476,7 +476,7 @@ export default function CommandPalette({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.1, delay: Math.min(currentIndex * 0.02, 0.1) }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 mx-1 rounded-xl transition-colors ${
+                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2.5 mx-1 rounded-xl transition-colors ${
                         isSelected ? selectedBg : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                       style={isSelected ? { backgroundColor: isDark ? '#334155' : '#f1f5f9' } : {}}

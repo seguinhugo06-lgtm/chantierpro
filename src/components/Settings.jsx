@@ -674,12 +674,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </div>
               </button>
               {isOpen && (
-                <div className={`px-2 pb-2 flex flex-wrap gap-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-white'}`}>
+                <div className={`px-2 pb-2 flex gap-1.5 overflow-x-auto ${isDark ? 'bg-slate-800/50' : 'bg-white'}`} style={{ scrollbarWidth: 'none' }}>
                   {group.tabs.map(t => (
                     <button
                       key={t.key}
                       onClick={() => setTab(t.key)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] ${
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] whitespace-nowrap shrink-0 ${
                         tab === t.key
                           ? 'text-white shadow-sm'
                           : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-700/40' : 'text-slate-500 hover:text-slate-700 bg-slate-100'

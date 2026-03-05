@@ -816,32 +816,32 @@ export default function IADevisAnalyse({
                   </button>
                 </div>
                 {/* Row 2: Qté × Unité × P.U. = Total */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                   <input
                     type="number"
                     value={line.quantite}
                     onChange={e => updateLine(idx, 'quantite', parseFloat(e.target.value) || 0)}
-                    className={`w-14 text-center rounded-lg px-1 py-1 text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                    className={`w-12 sm:w-14 text-center rounded-lg px-1 py-1 text-xs sm:text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
                     min="0"
                     step="0.1"
                   />
                   <select
                     value={line.unite}
                     onChange={e => updateLine(idx, 'unite', e.target.value)}
-                    className={`rounded-lg px-1 py-1 text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                    className={`rounded-lg px-1 py-1 text-[11px] sm:text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
                   >
                     {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
-                  <span className={`text-xs ${textMuted}`}>×</span>
+                  <span className={`text-[10px] sm:text-xs ${textMuted}`}>×</span>
                   <input
                     type="number"
                     value={line.prixUnitaire}
                     onChange={e => updateLine(idx, 'prixUnitaire', parseFloat(e.target.value) || 0)}
-                    className={`w-20 text-right rounded-lg px-2 py-1 text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
+                    className={`w-16 sm:w-20 text-right rounded-lg px-1 sm:px-2 py-1 text-xs sm:text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
                     min="0"
                     step="0.01"
                   />
-                  <span className={`ml-auto text-sm font-semibold whitespace-nowrap ${textPrimary}`}>
+                  <span className={`ml-auto text-xs sm:text-sm font-semibold whitespace-nowrap ${textPrimary}`}>
                     {fmtCurrency.format(line.quantite * line.prixUnitaire)}
                   </span>
                 </div>

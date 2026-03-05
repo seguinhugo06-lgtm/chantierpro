@@ -5,6 +5,12 @@
 @tailwind utilities;
 
 
+/* Prevent horizontal scroll on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 /* Modern UI Enhancements */
 
 /* Smooth transitions for all interactive elements */

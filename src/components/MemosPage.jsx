@@ -811,7 +811,7 @@ function StatsBar({ memos, isDark, couleur }) {
   const overdueNeutral = stats.overdueCount === 0;
 
   return (
-    <div className="grid grid-cols-4 gap-2 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
       {/* Cette semaine */}
       <div className={`${isDark ? 'bg-orange-900/30' : 'bg-orange-50'} rounded-lg px-3 py-2 text-center`}>
         <div className="text-lg font-bold text-orange-600">{stats.completedThisWeek}</div>
@@ -1460,7 +1460,7 @@ export default function MemosPage({
             value={newMemoText}
             onChange={(e) => setNewMemoText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? 'En écoute... parlez maintenant' : 'Nouvelle tâche...'}
+            placeholder={isListening ? 'En écoute...' : 'Nouvelle tâche'}
             className={`flex-1 bg-transparent border-none outline-none text-sm min-w-0 ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
             aria-label="Créer une nouvelle tâche"
             aria-describedby="memo-input-hint"

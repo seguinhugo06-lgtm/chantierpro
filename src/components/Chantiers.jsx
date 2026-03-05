@@ -387,7 +387,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </button>
                 {/* Sync status dot */}
                 <div className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500' : 'bg-red-500'}`} title={isOnline ? 'En ligne' : 'Hors ligne'} />
-                <h2 className={`flex-1 min-w-0 text-base sm:text-xl font-bold leading-tight ${textPrimary}`}>{ch.nom}</h2>
+                <h2 className={`flex-1 min-w-0 text-sm sm:text-xl font-bold leading-tight line-clamp-2 sm:line-clamp-none ${textPrimary}`}>{ch.nom}</h2>
                 <select
                   value={ch.statut}
                   onChange={e => {

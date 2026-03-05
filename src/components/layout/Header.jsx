@@ -399,7 +399,7 @@ function NotificationDropdown({
   return (
     <div
       className={cn(
-        'absolute right-0 top-full mt-2 w-80 sm:w-96',
+        'fixed inset-x-2 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96',
         'rounded-xl shadow-lg border',
         'overflow-hidden z-dropdown',
         isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'

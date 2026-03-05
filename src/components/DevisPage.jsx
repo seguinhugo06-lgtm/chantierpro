@@ -2475,7 +2475,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </TabsList>
             </div>
 
-            <TabsContent value="document" className="mt-0 p-4 sm:p-6">
+            <TabsContent value="document" className="mt-0 p-2 sm:p-6 overflow-x-auto">
               {/* Document header */}
               <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-3">
@@ -2537,7 +2537,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         {section.titre}
                       </h4>
                     )}
-                    <table className="w-full min-w-[400px] text-sm" aria-label={section.titre || 'Lignes du devis'}>
+                    <table className="w-full text-xs sm:text-sm" aria-label={section.titre || 'Lignes du devis'}>
                       {si === 0 && (
                         <thead>
                           <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
@@ -3788,16 +3788,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
         if (missingLegal.length === 0) return null;
         return (
-          <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
-            <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+          <div className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <span className="font-semibold">⚠️ Non conforme</span>
-              <span className="mx-1">—</span>
-              <span>{missingLegal.join(', ')}</span>
-              <span className={`block text-[10px] mt-0.5 ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>Obligatoire pour la conformité Facture 2026</span>
+              <span className="font-semibold">Profil incomplet</span>
+              <span className="hidden sm:inline mx-1">— {missingLegal.join(', ')}</span>
+              <span className={`sm:hidden block text-[10px] mt-0.5 truncate ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>{missingLegal.join(', ')}</span>
             </div>
             {setPage && (
-              <button onClick={() => setPage('settings')} className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
+              <button onClick={() => setPage('settings')} className={`shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
             )}
           </div>
         );
@@ -3821,7 +3820,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
 
         return (
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
             {/* CA encaissé */}
             <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
               <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
@@ -4064,7 +4063,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Row 1: Numero + badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`text-xs ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
-                    <p className={`font-semibold text-sm ${textPrimary}`}>{cleanNumero(d.numero)}</p>
+                    <p className={`font-semibold text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none ${textPrimary}`}>{cleanNumero(d.numero)}</p>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
                     {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
                     {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
@@ -4132,7 +4131,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       0 €
                     </span>
                   ) : (
-                    <p className="text-sm font-bold min-w-[70px] text-right tabular-nums" style={{color: couleur}}>
+                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: couleur}}>
                       {formatMoney(getDevisTTC(d))}
                     </p>
                   )}
