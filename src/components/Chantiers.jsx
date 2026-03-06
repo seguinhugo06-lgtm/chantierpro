@@ -213,6 +213,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [animatedTaskId, setAnimatedTaskId] = useState(null);
   const [counterPulse, setCounterPulse] = useState(false);
   const [todayCollapsed, setTodayCollapsed] = useState(false); // Étape 1: collapsible today banner
+  const [chantierDuplicateDismissed, setChantierDuplicateDismissed] = useState(() => { try { return localStorage.getItem('chantierDuplicateDismissed') === 'true'; } catch { return false; } });
 
   useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
   // Sync view → selectedChantier so App.jsx can hide global FABMenu
@@ -2723,6 +2724,20 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 modeDiscret={modeDiscret}
               />
             </Suspense>
+          )}
+
+          {/* Duplicate chantiers banner — compact + dismissable */}
+          {!chantierDuplicateDismissed && duplicateMap.size > 0 && !view && (
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs mb-3 ${isDark ? 'bg-amber-900/10 border-amber-800/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+              <span className="flex-1">{Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} · Les badges ⚠ Doublon vous permettent de fusionner</span>
+              <button
+                onClick={() => { setChantierDuplicateDismissed(true); try { localStorage.setItem('chantierDuplicateDismissed', 'true'); } catch {} }}
+                className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
           )}
 
           {/* List View */}

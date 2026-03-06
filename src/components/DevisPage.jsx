@@ -1791,7 +1791,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
           {/* Top row: back, title, client, actions */}
           <div className="flex items-start gap-3 mb-4">
-            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} aria-label="Retour à la liste">
+            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Retour à la liste" aria-label="Retour à la liste">
               <ArrowLeft size={18} className={textMuted} />
             </button>
             <div className="flex-1 min-w-0">
@@ -3704,6 +3704,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <button
               onClick={() => setPage('dashboard')}
               className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              title="Retour au tableau de bord"
               aria-label="Retour au tableau de bord"
             >
               <ArrowLeft size={20} />
@@ -4063,7 +4064,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Row 1: Numero + badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className={`text-xs ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
-                    <p className={`font-semibold text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none ${textPrimary}`}>{cleanNumero(d.numero)}</p>
+                    <p className={`font-semibold text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none ${textPrimary}`}>{cleanNumero(d.numero)}</p>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
                     {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
                     {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}

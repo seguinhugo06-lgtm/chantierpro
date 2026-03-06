@@ -1425,6 +1425,7 @@ export default function App() {
             <button
               onClick={() => setShowSearch(true)}
               className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+              title="Rechercher"
               aria-label="Rechercher"
             >
               <Search size={18} />
