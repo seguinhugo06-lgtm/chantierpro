@@ -4109,7 +4109,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </div>
                 </div>
 
-                {/* Right: Action + Amount */}
+                {/* Right: Amount + Action (button always at far right) */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {d.signature_token && (
                     <button onClick={(e) => {
@@ -4119,6 +4119,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
                       <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
+                  )}
+                  {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                      0 €
+                    </span>
+                  ) : (
+                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: couleur}}>
+                      {formatMoney(getDevisTTC(d))}
+                    </p>
                   )}
                   {qa ? (
                     <button onClick={qa.fn} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 min-h-[32px] transition-all ${qa.cls}`} style={qa.style}>
@@ -4131,15 +4140,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
                       <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
                     </button>
-                  )}
-                  {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                      0 €
-                    </span>
-                  ) : (
-                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: couleur}}>
-                      {formatMoney(getDevisTTC(d))}
-                    </p>
                   )}
                 </div>
               </div>
