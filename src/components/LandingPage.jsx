@@ -155,30 +155,57 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
         </div>
       </section>
 
-      {/* ─── Beta CTA ─── */}
-      <section className="bg-slate-50 py-16 sm:py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <div className="bg-white rounded-2xl p-8 sm:p-12 border border-slate-200 shadow-sm">
-            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-              <Zap size={14} />
-              Lancement en cours
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Rejoignez les premiers utilisateurs</h2>
-            <p className="text-slate-600 text-lg mb-8 max-w-xl mx-auto">
-              BatiGesti est en phase de lancement. Inscrivez-vous gratuitement et participez
-              au futur de la gestion de chantier pour artisans.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={onSignUp}
-                className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-xl text-lg transition-colors"
-              >
-                Essayer gratuitement
-                <ArrowRight size={20} />
+      {/* ─── Pricing ─── */}
+      <section id="pricing" className="bg-slate-50 py-16 sm:py-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">Des tarifs simples et transparents</h2>
+          <p className="text-slate-600 text-lg text-center mb-12 max-w-xl mx-auto">Commencez gratuitement, passez Pro quand vous grandissez.</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col">
+              <h3 className="text-lg font-bold mb-1">Découverte</h3>
+              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black">0€</span><span className="text-slate-500">/mois</span></div>
+              <p className="text-sm text-slate-500 mb-6">Pour démarrer et découvrir BatiGesti.</p>
+              <ul className="space-y-2.5 text-sm mb-8 flex-1">
+                {['3 devis / mois', '5 clients', '1 chantier actif', 'Mentions légales auto', 'Catalogue 100 articles', 'Mode hors-ligne'].map(f => (
+                  <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />{f}</li>
+                ))}
+              </ul>
+              <button onClick={onSignUp} className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+                Commencer gratuitement
               </button>
             </div>
-            <p className="text-slate-400 text-sm mt-4">Gratuit, sans engagement, sans carte bancaire</p>
+            {/* Pro — highlighted */}
+            <div className="bg-white rounded-2xl border-2 p-6 sm:p-8 flex flex-col relative shadow-lg" style={{ borderColor: couleur }}>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold" style={{ background: couleur }}>POPULAIRE</div>
+              <h3 className="text-lg font-bold mb-1">Pro</h3>
+              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black" style={{ color: couleur }}>29€</span><span className="text-slate-500">/mois</span></div>
+              <p className="text-sm text-slate-500 mb-6">Pour les artisans et TPE du BTP.</p>
+              <ul className="space-y-2.5 text-sm mb-8 flex-1">
+                {['Devis & factures illimités', 'Clients illimités', 'Chantiers illimités', 'Devis IA vocal ✨', 'Export comptable (FEC)', 'Signature électronique', 'Catalogue complet', 'Support prioritaire'].map(f => (
+                  <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0" style={{ color: couleur }} />{f}</li>
+                ))}
+              </ul>
+              <button onClick={onSignUp} className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg" style={{ background: couleur }}>
+                Essai gratuit 14 jours <ArrowRight size={16} className="inline ml-1" />
+              </button>
+            </div>
+            {/* Business */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col">
+              <h3 className="text-lg font-bold mb-1">Business</h3>
+              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black">59€</span><span className="text-slate-500">/mois</span></div>
+              <p className="text-sm text-slate-500 mb-6">Pour les entreprises multi-équipes.</p>
+              <ul className="space-y-2.5 text-sm mb-8 flex-1">
+                {['Tout le plan Pro', 'Multi-utilisateurs (5)', 'Pointage équipe', 'Connexion bancaire', 'Analytique avancée', 'Accès comptable dédié', 'Signatures illimitées', 'Onboarding personnalisé'].map(f => (
+                  <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="text-violet-500 mt-0.5 shrink-0" />{f}</li>
+                ))}
+              </ul>
+              <button onClick={onSignUp} className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+                Essai gratuit 14 jours
+              </button>
+            </div>
           </div>
+          <p className="text-center text-slate-400 text-sm mt-6">Sans engagement · Sans carte bancaire · Annulable à tout moment</p>
         </div>
       </section>
 

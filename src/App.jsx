@@ -77,7 +77,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -1258,6 +1258,16 @@ export default function App() {
                 )}
               </button>
             ))}
+            {/* Devis IA — sub-item under Devis & Factures */}
+            <button
+              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 pl-7 pr-3 py-2 rounded-xl text-xs font-medium transition-colors ${page === 'ia-devis' ? 'text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+              style={page === 'ia-devis' ? {background: couleur} : {}}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              <span className="flex-1 text-left">Devis IA</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+            </button>
           </nav>
 
           {/* Separator */}

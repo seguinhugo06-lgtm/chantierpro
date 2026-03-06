@@ -6,7 +6,7 @@ import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
   Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
-  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download
+  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles
 } from 'lucide-react';
 
 /**
@@ -109,6 +109,7 @@ export default function CommandPalette({
 
   // Quick actions (always available)
   const quickActions = useMemo(() => [
+    { id: 'devis-ia', label: 'Devis IA — Dictez votre devis', keywords: 'ia intelligence artificielle vocal dictée devis ia micro', icon: Sparkles, action: () => { setPage('ia-devis'); onClose(); }, color: '#f59e0b' },
     { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
     { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
     { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
