@@ -1128,7 +1128,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         <strong>Délai de paiement</strong><br>
         ${doc.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement] ? CONDITIONS_PAIEMENT[doc.conditionsPaiement] : `${entreprise?.delaiPaiement || 30} jours`} à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
         <strong>Pénalités de retard</strong><br>
-        Taux annuel: ${entreprise?.tauxPenaliteRetard || 10}% (3 fois le taux directeur BCE).<br>
+        Taux annuel: ${entreprise?.tauxPenalites || entreprise?.tauxPenaliteRetard || 10}% (3 fois le taux directeur BCE).<br>
         Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
       </div>
     </div>
@@ -1151,6 +1151,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
     Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
+  </div>
+  ` : ''}
+
+  ${(entreprise?.mediateur || entreprise?.mediateurContact) ? `
+  <!-- MÉDIATEUR DE LA CONSOMMATION -->
+  <div class="retractation" style="margin-top:10px">
+    <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
+    En cas de litige, vous pouvez recourir gratuitement au service de médiation :
+    ${entreprise.mediateur ? `<strong>${entreprise.mediateur}</strong>` : ''}
+    ${entreprise.mediateurContact ? ` — ${entreprise.mediateurContact}` : ''}
   </div>
   ` : ''}
 
@@ -1188,9 +1198,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ${getRCSComplet() ? ` | ${getRCSComplet()}` : ''}<br>
     ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.decennaleActivites ? ` — Activités: ${entreprise.decennaleActivites}` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.rcProMontantGarantie ? ` — Garantie: ${entreprise.rcProMontantGarantie} €` : ''}${entreprise.rcProZone ? ` — Zone: ${entreprise.rcProZone}` : ''}` : ''}
     </div>
     ${!isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>

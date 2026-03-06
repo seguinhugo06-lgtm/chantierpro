@@ -167,9 +167,7 @@ const styles = StyleSheet.create({
     marginTop: 5
   },
   qrCodeContainer: {
-    position: 'absolute',
-    bottom: 60,
-    left: 40,
+    marginTop: 10,
     width: 60,
     height: 60
   },
@@ -182,6 +180,55 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 2
+  }
+});
+
+// Legal footer styles for PDF
+const pdfLegal = StyleSheet.create({
+  legalContainer: {
+    marginTop: 25,
+    paddingTop: 12,
+    borderTop: '1 solid #e5e7eb'
+  },
+  section: {
+    marginBottom: 8
+  },
+  sectionTitle: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2
+  },
+  text: {
+    fontSize: 6.5,
+    color: '#6b7280',
+    lineHeight: 1.4
+  },
+  signatureRow: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 15
+  },
+  signatureBox: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderStyle: 'dashed',
+    borderRadius: 4,
+    padding: 12,
+    minHeight: 60
+  },
+  signatureTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#374151',
+    marginBottom: 4
+  },
+  signatureLabel: {
+    fontSize: 7,
+    color: '#9ca3af'
   }
 });
 
@@ -335,6 +382,100 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
           </View>
         </View>
 
+        {/* ========== LEGAL SECTIONS ========== */}
+        <View style={pdfLegal.legalContainer}>
+
+          {/* CONDITIONS DE PAIEMENT */}
+          <View style={pdfLegal.section}>
+            <Text style={pdfLegal.sectionTitle}>CONDITIONS DE PAIEMENT</Text>
+            <Text style={pdfLegal.text}>
+              Délai de paiement : {entreprise.delaiPaiement || 30} jours à compter de la date {devis.type === 'facture' ? 'de facture' : 'de réception des travaux'}.
+            </Text>
+            {(entreprise.iban || entreprise.bic) && (
+              <Text style={pdfLegal.text}>
+                {entreprise.iban ? `IBAN : ${entreprise.iban}` : ''}{entreprise.bic ? ` — BIC : ${entreprise.bic}` : ''}
+              </Text>
+            )}
+            <Text style={pdfLegal.text}>
+              Pénalités de retard : taux annuel de {entreprise.tauxPenalites || entreprise.tauxPenaliteRetard || 10}% (Art. L441-10 C. com.).{'\n'}Indemnité forfaitaire de recouvrement : 40 € (Art. D441-5 C. com.)
+            </Text>
+          </View>
+
+          {/* ASSURANCES */}
+          {(entreprise.decennaleAssureur || entreprise.rcProAssureur) && (
+            <View style={pdfLegal.section}>
+              <Text style={pdfLegal.sectionTitle}>ASSURANCES</Text>
+              {entreprise.decennaleAssureur && (
+                <Text style={pdfLegal.text}>
+                  Décennale : {entreprise.decennaleAssureur} N°{entreprise.decennaleNumero}{entreprise.decennaleValidite ? ` (valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}{entreprise.decennaleActivites ? ` — ${entreprise.decennaleActivites}` : ''}
+                </Text>
+              )}
+              {entreprise.rcProAssureur && (
+                <Text style={pdfLegal.text}>
+                  RC Pro : {entreprise.rcProAssureur} N°{entreprise.rcProNumero}{entreprise.rcProValidite ? ` (valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}{entreprise.rcProZone ? ` — Zone : ${entreprise.rcProZone}` : ''}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* GARANTIES LÉGALES (devis only) */}
+          {devis.type !== 'facture' && entreprise.mentionGaranties !== false && (
+            <View style={pdfLegal.section}>
+              <Text style={pdfLegal.sectionTitle}>GARANTIES LÉGALES</Text>
+              <Text style={pdfLegal.text}>
+                1. Parfait achèvement — 1 an  |  2. Bon fonctionnement — 2 ans  |  3. Décennale — 10 ans
+              </Text>
+            </View>
+          )}
+
+          {/* DROIT DE RÉTRACTATION (devis only) */}
+          {devis.type !== 'facture' && entreprise.mentionRetractation !== false && (
+            <View style={pdfLegal.section}>
+              <Text style={pdfLegal.sectionTitle}>DROIT DE RÉTRACTATION (Art. L221-18)</Text>
+              <Text style={pdfLegal.text}>
+                Délai de 14 jours pour exercer votre droit de rétractation sans justification ni pénalité à compter de la signature.
+              </Text>
+            </View>
+          )}
+
+          {/* MÉDIATEUR */}
+          {(entreprise.mediateur || entreprise.mediateurContact) && (
+            <View style={pdfLegal.section}>
+              <Text style={pdfLegal.sectionTitle}>MÉDIATEUR DE LA CONSOMMATION (Art. L612-1)</Text>
+              <Text style={pdfLegal.text}>
+                {entreprise.mediateur || ''}{entreprise.mediateurContact ? ` — ${entreprise.mediateurContact}` : ''}
+              </Text>
+            </View>
+          )}
+
+          {/* CGV PERSONNALISÉES */}
+          {entreprise.cgv && (
+            <View style={pdfLegal.section}>
+              <Text style={pdfLegal.sectionTitle}>CONDITIONS PARTICULIÈRES</Text>
+              <Text style={pdfLegal.text}>{entreprise.cgv}</Text>
+            </View>
+          )}
+
+          {/* SIGNATURES (devis only) */}
+          {devis.type !== 'facture' && (
+            <View style={pdfLegal.signatureRow}>
+              <View style={pdfLegal.signatureBox}>
+                <Text style={pdfLegal.signatureTitle}>L'Entreprise</Text>
+                <Text style={pdfLegal.signatureLabel}>Date et signature</Text>
+              </View>
+              <View style={pdfLegal.signatureBox}>
+                <Text style={pdfLegal.signatureTitle}>Le Client</Text>
+                <Text style={pdfLegal.signatureLabel}>Mention "Bon pour accord" + Date + Signature</Text>
+                {devis.signature && (
+                  <Text style={{ fontSize: 7, color: '#16a34a', fontWeight: 'bold', marginTop: 4 }}>
+                    ✓ Signé{devis.signataire ? ` par ${devis.signataire}` : ''} le {new Date(devis.signatureDate).toLocaleDateString('fr-FR')}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* QR Code */}
         {qrCodeDataUrl && (
           <View style={styles.qrCodeContainer}>
@@ -343,17 +484,12 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
           </View>
         )}
 
-        {/* Footer */}
+        {/* Footer — company legal identity */}
         <View style={styles.footer}>
           <Text>
-            {entreprise.nom} - {entreprise.siret ? `SIRET: ${entreprise.siret} - ` : ''}
-            {typeLabel} {devis.numero}
+            {entreprise.nom}{entreprise.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}{entreprise.capital ? ` · Capital: ${entreprise.capital} €` : ''} — {entreprise.siret ? `SIRET: ${entreprise.siret}` : ''}{entreprise.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}{entreprise.tvaIntra ? ` | TVA: ${entreprise.tvaIntra}` : ''}
           </Text>
-          {devis.type === 'facture' && (
-            <Text style={{ marginTop: 5 }}>
-              Facture à régler sous 30 jours. En cas de retard, pénalités de 3 fois le taux d'intérêt légal.
-            </Text>
-          )}
+          <Text>{typeLabel} {devis.numero} — {entreprise.adresse || ''}</Text>
         </View>
       </Page>
     </Document>
