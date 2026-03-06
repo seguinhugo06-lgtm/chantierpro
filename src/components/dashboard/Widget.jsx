@@ -319,7 +319,7 @@ const Widget = React.forwardRef(
         ref={ref}
         className={cn(
           // Base styles - Level 2 Elevation
-          'rounded-xl overflow-visible',
+          'rounded-xl overflow-hidden',
           isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200',
           'border',
           // Padding

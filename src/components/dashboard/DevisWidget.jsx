@@ -401,7 +401,7 @@ function DevisCard({
                 </span>
               )}
             </div>
-            <p className={cn('text-sm font-semibold truncate leading-snug', isDark ? 'text-white' : 'text-gray-900')}>
+            <p className={cn('text-sm font-semibold leading-snug', isDark ? 'text-white' : 'text-gray-900')} style={{ wordBreak: 'break-word' }}>
               {client?.nom || 'Client inconnu'}
             </p>
             <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
@@ -756,7 +756,7 @@ function DevisWidget({
           }
         />
 
-        <WidgetContent>
+        <WidgetContent className="overflow-y-auto" style={{ maxHeight: '420px' }}>
           {error ? (
             <div className="text-center py-6">
               <p className="text-sm text-red-600 dark:text-red-400 mb-3">

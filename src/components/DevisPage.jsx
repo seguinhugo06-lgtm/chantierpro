@@ -1823,7 +1823,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(selected.id); }}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/40 text-amber-400 hover:bg-amber-900/60' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'} transition-colors`}
                   >
-                    <AlertTriangle size={11} /> Client manquant · Assigner →
+                    <AlertTriangle size={11} /> Aucun client — Assigner →
                   </button>
                 )}
                 {(cleanClientName(client) || selected.client_nom) && ` · `}{new Date(selected.date).toLocaleDateString('fr-FR')}
@@ -4077,10 +4077,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     {(isOrphan || isNameless) ? (
                       <span className="inline-flex items-center gap-1">
                         <span className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          {isOrphan ? 'Client manquant' : 'Sans nom'}
+                          {isOrphan ? 'Aucun client' : 'Client sans nom'}
                         </span>
+                        <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>
                         <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          Assigner
+                          Assigner →
                         </button>
                       </span>
                     ) : (

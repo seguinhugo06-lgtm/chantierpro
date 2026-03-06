@@ -1647,7 +1647,7 @@ export default function Dashboard({
 
         {/* Vue d'ensemble header with Personnaliser button */}
         <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Vue d'ensemble</h2>
+          <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${

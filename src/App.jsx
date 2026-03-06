@@ -1158,11 +1158,14 @@ export default function App() {
       const profileFilled = profileFields.filter(k => entreprise[k] && String(entreprise[k]).trim()).length;
       const profileScore = Math.round((profileFilled / profileFields.length) * 100);
       const showBadge = f26score < 100 || profileScore < 100;
+      const missingFieldsCount = f26checks.filter(c => !c).length + profileFields.filter(k => !entreprise[k] || !String(entreprise[k]).trim()).length;
       return {
         id: 'settings', icon: SettingsIcon, label: 'Param\u00e8tres',
-        badge: showBadge ? '!' : 0,
+        badge: showBadge ? (missingFieldsCount || 1) : 0,
         badgeColor: f26score < 50 ? '#ef4444' : f26score < 100 ? '#f59e0b' : undefined,
-        badgeTitle: f26score < 100 ? `Conformit\u00e9 Facture 2026 : ${f26score}%` : `Profil : ${profileScore}%`
+        badgeTitle: f26score < 100
+          ? `Conformit\u00e9 Facture 2026 : ${f26score}% — ${missingFieldsCount} champ${missingFieldsCount > 1 ? 's' : ''} manquant${missingFieldsCount > 1 ? 's' : ''}`
+          : `Profil : ${profileScore}%`
       };
     })(),
   ];
@@ -1299,13 +1302,13 @@ export default function App() {
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
-                {(n.badge > 0 || n.badge === '!') && (
+                {n.badge > 0 && (
                   <span
                     className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
                     style={{ background: n.badgeColor || '#ef4444' }}
                     title={n.badgeTitle}
                   >
-                    {n.badge === '!' ? '!' : n.badge > 99 ? '99+' : n.badge}
+                    {n.badge > 99 ? '99+' : n.badge}
                   </span>
                 )}
               </button>
@@ -1319,7 +1322,7 @@ export default function App() {
             <button
               onClick={() => setModeDiscret(!modeDiscret)}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-              title={modeDiscret ? 'Désactiver mode discret' : 'Activer mode discret'}
+              title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
               <span className="hidden sm:inline text-xs">Discret</span>
@@ -1493,7 +1496,7 @@ export default function App() {
             >
               <Bell size={20} className={showNotifs ? 'animate-pulse' : ''} />
               {unreadNotifs.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md" style={{background: couleur}}>
+                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md" style={{background: couleur}}>
                   {unreadNotifs.length > 9 ? '9+' : unreadNotifs.length}
                 </span>
               )}
