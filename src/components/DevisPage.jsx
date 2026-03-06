@@ -4061,17 +4061,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className="flex items-center gap-2.5">
                 {/* Content — single dense row */}
                 <div className="flex-1 min-w-0">
-                  {/* Row 1: Numero + badges */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-xs ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
-                    <p className={`font-semibold text-xs sm:text-sm truncate max-w-[140px] sm:max-w-none ${textPrimary}`}>{cleanNumero(d.numero)}</p>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
-                    {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
-                    {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
-                    {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
-                    {d.statut === 'brouillon' && (isOrphan || isNameless) && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
-                    )}
+                  {/* Row 1: Numero + badges — stacked on mobile, inline on sm+ */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
+                      <p className={`font-semibold text-xs sm:text-sm truncate ${textPrimary}`}>{cleanNumero(d.numero)}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
+                      {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
+                      {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
+                      {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
+                      {d.statut === 'brouillon' && (isOrphan || isNameless) && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
+                      )}
+                    </div>
                   </div>
                   {/* Row 2: Client · Chantier · Date · Follow-up */}
                   <div className={`text-xs ${textMuted} truncate mt-0.5 flex items-center gap-1 flex-wrap`}>

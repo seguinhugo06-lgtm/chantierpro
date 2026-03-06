@@ -1320,7 +1320,7 @@ export default function App() {
         <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1.5">
           <div className="flex gap-1">
             <button
-              onClick={() => setModeDiscret(!modeDiscret)}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
               title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
             >
@@ -1453,7 +1453,7 @@ export default function App() {
 
             {/* Mode discret toggle — hidden on small mobile, visible sm+ */}
             <button
-              onClick={() => setModeDiscret(!modeDiscret)}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
               className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
               style={modeDiscret ? {background: couleur} : {}}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}

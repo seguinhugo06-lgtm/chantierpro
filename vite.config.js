@@ -13,11 +13,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'offline.html'],
+      includeAssets: ['icon.svg', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png'],
       manifest: {
         name: 'BatiGesti',
         short_name: 'BatiGesti',
         description: 'Gestion devis et facturation pour artisans BTP',
+        lang: 'fr',
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',
@@ -32,14 +33,20 @@ export default defineConfig({
             purpose: 'any'
           },
           {
-            src: '/icon.svg',
+            src: '/icons/icon-192.png',
             sizes: '192x192',
-            type: 'image/svg+xml'
+            type: 'image/png'
           },
           {
-            src: '/icon.svg',
+            src: '/icons/icon-512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/icons/icon-512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'maskable'
           }
         ],

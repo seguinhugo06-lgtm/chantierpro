@@ -392,24 +392,24 @@ export default function CommandPalette({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-start justify-center z-[100] pt-12 sm:pt-20 px-2 sm:p-4"
+          className="fixed inset-0 flex items-start justify-center z-[100] pt-0 sm:pt-20 px-0 sm:px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
-          {/* Backdrop */}
+          {/* Backdrop — fixed to ensure full viewport coverage on all devices */}
           <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Palette */}
+          {/* Palette — full-screen on mobile, centered card on sm+ */}
           <motion.div
-            className={`relative w-full max-w-2xl ${cardBg} rounded-2xl shadow-2xl border ${borderColor} overflow-hidden`}
+            className={`relative w-full max-w-2xl ${cardBg} rounded-none sm:rounded-2xl shadow-2xl sm:border ${borderColor} overflow-hidden max-h-[100dvh] sm:max-h-[80vh]`}
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -453,11 +453,13 @@ export default function CommandPalette({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-5 py-2 ${textMuted}`}
                       >
-                        {item.label === 'Récents' && <History size={12} />}
-                        {item.label === 'Actions rapides' && <Zap size={12} />}
-                        {item.label}
+                        {idx > 0 && <div className={`mx-4 my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />}
+                        <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-5 py-2 ${textMuted}`}>
+                          {item.label === 'Récents' && <History size={12} />}
+                          {item.label === 'Actions rapides' && <Zap size={12} />}
+                          {item.label}
+                        </div>
                       </motion.div>
                     );
                   }
