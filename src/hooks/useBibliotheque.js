@@ -106,6 +106,10 @@ export default function useBibliotheque() {
     setCurrentPage(1);
   }, [debouncedQuery]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   // ── Build ouvrage list (before pagination) ───────────────────────────
   const filteredAndSorted = useMemo(() => {
     // 1. Get raw list

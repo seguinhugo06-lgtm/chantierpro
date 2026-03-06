@@ -13,10 +13,14 @@ import {
 import useBibliotheque from '../../hooks/useBibliotheque';
 import ArbreNomenclature from './ArbreNomenclature';
 import OuvragesList from './OuvragesList';
+import OuvrageDetail from './OuvrageDetail';
+import SearchBar from './SearchBar';
+import FiltresPanel from './FiltresPanel';
 import {
   countOuvragesByNode,
   getRegions,
   getDepartementsByRegion,
+  getPath,
   STATS,
   DEPARTEMENTS,
 } from '../../lib/data/bibliotheque';
@@ -80,6 +84,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   // ── Local UI state ──────────────────────────────────────────────────────────
   const [showTreeDrawer, setShowTreeDrawer] = useState(false);
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
+  const [selectedOuvrage, setSelectedOuvrage] = useState(null);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const activeDept = useMemo(() => getDeptByCode(selectedDept), [selectedDept]);
@@ -101,6 +106,20 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
     ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
     : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
   const btnActive = `border-transparent text-white`;
+
+  // ── Ouvrage detail modal handlers ───────────────────────────────────────────
+  const handleSelectOuvrage = useCallback((ouvrage) => {
+    setSelectedOuvrage(ouvrage);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setSelectedOuvrage(null);
+  }, []);
+
+  const ouvrageBreadcrumb = useMemo(() => {
+    if (!selectedOuvrage) return [];
+    return getPath(selectedOuvrage.chapitreId) || [];
+  }, [selectedOuvrage]);
 
   // ── Callbacks ───────────────────────────────────────────────────────────────
   const handleBreadcrumbClick = useCallback(
@@ -139,8 +158,8 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
     return sortBy;
   }, [sortBy, sortDir]);
 
-  // ── Search input ────────────────────────────────────────────────────────────
-  const SearchInput = (
+  // ── Search input (simple version for sidebar/drawer) ────────────────────────
+  const SearchInputSimple = (
     <div className="relative">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
       <input
@@ -310,7 +329,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
 
         {/* Drawer search */}
         <div className="px-3 py-3">
-          {SearchInput}
+          {SearchInputSimple}
         </div>
 
         {/* Drawer tree */}
@@ -387,9 +406,16 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             <span className="hidden sm:inline">Nomenclature</span>
           </button>
 
-          {/* Search (mobile) */}
+          {/* Search with autocomplete (mobile) */}
           <div className="flex-1 min-w-0">
-            {SearchInput}
+            <SearchBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onSelectOuvrage={handleSelectOuvrage}
+              onSelectNode={setSelectedNodeId}
+              isDark={isDark}
+              couleur={couleur}
+            />
           </div>
 
           {/* Dept shortcut (mobile) */}
@@ -418,11 +444,18 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
           className={`hidden lg:flex flex-col w-72 flex-shrink-0 border-r rounded-xl overflow-hidden ${sidebarBg}`}
           style={{ maxHeight: 'calc(100vh - 140px)' }}
         >
-          {/* Sidebar search */}
+          {/* Sidebar search (with autocomplete) */}
           <div className="px-3 py-3 border-b flex-shrink-0"
             style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
           >
-            {SearchInput}
+            <SearchBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onSelectOuvrage={handleSelectOuvrage}
+              onSelectNode={setSelectedNodeId}
+              isDark={isDark}
+              couleur={couleur}
+            />
           </div>
 
           {/* Sidebar tree */}
@@ -483,6 +516,17 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             {SortDropdown}
           </div>
 
+          {/* Filters panel */}
+          <div className="mb-4">
+            <FiltresPanel
+              filters={filters}
+              setFilters={setFilters}
+              resetFilters={resetFilters}
+              isDark={isDark}
+              couleur={couleur}
+            />
+          </div>
+
           {/* Searching indicator */}
           {isSearching && (
             <div className={`flex items-center gap-2 mb-3 text-sm ${textSecondary}`}>
@@ -502,7 +546,11 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
               couleur={couleur}
               currentPage={currentPage}
               totalPages={totalPages}
+              totalOuvrages={totalOuvrages}
               onPageChange={setCurrentPage}
+              onSelectOuvrage={handleSelectOuvrage}
+              isSearching={isSearching}
+              searchQuery={searchQuery}
             />
           ) : (
             EmptyState
@@ -512,6 +560,22 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
 
       {/* ── Mobile tree drawer overlay ──────────────────────────────────── */}
       {TreeDrawer}
+
+      {/* ── Ouvrage detail modal ────────────────────────────────────────── */}
+      <OuvrageDetail
+        ouvrage={selectedOuvrage}
+        isOpen={!!selectedOuvrage}
+        onClose={handleCloseDetail}
+        isDark={isDark}
+        couleur={couleur}
+        coefficientGeo={coefficientGeo}
+        selectedDept={selectedDept}
+        breadcrumb={ouvrageBreadcrumb}
+        onAddToDevis={addDevis ? (ouvrage) => {
+          // TODO: Phase 3 — proper AddToDevisModal
+          handleCloseDetail();
+        } : undefined}
+      />
     </div>
   );
 }
