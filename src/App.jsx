@@ -1237,7 +1237,7 @@ export default function App() {
         <div className="flex-1 overflow-y-auto py-2 px-2">
           {/* Main navigation */}
           <nav className="space-y-0.5" aria-label="Navigation principale">
-            {nav.slice(0, 4).map(n => (
+            {nav.slice(0, 2).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
@@ -1258,7 +1258,7 @@ export default function App() {
                 )}
               </button>
             ))}
-            {/* Devis IA — sub-item under Devis & Factures */}
+            {/* Devis IA — sub-item right under Devis & Factures */}
             <button
               onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 pl-7 pr-3 py-2 rounded-xl text-xs font-medium transition-colors ${page === 'ia-devis' ? 'text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
@@ -1268,6 +1268,27 @@ export default function App() {
               <span className="flex-1 text-left">Devis IA</span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
             </button>
+            {nav.slice(2, 4).map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: couleur} : {}}
+                aria-current={page === n.id ? 'page' : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="flex-1 text-left truncate">{n.label}</span>
+                {n.badge > 0 && (
+                  <span
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
+                    style={{ background: n.badgeColor || '#ef4444' }}
+                    title={n.badgeTitle}
+                  >
+                    {n.badge > 99 ? '99+' : n.badge}
+                  </span>
+                )}
+              </button>
+            ))}
           </nav>
 
           {/* Separator */}
