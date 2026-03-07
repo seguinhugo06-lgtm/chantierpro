@@ -248,21 +248,21 @@ const TESTIMONIALS = [
   {
     name: 'Martin Dubois',
     job: 'Electricien',
-    text: 'BatiGesti a transform\u00e9 ma fa\u00e7on de travailler. Fini les devis sur papier, mes clients sont impressionn\u00e9s par le professionnalisme.',
+    text: 'BatiGesti a transformé ma façon de travailler. Fini les devis sur papier, mes clients sont impressionnés par le professionnalisme.',
     stars: 5,
     color: '#F97316'
   },
   {
     name: 'Sophie Laurent',
-    job: 'Plombi\u00e8re',
-    text: 'Le suivi de chantier en temps r\u00e9el me fait gagner au moins 2h par semaine. L\'export comptable est un vrai plus.',
+    job: 'Plombière',
+    text: 'Le suivi de chantier en temps réel me fait gagner au moins 2h par semaine. L\'export comptable est un vrai plus.',
     stars: 5,
     color: '#3B82F6'
   },
   {
     name: 'Pierre Moreau',
     job: 'Charpentier',
-    text: 'Pour 14,90\u20ac par mois, c\'est imbattable. J\'ai tout ce qu\'il me faut pour g\u00e9rer mes chantiers sereinement.',
+    text: 'Pour 14,90€ par mois, c\'est imbattable. J\'ai tout ce qu\'il me faut pour gérer mes chantiers sereinement.',
     stars: 5,
     color: '#8B5CF6'
   }

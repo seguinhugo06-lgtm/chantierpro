@@ -30,9 +30,9 @@ import {
 // =============================================================================
 
 const SORT_OPTIONS = [
-  { value: 'nom', label: 'Nom A\u2192Z' },
-  { value: 'prix_asc', label: 'Prix \u2191' },
-  { value: 'prix_desc', label: 'Prix \u2193' },
+  { value: 'nom', label: 'Nom A→Z' },
+  { value: 'prix_asc', label: 'Prix ↑' },
+  { value: 'prix_desc', label: 'Prix ↓' },
   { value: 'code', label: 'Code' },
 ];
 
@@ -360,8 +360,8 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       </h3>
       <p className={`text-sm max-w-md ${textSecondary}`}>
         {isSearching
-          ? `Aucun r\u00e9sultat pour \u00ab\u202f${searchQuery}\u202f\u00bb. Essayez un autre terme de recherche.`
-          : 'S\u00e9lectionnez un lot ou un chapitre dans l\u2019arbre de nomenclature pour afficher les ouvrages.'}
+          ? `Aucun résultat pour «\u202f${searchQuery}\u202f». Essayez un autre terme de recherche.`
+          : "Sélectionnez un lot ou un chapitre dans l'arbre de nomenclature pour afficher les ouvrages."}
       </p>
       {isSearching && (
         <button

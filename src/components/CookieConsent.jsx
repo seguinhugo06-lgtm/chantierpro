@@ -115,14 +115,14 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
   const categories = [
     {
       key: 'necessary',
-      label: 'Cookies n\u00e9cessaires',
-      description: 'Authentification, s\u00e9curit\u00e9 et pr\u00e9f\u00e9rences utilisateur. Indispensables au fonctionnement de l\u2019application.',
+      label: 'Cookies nécessaires',
+      description: 'Authentification, sécurité et préférences utilisateur. Indispensables au fonctionnement de l\u2019application.',
       locked: true,
     },
     {
       key: 'analytics',
       label: 'Cookies analytiques',
-      description: 'Plausible Analytics \u2014 donn\u00e9es anonymis\u00e9es, pas de cookies tiers. Nous aide \u00e0 am\u00e9liorer l\u2019exp\u00e9rience.',
+      description: 'Plausible Analytics — données anonymisées, pas de cookies tiers. Nous aide à améliorer l\u2019expérience.',
       locked: false,
     },
     {
@@ -149,7 +149,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                 ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
-            aria-label="G\u00e9rer les cookies"
+            aria-label="Gérer les cookies"
           >
             <Cookie className="w-4 h-4" />
             <span className="hidden sm:inline">Cookies</span>
@@ -181,7 +181,7 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
                   </div>
                   <div>
                     <h3 className={`text-sm font-semibold ${textPrimary}`}>
-                      Respect de votre vie priv\u00e9e
+                      Respect de votre vie privée
                     </h3>
                     <p className={`text-xs ${textMuted}`}>
                       RGPD conforme
@@ -202,12 +202,12 @@ export default function CookieConsent({ isDark = false, couleur = '#f97316', set
               {/* Description */}
               <div className="px-4 pb-3 sm:px-5">
                 <p className={`text-sm leading-relaxed ${textSecondary}`}>
-                  Nous utilisons des cookies pour assurer le bon fonctionnement de BatiGesti et am\u00e9liorer votre exp\u00e9rience. Vous pouvez personnaliser vos choix \u00e0 tout moment.
+                  Nous utilisons des cookies pour assurer le bon fonctionnement de BatiGesti et améliorer votre expérience. Vous pouvez personnaliser vos choix à tout moment.
                   {setPage && (
                     <>
                       {' '}
                       <button onClick={() => { setPage('confidentialite'); setVisible(false); }} className="underline hover:no-underline" style={{ color: couleur }}>
-                        Politique de confidentialit\u00e9
+                        Politique de confidentialité
                       </button>
                     </>
                   )}

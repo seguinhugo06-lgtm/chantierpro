@@ -7,7 +7,7 @@ import PriceDecomposition from './PriceDecomposition';
 // =============================================================================
 
 const formatPrice = (amount) => {
-  if (amount == null) return '\u2014';
+  if (amount == null) return '—';
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
@@ -95,7 +95,7 @@ function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT, isDark, couleur }) {
         />
       </div>
       <p className={`text-xs mt-1.5 text-center ${textSecondary}`}>
-        Fourchette de prix constat\u00e9e
+        Fourchette de prix constatée
       </p>
     </div>
   );
@@ -314,7 +314,7 @@ export default function OuvrageDetail({
             <div className="flex items-center gap-2 mb-4">
               <FileText className="w-5 h-5" style={{ color: couleur }} />
               <h3 className={`text-sm font-semibold uppercase tracking-wide ${textSecondary}`}>
-                D\u00e9tails techniques
+                Détails techniques
               </h3>
             </div>
 
@@ -340,7 +340,7 @@ export default function OuvrageDetail({
                   Temps de pose
                 </p>
                 <p className={`text-sm font-semibold ${textPrimary}`}>
-                  {tempsPoseH != null ? `${tempsPoseH} h / ${unite || 'U'}` : '\u2014'}
+                  {tempsPoseH != null ? `${tempsPoseH} h / ${unite || 'U'}` : '—'}
                 </p>
               </div>
 
@@ -352,10 +352,10 @@ export default function OuvrageDetail({
               >
                 <Star className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
-                  Unit\u00e9
+                  Unité
                 </p>
                 <p className={`text-sm font-semibold ${textPrimary}`}>
-                  {unite || '\u2014'}
+                  {unite || '—'}
                 </p>
               </div>
 
@@ -370,7 +370,7 @@ export default function OuvrageDetail({
                   TVA
                 </p>
                 <p className={`text-sm font-semibold ${textPrimary}`}>
-                  {tva != null ? `${tva}\u202f%` : '\u2014'}
+                  {tva != null ? `${tva}\u202f%` : '—'}
                 </p>
               </div>
 
@@ -382,7 +382,7 @@ export default function OuvrageDetail({
               >
                 <Star className={`w-4 h-4 mx-auto mb-1.5 ${textSecondary}`} />
                 <p className={`text-xs font-medium mb-0.5 ${textSecondary}`}>
-                  Difficult\u00e9
+                  Difficulté
                 </p>
                 <div className="mt-1 flex justify-center">
                   <DifficultyBadge difficulte={difficulte} isDark={isDark} />
