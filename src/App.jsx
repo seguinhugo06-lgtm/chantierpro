@@ -1220,7 +1220,7 @@ export default function App() {
             <Building2 size={18} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate">{safeStr(entreprise.nom, 'BatiGesti')}</p>
+            <p className="text-white font-semibold text-sm truncate" title={entreprise.nom || 'BatiGesti'}>{safeStr(entreprise.nom, 'BatiGesti')}</p>
             <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
           </div>
           {/* Close button - mobile only */}
@@ -1382,7 +1382,7 @@ export default function App() {
               >
                 <Building2 size={18} className="text-white" />
               </div>
-              <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`}>
+              <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`} title={entreprise.nom || 'BatiGesti'}>
                 {safeStr(entreprise.nom, 'BatiGesti')}
               </span>
             </div>
@@ -1643,15 +1643,17 @@ export default function App() {
                     setSelectedChantier(null);
                     setSelectedDevis(null);
                   }}
-                  className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                  className={`flex flex-col items-center justify-center flex-1 h-full transition-colors relative ${
                     isActive
                       ? ''
                       : isDark ? 'text-slate-500' : 'text-slate-400'
                   }`}
                   style={isActive ? { color: couleur } : {}}
                 >
-                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
+                  <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isActive ? 'bg-current/10' : ''}`}>
+                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  </div>
+                  <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
                 </button>
               );
             })}
@@ -1660,8 +1662,10 @@ export default function App() {
               onClick={() => setSidebarOpen(true)}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
             >
-              <Menu size={20} strokeWidth={1.5} />
-              <span className="text-[10px] mt-0.5 font-normal">Plus</span>
+              <div className="flex items-center justify-center w-12 h-7 rounded-full">
+                <Menu size={22} strokeWidth={1.5} />
+              </div>
+              <span className="text-[10px] font-normal">Plus</span>
             </button>
           </div>
         </nav>
