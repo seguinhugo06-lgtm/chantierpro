@@ -138,6 +138,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   });
   const [showPackForm, setShowPackForm] = useState(false);
   const [packForm, setPackForm] = useState({ nom: '', description: '', articles: [], prixVente: '' });
+  const [editPackId, setEditPackId] = useState(null);
 
   // ====== INVENTAIRE ======
   const [inventaireMode, setInventaireMode] = useState(false);
@@ -655,11 +656,17 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
       const item = catalogue.find(c => c.id === a.articleId);
       return s + (item?.prix || 0) * (a.quantite || 1);
     }, 0);
-    const newPack = { id: generateId(), ...packForm, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente, createdAt: new Date().toISOString() };
-    setPacks(prev => [...prev, newPack]);
+    if (editPackId) {
+      setPacks(prev => prev.map(p => p.id === editPackId ? { ...p, ...packForm, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente, updatedAt: new Date().toISOString() } : p));
+      showToast('Pack modifié', 'success');
+    } else {
+      const newPack = { id: generateId(), ...packForm, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente, createdAt: new Date().toISOString() };
+      setPacks(prev => [...prev, newPack]);
+      showToast('Pack créé', 'success');
+    }
     setShowPackForm(false);
+    setEditPackId(null);
     setPackForm({ nom: '', description: '', articles: [], prixVente: '' });
-    showToast('Pack créé', 'success');
   };
 
   const duplicatePack = (pack) => {
@@ -2232,7 +2239,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className={`text-sm ${textMuted}`}>{packs.length} pack{packs.length > 1 ? 's' : ''}</p>
-            <button onClick={() => setShowPackForm(true)} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md" style={{ background: couleur }}><PackagePlus size={16} /> Nouveau pack</button>
+            <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="px-4 py-2.5 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md" style={{ background: couleur }}><PackagePlus size={16} /> Nouveau pack</button>
           </div>
 
           {packs.length === 0 ? (
@@ -2247,7 +2254,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                   <span key={ex} className={`text-[11px] px-2.5 py-1 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{ex}</span>
                 ))}
               </div>
-              <button onClick={() => setShowPackForm(true)} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
+              <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="mt-6 px-5 py-2.5 text-white rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all" style={{ background: couleur }}>
                 <PackagePlus size={16} /> Créer un pack
               </button>
             </div>
@@ -2276,6 +2283,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
+                        <button onClick={() => { setEditPackId(pack.id); setPackForm({ nom: pack.nom, description: pack.description || '', articles: pack.articles.map(a => ({ ...a })), prixVente: pack.prixVente?.toString() || '' }); setShowPackForm(true); }} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Modifier"><Edit3 size={14} className={textMuted} /></button>
                         <button onClick={() => duplicatePack(pack)} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Dupliquer"><PackagePlus size={14} className={textMuted} /></button>
                         <button onClick={() => setPacks(prev => prev.filter(p => p.id !== pack.id))} className={`p-1.5 rounded ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Supprimer"><Trash2 size={14} className="text-red-500" /></button>
                       </div>
@@ -2311,7 +2319,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
               <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => setShowPackForm(false)} />
                 <motion.div className={`relative w-full max-w-lg rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-                  <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>Nouveau pack / kit</h3>
+                  <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{editPackId ? 'Modifier le pack' : 'Nouveau pack / kit'}</h3>
                   <div className="space-y-3">
                     <input placeholder="Nom du pack *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.nom} onChange={e => setPackForm(p => ({...p, nom: e.target.value}))} />
                     <input placeholder="Description" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.description} onChange={e => setPackForm(p => ({...p, description: e.target.value}))} />
@@ -2345,8 +2353,8 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <input type="number" placeholder="Prix de vente du pack" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.prixVente} onChange={e => setPackForm(p => ({...p, prixVente: e.target.value}))} />
                   </div>
                   <div className="flex gap-3 mt-5">
-                    <button onClick={() => setShowPackForm(false)} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
-                    <button onClick={addPack} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>Créer le pack</button>
+                    <button onClick={() => { setShowPackForm(false); setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); }} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                    <button onClick={addPack} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editPackId ? 'Enregistrer' : 'Créer le pack'}</button>
                   </div>
                 </motion.div>
               </motion.div>
