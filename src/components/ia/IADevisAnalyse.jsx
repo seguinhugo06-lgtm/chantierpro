@@ -786,9 +786,36 @@ export default function IADevisAnalyse({
                 analyseResult.confiance >= 60 ? 'bg-amber-100 text-amber-700' :
                 'bg-red-100 text-red-700'
               }`}>
-                {analyseResult.confiance}% confiance
+                {analyseResult.confiance >= 80 ? '🟢' : analyseResult.confiance >= 60 ? '🟡' : '🔴'} {analyseResult.confiance}% fiabilité
               </span>
             </div>
+
+            {/* Confidence explanation */}
+            <div className={`text-xs rounded-lg p-2.5 mb-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+              <p className={`font-medium mb-1.5 ${textMuted}`}>
+                {analyseResult.confiance >= 80
+                  ? '✅ Estimation fiable — votre description est suffisamment détaillée'
+                  : analyseResult.confiance >= 60
+                    ? '⚠️ Estimation approximative — ajustez les montants avant d\'envoyer'
+                    : '🔍 Estimation large — vérifiez chaque ligne et ajustez les prix'}
+              </p>
+              {analyseResult.confianceFactors && (
+                <div className="flex flex-wrap gap-1.5">
+                  {analyseResult.confianceFactors.map((f, i) => (
+                    <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                      f.points >= 15
+                        ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                        : f.points >= 10
+                          ? isDark ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'
+                          : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {f.points >= 15 ? '✓' : f.points >= 10 ? '~' : '?'} {f.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {analyseResult.notes && (
               <p className={`text-xs ${textMuted}`}>
                 💡 {analyseResult.notes === 'Estimation locale (IA non configurée)'

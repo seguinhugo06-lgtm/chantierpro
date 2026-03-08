@@ -177,7 +177,41 @@ function mockAnalyse(description) {
   });
 
   const totalHT = Math.round(lignes.reduce((s, t) => s + t.totalHT, 0) * 100) / 100;
-  const confiance = Math.floor(Math.random() * 24) + 72;
+
+  // Calcul de confiance basé sur des facteurs réels
+  const confianceFactors = [];
+  const hasSurface = /(\d+)\s*m²/.test(description || '');
+  const hasSpecificRoom = /salle.de.bain|cuisine|chambre|salon|wc|garage|terrasse|balcon/i.test(description || '');
+  const hasSpecificWork = /douche|baignoire|carrelage|peinture|plomberie|électr|menuiserie|isolation/i.test(description || '');
+  const descLength = (description || '').trim().length;
+  const matchedCatsCount = relevantCats.length;
+
+  // Surface mentionnée → prix m² plus précis
+  if (hasSurface) confianceFactors.push({ label: 'Surface détectée', points: 20 });
+  else confianceFactors.push({ label: 'Surface estimée par défaut', points: 8 });
+
+  // Pièce spécifique identifiée
+  if (hasSpecificRoom) confianceFactors.push({ label: 'Pièce identifiée', points: 20 });
+  else confianceFactors.push({ label: 'Type de pièce non précisé', points: 5 });
+
+  // Travaux spécifiques mentionnés
+  if (hasSpecificWork) confianceFactors.push({ label: 'Travaux identifiés', points: 20 });
+  else confianceFactors.push({ label: 'Travaux déduits du contexte', points: 8 });
+
+  // Description suffisamment détaillée
+  if (descLength > 80) confianceFactors.push({ label: 'Description détaillée', points: 15 });
+  else if (descLength > 30) confianceFactors.push({ label: 'Description correcte', points: 10 });
+  else confianceFactors.push({ label: 'Description courte', points: 5 });
+
+  // Nombre de catégories matchées (spécificité)
+  if (matchedCatsCount >= 1 && matchedCatsCount <= 3) confianceFactors.push({ label: `${matchedCatsCount} corps de métier`, points: 15 });
+  else if (matchedCatsCount > 3) confianceFactors.push({ label: `${matchedCatsCount} corps de métier`, points: 10 });
+  else confianceFactors.push({ label: 'Estimation générale', points: 5 });
+
+  // Prix basés sur le catalogue utilisateur vs prix moyens
+  confianceFactors.push({ label: 'Prix moyens du marché', points: 10 });
+
+  const confiance = Math.min(95, confianceFactors.reduce((s, f) => s + f.points, 0));
 
   return {
     lignes,
@@ -186,6 +220,7 @@ function mockAnalyse(description) {
     surfaceEstimee: surface,
     totalHT,
     confiance,
+    confianceFactors,
     notes: null,
   };
 }
