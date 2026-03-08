@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, BarChart3, Layers, ClipboardList, ShoppingCart,
   Truck, History, DollarSign, Percent, Check, ChevronRight, Eye, Hash,
   PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw,
-  Camera, ScanBarcode, FileText, Bell, BellOff, Zap, MoreHorizontal
+  Camera, Scan, FileText, Bell, BellOff, Zap, MoreHorizontal
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -117,6 +117,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
   const [articleFournisseurs, setArticleFournisseurs] = useState(() => {
     try { return JSON.parse(localStorage.getItem('batigesti_article_fournisseurs') || '[]'); } catch { return []; }
   });
+  const [linkModal, setLinkModal] = useState(null); // { fournisseurId, fournisseurNom }
+  const [linkSearch, setLinkSearch] = useState('');
+  const [linkSelected, setLinkSelected] = useState(null); // selected article
+  const [linkPrix, setLinkPrix] = useState('');
+  const linkSearchRef = useRef(null);
 
   // ====== MOUVEMENTS STOCK ======
   const [mouvements, setMouvements] = useState(() => {
@@ -1906,16 +1911,11 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                         </div>
                       )}
                       <button onClick={() => {
-                        const articleId = prompt('Quel article lier ? (tapez un nom)');
-                        if (!articleId) return;
-                        const found = catalogue.find(c => c.nom.toLowerCase().includes(articleId.toLowerCase()));
-                        if (found) {
-                          const prix = prompt(`Prix achat de "${found.nom}" chez ${f.nom} ?`, found.prixAchat?.toString() || '0');
-                          linkArticleFournisseur(found.id, f.id, prix);
-                          showToast(`"${found.nom}" lié à ${f.nom}`, 'success');
-                        } else {
-                          showToast('Article non trouvé', 'error');
-                        }
+                        setLinkModal({ fournisseurId: f.id, fournisseurNom: f.nom });
+                        setLinkSearch('');
+                        setLinkSelected(null);
+                        setLinkPrix('');
+                        setTimeout(() => linkSearchRef.current?.focus(), 100);
                       }} className={`text-xs flex items-center gap-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                         <Plus size={12} /> Lier un article
                       </button>
@@ -1949,6 +1949,108 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                     <button onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} className={`flex-1 py-3 rounded-xl ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
                     <button onClick={addFournisseur} className="flex-1 py-3 text-white rounded-xl font-medium" style={{ background: couleur }}>{editFournisseurId ? 'Modifier' : 'Ajouter'}</button>
                   </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Link Article to Fournisseur Modal */}
+          <AnimatePresence>
+            {linkModal && (
+              <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <div className="absolute inset-0 bg-black/50" onClick={() => setLinkModal(null)} />
+                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl`} initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className={`font-bold text-lg ${textPrimary}`}>Lier un article</h3>
+                    <button onClick={() => setLinkModal(null)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}><X size={18} /></button>
+                  </div>
+                  <p className={`text-sm mb-4 ${textMuted}`}>Fournisseur : <span className={`font-medium ${textPrimary}`}>{linkModal.fournisseurNom}</span></p>
+
+                  {!linkSelected ? (
+                    <>
+                      <div className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl mb-3 ${inputBg}`}>
+                        <Search size={16} className={textMuted} />
+                        <input
+                          ref={linkSearchRef}
+                          type="text"
+                          placeholder="Rechercher un article..."
+                          className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder-slate-400' : ''}`}
+                          value={linkSearch}
+                          onChange={e => setLinkSearch(e.target.value)}
+                          autoFocus
+                        />
+                        {linkSearch && <button onClick={() => setLinkSearch('')} className={textMuted}><X size={14} /></button>}
+                      </div>
+                      <div className={`max-h-64 overflow-y-auto rounded-xl border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        {(() => {
+                          const alreadyLinked = articleFournisseurs.filter(af => af.fournisseurId === linkModal.fournisseurId).map(af => af.articleId);
+                          const results = catalogue.filter(c =>
+                            !alreadyLinked.includes(c.id) &&
+                            (!linkSearch || c.nom.toLowerCase().includes(linkSearch.toLowerCase()) || (c.reference || '').toLowerCase().includes(linkSearch.toLowerCase()) || (c.categorie || '').toLowerCase().includes(linkSearch.toLowerCase()))
+                          ).slice(0, 20);
+                          if (results.length === 0) return (
+                            <div className={`p-6 text-center text-sm ${textMuted}`}>
+                              {catalogue.length === 0 ? 'Aucun article dans le catalogue' : linkSearch ? 'Aucun article trouvé' : 'Tous les articles sont déjà liés'}
+                            </div>
+                          );
+                          return results.map(article => (
+                            <button
+                              key={article.id}
+                              onClick={() => { setLinkSelected(article); setLinkPrix(article.prixAchat?.toString() || '0'); }}
+                              className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-b last:border-b-0 ${isDark ? 'border-slate-700 hover:bg-slate-700/50' : 'border-slate-100 hover:bg-slate-50'}`}
+                            >
+                              <div>
+                                <p className={`font-medium ${textPrimary}`}>{article.nom}</p>
+                                <p className={`text-xs ${textMuted}`}>{article.reference || ''} {article.categorie ? `· ${article.categorie}` : ''}</p>
+                              </div>
+                              <span className={`text-xs font-mono ${textMuted}`}>{fmtPrice(article.prixAchat || article.prix)}</span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`p-3 rounded-xl border mb-4 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className={`font-medium text-sm ${textPrimary}`}>{linkSelected.nom}</p>
+                            <p className={`text-xs ${textMuted}`}>{linkSelected.reference || ''} {linkSelected.categorie ? `· ${linkSelected.categorie}` : ''}</p>
+                          </div>
+                          <button onClick={() => { setLinkSelected(null); setLinkPrix(''); }} className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>Changer</button>
+                        </div>
+                      </div>
+                      <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Prix d'achat chez {linkModal.fournisseurNom}</label>
+                      <div className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl ${inputBg}`}>
+                        <DollarSign size={16} className={textMuted} />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className={`flex-1 bg-transparent outline-none text-sm ${isDark ? 'text-white' : ''}`}
+                          value={linkPrix}
+                          onChange={e => setLinkPrix(e.target.value)}
+                          autoFocus
+                        />
+                        <span className={`text-sm ${textMuted}`}>€ HT</span>
+                      </div>
+                      <div className="flex gap-3 mt-5">
+                        <button onClick={() => setLinkModal(null)} className={`flex-1 py-3 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`}>Annuler</button>
+                        <button
+                          onClick={() => {
+                            linkArticleFournisseur(linkSelected.id, linkModal.fournisseurId, linkPrix);
+                            showToast(`"${linkSelected.nom}" lié à ${linkModal.fournisseurNom}`, 'success');
+                            setLinkModal(null);
+                          }}
+                          className="flex-1 py-3 text-white rounded-xl text-sm font-medium"
+                          style={{ background: couleur }}
+                        >
+                          Lier l'article
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </motion.div>
             )}
