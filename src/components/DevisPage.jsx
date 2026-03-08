@@ -1820,7 +1820,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
                       title={`Champs manquants : ${legal.map(i => i.label).join(', ')}`}
                     >
-                      ⚠ {legal.length} champ{legal.length > 1 ? 's' : ''} légal{legal.length > 1 ? 'aux' : ''} manquant{legal.length > 1 ? 's' : ''}
+                      ⚠ {legal.length} champ{legal.length > 1 ? 's' : ''} léga{legal.length > 1 ? 'ux' : 'l'} manquant{legal.length > 1 ? 's' : ''}
                     </span>
                   );
                 })()}
