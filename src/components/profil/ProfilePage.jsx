@@ -86,7 +86,7 @@ function StatCard({ icon: Icon, label, value, suffix, color, isDark, delay = 0, 
         </span>
       </div>
       <p className={`text-2xl font-bold tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        {modeDiscret ? '\u2022\u2022\u2022' : value}{!modeDiscret && suffix ? <span className="text-sm font-medium ml-0.5">{suffix}</span> : null}
+        {modeDiscret ? '•••' : value}{!modeDiscret && suffix ? <span className="text-sm font-medium ml-0.5">{suffix}</span> : null}
       </p>
     </div>
   );
@@ -109,7 +109,7 @@ function UsageRow({ icon: Icon, label, count, limit, couleur, isDark }) {
         </div>
         {isUnlimited ? (
           <span className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {count} <span className="text-green-500">\u221E</span>
+            {count} <span className="text-green-500">∞</span>
           </span>
         ) : (
           <span className={`text-xs font-semibold tabular-nums ${isDanger ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -198,9 +198,9 @@ export default function ProfilePage({
 
   const recentActivity = useMemo(() => {
     const statusLabels = {
-      brouillon: 'Brouillon', envoye: 'Envoy\u00e9', vu: 'Consult\u00e9',
-      accepte: 'Accept\u00e9', signe: 'Sign\u00e9', refuse: 'Refus\u00e9',
-      facture: 'Factur\u00e9', payee: 'Pay\u00e9', acompte_facture: 'Acompte',
+      brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Consulté',
+      accepte: 'Accepté', signe: 'Signé', refuse: 'Refusé',
+      facture: 'Facturé', payee: 'Payé', acompte_facture: 'Acompte',
     };
     const statusColors = {
       accepte: '#22c55e', signe: '#22c55e', payee: '#22c55e',
@@ -246,13 +246,13 @@ export default function ProfilePage({
 
     if (entreprise.rcProValidite) {
       const d = new Date(entreprise.rcProValidite);
-      if (d < now) alerts.push({ type: 'expired', label: 'RC Pro expir\u00e9e', date: d });
-      else if (d - now < soonMs) alerts.push({ type: 'soon', label: 'RC Pro expire bient\u00f4t', date: d });
+      if (d < now) alerts.push({ type: 'expired', label: 'RC Pro expirée', date: d });
+      else if (d - now < soonMs) alerts.push({ type: 'soon', label: 'RC Pro expire bientôt', date: d });
     }
     if (entreprise.decennaleValidite) {
       const d = new Date(entreprise.decennaleValidite);
-      if (d < now) alerts.push({ type: 'expired', label: 'D\u00e9cennale expir\u00e9e', date: d });
-      else if (d - now < soonMs) alerts.push({ type: 'soon', label: 'D\u00e9cennale expire bient\u00f4t', date: d });
+      if (d < now) alerts.push({ type: 'expired', label: 'Décennale expirée', date: d });
+      else if (d - now < soonMs) alerts.push({ type: 'soon', label: 'Décennale expire bientôt', date: d });
     }
     return alerts;
   }, [entreprise]);
@@ -267,7 +267,7 @@ export default function ProfilePage({
       if (result.error) { toast.error('Erreur', result.error.message); return; }
       if (result.directUpgrade) {
         setSubscription({ plan: targetPlanId, status: 'active', billing_interval: billing });
-        toast.success('Plan activ\u00e9 !', `Bienvenue dans le plan ${PLANS[targetPlanId]?.name || targetPlanId}`);
+        toast.success('Plan activé !', `Bienvenue dans le plan ${PLANS[targetPlanId]?.name || targetPlanId}`);
         return;
       }
       if (result.url) window.location.href = result.url;
@@ -282,14 +282,14 @@ export default function ProfilePage({
   }, []);
 
   const handleCancel = useCallback(async () => {
-    if (!window.confirm('Annuler votre abonnement ? Vous conservez l\u2019acc\u00e8s jusqu\u2019\u00e0 la fin de la p\u00e9riode.')) return;
+    if (!window.confirm('Annuler votre abonnement ? Vous conservez l’accès jusqu’à la fin de la période.')) return;
     setCancelling(true);
     try {
       const { error } = await cancelSubscription();
       if (error) { toast.error('Erreur', error.message); return; }
       setSubscription({ ...sub, cancel_at_period_end: true });
-      toast.success('Abonnement annul\u00e9', 'Votre plan reste actif jusqu\u2019\u00e0 la fin de la p\u00e9riode.');
-    } catch { toast.error('Erreur', 'Impossible d\u2019annuler'); }
+      toast.success('Abonnement annulé', 'Votre plan reste actif jusqu’à la fin de la période.');
+    } catch { toast.error('Erreur', 'Impossible d’annuler'); }
     finally { setCancelling(false); }
   }, [sub, setSubscription]);
 
@@ -298,12 +298,12 @@ export default function ProfilePage({
       const { error } = await reactivateSubscription();
       if (error) { toast.error('Erreur', error.message); return; }
       setSubscription({ ...sub, cancel_at_period_end: false });
-      toast.success('R\u00e9activ\u00e9 !', 'Votre abonnement continue normalement.');
-    } catch { toast.error('Erreur', 'Impossible de r\u00e9activer'); }
+      toast.success('Réactivé !', 'Votre abonnement continue normalement.');
+    } catch { toast.error('Erreur', 'Impossible de réactiver'); }
   }, [sub, setSubscription]);
 
   const handleLogout = useCallback(async () => {
-    if (!window.confirm('Se d\u00e9connecter de BatiGesti ?')) return;
+    if (!window.confirm('Se déconnecter de BatiGesti ?')) return;
     try { await auth.signOut(); } catch { window.location.reload(); }
   }, []);
 
@@ -379,7 +379,7 @@ export default function ProfilePage({
                       ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-700'
                       : isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-50 text-red-700'
                 }`}>
-                  {completeness >= 80 ? '\u2705' : completeness >= 50 ? '\u26A0\uFE0F' : '\u274C'} Profil {completeness}%
+                  {completeness >= 80 ? '✅' : completeness >= 50 ? '⚠️' : '❌'} Profil {completeness}%
                 </span>
               </div>
             </div>
@@ -414,16 +414,16 @@ export default function ProfilePage({
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
               {entreprise.decennaleAssureur ? (
                 <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  <Shield size={12} /> D\u00e9cennale \u2713
+                  <Shield size={12} /> Décennale ✓
                 </span>
               ) : (
                 <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-                  <Shield size={12} /> D\u00e9cennale manquante
+                  <Shield size={12} /> Décennale manquante
                 </span>
               )}
               {entreprise.rcProAssureur ? (
                 <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  <Shield size={12} /> RC Pro \u2713
+                  <Shield size={12} /> RC Pro ✓
                 </span>
               ) : (
                 <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
@@ -432,7 +432,7 @@ export default function ProfilePage({
               )}
               {Array.isArray(entreprise.labels) && entreprise.labels.filter(l => l.actif).map((l, i) => (
                 <span key={i} className={`flex items-center gap-1 text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                  <Award size={12} /> {l.nom} \u2713
+                  <Award size={12} /> {l.nom} ✓
                 </span>
               ))}
             </div>
@@ -442,7 +442,7 @@ export default function ProfilePage({
               onClick={() => setPage('settings')}
               className={`mt-3 text-xs font-medium flex items-center gap-1 transition-colors ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
             >
-              <Settings size={12} /> Modifier dans Param\u00e8tres <ChevronRight size={12} />
+              <Settings size={12} /> Modifier dans Paramètres <ChevronRight size={12} />
             </button>
           </div>
 
@@ -464,7 +464,7 @@ export default function ProfilePage({
                     onClick={() => setPage('settings')}
                     className="ml-auto text-xs underline opacity-70 hover:opacity-100"
                   >
-                    Mettre \u00e0 jour
+                    Mettre à jour
                   </button>
                 </div>
               ))}
@@ -492,9 +492,9 @@ export default function ProfilePage({
 
           {/* Recent activity */}
           <div className={`rounded-xl border p-4 sm:p-5 animate-fade-slide-up ${cardBg}`} style={{ animationDelay: '300ms' }}>
-            <h3 className={`text-sm font-semibold mb-4 ${textPrimary}`}>Activit\u00e9 r\u00e9cente</h3>
+            <h3 className={`text-sm font-semibold mb-4 ${textPrimary}`}>Activité récente</h3>
             {recentActivity.length === 0 ? (
-              <p className={`text-sm ${textMuted}`}>Aucune activit\u00e9 pour le moment</p>
+              <p className={`text-sm ${textMuted}`}>Aucune activité pour le moment</p>
             ) : (
               <div className="space-y-3">
                 {recentActivity.map((item, i) => (
@@ -566,7 +566,7 @@ export default function ProfilePage({
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
                   {sub?.cancel_at_period_end ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300">
-                      ANNULATION PR\u00c9VUE
+                      ANNULATION PRÉVUE
                     </span>
                   ) : (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
@@ -576,8 +576,8 @@ export default function ProfilePage({
                 </div>
                 <p className={`text-sm ${textMuted}`}>
                   {isPaid
-                    ? `${plan.priceMonthly}\u20AC HT/mois \u00B7 ${sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel'}`
-                    : 'Gratuit \u2014 D\u00e9couverte'
+                    ? `${plan.priceMonthly}€ HT/mois · ${sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel'}`
+                    : 'Gratuit — Découverte'
                   }
                 </p>
                 {nextBilling && !sub?.cancel_at_period_end && (
@@ -588,7 +588,7 @@ export default function ProfilePage({
                 )}
                 {sub?.cancel_at_period_end && nextBilling && (
                   <p className="text-xs mt-0.5 text-red-500">
-                    Acc\u00e8s jusqu\u2019au {nextBilling}
+                    Accès jusqu’au {nextBilling}
                   </p>
                 )}
               </div>
@@ -603,7 +603,7 @@ export default function ProfilePage({
                     isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <CreditCard size={14} /> G\u00e9rer sur Stripe <ExternalLink size={11} />
+                  <CreditCard size={14} /> Gérer sur Stripe <ExternalLink size={11} />
                 </button>
               )}
               {isPaid && !sub?.cancel_at_period_end && (
@@ -623,7 +623,7 @@ export default function ProfilePage({
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-lg"
                   style={{ backgroundColor: couleur }}
                 >
-                  R\u00e9activer
+                  Réactiver
                 </button>
               )}
             </div>
@@ -672,7 +672,7 @@ export default function ProfilePage({
                   } ${isDark ? 'bg-slate-800' : 'bg-white'}`}
                   style={{
                     borderColor: isCurrent ? plan.color
-                      : p.badge === 'RECOMMAND\u00c9' ? `${p.color}44`
+                      : p.badge === 'RECOMMANDÉ' ? `${p.color}44`
                       : isDark ? '#334155' : '#e2e8f0',
                   }}
                 >
@@ -705,11 +705,11 @@ export default function ProfilePage({
 
                   <div className="mb-3">
                     <span className="text-xl font-bold" style={{ color: p.color }}>
-                      {price}\u20AC
+                      {price}€
                     </span>
                     <span className={`text-xs ${textMuted}`}> HT/mois</span>
                     {billing === 'yearly' && p.priceYearly > 0 && (
-                      <p className={`text-[11px] mt-0.5 ${textMuted}`}>Factur\u00e9 {p.priceYearly}\u20AC/an</p>
+                      <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
                     )}
                   </div>
 
@@ -756,7 +756,7 @@ export default function ProfilePage({
                         isDark ? 'text-slate-600' : 'text-slate-300'
                       }`}
                     >
-                      Plan inf\u00e9rieur
+                      Plan inférieur
                     </button>
                   )}
                 </div>
@@ -774,11 +774,11 @@ export default function ProfilePage({
             }`}
           >
             <LogOut size={16} />
-            Se d\u00e9connecter
+            Se déconnecter
           </button>
 
           {isDemo && (
-            <p className={`text-[10px] mt-3 ${textMuted}`}>Mode d\u00e9mo \u2014 donn\u00e9es de simulation</p>
+            <p className={`text-[10px] mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
           )}
         </div>
       </section>

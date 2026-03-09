@@ -106,17 +106,23 @@ export function OrgProvider({ children }) {
         p_user_id: uid
       });
 
+      // If RPC doesn't exist (404) or fails, fallback to owner mode
+      if (orgError) {
+        console.log('[OrgContext] Org RPC unavailable, using owner fallback');
+        setRole('owner');
+        setLoading(false);
+        return;
+      }
+
       let resolvedOrgId = orgData;
 
       // 2. If no org found, auto-create one
       if (!resolvedOrgId) {
-        console.log('[OrgContext] No org found, creating default org...');
         const { data: createResult, error: createError } = await supabase.rpc('create_default_org', {
           p_user_id: uid
         });
 
         if (createError) {
-          console.error('[OrgContext] Failed to create default org:', createError);
           // Fallback: user is their own "org" (backward compat)
           setRole('owner');
           setLoading(false);
@@ -124,7 +130,6 @@ export function OrgProvider({ children }) {
         }
 
         resolvedOrgId = createResult?.org_id;
-        console.log('[OrgContext] Created org:', resolvedOrgId);
       }
 
       if (!resolvedOrgId) {

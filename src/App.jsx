@@ -1251,13 +1251,19 @@ export default function App() {
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
         {/* Header with close button on mobile */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: couleur}}>
-            <Building2 size={18} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate" title={entreprise.nom || 'BatiGesti'}>{safeStr(entreprise.nom, 'BatiGesti')}</p>
-            <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
-          </div>
+          <button
+            onClick={() => { setPage('profil'); setSidebarOpen(false); }}
+            className="flex items-center gap-3 flex-1 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-slate-800"
+            title="Mon profil"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: couleur}}>
+              <Building2 size={18} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-white font-semibold text-sm truncate" title={entreprise.nom || 'BatiGesti'}>{safeStr(entreprise.nom, 'BatiGesti')}</p>
+              <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
+            </div>
+          </button>
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}

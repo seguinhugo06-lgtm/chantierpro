@@ -42,23 +42,9 @@ const DEMO_USAGE = {
  * @returns {Promise<{ data: Object[], error: any }>}
  */
 export async function fetchPlans() {
-  if (isDemo || !supabase) {
-    return { data: Object.values(PLANS), error: null };
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('plans')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order');
-
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.warn('fetchPlans failed, using static fallback:', error.message);
-    return { data: Object.values(PLANS), error: null };
-  }
+  // Always use static PLANS — the 'plans' DB table is optional and may not exist yet.
+  // This prevents 404 console errors from Supabase when the table doesn't exist.
+  return { data: Object.values(PLANS), error: null };
 }
 
 // ─── Subscription API ───────────────────────────────────────────────────────
@@ -129,72 +115,13 @@ export async function fetchSubscription(orgId) {
  * @returns {Promise<{ data: Object, error: any }>}
  */
 export async function fetchUsage() {
-  if (isDemo || !supabase) {
-    // In demo mode, compute usage from localStorage data
-    try {
-      const clients = JSON.parse(localStorage.getItem('cp_demo_clients') || '[]');
-      const devis = JSON.parse(localStorage.getItem('cp_demo_devis') || '[]');
-      const chantiers = JSON.parse(localStorage.getItem('cp_demo_chantiers') || '[]');
-      const equipe = JSON.parse(localStorage.getItem('cp_demo_equipe') || '[]');
-      const iaAnalyses = JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]');
-
-      return {
-        data: {
-          devis: devis.filter(d => d.type === 'devis').length,
-          clients: clients.length,
-          chantiers: chantiers.length,
-          photos: DEMO_USAGE.photos,
-          storage_mb: DEMO_USAGE.storage_mb,
-          equipe: equipe.length,
-          ia_analyses: iaAnalyses.length
-        },
-        error: null
-      };
-    } catch {
-      return { data: { ...DEMO_USAGE }, error: null };
-    }
-  }
-
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: 'Non authentifié' } };
-
-    const periodStart = new Date();
-    periodStart.setDate(1);
-    periodStart.setHours(0, 0, 0, 0);
-    const periodStartStr = periodStart.toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('usage_tracking')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('period_start', periodStartStr)
-      .single();
-
-    if (error && error.code === 'PGRST116') {
-      // No record for current month — return zeros
-      return {
-        data: { devis: 0, clients: 0, chantiers: 0, photos: 0, storage_mb: 0, equipe: 0 },
-        error: null
-      };
-    }
-
-    if (error) throw error;
-
-    return {
-      data: {
-        devis: data.devis_count || 0,
-        clients: data.clients_count || 0,
-        chantiers: data.chantiers_count || 0,
-        photos: data.photos_count || 0,
-        storage_mb: data.storage_used_mb || 0,
-        equipe: data.equipe_count || 0
-      },
-      error: null
-    };
-  } catch (error) {
-    return { data: null, error };
-  }
+  // Usage is computed client-side via computeLiveUsage() for now.
+  // The 'usage_tracking' DB table is optional and may not exist yet.
+  // This prevents 404 console errors from Supabase when the table doesn't exist.
+  return {
+    data: { devis: 0, clients: 0, chantiers: 0, photos: 0, storage_mb: 0, equipe: 0 },
+    error: null
+  };
 }
 
 /**
