@@ -402,9 +402,9 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
           </View>
 
           {/* ASSURANCES */}
-          {(entreprise.decennaleAssureur || entreprise.rcProAssureur) && (
+          {(entreprise.decennaleAssureur || entreprise.rcProAssureur || (entreprise.mentionRGE !== false && Array.isArray(entreprise.labels) && entreprise.labels.some(l => l.actif))) && (
             <View style={pdfLegal.section}>
-              <Text style={pdfLegal.sectionTitle}>ASSURANCES</Text>
+              <Text style={pdfLegal.sectionTitle}>ASSURANCES & CERTIFICATIONS</Text>
               {entreprise.decennaleAssureur && (
                 <Text style={pdfLegal.text}>
                   Décennale : {entreprise.decennaleAssureur} N°{entreprise.decennaleNumero}{entreprise.decennaleValidite ? ` (valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}{entreprise.decennaleActivites ? ` — ${entreprise.decennaleActivites}` : ''}
@@ -415,6 +415,11 @@ export const DevisPDF = ({ devis, client, entreprise, showFacturXBadge = false, 
                   RC Pro : {entreprise.rcProAssureur} N°{entreprise.rcProNumero}{entreprise.rcProValidite ? ` (valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}{entreprise.rcProZone ? ` — Zone : ${entreprise.rcProZone}` : ''}
                 </Text>
               )}
+              {entreprise.mentionRGE !== false && Array.isArray(entreprise.labels) && entreprise.labels.filter(l => l.actif).map((l, i) => (
+                <Text key={i} style={pdfLegal.text}>
+                  {l.nom}{l.numero ? ` N°${l.numero}` : ''}{l.organisme ? ` (${l.organisme})` : ''}{l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}
+                </Text>
+              ))}
             </View>
           )}
 

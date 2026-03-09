@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+import { useSubscriptionStore, PLANS, getMinPlanForFeature, getMinPlanNameForFeature } from '../../stores/subscriptionStore';
 import { Lock, ArrowUpRight } from 'lucide-react';
 
 /**
@@ -69,7 +69,7 @@ export default function FeatureGuard({ feature, limit, fallback, silent = false,
  * Locked feature overlay — shown when a feature requires a higher plan
  */
 function LockedOverlay({ feature, onUpgrade }) {
-  const planName = 'Pro';
+  const planName = getMinPlanNameForFeature(feature);
 
   return (
     <div className="relative rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50 p-8 text-center">
@@ -148,9 +148,15 @@ export function UpgradeBadge({ feature, className = '' }) {
 
   if (plan.features.includes(feature)) return null;
 
+  const minPlan = getMinPlanForFeature(feature);
+  const label = minPlan === 'equipe' ? 'ÉQUIPE' : 'ARTISAN';
+  const bgClass = minPlan === 'equipe'
+    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 ${className}`}>
-      PRO
+    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full ${bgClass} ${className}`}>
+      {label}
     </span>
   );
 }

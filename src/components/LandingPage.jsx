@@ -159,15 +159,15 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
       <section id="pricing" className="bg-slate-50 py-16 sm:py-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">Des tarifs simples et transparents</h2>
-          <p className="text-slate-600 text-lg text-center mb-12 max-w-xl mx-auto">Commencez gratuitement, passez Pro quand vous grandissez.</p>
+          <p className="text-slate-600 text-lg text-center mb-12 max-w-xl mx-auto">Commencez gratuitement, évoluez à votre rythme.</p>
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Free */}
+            {/* Gratuit */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col">
-              <h3 className="text-lg font-bold mb-1">Découverte</h3>
+              <h3 className="text-lg font-bold mb-1">Gratuit</h3>
               <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black">0€</span><span className="text-slate-500">/mois</span></div>
-              <p className="text-sm text-slate-500 mb-6">Pour démarrer et découvrir BatiGesti.</p>
+              <p className="text-sm text-slate-500 mb-6">Pour découvrir BatiGesti.</p>
               <ul className="space-y-2.5 text-sm mb-8 flex-1">
-                {['3 devis / mois', '5 clients', '1 chantier actif', 'Mentions légales auto', 'Catalogue 100 articles', 'Mode hors-ligne'].map(f => (
+                {['5 devis / mois', '10 clients', '2 chantiers actifs', '30 articles catalogue', '3 analyses IA / mois', 'Planning basique', 'Mode hors-ligne'].map(f => (
                   <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="text-emerald-500 mt-0.5 shrink-0" />{f}</li>
                 ))}
               </ul>
@@ -175,14 +175,14 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
                 Commencer gratuitement
               </button>
             </div>
-            {/* Pro — highlighted */}
+            {/* Artisan — highlighted */}
             <div className="bg-white rounded-2xl border-2 p-6 sm:p-8 flex flex-col relative shadow-lg" style={{ borderColor: couleur }}>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold" style={{ background: couleur }}>POPULAIRE</div>
-              <h3 className="text-lg font-bold mb-1">Pro</h3>
-              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black" style={{ color: couleur }}>29€</span><span className="text-slate-500">/mois</span></div>
-              <p className="text-sm text-slate-500 mb-6">Pour les artisans et TPE du BTP.</p>
+              <h3 className="text-lg font-bold mb-1">Artisan</h3>
+              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black" style={{ color: couleur }}>14,90€</span><span className="text-slate-500">/mois</span></div>
+              <p className="text-sm text-slate-500 mb-6">L'essentiel pour un artisan autonome.</p>
               <ul className="space-y-2.5 text-sm mb-8 flex-1">
-                {['Devis & factures illimités', 'Clients illimités', 'Chantiers illimités', 'Devis IA vocal ✨', 'Export comptable (FEC)', 'Signature électronique', 'Catalogue complet', 'Support prioritaire'].map(f => (
+                {['Devis & factures illimités', 'Clients illimités', 'Chantiers illimités', 'Signatures électroniques', '20 analyses IA / mois', 'Export comptable', 'Analyse de marges', 'Relances automatiques'].map(f => (
                   <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0" style={{ color: couleur }} />{f}</li>
                 ))}
               </ul>
@@ -190,18 +190,19 @@ export default function LandingPage({ onLogin, onSignUp, onNavigate, couleur = '
                 Essai gratuit 14 jours <ArrowRight size={16} className="inline ml-1" />
               </button>
             </div>
-            {/* Business */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 flex flex-col">
-              <h3 className="text-lg font-bold mb-1">Business</h3>
-              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black">59€</span><span className="text-slate-500">/mois</span></div>
-              <p className="text-sm text-slate-500 mb-6">Pour les entreprises multi-équipes.</p>
+            {/* Équipe */}
+            <div className="bg-white rounded-2xl border-2 border-purple-300 p-6 sm:p-8 flex flex-col relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold bg-purple-500">RECOMMANDÉ</div>
+              <h3 className="text-lg font-bold mb-1">Équipe</h3>
+              <div className="flex items-baseline gap-1 mb-4"><span className="text-4xl font-black text-purple-600">29,90€</span><span className="text-slate-500">/mois</span></div>
+              <p className="text-sm text-slate-500 mb-6">Pour les entreprises avec collaborateurs.</p>
               <ul className="space-y-2.5 text-sm mb-8 flex-1">
-                {['Tout le plan Pro', 'Multi-utilisateurs (5)', 'Pointage équipe', 'Connexion bancaire', 'Analytique avancée', 'Accès comptable dédié', 'Signatures illimitées', 'Onboarding personnalisé'].map(f => (
-                  <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="text-violet-500 mt-0.5 shrink-0" />{f}</li>
+                {['Tout le plan Artisan', 'Jusqu\'à 10 utilisateurs', 'Pointage & heures équipe', 'Trésorerie & Bilan', 'Export FEC comptable', 'IA illimitée', 'Sous-traitants & conformité', 'Support prioritaire'].map(f => (
+                  <li key={f} className="flex items-start gap-2"><CheckCircle size={16} className="text-purple-500 mt-0.5 shrink-0" />{f}</li>
                 ))}
               </ul>
-              <button onClick={onSignUp} className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
-                Essai gratuit 14 jours
+              <button onClick={onSignUp} className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg bg-purple-500 hover:bg-purple-600">
+                Essai gratuit 14 jours <ArrowRight size={16} className="inline ml-1" />
               </button>
             </div>
           </div>

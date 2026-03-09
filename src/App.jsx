@@ -61,6 +61,8 @@ const Changelog = lazyWithRetry(() => import('./components/Changelog'), 'Changel
 const FinancesPage = lazyWithRetry(() => import('./components/FinancesPage'), 'Finances');
 const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos');
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
+const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
+const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -77,7 +79,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -1172,6 +1174,8 @@ export default function App() {
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
+    { id: 'pipeline', icon: Kanban, label: 'Pipeline', feature: 'pipeline' },
+    { id: 'avis-google', icon: Star, label: 'Avis Google', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
     (() => {
       // Compute Facture 2026 compliance score for badge
@@ -1638,6 +1642,8 @@ export default function App() {
               {page === 'entretien' && <FeatureGuard feature="entretien"><CarnetEntretien chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} /></FeatureGuard>}
               {page === 'signatures' && <FeatureGuard feature="signatures"><SignatureModule devis={devis} chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
+              {page === 'pipeline' && <FeatureGuard feature="pipeline"><PipelineKanban devis={devis} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} setSelectedDevis={setSelectedDevis} onUpdateDevis={updateDevis} /></FeatureGuard>}
+              {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
@@ -2207,10 +2213,10 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
           { q: 'Comment fonctionne le planning ?', a: 'Le planning affiche vos chantiers et événements. Cliquez sur un jour pour ajouter un événement ou glissez-déposez pour réorganiser.' },
           { q: 'Comment gérer mes clients ?', a: 'Dans la section Clients, ajoutez les coordonnées de vos clients. Vous verrez leur historique de devis et chantiers.' },
           { q: 'Comment fonctionne le catalogue ?', a: 'Le catalogue stocke vos articles et prestations avec prix unitaires. Réutilisez-les dans vos devis en un clic.' },
-          { q: 'Comment changer mon plan ?', a: 'Dans Paramètres, vous pouvez voir votre plan actuel et passer au Pro pour débloquer toutes les fonctionnalités.' },
+          { q: 'Comment changer mon plan ?', a: 'Dans Paramètres, vous pouvez voir votre plan actuel et évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos données au format FEC, CSV ou compatible Pennylane/Indy.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
-          { q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Plan Pro)' },
+          { q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' },
           { q: 'Comment relancer un client ?', a: 'BatiGesti détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Oui, vos données sont chiffrées et hébergées en Europe. Nous sommes conformes RGPD.' },

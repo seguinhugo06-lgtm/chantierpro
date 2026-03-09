@@ -1,26 +1,26 @@
 /**
- * UpgradeModal — Contextual upgrade modal (Gratuit → Pro)
+ * UpgradeModal — Contextual upgrade modal (Gratuit → Artisan / Équipe)
  *
  * Shows a bottom-sheet style modal with:
  * - Contextual title/subtitle based on the blocked feature
- * - Side-by-side comparison: Gratuit vs Pro
+ * - Recommended plan based on the feature that triggered the modal
  * - Monthly/yearly toggle
  * - Stripe checkout integration
  */
 
 import React, { useState, useCallback } from 'react';
 import {
-  X, Check, Lock, ArrowRight, Zap, Crown
+  X, Check, Lock, ArrowRight, Zap, Hammer, Users
 } from 'lucide-react';
 import {
-  useSubscriptionStore, PLANS, YEARLY_DISCOUNT,
+  useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT,
   UPGRADE_CONTEXTS
 } from '../../stores/subscriptionStore';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 
-const PLAN_ICONS = { gratuit: Zap, pro: Crown };
+const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 export default function UpgradeModal() {
   const isOpen = useSubscriptionStore((s) => s.upgradeModalOpen);
@@ -62,12 +62,15 @@ export default function UpgradeModal() {
   // Derived state (only computed when modal is open)
   const context = UPGRADE_CONTEXTS[blockedFeature] || UPGRADE_CONTEXTS.generic;
   const currentPlan = PLANS[currentPlanId] || PLANS.gratuit;
-  const proPlan = PLANS.pro;
   const CurIcon = PLAN_ICONS[currentPlanId] || Zap;
 
-  const proPrice = billing === 'yearly' && proPlan.priceYearly
-    ? (proPlan.priceYearly / 12).toFixed(2).replace('.', ',')
-    : proPlan.priceMonthly.toFixed(2).replace('.', ',');
+  // Determine which plans to show as upgrade options
+  const upgradePlans = PLAN_ORDER
+    .filter(pid => pid !== 'gratuit' && pid !== currentPlanId)
+    .map(pid => PLANS[pid])
+    .filter(Boolean);
+
+  const recommendedPlanId = context.recommendedPlan || 'artisan';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
@@ -78,7 +81,7 @@ export default function UpgradeModal() {
       />
 
       {/* Modal — slides up on mobile */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_300ms_ease-out]">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_300ms_ease-out]">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-start justify-between">
@@ -104,104 +107,118 @@ export default function UpgradeModal() {
           </div>
         </div>
 
-        {/* Comparison grid */}
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Current plan column */}
-          <div className="rounded-xl border-2 border-slate-200 dark:border-slate-700 p-5">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-              Votre plan actuel
-            </p>
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border"
-                style={{
-                  backgroundColor: currentPlan.bgColor,
-                  color: currentPlan.color,
-                  borderColor: currentPlan.borderColor
-                }}
-              >
-                <CurIcon size={12} className="mr-1" />
-                {currentPlan.name}
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
-              {currentPlan.priceMonthly === 0 ? 'Gratuit' : `${currentPlan.priceMonthly}€/mois`}
-            </p>
-            <ul className="space-y-2">
-              {(currentPlan.featureLabels || []).slice(0, 6).map((f, i) => (
-                <li key={i} className="flex items-center gap-2 text-xs">
-                  {f.included ? (
-                    <Check size={14} className="text-green-500 flex-shrink-0" />
-                  ) : (
-                    <X size={14} className="text-red-400 flex-shrink-0" />
-                  )}
-                  <span className={f.included ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400'}>
-                    {f.name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Pro plan column */}
-          <div
-            className="rounded-xl border-2 p-5 relative"
-            style={{ borderColor: proPlan.color + '80' }}
-          >
-            <span className="absolute -top-3 right-4 px-3 py-0.5 text-[10px] font-bold rounded-full bg-orange-500 text-white">
-              RECOMMANDÉ
-            </span>
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-              Plan recommandé
-            </p>
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border"
-                style={{
-                  backgroundColor: proPlan.bgColor,
-                  color: proPlan.color,
-                  borderColor: proPlan.borderColor
-                }}
-              >
-                <Crown size={12} className="mr-1" />
-                Pro
-              </span>
-            </div>
-            <div className="mb-4">
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold" style={{ color: proPlan.color }}>
-                  {proPrice}€
-                </span>
-                <span className="text-sm text-slate-500">HT/mois</span>
+        {/* Plan cards */}
+        <div className={`p-6 grid grid-cols-1 ${upgradePlans.length > 1 ? 'sm:grid-cols-2' : ''} gap-4`}>
+          {/* Current plan indicator */}
+          {currentPlanId === 'gratuit' && (
+            <div className="sm:col-span-full mb-2">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <CurIcon size={14} style={{ color: currentPlan.color }} />
+                <span>Plan actuel : <strong className="text-slate-700 dark:text-slate-300">{currentPlan.name}</strong></span>
+                {currentPlan.priceMonthly === 0 && <span>— Gratuit</span>}
               </div>
-              {billing === 'yearly' && (
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Facturé {proPlan.priceYearly}€/an
-                </p>
-              )}
-              {billing === 'yearly' && (
-                <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                  Economisez {YEARLY_DISCOUNT}%
-                </span>
-              )}
             </div>
-            <ul className="space-y-2">
-              {(proPlan.featureLabels || []).filter(f => f.included).slice(0, 8).map((f, i) => (
-                <li key={i} className="flex items-center gap-2 text-xs">
-                  <Check size={14} className="text-green-500 flex-shrink-0" />
-                  <span
-                    className={`text-slate-600 dark:text-slate-300 ${
-                      context.highlight && f.name.toLowerCase().includes(context.highlight.replace('_', ' '))
-                        ? 'font-semibold text-orange-600 dark:text-orange-400'
-                        : ''
-                    }`}
-                  >
-                    {f.name}
+          )}
+
+          {/* Upgrade plan columns */}
+          {upgradePlans.map((plan) => {
+            const Icon = PLAN_ICONS[plan.id] || Zap;
+            const isRecommended = plan.id === recommendedPlanId;
+            const price = billing === 'yearly' && plan.priceYearly
+              ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
+              : plan.priceMonthly.toFixed(2).replace('.', ',');
+
+            return (
+              <div
+                key={plan.id}
+                className={`rounded-xl border-2 p-5 relative transition-all ${
+                  isRecommended
+                    ? 'border-orange-300 dark:border-orange-600 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {isRecommended && (
+                  <span className="absolute -top-3 right-4 px-3 py-0.5 text-[10px] font-bold rounded-full bg-orange-500 text-white">
+                    RECOMMANDÉ
                   </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+                )}
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
+                  {isRecommended ? 'Plan recommandé' : 'Plan supérieur'}
+                </p>
+                <div className="flex items-center gap-2 mb-3">
+                  <span
+                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border"
+                    style={{
+                      backgroundColor: plan.bgColor,
+                      color: plan.color,
+                      borderColor: plan.borderColor
+                    }}
+                  >
+                    <Icon size={12} className="mr-1" />
+                    {plan.name}
+                  </span>
+                </div>
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold" style={{ color: plan.color }}>
+                      {price}€
+                    </span>
+                    <span className="text-sm text-slate-500">HT/mois</span>
+                  </div>
+                  {billing === 'yearly' && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Facturé {plan.priceYearly}€/an
+                    </p>
+                  )}
+                  {billing === 'yearly' && (
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      Economisez {YEARLY_DISCOUNT}%
+                    </span>
+                  )}
+                </div>
+                <ul className="space-y-2">
+                  {(plan.featureLabels || []).filter(f => f.included).slice(0, 8).map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs">
+                      <Check size={14} className="text-green-500 flex-shrink-0" />
+                      <span
+                        className={`text-slate-600 dark:text-slate-300 ${
+                          context.highlight && f.name.toLowerCase().includes(context.highlight.replace('_', ' '))
+                            ? 'font-semibold text-orange-600 dark:text-orange-400'
+                            : ''
+                        }`}
+                      >
+                        {f.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Plan CTA */}
+                <button
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={loadingPlan === plan.id}
+                  className={`w-full mt-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    isRecommended
+                      ? 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25'
+                      : 'text-white hover:opacity-90'
+                  }`}
+                  style={!isRecommended ? { backgroundColor: plan.color } : {}}
+                >
+                  {loadingPlan === plan.id ? (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <>
+                      Passer au {plan.name}
+                      <ArrowRight size={16} />
+                    </>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Billing toggle */}
@@ -220,25 +237,8 @@ export default function UpgradeModal() {
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="px-6 pb-6 space-y-2 mt-2">
-          <button
-            onClick={() => handleSelectPlan('pro')}
-            disabled={loadingPlan === 'pro'}
-            className="w-full py-3 rounded-xl bg-orange-500 text-white font-bold text-sm hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25 transition-all flex items-center justify-center gap-2"
-          >
-            {loadingPlan === 'pro' ? (
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <>
-                Passer au plan Pro
-                <ArrowRight size={16} />
-              </>
-            )}
-          </button>
+        {/* Close */}
+        <div className="px-6 pb-6 mt-2">
           <button
             onClick={closeUpgradeModal}
             className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition-colors"

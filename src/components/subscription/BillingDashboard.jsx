@@ -26,7 +26,9 @@ import { isDemo } from '../../supabaseClient';
 
 const PLAN_ICONS = {
   gratuit: Zap,
-  pro: Crown
+  artisan: HardHat,
+  equipe: Users,
+  pro: Crown // backward compat
 };
 
 const RESOURCE_ICONS = {
@@ -192,7 +194,7 @@ export default function BillingDashboard({ isDark, couleur }) {
                 style={{ backgroundColor: couleur || '#f97316' }}
               >
                 <ArrowUpRight size={14} />
-                Passer au Pro
+                Changer de plan
               </button>
             )}
           </div>

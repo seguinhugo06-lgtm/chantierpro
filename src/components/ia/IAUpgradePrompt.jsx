@@ -13,10 +13,10 @@ export default function IAUpgradePrompt({ isDark = false, couleur = '#f97316' })
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
 
   const advantages = [
-    '5 analyses IA par mois, renouvelées',
+    '20 analyses IA par mois (Artisan)',
+    'IA illimitée (Équipe)',
     'Devis & factures illimités',
     'Signatures électroniques',
-    'Support prioritaire',
   ];
 
   return (
@@ -33,10 +33,10 @@ export default function IAUpgradePrompt({ isDark = false, couleur = '#f97316' })
 
       {/* Title */}
       <h3 className={`text-lg font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        Vous avez utilisé vos 5 analyses IA
+        Vous avez utilisé vos analyses IA
       </h3>
       <p className={`text-sm mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        Passez au plan Pro pour continuer à générer des devis avec l'IA
+        Passez au plan Artisan ou Équipe pour continuer à générer des devis avec l'IA
       </p>
 
       {/* Advantages */}
@@ -58,7 +58,7 @@ export default function IAUpgradePrompt({ isDark = false, couleur = '#f97316' })
         style={{ backgroundColor: couleur }}
       >
         <ArrowUpRight size={18} />
-        Découvrir le plan Pro
+        Voir les plans
       </button>
 
       {/* Note */}

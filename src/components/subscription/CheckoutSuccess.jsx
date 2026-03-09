@@ -63,7 +63,17 @@ function Confetti() {
 }
 
 const PLAN_SUGGESTIONS = {
-  pro: [
+  artisan: [
+    { icon: FileText, emoji: '✨', text: 'Créer des devis illimités' },
+    { icon: PenTool, emoji: '🖊️', text: 'Utiliser les signatures électroniques' },
+    { icon: Camera, emoji: '🤖', text: 'Générer des devis avec l\'IA (20/mois)' }
+  ],
+  equipe: [
+    { icon: FileText, emoji: '✨', text: 'Tout le plan Artisan + équipe' },
+    { icon: PenTool, emoji: '👥', text: 'Inviter jusqu\'à 10 collaborateurs' },
+    { icon: Camera, emoji: '📊', text: 'Trésorerie, pointages et statistiques' }
+  ],
+  pro: [ // backward compat
     { icon: FileText, emoji: '✨', text: 'Créer des devis illimités' },
     { icon: PenTool, emoji: '🖊️', text: 'Utiliser les signatures électroniques' },
     { icon: Camera, emoji: '🤖', text: 'Générer des devis avec l\'IA' }

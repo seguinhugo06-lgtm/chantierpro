@@ -78,7 +78,7 @@ export default function TrialEndModal() {
   if (!visible) return null;
 
   const gratuit = PLANS.gratuit;
-  const pro = PLANS.pro;
+  const artisan = PLANS.artisan;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -92,7 +92,7 @@ export default function TrialEndModal() {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Votre essai Pro est terminé
+                Votre essai est terminé
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Voici ce que vous avez accompli pendant votre essai
@@ -127,14 +127,14 @@ export default function TrialEndModal() {
           </p>
           <div className="space-y-2">
             {[
-              { feature: 'Devis par mois', gratuit: '5', pro: 'Illimités' },
-              { feature: 'Clients', gratuit: '10', pro: 'Illimités' },
-              { feature: 'Chantiers actifs', gratuit: '2', pro: 'Illimités' },
-              { feature: 'Signatures électroniques', gratuit: false, pro: true },
-              { feature: 'Export comptable (FEC)', gratuit: false, pro: true },
-              { feature: 'Paiement en ligne', gratuit: false, pro: true },
-              { feature: 'Trésorerie & Bilan', gratuit: false, pro: true },
-              { feature: 'PDF sans watermark', gratuit: false, pro: true },
+              { feature: 'Devis par mois', gratuit: '5', artisan: 'Illimités' },
+              { feature: 'Clients', gratuit: '10', artisan: 'Illimités' },
+              { feature: 'Chantiers actifs', gratuit: '2', artisan: 'Illimités' },
+              { feature: 'Signatures électroniques', gratuit: false, artisan: true },
+              { feature: 'Export comptable', gratuit: false, artisan: true },
+              { feature: 'Analyse de marges', gratuit: false, artisan: true },
+              { feature: 'Relances automatiques', gratuit: false, artisan: true },
+              { feature: 'Pipeline commercial', gratuit: false, artisan: true },
             ].map((row, i) => (
               <div key={i} className="flex items-center text-xs py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                 <span className="flex-1 text-slate-600 dark:text-slate-300">{row.feature}</span>
@@ -148,12 +148,12 @@ export default function TrialEndModal() {
                   )}
                 </span>
                 <span className="w-20 text-center">
-                  {typeof row.pro === 'boolean' ? (
-                    row.pro
+                  {typeof row.artisan === 'boolean' ? (
+                    row.artisan
                       ? <Check size={14} className="text-green-500 mx-auto" />
                       : <X size={14} className="text-red-400 mx-auto" />
                   ) : (
-                    <span className="text-orange-600 dark:text-orange-400 font-semibold">{row.pro}</span>
+                    <span className="text-orange-600 dark:text-orange-400 font-semibold">{row.artisan}</span>
                   )}
                 </span>
               </div>
@@ -169,7 +169,7 @@ export default function TrialEndModal() {
             className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all flex items-center justify-center gap-2"
           >
             <Crown size={16} />
-            Garder le Pro — {pro.priceMonthly.toFixed(2).replace('.', ',')}€/mois
+            Passer au plan Artisan — {artisan.priceMonthly.toFixed(2).replace('.', ',')}€/mois
             <ArrowRight size={16} />
           </button>
           <button

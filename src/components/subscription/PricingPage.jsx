@@ -1,13 +1,13 @@
 /**
- * PricingPage — 2-plan pricing page (Gratuit / Pro 14,90€)
+ * PricingPage — 3-plan pricing page (Gratuit / Artisan 14,90€ / Équipe 29,90€)
  *
  * Accessible as an internal route (page='pricing') or standalone.
- * Responsive: 2-col on desktop, stacked on mobile.
+ * Responsive: 3-col on desktop, stacked on mobile.
  */
 
 import React, { useState, useCallback, useRef } from 'react';
 import {
-  Check, X, ChevronDown, ArrowRight, Zap, Crown,
+  Check, X, ChevronDown, ArrowRight, Zap, Hammer, Users,
   Star, Shield, Clock, CreditCard, MessageCircle
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
@@ -15,7 +15,7 @@ import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 
-const PLAN_ICONS = { gratuit: Zap, pro: Crown };
+const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 // ─── PricingToggle ──────────────────────────────────────────────────────────
 
@@ -47,32 +47,45 @@ function PricingToggle({ billing, setBilling }) {
 // ─── PricingCard ────────────────────────────────────────────────────────────
 
 function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
-  const Icon = PLAN_ICONS[plan.id];
+  const Icon = PLAN_ICONS[plan.id] || Zap;
   const isRecommended = plan.badge === 'RECOMMANDÉ';
+  const isPopular = plan.badge === 'POPULAIRE';
+  const hasBadge = isRecommended || isPopular;
   const price = billing === 'yearly' && plan.priceYearly
     ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
     : plan.priceMonthly;
 
+  const badgeColor = isRecommended ? 'bg-purple-500' : 'bg-orange-500';
+  const borderHighlight = isPopular
+    ? 'border-orange-300 shadow-[0_20px_25px_-5px_rgba(249,115,22,0.1)] scale-[1.02] z-10'
+    : isRecommended
+      ? 'border-purple-300 shadow-[0_20px_25px_-5px_rgba(139,92,246,0.1)] z-10'
+      : '';
+
+  const ctaLabel = plan.priceMonthly === 0
+    ? 'Commencer gratuitement'
+    : isPopular
+      ? 'Essayer Artisan 14 jours gratuits'
+      : 'Essayer Équipe 14 jours gratuits';
+
   return (
     <div
       className={`relative rounded-2xl border-2 px-6 py-8 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-        isRecommended
-          ? 'border-orange-300 shadow-[0_20px_25px_-5px_rgba(249,115,22,0.1)] scale-[1.02] z-10'
-          : 'hover:shadow-lg'
+        hasBadge ? borderHighlight : 'hover:shadow-lg'
       }`}
-      style={{ borderColor: isRecommended ? undefined : plan.borderColor }}
+      style={{ borderColor: hasBadge ? undefined : plan.borderColor }}
     >
-      {/* Recommended ribbon */}
-      {isRecommended && (
+      {/* Badge ribbon */}
+      {hasBadge && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className="px-4 py-1.5 text-xs font-bold rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/25">
-            RECOMMANDÉ
+          <span className={`px-4 py-1.5 text-xs font-bold rounded-full ${badgeColor} text-white shadow-lg`}>
+            {plan.badge}
           </span>
         </div>
       )}
 
       {/* Current badge */}
-      {isCurrent && !isRecommended && (
+      {isCurrent && !hasBadge && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-600 text-white">
             Plan actuel
@@ -132,11 +145,13 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
         className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
           isCurrent
             ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-default'
-            : isRecommended
+            : isPopular
               ? 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25'
-              : 'text-white hover:opacity-90'
+              : isRecommended
+                ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/25'
+                : 'text-white hover:opacity-90'
         }`}
-        style={!isCurrent && !isRecommended ? { backgroundColor: plan.color } : {}}
+        style={!isCurrent && !isPopular && !isRecommended ? { backgroundColor: plan.color } : {}}
       >
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
@@ -148,10 +163,8 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
           </span>
         ) : isCurrent ? (
           'Plan actuel'
-        ) : plan.priceMonthly === 0 ? (
-          'Commencer gratuitement'
         ) : (
-          <>Essayer Pro gratuitement 14 jours</>
+          ctaLabel
         )}
       </button>
 
@@ -181,20 +194,24 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
 
 const FAQ_ITEMS = [
   {
-    q: 'Puis-je tester le plan Pro gratuitement ?',
-    a: 'Oui ! Vous bénéficiez de 14 jours d\'essai gratuit sans carte bancaire. Toutes les fonctionnalités Pro sont accessibles pendant l\'essai. À la fin, vous passez automatiquement au plan Gratuit si vous ne souscrivez pas.'
+    q: 'Puis-je tester gratuitement ?',
+    a: 'Oui ! Les plans Artisan et Équipe incluent 14 jours d\'essai gratuit sans carte bancaire. Toutes les fonctionnalités sont accessibles pendant l\'essai. À la fin, vous passez automatiquement au plan Gratuit si vous ne souscrivez pas.'
+  },
+  {
+    q: 'Quelle est la différence entre Artisan et Équipe ?',
+    a: 'Le plan Artisan est idéal pour un artisan seul : devis illimités, signatures, marges, relances. Le plan Équipe ajoute la gestion multi-utilisateurs (jusqu\'à 10), le pointage des heures, la trésorerie, les sous-traitants et le support prioritaire.'
   },
   {
     q: 'Puis-je changer de plan à tout moment ?',
-    a: 'Oui, vous pouvez passer au Pro à tout moment. Si vous annulez, votre plan reste actif jusqu\'à la fin de la période payée. Vos données restent accessibles en lecture seule pendant 30 jours.'
+    a: 'Oui, vous pouvez monter ou descendre de plan à tout moment. Si vous annulez, votre plan reste actif jusqu\'à la fin de la période payée. Vos données restent accessibles en lecture seule pendant 30 jours.'
   },
   {
     q: 'Comment fonctionne la facturation ?',
-    a: 'Paiement sécurisé par Stripe. Facturation mensuelle (14,90€ HT) ou annuelle (149€ HT, soit 2 mois offerts). Vous recevez une facture par email à chaque échéance.'
+    a: 'Paiement sécurisé par Stripe. Facturation mensuelle ou annuelle (2 mois offerts). Vous recevez une facture par email à chaque échéance.'
   },
   {
     q: 'Que se passe-t-il si je dépasse les limites du plan Gratuit ?',
-    a: 'Vos données existantes restent accessibles. Vous ne pourrez simplement plus créer de nouveaux devis, clients ou chantiers au-delà de vos limites. Passez au Pro pour lever toutes les restrictions.'
+    a: 'Vos données existantes restent accessibles. Vous ne pourrez simplement plus créer de nouvelles ressources au-delà de vos limites. Passez à un plan supérieur pour lever les restrictions.'
   },
   {
     q: 'Mes données sont-elles sécurisées ?',
@@ -262,7 +279,7 @@ const TESTIMONIALS = [
   {
     name: 'Pierre Moreau',
     job: 'Charpentier',
-    text: 'Pour 14,90€ par mois, c\'est imbattable. J\'ai tout ce qu\'il me faut pour gérer mes chantiers sereinement.',
+    text: 'Le plan Artisan est parfait pour un artisan seul. J\'ai tout ce qu\'il me faut pour gérer mes chantiers sereinement.',
     stars: 5,
     color: '#8B5CF6'
   }
@@ -350,7 +367,7 @@ function CTASection({ onAction }) {
         onClick={onAction}
         className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-orange-600 font-bold rounded-xl hover:shadow-lg hover:shadow-white/25 transition-all"
       >
-        Essayer Pro gratuitement 14 jours
+        Essayer gratuitement 14 jours
         <ArrowRight size={18} />
       </button>
     </section>
@@ -403,14 +420,14 @@ export default function PricingPage({ isDark, couleur, setPage }) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="text-center pt-6 pb-2">
         <h1 className={`text-3xl md:text-4xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          Un seul plan, tout inclus
+          Le plan adapté à votre activité
         </h1>
         <p className={`mt-3 text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          Commencez gratuitement, passez au Pro quand vous êtes prêt
+          Commencez gratuitement, évoluez à votre rythme
         </p>
 
         <PricingToggle billing={billing} setBilling={setBilling} />
@@ -419,8 +436,8 @@ export default function PricingPage({ isDark, couleur, setPage }) {
       {/* Trust badges */}
       <TrustSection isDark={isDark} />
 
-      {/* Plans grid — 2 columns */}
-      <div ref={scrollRef} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 px-1">
+      {/* Plans grid — 3 columns */}
+      <div ref={scrollRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 px-1">
         {PLAN_ORDER.map((planId) => (
           <PricingCard
             key={planId}

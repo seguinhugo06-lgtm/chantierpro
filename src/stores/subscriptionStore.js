@@ -6,7 +6,7 @@ import { create } from 'zustand';
  * Manages the active user plan, subscription state, usage tracking,
  * and feature-gate checks. Works in both demo and production modes.
  *
- * Plans: gratuit (free), pro (14,90€/mois ou 149€/an — RECOMMANDÉ)
+ * Plans: gratuit (free), artisan (14,90€/mois — POPULAIRE), equipe (29,90€/mois — RECOMMANDÉ)
  */
 
 // ─── Plan catalog (static, matches DB seed) ────────────────────────────────
@@ -15,64 +15,140 @@ export const PLANS = {
   gratuit: {
     id: 'gratuit',
     name: 'Gratuit',
-    description: 'Pour démarrer avec BatiGesti',
-    target: 'Artisans qui découvrent',
+    description: 'Pour découvrir BatiGesti',
+    target: 'Artisans qui démarrent',
     priceMonthly: 0,
     priceYearly: 0,
-    limits: { devis: 3, clients: 5, chantiers: 1, catalogue: 20, signatures: 0, ia_analyses: 5, photos: 50, storage_mb: 500, equipe: 0 },
-    features: ['devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue', 'planning', 'ia_devis'],
+    limits: {
+      devis: 5,
+      clients: 10,
+      chantiers: 2,
+      catalogue: 30,
+      signatures: 0,
+      ia_analyses: 3,
+      photos: 50,
+      storage_mb: 100,
+      equipe: 1
+    },
+    features: [
+      'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
+      'planning', 'ia_devis', 'taches'
+    ],
     featureLabels: [
-      { name: '3 devis par mois', included: true },
-      { name: '5 clients', included: true },
-      { name: '1 chantier actif', included: true },
-      { name: '20 articles catalogue', included: true },
-      { name: 'Planning', included: true },
+      { name: '5 devis par mois', included: true },
+      { name: '10 clients', included: true },
+      { name: '2 chantiers actifs', included: true },
+      { name: '30 articles catalogue', included: true },
+      { name: 'Planning basique', included: true },
+      { name: '3 analyses IA / mois', included: true },
+      { name: '100 Mo stockage', included: true },
       { name: 'Signatures électroniques', included: false },
       { name: 'Export comptable', included: false },
-      { name: 'Trésorerie', included: false },
-      { name: '5 analyses IA', included: true },
-      { name: 'Statistiques avancées', included: false },
+      { name: 'Analyse de marges', included: false },
+      { name: 'Multi-utilisateurs', included: false },
+      { name: 'Trésorerie & Bilan', included: false },
       { name: 'Support prioritaire', included: false }
     ],
     badge: null,
     color: '#6B7280',
     borderColor: '#D1D5DB',
     bgColor: '#F3F4F6',
-    support: 'email'
+    support: 'communautaire'
   },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
-    description: 'Toute la puissance BatiGesti',
-    target: 'Artisans et PME',
+  artisan: {
+    id: 'artisan',
+    name: 'Artisan',
+    description: 'L\'essentiel pour un artisan autonome',
+    target: 'Artisans indépendants',
     priceMonthly: 14.90,
     priceYearly: 149,
-    limits: { devis: -1, clients: -1, chantiers: -1, catalogue: -1, signatures: -1, ia_analyses: 5, photos: -1, storage_mb: 10240, equipe: 5 },
+    limits: {
+      devis: -1,
+      clients: -1,
+      chantiers: -1,
+      catalogue: -1,
+      signatures: -1,
+      ia_analyses: 20,
+      photos: -1,
+      storage_mb: 2048,
+      equipe: 1
+    },
     features: [
       'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'signatures', 'export_comptable', 'rapports_pdf',
-      'relances', 'portal_client', 'tresorerie', 'ia_devis',
-      'sous_traitants', 'commandes', 'entretien', 'analytics'
+      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
+      'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
+      'carte_chantiers', 'avis_google', 'entretien'
     ],
     featureLabels: [
       { name: 'Devis & factures illimités', included: true },
       { name: 'Clients illimités', included: true },
       { name: 'Chantiers illimités', included: true },
       { name: 'Catalogue illimité', included: true },
-      { name: 'Planning', included: true },
       { name: 'Signatures électroniques', included: true },
-      { name: 'Export comptable (FEC)', included: true },
+      { name: 'Export comptable', included: true },
+      { name: 'Analyse de marges', included: true },
+      { name: '20 analyses IA / mois', included: true },
+      { name: 'Pipeline commercial', included: true },
+      { name: 'Relances automatiques', included: true },
+      { name: 'Photos GPS & horodatées', included: true },
+      { name: '2 Go stockage', included: true },
+      { name: 'Multi-utilisateurs', included: false },
+      { name: 'Trésorerie & Bilan', included: false },
+      { name: 'Support prioritaire', included: false }
+    ],
+    badge: 'POPULAIRE',
+    color: '#F97316',
+    borderColor: '#FB923C',
+    bgColor: '#FED7AA',
+    support: 'email'
+  },
+  equipe: {
+    id: 'equipe',
+    name: 'Équipe',
+    description: 'Pour les entreprises avec collaborateurs',
+    target: 'PME du bâtiment',
+    priceMonthly: 29.90,
+    priceYearly: 299,
+    limits: {
+      devis: -1,
+      clients: -1,
+      chantiers: -1,
+      catalogue: -1,
+      signatures: -1,
+      ia_analyses: -1,
+      photos: -1,
+      storage_mb: 10240,
+      equipe: 10
+    },
+    features: [
+      'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
+      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
+      'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
+      'carte_chantiers', 'avis_google', 'entretien',
+      'pointages', 'rbac', 'tresorerie', 'fec_export',
+      'rapprochement_bancaire', 'sous_traitants', 'commandes',
+      'portal_client', 'alertes_stock', 'analytics'
+    ],
+    featureLabels: [
+      { name: 'Tout le plan Artisan', included: true },
+      { name: 'Jusqu\'à 10 utilisateurs', included: true },
+      { name: 'Pointage & heures équipe', included: true },
+      { name: 'Rôles & permissions (RBAC)', included: true },
       { name: 'Trésorerie & Bilan', included: true },
-      { name: 'IA Devis (5/mois)', included: true },
+      { name: 'Export FEC comptable', included: true },
+      { name: 'IA illimitée', included: true },
+      { name: 'Sous-traitants & conformité', included: true },
+      { name: 'Commandes fournisseurs', included: true },
+      { name: 'Portail client', included: true },
+      { name: 'Alertes de stock', included: true },
       { name: 'Statistiques avancées', included: true },
-      { name: 'Jusqu\'à 5 utilisateurs', included: true },
       { name: '10 Go stockage', included: true },
       { name: 'Support prioritaire', included: true }
     ],
     badge: 'RECOMMANDÉ',
-    color: '#F97316',
-    borderColor: '#FB923C',
-    bgColor: '#FED7AA',
+    color: '#8B5CF6',
+    borderColor: '#A78BFA',
+    bgColor: '#EDE9FE',
     support: 'prioritaire'
   }
 };
@@ -81,7 +157,7 @@ export const PLANS = {
 export const YEARLY_DISCOUNT = 17;
 
 // Ordered plan tiers for comparison
-export const PLAN_ORDER = ['gratuit', 'pro'];
+export const PLAN_ORDER = ['gratuit', 'artisan', 'equipe'];
 
 // Feature → minimum plan mapping (derived from PLANS for fast lookup)
 const FEATURE_MIN_PLAN = {};
@@ -101,7 +177,11 @@ export const PAGE_FEATURE_MAP = {
   'ia-devis': 'ia_devis',
   soustraitants: 'sous_traitants',
   commandes: 'commandes',
-  entretien: 'entretien'
+  entretien: 'entretien',
+  pointages: 'pointages',
+  analytics: 'analytics',
+  pipeline: 'pipeline',
+  'avis-google': 'avis_google'
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -120,6 +200,17 @@ export function comparePlans(a, b) {
  */
 export function getMinPlanForFeature(feature) {
   return FEATURE_MIN_PLAN[feature] || null;
+}
+
+/**
+ * Get the display name of the minimum required plan for a feature.
+ * @param {string} feature
+ * @returns {string} plan name (e.g., "Artisan", "Équipe")
+ */
+export function getMinPlanNameForFeature(feature) {
+  const planId = FEATURE_MIN_PLAN[feature];
+  if (!planId) return 'supérieur';
+  return PLANS[planId]?.name || planId;
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -141,57 +232,99 @@ const DEFAULT_USAGE = {
 export const UPGRADE_CONTEXTS = {
   devis_limit: {
     title: 'Limite de devis atteinte',
-    subtitle: 'Passez au plan Pro pour créer des devis illimités',
+    subtitle: 'Passez au plan Artisan pour créer des devis illimités',
     highlight: 'devis',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
   },
   clients_limit: {
     title: 'Limite de clients atteinte',
-    subtitle: 'Passez au plan Pro pour gérer des clients illimités',
+    subtitle: 'Passez au plan Artisan pour gérer des clients illimités',
     highlight: 'clients',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
+  },
+  chantiers_limit: {
+    title: 'Limite de chantiers atteinte',
+    subtitle: 'Passez au plan Artisan pour des chantiers illimités',
+    highlight: 'chantiers',
+    recommendedPlan: 'artisan'
   },
   signatures: {
     title: 'Signatures électroniques',
     subtitle: 'Signez directement vos devis et factures avec vos clients',
     highlight: 'signatures',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
   },
   ia_devis: {
     title: 'Limite d\'analyses IA atteinte',
-    subtitle: 'Passez au plan Pro pour 5 analyses IA par mois, renouvelées automatiquement',
+    subtitle: 'Passez au plan Artisan pour 20 analyses IA par mois',
     highlight: 'ia_devis',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
   },
-  export_fec: {
-    title: 'Export FEC — Plan Pro requis',
-    subtitle: 'Exportez vos données comptables au format FEC pour votre expert-comptable',
+  export_comptable: {
+    title: 'Export comptable',
+    subtitle: 'Exportez vos données pour votre expert-comptable',
     highlight: 'export_comptable',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
+  },
+  marges: {
+    title: 'Analyse de marges',
+    subtitle: 'Suivez la rentabilité de chaque chantier en temps réel',
+    highlight: 'marges',
+    recommendedPlan: 'artisan'
   },
   equipe: {
-    title: 'Gestion d\'équipe',
-    subtitle: 'Invitez vos collaborateurs et gérez les permissions',
+    title: 'Gestion d\'équipe avancée',
+    subtitle: 'Invitez jusqu\'à 10 collaborateurs avec des rôles personnalisés',
     highlight: 'equipe',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'equipe'
+  },
+  pointages: {
+    title: 'Pointage & heures équipe',
+    subtitle: 'Suivez les heures de votre équipe par chantier',
+    highlight: 'pointages',
+    recommendedPlan: 'equipe'
   },
   tresorerie: {
-    title: 'Trésorerie & Bilan — Plan Pro requis',
+    title: 'Trésorerie & Bilan',
     subtitle: 'Suivez votre trésorerie et vos bilans de chantiers en temps réel',
     highlight: 'tresorerie',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'equipe'
+  },
+  fec_export: {
+    title: 'Export FEC',
+    subtitle: 'Exportez vos données comptables au format FEC pour votre expert-comptable',
+    highlight: 'fec_export',
+    recommendedPlan: 'equipe'
+  },
+  sous_traitants: {
+    title: 'Sous-traitants & conformité',
+    subtitle: 'Gérez vos sous-traitants, contrats et documents de conformité',
+    highlight: 'sous_traitants',
+    recommendedPlan: 'equipe'
+  },
+  commandes: {
+    title: 'Commandes fournisseurs',
+    subtitle: 'Créez et suivez vos bons de commande fournisseurs',
+    highlight: 'commandes',
+    recommendedPlan: 'equipe'
+  },
+  portal_client: {
+    title: 'Portail client',
+    subtitle: 'Offrez un accès dédié à vos clients pour suivre leurs chantiers',
+    highlight: 'portal_client',
+    recommendedPlan: 'equipe'
   },
   analytics: {
-    title: 'Statistiques avancées — Plan Pro requis',
+    title: 'Statistiques avancées',
     subtitle: 'Analysez vos performances et prenez de meilleures décisions',
     highlight: 'analytics',
-    recommendedPlan: 'pro'
+    recommendedPlan: 'equipe'
   },
   generic: {
-    title: 'Passez au plan Pro',
-    subtitle: 'Débloquez toutes les fonctionnalités de BatiGesti',
+    title: 'Débloquez plus de fonctionnalités',
+    subtitle: 'Choisissez le plan adapté à votre activité',
     highlight: null,
-    recommendedPlan: 'pro'
+    recommendedPlan: 'artisan'
   }
 };
 
@@ -288,9 +421,14 @@ export const useSubscriptionStore = create((set, get) => ({
    * Set plan + subscription data (called after API fetch)
    */
   setSubscription: (subscription) => {
+    // Map legacy plan names
+    let plan = subscription?.plan || 'gratuit';
+    if (plan === 'pro') plan = 'artisan'; // backward compat
+    if (plan === 'free') plan = 'gratuit';
+
     set({
       subscription,
-      planId: subscription?.plan || 'gratuit',
+      planId: plan,
       loading: false,
       error: null
     });

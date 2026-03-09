@@ -97,7 +97,7 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
   const plan = PLANS[planId] || PLANS.gratuit;
   const limits = plan.limits;
   const accentColor = couleur || '#3b82f6';
-  const isPro = planId === 'pro';
+  const isPaid = planId !== 'gratuit';
 
   const iaAnalysesCount = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]').length; } catch { return 0; }
@@ -127,13 +127,13 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
 
   const headerBadge = isTrial
     ? `J-${daysLeft}`
-    : isPro ? 'Pro' : `${overallPct}%`;
+    : isPaid ? plan.name : `${overallPct}%`;
 
   return (
     <Widget isDark={isDark}>
       <WidgetHeader
         title={isTrial ? 'Essai Pro' : 'Limites du plan'}
-        icon={isTrial || isPro ? <Crown /> : <Gauge />}
+        icon={isTrial || isPaid ? <Crown /> : <Gauge />}
         isDark={isDark}
         badge={headerBadge}
       />
@@ -176,11 +176,11 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
             ${isDark ? 'border-slate-700' : 'border-gray-100'}
           `}
         >
-          {isPro && !isTrial ? (
+          {isPaid && !isTrial ? (
             <div className="flex items-center justify-center gap-1.5">
               <Crown size={12} className="text-orange-500" />
               <p className={`text-xs font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                Plan Pro
+                Plan {plan.name}
               </p>
             </div>
           ) : (

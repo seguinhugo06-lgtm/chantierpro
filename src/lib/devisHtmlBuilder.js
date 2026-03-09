@@ -383,6 +383,7 @@ function buildFooterHtml(e, rcsComplet, isDevis = false, isClientMode = false) {
       ${e.decennaleAssureur ? `Assurance décennale: ${e.decennaleAssureur} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${new Date(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${e.decennaleAssureur && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur} N°${e.rcProNumero}${e.rcProValidite ? ` (Valide jusqu'au ${new Date(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
     ${isDevis ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>`;
