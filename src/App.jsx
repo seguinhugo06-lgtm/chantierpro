@@ -142,12 +142,24 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // UI state - persist page in localStorage to survive refresh
-  const [page, setPage] = useState(() => {
+  const [page, setPageRaw] = useState(() => {
     try {
       const savedPage = localStorage.getItem('cp_current_page');
       return savedPage || 'dashboard';
     } catch { return 'dashboard'; }
   });
+  const isPopstateNav = useRef(false);
+  const setPage = useCallback((newPage) => {
+    setPageRaw(prev => {
+      if (prev === newPage) return prev;
+      // If this navigation comes from back/forward button, don't push state
+      if (!isPopstateNav.current) {
+        try { window.history.pushState({ page: newPage }, '', ''); } catch {}
+      }
+      isPopstateNav.current = false;
+      return newPage;
+    });
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChantier, setSelectedChantier] = useState(null);
   const [selectedDevis, setSelectedDevis] = useState(null);
@@ -590,6 +602,23 @@ export default function App() {
     console.log('[NAV] page changed to:', page);
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
   }, [page]);
+
+  // Browser history: support back/forward buttons in this SPA
+  useEffect(() => {
+    // Set initial history state so back button has something to go to
+    try { window.history.replaceState({ page }, '', ''); } catch {}
+
+    const handlePopstate = (event) => {
+      const target = event.state?.page;
+      if (target) {
+        isPopstateNav.current = true;
+        setPage(target);
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('popstate', handlePopstate);
+    return () => window.removeEventListener('popstate', handlePopstate);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
