@@ -626,7 +626,7 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    const publicPages = ['dashboard', 'profil', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
       console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
