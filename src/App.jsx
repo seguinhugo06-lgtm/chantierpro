@@ -63,6 +63,7 @@ const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos'
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
+const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -79,7 +80,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -738,7 +739,7 @@ export default function App() {
       tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
-      pricing: 'settings', billing: 'settings',
+      pricing: 'profil', billing: 'profil',
     };
     if (REDIRECTS[page]) setPage(REDIRECTS[page]);
   }, [page]);
@@ -895,6 +896,7 @@ export default function App() {
   useEffect(() => {
     const PAGE_TITLES = {
       dashboard: 'Accueil',
+      profil: 'Mon Profil',
       devis: 'Devis & Factures',
       chantiers: 'Chantiers',
       clients: 'Clients',
@@ -1606,11 +1608,11 @@ export default function App() {
 
             {/* User avatar */}
             <button
-              onClick={() => setPage('settings')}
+              onClick={() => setPage('profil')}
               className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg"
               style={{background: couleur}}
-              title={user?.email || 'Mon compte'}
-              aria-label="Mon compte"
+              title={user?.email || 'Mon profil'}
+              aria-label="Mon profil"
             >
               {user?.email?.charAt(0).toUpperCase() || 'U'}
             </button>
@@ -1623,7 +1625,7 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" className={`${page === 'dashboard' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 lg:pb-0 overflow-x-hidden`}>
+        <main id="main-content" className={`${page === 'dashboard' || page === 'profil' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 lg:pb-0 overflow-x-hidden`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
@@ -1644,6 +1646,7 @@ export default function App() {
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'pipeline' && <FeatureGuard feature="pipeline"><PipelineKanban devis={devis} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} setSelectedDevis={setSelectedDevis} onUpdateDevis={updateDevis} /></FeatureGuard>}
               {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
+              {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
