@@ -40,6 +40,8 @@ const PERMISSION_MATRIX = {
   signatures:     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
   export:         { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
   settings:       { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
+  profil:         { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: 'full', ouvrier: 'full', readonly: 'view' },
+  plan:           { owner: 'full', admin: 'full', comptable: 'view', chef_chantier: 'view', ouvrier: 'view', readonly: 'view' },
 };
 
 /**
