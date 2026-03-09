@@ -64,6 +64,7 @@ const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
+const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
@@ -626,7 +627,7 @@ export default function App() {
   // RBAC: redirect to dashboard if user accesses a restricted page
   useEffect(() => {
     if (orgLoading) return; // Wait for org resolution
-    const publicPages = ['dashboard', 'profil', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
+    const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
       console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
@@ -897,6 +898,7 @@ export default function App() {
     const PAGE_TITLES = {
       dashboard: 'Accueil',
       profil: 'Mon Profil',
+      plan: 'Mon Plan',
       devis: 'Devis & Factures',
       chantiers: 'Chantiers',
       clients: 'Clients',
@@ -1179,6 +1181,8 @@ export default function App() {
     { id: 'pipeline', icon: Kanban, label: 'Pipeline', feature: 'pipeline' },
     { id: 'avis-google', icon: Star, label: 'Avis Google', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
+    { id: 'profil', icon: User, label: 'Mon profil' },
+    { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge
       const f26checks = [
@@ -1364,7 +1368,7 @@ export default function App() {
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
             <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Gestion</p>
-            {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos'].includes(n.id)).map(n => (
+            {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
@@ -1383,6 +1387,26 @@ export default function App() {
                     {n.badge > 99 ? '99+' : n.badge}
                   </span>
                 )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Separator */}
+          <div className="my-2 mx-3 border-t border-slate-800" />
+
+          {/* Profil section */}
+          <nav className="space-y-0.5" aria-label="Profil">
+            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Profil</p>
+            {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
+              <button
+                key={n.id}
+                onClick={() => { setPage(n.id); setSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: couleur} : {}}
+                aria-current={page === n.id ? 'page' : undefined}
+              >
+                <n.icon size={18} aria-hidden="true" />
+                <span className="flex-1 text-left truncate">{n.label}</span>
               </button>
             ))}
           </nav>
@@ -1631,7 +1655,7 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" className={`${page === 'dashboard' || page === 'profil' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 lg:pb-0 overflow-x-hidden`}>
+        <main id="main-content" className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 lg:pb-0 overflow-x-hidden`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
@@ -1653,6 +1677,7 @@ export default function App() {
               {page === 'pipeline' && <FeatureGuard feature="pipeline"><PipelineKanban devis={devis} clients={clients} isDark={isDark} couleur={couleur} setPage={setPage} setSelectedDevis={setSelectedDevis} onUpdateDevis={updateDevis} /></FeatureGuard>}
               {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} />}
               {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}

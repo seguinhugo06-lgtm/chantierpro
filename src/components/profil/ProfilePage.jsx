@@ -1,27 +1,21 @@
 /**
- * ProfilePage — Comprehensive profile module
+ * ProfilePage — Company identity, stats & usage
  *
- * 3 sections:
+ * 2 sections:
  * 1. Hero — company identity, completeness, insurance alerts
  * 2. Stats — KPIs, recent activity, plan usage
- * 3. Plan — subscription management, plan comparison, logout
+ *
+ * Plan management is in PlanPage.jsx
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
-  User, Building2, FileText, Users, Calendar, Package, Shield,
-  AlertTriangle, ChevronRight, ExternalLink, Euro, TrendingUp,
-  Percent, Crown, Sparkles, MapPin, Phone, Mail, Hash, Award,
-  Settings, LogOut, Check, X, ArrowRight, Zap, Hammer, CreditCard,
-  Clock, ChevronDown,
+  Building2, FileText, Users, Package, Shield,
+  AlertTriangle, ChevronRight, Euro, TrendingUp,
+  Sparkles, MapPin, Phone, Mail, Hash, Award,
+  Settings, Zap, Hammer,
 } from 'lucide-react';
-import { useSubscriptionStore, PLANS, PLAN_ORDER, YEARLY_DISCOUNT } from '../../stores/subscriptionStore';
-import {
-  createCheckoutSession, createPortalSession,
-  cancelSubscription, reactivateSubscription,
-} from '../../services/subscriptionsApi';
-import { toast } from '../../stores/toastStore';
-import { auth, isDemo } from '../../supabaseClient';
+import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
 import { formatMoney, formatMoneyCompact } from '../../lib/formatters';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -135,7 +129,7 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 export default function ProfilePage({
   user, entreprise = {}, devis = [], clients = [], chantiers = [],
-  catalogue = [], depenses = [], paiements = [], equipe = [],
+  catalogue = [],
   isDark, couleur = '#f97316', setPage, modeDiscret,
 }) {
   // Theme
@@ -143,17 +137,9 @@ export default function ProfilePage({
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
 
-  // Subscription store
+  // Subscription store (read-only for usage display)
   const planId = useSubscriptionStore(s => s.planId);
-  const sub = useSubscriptionStore(s => s.subscription);
-  const setSubscription = useSubscriptionStore(s => s.setSubscription);
   const plan = PLANS[planId] || PLANS.gratuit;
-
-  // Local state
-  const [billing, setBilling] = useState('monthly');
-  const [loadingPlan, setLoadingPlan] = useState(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
 
   // ─── Computed data ────────────────────────────────────────────────────────
 
@@ -257,64 +243,8 @@ export default function ProfilePage({
     return alerts;
   }, [entreprise]);
 
-  // ─── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleSelectPlan = useCallback(async (targetPlanId) => {
-    if (targetPlanId === planId || targetPlanId === 'gratuit') return;
-    setLoadingPlan(targetPlanId);
-    try {
-      const result = await createCheckoutSession(targetPlanId, billing);
-      if (result.error) { toast.error('Erreur', result.error.message); return; }
-      if (result.directUpgrade) {
-        setSubscription({ plan: targetPlanId, status: 'active', billing_interval: billing });
-        toast.success('Plan activé !', `Bienvenue dans le plan ${PLANS[targetPlanId]?.name || targetPlanId}`);
-        return;
-      }
-      if (result.url) window.location.href = result.url;
-    } catch { toast.error('Erreur', 'Une erreur est survenue'); }
-    finally { setLoadingPlan(null); }
-  }, [billing, planId, setSubscription]);
-
-  const handlePortal = useCallback(async () => {
-    const result = await createPortalSession();
-    if (result.error) { toast.error('Erreur', result.error.message || 'Portail indisponible'); return; }
-    if (result.url) window.location.href = result.url;
-  }, []);
-
-  const handleCancel = useCallback(async () => {
-    if (!window.confirm('Annuler votre abonnement ? Vous conservez l’accès jusqu’à la fin de la période.')) return;
-    setCancelling(true);
-    try {
-      const { error } = await cancelSubscription();
-      if (error) { toast.error('Erreur', error.message); return; }
-      setSubscription({ ...sub, cancel_at_period_end: true });
-      toast.success('Abonnement annulé', 'Votre plan reste actif jusqu’à la fin de la période.');
-    } catch { toast.error('Erreur', 'Impossible d’annuler'); }
-    finally { setCancelling(false); }
-  }, [sub, setSubscription]);
-
-  const handleReactivate = useCallback(async () => {
-    try {
-      const { error } = await reactivateSubscription();
-      if (error) { toast.error('Erreur', error.message); return; }
-      setSubscription({ ...sub, cancel_at_period_end: false });
-      toast.success('Réactivé !', 'Votre abonnement continue normalement.');
-    } catch { toast.error('Erreur', 'Impossible de réactiver'); }
-  }, [sub, setSubscription]);
-
-  const handleLogout = useCallback(async () => {
-    if (!window.confirm('Se déconnecter de BatiGesti ?')) return;
-    try { await auth.signOut(); } catch { window.location.reload(); }
-  }, []);
-
-  // ─── Derived ──────────────────────────────────────────────────────────────
-
+  // Derived
   const initials = (entreprise.nom || 'BG').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const isPaid = planId !== 'gratuit';
-
-  const nextBilling = sub?.current_period_end
-    ? new Date(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : null;
 
   const fmtDate = (iso) => {
     if (!iso) return '';
@@ -363,13 +293,14 @@ export default function ProfilePage({
 
               {/* Plan badge + completeness */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <span
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+                <button
+                  onClick={() => setPage('plan')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white transition-opacity hover:opacity-90"
                   style={{ backgroundColor: plan.color }}
                 >
                   {React.createElement(PLAN_ICONS[planId] || Zap, { size: 12 })}
                   {plan.name}
-                </span>
+                </button>
 
                 {/* Completeness */}
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
@@ -543,243 +474,16 @@ export default function ProfilePage({
                 <UsageRow key={i} {...item} couleur={couleur} isDark={isDark} />
               ))}
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ═══════════════════ SECTION 3: PLAN ═══════════════════ */}
-      <section className="px-4 sm:px-6 py-6 sm:py-8 max-w-4xl mx-auto">
-        <h2 className={`text-lg font-bold mb-5 ${textPrimary}`}>Mon plan</h2>
-
-        {/* Current plan card */}
-        <div className={`rounded-xl border p-5 sm:p-6 mb-6 animate-fade-slide-up ${cardBg}`} style={{ animationDelay: '500ms' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}bb)` }}
-              >
-                {React.createElement(PLAN_ICONS[planId] || Zap, { size: 22 })}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
-                  {sub?.cancel_at_period_end ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300">
-                      ANNULATION PRÉVUE
-                    </span>
-                  ) : (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'}`}>
-                      ACTIF
-                    </span>
-                  )}
-                </div>
-                <p className={`text-sm ${textMuted}`}>
-                  {isPaid
-                    ? `${plan.priceMonthly}€ HT/mois · ${sub?.billing_interval === 'yearly' ? 'Annuel' : 'Mensuel'}`
-                    : 'Gratuit — Découverte'
-                  }
-                </p>
-                {nextBilling && !sub?.cancel_at_period_end && (
-                  <p className={`text-xs mt-0.5 ${textMuted}`}>
-                    <Clock size={11} className="inline mr-1" />
-                    Prochaine facturation : {nextBilling}
-                  </p>
-                )}
-                {sub?.cancel_at_period_end && nextBilling && (
-                  <p className="text-xs mt-0.5 text-red-500">
-                    Accès jusqu’au {nextBilling}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {isPaid && !isDemo && (
-                <button
-                  onClick={handlePortal}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 border transition-colors ${
-                    isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <CreditCard size={14} /> Gérer sur Stripe <ExternalLink size={11} />
-                </button>
-              )}
-              {isPaid && !sub?.cancel_at_period_end && (
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelling}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
-                    isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
-                  }`}
-                >
-                  {cancelling ? 'Annulation...' : 'Annuler'}
-                </button>
-              )}
-              {sub?.cancel_at_period_end && (
-                <button
-                  onClick={handleReactivate}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-lg"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Réactiver
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Plans comparison */}
-        <div className="animate-fade-slide-up" style={{ animationDelay: '600ms' }}>
-          {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <span className={`text-xs font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
+            {/* Link to plan page */}
             <button
-              onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative w-11 h-6 rounded-full transition-colors ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-              style={billing === 'yearly' ? { backgroundColor: couleur } : {}}
+              onClick={() => setPage('plan')}
+              className="mt-4 w-full text-xs font-medium flex items-center justify-center gap-1.5 py-2 rounded-lg transition-colors"
+              style={{ color: couleur }}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+              Voir mon plan <ChevronRight size={13} />
             </button>
-            <span className={`text-xs font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
-              Annuel
-              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isDark ? 'bg-green-500/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
-                -{YEARLY_DISCOUNT}%
-              </span>
-            </span>
           </div>
-
-          {/* Plan cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            {PLAN_ORDER.map((pid) => {
-              const p = PLANS[pid];
-              if (!p) return null;
-              const Icon = PLAN_ICONS[pid] || Zap;
-              const isCurrent = pid === planId;
-              const isHigher = PLAN_ORDER.indexOf(pid) > PLAN_ORDER.indexOf(planId);
-              const price = billing === 'yearly' && p.priceYearly
-                ? (p.priceYearly / 12).toFixed(2).replace('.', ',')
-                : p.priceMonthly?.toFixed(2).replace('.', ',') || '0';
-
-              return (
-                <div
-                  key={pid}
-                  className={`rounded-xl border-2 p-4 sm:p-5 relative transition-all ${
-                    isCurrent
-                      ? 'shadow-md'
-                      : 'hover:shadow-sm'
-                  } ${isDark ? 'bg-slate-800' : 'bg-white'}`}
-                  style={{
-                    borderColor: isCurrent ? plan.color
-                      : p.badge === 'RECOMMANDÉ' ? `${p.color}44`
-                      : isDark ? '#334155' : '#e2e8f0',
-                  }}
-                >
-                  {p.badge && !isCurrent && (
-                    <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      {p.badge}
-                    </span>
-                  )}
-                  {isCurrent && (
-                    <span
-                      className="absolute -top-2.5 right-3 px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      ACTUEL
-                    </span>
-                  )}
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ background: hexToRgba(p.color, 0.15) }}
-                    >
-                      <Icon size={16} style={{ color: p.color }} />
-                    </div>
-                    <span className={`text-sm font-bold ${textPrimary}`}>{p.name}</span>
-                  </div>
-
-                  <div className="mb-3">
-                    <span className="text-xl font-bold" style={{ color: p.color }}>
-                      {price}€
-                    </span>
-                    <span className={`text-xs ${textMuted}`}> HT/mois</span>
-                    {billing === 'yearly' && p.priceYearly > 0 && (
-                      <p className={`text-[11px] mt-0.5 ${textMuted}`}>Facturé {p.priceYearly}€/an</p>
-                    )}
-                  </div>
-
-                  {/* Features */}
-                  <ul className="space-y-1.5 mb-4">
-                    {(p.featureLabels || []).filter(f => f.included).slice(0, 5).map((f, i) => (
-                      <li key={i} className={`flex items-start gap-1.5 text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                        <Check size={13} className="text-green-500 flex-shrink-0 mt-0.5" />
-                        <span>{f.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA */}
-                  {isCurrent ? (
-                    <button
-                      disabled
-                      className={`w-full py-2 rounded-xl text-xs font-medium border ${
-                        isDark ? 'border-slate-600 text-slate-500' : 'border-slate-200 text-slate-400'
-                      }`}
-                    >
-                      Plan actuel
-                    </button>
-                  ) : isHigher ? (
-                    <button
-                      onClick={() => handleSelectPlan(pid)}
-                      disabled={loadingPlan === pid}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all hover:shadow-lg hover:scale-[1.02]"
-                      style={{ backgroundColor: p.color }}
-                    >
-                      {loadingPlan === pid ? (
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      ) : (
-                        <>Passer au {p.name} <ArrowRight size={13} /></>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className={`w-full py-2 rounded-xl text-xs font-medium ${
-                        isDark ? 'text-slate-600' : 'text-slate-300'
-                      }`}
-                    >
-                      Plan inférieur
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Logout */}
-        <div className="mt-10 text-center animate-fade-slide-up" style={{ animationDelay: '700ms' }}>
-          <button
-            onClick={handleLogout}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
-            }`}
-          >
-            <LogOut size={16} />
-            Se déconnecter
-          </button>
-
-          {isDemo && (
-            <p className={`text-[10px] mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
-          )}
         </div>
       </section>
 
