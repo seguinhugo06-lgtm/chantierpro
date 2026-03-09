@@ -99,6 +99,10 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
   const accentColor = couleur || '#3b82f6';
   const isPro = planId === 'pro';
 
+  const iaAnalysesCount = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]').length; } catch { return 0; }
+  }, []);
+
   const counts = useMemo(
     () => ({
       clients: Array.isArray(clients) ? clients.length : 0,
@@ -112,6 +116,7 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
     { key: 'clients', icon: Users, label: 'Clients', count: counts.clients, limit: limits.clients },
     { key: 'devis', icon: FileText, label: 'Devis', count: counts.devis, limit: limits.devis },
     { key: 'chantiers', icon: Hammer, label: 'Chantiers', count: counts.chantiers, limit: limits.chantiers },
+    { key: 'ia', icon: Sparkles, label: 'Analyses IA', count: iaAnalysesCount, limit: limits.ia_analyses },
   ];
 
   // Overall usage ratio for the header badge (only for limited plans)

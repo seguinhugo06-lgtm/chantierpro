@@ -136,6 +136,7 @@ export async function fetchUsage() {
       const devis = JSON.parse(localStorage.getItem('cp_demo_devis') || '[]');
       const chantiers = JSON.parse(localStorage.getItem('cp_demo_chantiers') || '[]');
       const equipe = JSON.parse(localStorage.getItem('cp_demo_equipe') || '[]');
+      const iaAnalyses = JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]');
 
       return {
         data: {
@@ -144,7 +145,8 @@ export async function fetchUsage() {
           chantiers: chantiers.length,
           photos: DEMO_USAGE.photos,
           storage_mb: DEMO_USAGE.storage_mb,
-          equipe: equipe.length
+          equipe: equipe.length,
+          ia_analyses: iaAnalyses.length
         },
         error: null
       };

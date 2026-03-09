@@ -19,8 +19,8 @@ export const PLANS = {
     target: 'Artisans qui découvrent',
     priceMonthly: 0,
     priceYearly: 0,
-    limits: { devis: 3, clients: 5, chantiers: 1, catalogue: 20, signatures: 0, ia_analyses: 0, photos: 50, storage_mb: 500, equipe: 0 },
-    features: ['devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue', 'planning'],
+    limits: { devis: 3, clients: 5, chantiers: 1, catalogue: 20, signatures: 0, ia_analyses: 5, photos: 50, storage_mb: 500, equipe: 0 },
+    features: ['devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue', 'planning', 'ia_devis'],
     featureLabels: [
       { name: '3 devis par mois', included: true },
       { name: '5 clients', included: true },
@@ -30,7 +30,7 @@ export const PLANS = {
       { name: 'Signatures électroniques', included: false },
       { name: 'Export comptable', included: false },
       { name: 'Trésorerie', included: false },
-      { name: 'IA Devis', included: false },
+      { name: '5 analyses IA', included: true },
       { name: 'Statistiques avancées', included: false },
       { name: 'Support prioritaire', included: false }
     ],
@@ -158,8 +158,8 @@ export const UPGRADE_CONTEXTS = {
     recommendedPlan: 'pro'
   },
   ia_devis: {
-    title: 'Analyse IA — Débloquez en plan Pro',
-    subtitle: 'Générez des devis automatiquement à partir de photos et descriptions',
+    title: 'Limite d\'analyses IA atteinte',
+    subtitle: 'Passez au plan Pro pour 5 analyses IA par mois, renouvelées automatiquement',
     highlight: 'ia_devis',
     recommendedPlan: 'pro'
   },

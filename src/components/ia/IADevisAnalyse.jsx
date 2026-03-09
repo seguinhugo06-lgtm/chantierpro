@@ -1,31 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Camera,
-  Upload,
-  X,
-  Plus,
-  Trash2,
-  RefreshCw,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Sparkles,
-  ChevronLeft,
-  Image,
-  Loader,
-  Euro,
-  ShieldCheck,
-  ArrowRight,
-  Search,
-  BarChart3,
-  Mic,
-  MicOff,
-  Edit3,
-  ChevronDown,
+  ChevronLeft, Sparkles, Mic, Camera, Clock, CheckCircle, AlertCircle,
+  FileText, Trash2, Euro,
 } from 'lucide-react';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { analyseTranscript } from '../../lib/integrations/ai-devis';
+import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+
+// Sub-components
+import IAWelcomeScreen from './IAWelcomeScreen';
+import IAInputStep from './IAInputStep';
+import IAAnalysisStep from './IAAnalysisStep';
+import IAResultsStep from './IAResultsStep';
+import IAFinalizeStep from './IAFinalizeStep';
+import IASuccessStep from './IASuccessStep';
+import IAHistoryList from './IAHistoryList';
+import IAUsageCounter from './IAUsageCounter';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,12 +40,6 @@ const fmtDate = (iso) => {
   });
 };
 
-const fmtShortDate = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-};
-
 function loadAnalyses() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -70,7 +54,38 @@ function saveAnalyses(data) {
   } catch { /* quota exceeded */ }
 }
 
-const UNITES = ['u', 'm²', 'ml', 'm³', 'h', 'forfait', 'jour', 'kg', 'L', 'lot', 'ensemble'];
+/**
+ * Check IA availability based on plan and usage
+ * Free plan: 5 TOTAL (lifetime)
+ * Pro plan: 5 per month
+ */
+function checkIAAvailability(analyses, planId) {
+  const plan = PLANS[planId] || PLANS.gratuit;
+  const limit = plan.limits.ia_analyses;
+  if (limit === -1) return { allowed: true, used: 0, limit: -1, remaining: Infinity };
+
+  let used;
+  if (planId === 'gratuit') {
+    // Lifetime count for free plan
+    used = analyses.length;
+  } else {
+    // Monthly count for paid plans
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    used = analyses.filter(a => new Date(a.created_at) >= monthStart).length;
+  }
+
+  return {
+    allowed: used < limit,
+    used,
+    limit,
+    remaining: Math.max(0, limit - used),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Detail sub-view helpers
+// ---------------------------------------------------------------------------
 
 const STATUTS = {
   en_cours: { label: 'En cours', color: 'blue', icon: Clock },
@@ -78,10 +93,6 @@ const STATUTS = {
   erreur: { label: 'Erreur', color: 'red', icon: AlertCircle },
   appliquee: { label: 'Appliquée', color: 'purple', icon: FileText },
 };
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
 
 function StatusBadge({ statut, isDark }) {
   const cfg = STATUTS[statut] || STATUTS.en_cours;
@@ -100,49 +111,6 @@ function StatusBadge({ statut, isDark }) {
   );
 }
 
-function KpiCard({ icon: Icon, label, value, isDark, couleur }) {
-  return (
-    <div className={`rounded-xl border p-2.5 sm:p-3 min-w-0 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-      <div className="flex items-center gap-1.5 mb-0.5 sm:mb-1">
-        <Icon size={14} className="shrink-0" style={{ color: couleur }} />
-        <span className={`text-[11px] sm:text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</span>
-      </div>
-      <p className={`text-base sm:text-lg font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</p>
-    </div>
-  );
-}
-
-function AnalysisCard({ analyse, isDark, couleur, onClick }) {
-  const SourceIcon = analyse.source === 'photo' ? Camera : Mic;
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left rounded-xl border p-4 transition-all hover:shadow-md ${isDark ? 'bg-slate-800 border-slate-700 hover:border-slate-500' : 'bg-white border-slate-200 hover:border-slate-300'}`}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <SourceIcon size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-          <StatusBadge statut={analyse.statut} isDark={isDark} />
-        </div>
-        <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-          {fmtShortDate(analyse.created_at)}
-        </span>
-      </div>
-      <p className={`text-sm font-medium truncate mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        {analyse.description || 'Sans description'}
-      </p>
-      <div className="flex items-center justify-between">
-        <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {analyse.analyse_resultat?.lignes?.length || analyse.analyse_resultat?.travaux?.length || 0} postes
-        </span>
-        <span className="text-sm font-bold" style={{ color: couleur }}>
-          {fmtCurrency.format(analyse.analyse_resultat?.totalHT || 0)}
-        </span>
-      </div>
-    </button>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -150,10 +118,20 @@ function AnalysisCard({ analyse, isDark, couleur, onClick }) {
 export default function IADevisAnalyse({
   catalogue = [],
   clients = [],
+  chantiers = [],
+  entreprise = {},
   isDark = false,
   couleur = '#f97316',
-  onCreateDevis,
+  onSubmit,
+  addClient,
+  generateNextNumero,
+  setSelectedDevis,
+  setPage,
 }) {
+  // ---- Subscription ----
+  const planId = useSubscriptionStore((s) => s.planId);
+  const isLifetime = planId === 'gratuit';
+
   // ---- State ----
   const [analyses, setAnalyses] = useState(() => loadAnalyses());
   const [view, setView] = useState('list');
@@ -161,12 +139,6 @@ export default function IADevisAnalyse({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(null);
   const [sortOrder, setSortOrder] = useState('recent');
-
-  // Convert to devis modal
-  const [showConvertModal, setShowConvertModal] = useState(false);
-  const [convertClient, setConvertClient] = useState('');
-  const [convertTva, setConvertTva] = useState(20);
-  const [convertNotes, setConvertNotes] = useState('');
 
   // New analysis
   const [activeTab, setActiveTab] = useState('voice');
@@ -176,6 +148,7 @@ export default function IADevisAnalyse({
   const [progressLabel, setProgressLabel] = useState('');
   const [analyseResult, setAnalyseResult] = useState(null);
   const [editableLines, setEditableLines] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   // Voice state
   const [transcript, setTranscript] = useState('');
@@ -187,7 +160,12 @@ export default function IADevisAnalyse({
   const [preview, setPreview] = useState(null);
   const [photoDescription, setPhotoDescription] = useState('');
 
-  const fileInputRef = useRef(null);
+  // Undo
+  const [undoLine, setUndoLine] = useState(null);
+
+  // Step 5 - Success state
+  const [createdDevis, setCreatedDevis] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Voice input hook
   const { isListening, isSupported, error: voiceError, toggleListening, stopListening } = useVoiceInput({
@@ -203,20 +181,17 @@ export default function IADevisAnalyse({
   // ---- Persistence ----
   useEffect(() => { saveAnalyses(analyses); }, [analyses]);
 
+  // ---- Availability ----
+  const availability = checkIAAvailability(analyses, planId);
+
   // ---- Theme ----
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  const inputCls = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-slate-300 text-slate-900';
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const pageBg = isDark ? 'bg-slate-900' : 'bg-slate-50';
 
   // ---- Derived ----
   const selectedAnalyse = analyses.find(a => a.id === selectedId) || null;
-  const currentText = activeTab === 'voice' ? (transcript || manualText) : photoDescription;
-  const [showValidationHint, setShowValidationHint] = useState(false);
-  const [undoLine, setUndoLine] = useState(null); // { line, idx, timer }
 
   const filteredAnalyses = (() => {
     let result = [...analyses];
@@ -235,14 +210,6 @@ export default function IADevisAnalyse({
     return result;
   })();
 
-  const totalHTAll = filteredAnalyses.reduce((s, a) => s + (a.analyse_resultat?.totalHT || 0), 0);
-  const avgConfiance = filteredAnalyses.length > 0
-    ? Math.round(filteredAnalyses.reduce((s, a) => s + (a.confiance || 0), 0) / filteredAnalyses.length)
-    : 0;
-
-  // Editable lines total
-  const editableTotalHT = editableLines.reduce((s, l) => s + (l.quantite * l.prixUnitaire || 0), 0);
-
   // ---- Handlers ----
 
   const resetNewFlow = useCallback(() => {
@@ -258,14 +225,34 @@ export default function IADevisAnalyse({
     setFile(null);
     setPreview(null);
     setPhotoDescription('');
+    setSelectedTemplate(null);
+    setCreatedDevis(null);
+    setIsSubmitting(false);
   }, []);
 
   const handleOpenNew = () => { resetNewFlow(); setView('new'); };
 
+  const handleTemplateSelect = (text, templateId) => {
+    setManualText(text);
+    setSelectedTemplate(templateId);
+    setView('new');
+    setActiveTab('text');
+  };
+
   const handleBackToList = () => {
+    // Step 5 (success) — no confirmation needed
+    if (step === 5) {
+      resetNewFlow();
+      setView('list');
+      setSelectedId(null);
+      return;
+    }
     const hasWork = (manualText || transcript || '').trim().length > 0 || analyseResult || editableLines.length > 0;
-    if (hasWork && !window.confirm('Quitter sans sauvegarder ? Les données de cette analyse seront perdues.')) return;
-    resetNewFlow(); setView('list'); setSelectedId(null);
+    if (hasWork && !window.confirm('Quitter sans sauvegarder ? Les données seront perdues.')) return;
+    if (isListening) stopListening();
+    resetNewFlow();
+    setView('list');
+    setSelectedId(null);
   };
 
   const handleSelectAnalyse = (id) => { setSelectedId(id); setView('detail'); };
@@ -275,18 +262,15 @@ export default function IADevisAnalyse({
     if (selectedId === id) { setSelectedId(null); setView('list'); }
   };
 
-  const handleFileChange = (e) => {
-    const f = e.target.files?.[0];
-    if (!f || !f.type.startsWith('image/')) return;
-    setError(null);
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-  };
-
   // ---- Analysis ----
 
   const handleStartAnalysis = async () => {
-    const text = activeTab === 'voice' ? (transcript.trim() || manualText.trim()) : photoDescription.trim();
+    const text = activeTab === 'voice'
+      ? (transcript.trim() || manualText.trim())
+      : activeTab === 'text'
+        ? manualText.trim()
+        : photoDescription.trim();
+
     if (!text || text.length < 10) {
       setError('Décrivez les travaux en au moins 10 caractères.');
       return;
@@ -367,7 +351,6 @@ export default function IADevisAnalyse({
   const removeLine = (idx) => {
     const removed = editableLines[idx];
     setEditableLines(prev => prev.filter((_, i) => i !== idx));
-    // Clear previous undo timer
     if (undoLine?.timer) clearTimeout(undoLine.timer);
     const timer = setTimeout(() => setUndoLine(null), 5000);
     setUndoLine({ line: removed, idx, timer });
@@ -384,15 +367,13 @@ export default function IADevisAnalyse({
     setUndoLine(null);
   };
 
-  // Create devis
-  const handleCreateDevis = () => {
+  // Step 3 → Step 4 transition
+  const handleContinueToFinalize = () => {
     if (!editableLines.length) return;
-    setConvertClient('');
-    setConvertTva(20);
-    setConvertNotes('');
-    setShowConvertModal(true);
+    setStep(4);
   };
 
+  // Create devis from history (goes straight to step 4)
   const handleCreateFromHistory = (analyse) => {
     if (!analyse?.analyse_resultat) return;
     const lignes = analyse.analyse_resultat.lignes || analyse.analyse_resultat.travaux || [];
@@ -406,528 +387,115 @@ export default function IADevisAnalyse({
     })));
     setAnalyseResult(analyse.analyse_resultat);
     setSelectedId(analyse.id);
-    setConvertClient('');
-    setConvertTva(20);
-    setConvertNotes('');
-    setShowConvertModal(true);
+    setView('new');
+    setStep(4);
   };
 
-  const handleConfirmCreateDevis = () => {
-    if (!editableLines.length && !analyseResult) return;
-    const lines = editableLines.length > 0 ? editableLines : (analyseResult?.lignes || []);
-    const totalHT = Math.round(lines.reduce((s, l) => s + (l.quantite * l.prixUnitaire || 0), 0) * 100) / 100;
+  // Step 4 → Create devis directly (no DevisPage)
+  const handleFinalCreate = async (formData) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    // Mark as applied in history
-    if (selectedId) {
-      setAnalyses(prev => prev.map(a => a.id === selectedId ? { ...a, statut: 'appliquee' } : a));
+    try {
+      const client = clients.find(c => c.id === formData.clientId);
+      let numero = '';
+      try {
+        numero = await generateNextNumero?.('devis') || `DEV-${Date.now()}`;
+      } catch {
+        numero = `DEV-${Date.now()}`;
+      }
+
+      // Build sections with lines
+      const sections = [{
+        id: '1',
+        titre: analyseResult?.description || 'Travaux',
+        lignes: editableLines.map((l, i) => ({
+          id: `ia_${i}_${Date.now()}`,
+          description: l.designation,
+          quantite: l.quantite,
+          unite: l.unite,
+          prixUnitaire: l.prixUnitaire,
+          montant: Math.round(l.quantite * l.prixUnitaire * 100) / 100,
+          tva: formData.tvaDefaut,
+        }))
+      }];
+
+      const totals = formData.totals;
+
+      const newDevis = await onSubmit({
+        numero,
+        type: 'devis',
+        client_id: formData.clientId,
+        client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+        chantier_id: formData.chantierId || undefined,
+        date: formData.date,
+        validite: formData.validite,
+        statut: 'brouillon',
+        sections,
+        lignes: sections.flatMap(s => s.lignes),
+        tvaParTaux: totals.tvaParTaux,
+        tvaDetails: totals.tvaParTaux,
+        tvaRate: formData.tvaDefaut,
+        remise: formData.remise || 0,
+        total_ht: totals.htApresRemise,
+        tva: totals.totalTVA,
+        total_ttc: totals.ttc,
+        retenueGarantie: formData.retenueGarantie,
+        retenue_montant: totals.retenueGarantie,
+        ttc_net: totals.ttcNet,
+        notes: formData.notes || analyseResult?.notes || '',
+        conditionsPaiement: formData.conditionsPaiement || undefined,
+        source: 'ia_analyse',
+        ia_analyseId: selectedId,
+      });
+
+      // Mark analysis as applied
+      if (selectedId) {
+        setAnalyses(prev => prev.map(a => a.id === selectedId ? { ...a, statut: 'appliquee' } : a));
+      }
+
+      // Move to success step
+      setCreatedDevis({
+        ...newDevis,
+        numero,
+        clientName: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+        lineCount: editableLines.length,
+        totalTTC: formData.retenueGarantie ? totals.ttcNet : totals.ttc,
+      });
+      setStep(5);
+    } catch (err) {
+      console.error('Error creating devis:', err);
+      setError('Erreur lors de la création du devis. Réessayez.');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    onCreateDevis({
-      lignes: lines.map(l => ({
-        designation: l.designation,
-        quantite: l.quantite,
-        unite: l.unite,
-        prixUnitaire: l.prixUnitaire,
-        totalHT: Math.round(l.quantite * l.prixUnitaire * 100) / 100,
-      })),
-      description: analyseResult?.description || transcript.substring(0, 100) || 'Devis IA',
-      totalHT,
-      source: 'ia_analyse',
-      analyseId: selectedId,
-      client_id: convertClient || undefined,
-      tvaRate: convertTva,
-      notes: convertNotes.trim() || analyseResult?.notes || undefined,
-    });
-    setShowConvertModal(false);
+  // Step 5 → View devis
+  const handleViewDevis = () => {
+    if (createdDevis) {
+      // Pass the full devis object — DevisPage expects an object, not just an ID
+      setSelectedDevis?.(createdDevis);
+    }
+    setPage?.('devis');
+  };
+
+  // Step 5 → New analysis
+  const handleNewAnalysis = () => {
+    resetNewFlow();
+    setView('new');
+  };
+
+  const handleRefresh = () => {
+    if (!window.confirm('Refaire l\'analyse ? Les modifications actuelles seront perdues.')) return;
+    setStep(1);
+    setAnalyseResult(null);
+    setEditableLines([]);
   };
 
   // ===========================================================================
   // RENDER
   // ===========================================================================
-
-  // ---- LIST VIEW ----
-  const renderListView = () => (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Devis IA</h1>
-          <p className={`text-sm ${textMuted}`}>Dictez vos travaux, l'IA génère le devis</p>
-        </div>
-        <button
-          onClick={handleOpenNew}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-105"
-          style={{ backgroundColor: couleur }}
-        >
-          <Plus className="w-4 h-4" />
-          Nouvelle analyse
-        </button>
-      </div>
-
-      {analyses.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: couleur + '18' }}>
-            <Mic className="w-10 h-10" style={{ color: couleur }} />
-          </div>
-          <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>Devis IA vocal</h2>
-          <p className={`text-sm text-center max-w-md mb-6 ${textMuted}`}>
-            Décrivez les travaux à voix haute et notre IA génèrera automatiquement une estimation détaillée avec les prix du marché.
-          </p>
-          <button
-            onClick={handleOpenNew}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105"
-            style={{ backgroundColor: couleur }}
-          >
-            <Mic className="w-5 h-5" />
-            Dicter un devis
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* KPIs */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            <KpiCard icon={BarChart3} label="Analyses" value={filteredAnalyses.length} isDark={isDark} couleur={couleur} />
-            <KpiCard icon={Euro} label="Total HT" value={fmtCurrency.format(totalHTAll)} isDark={isDark} couleur={couleur} />
-            <KpiCard icon={ShieldCheck} label="Confiance" value={`${avgConfiance}%`} isDark={isDark} couleur={couleur} />
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rechercher..."
-              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm ${inputCls} focus:outline-none focus:ring-2`}
-              style={{ '--tw-ring-color': couleur }}
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {[{ key: null, label: 'Tous' }, { key: 'terminee', label: 'Terminées' }, { key: 'appliquee', label: 'Appliquées' }].map(f => (
-              <button
-                key={f.key || 'all'}
-                onClick={() => setStatusFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === f.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
-                }`}
-                style={statusFilter === f.key ? { backgroundColor: couleur } : {}}
-              >
-                {f.label}
-              </button>
-            ))}
-            <select
-              value={sortOrder}
-              onChange={e => setSortOrder(e.target.value)}
-              className={`ml-auto text-xs px-2 py-1.5 rounded-lg border ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200'}`}
-            >
-              <option value="recent">Récentes</option>
-              <option value="oldest">Anciennes</option>
-              <option value="montant_desc">Montant ↓</option>
-            </select>
-          </div>
-
-          {/* Cards */}
-          <div className="space-y-3">
-            {filteredAnalyses.map(a => (
-              <AnalysisCard key={a.id} analyse={a} isDark={isDark} couleur={couleur} onClick={() => handleSelectAnalyse(a.id)} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  // ---- NEW ANALYSIS VIEW ----
-  const renderNewView = () => (
-    <div>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={handleBackToList} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-          <ChevronLeft size={20} className={textPrimary} />
-        </button>
-        <div className="flex-1">
-          <h2 className={`text-lg font-bold ${textPrimary}`}>Nouveau devis IA</h2>
-          <p className={`text-xs ${textMuted}`}>
-            {step === 1 ? 'Décrivez les travaux' : step === 2 ? 'Analyse en cours...' : 'Résultats'}
-          </p>
-        </div>
-      </div>
-
-      {/* Step indicator */}
-      <div className="flex items-center gap-1 mb-6">
-        {[
-          { n: 1, label: activeTab === 'voice' ? 'Dictée' : 'Photo' },
-          { n: 2, label: 'Analyse' },
-          { n: 3, label: 'Résultats' },
-        ].map((s, i) => (
-          <React.Fragment key={s.n}>
-            {i > 0 && <div className={`flex-1 h-0.5 ${step >= s.n ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`} style={step >= s.n ? { backgroundColor: couleur } : {}} />}
-            <button
-              onClick={() => { if (s.n < step && step !== 2) setStep(s.n); }}
-              disabled={s.n >= step || step === 2}
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                step >= s.n ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'
-              } ${s.n < step && step !== 2 ? 'cursor-pointer hover:scale-110 hover:ring-2 hover:ring-offset-1' : ''}`}
-              style={{
-                ...(step >= s.n ? { backgroundColor: couleur } : {}),
-                ...(s.n < step && step !== 2 ? { '--tw-ring-color': couleur } : {}),
-              }}
-            >
-              {s.n}
-            </button>
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* ===== STEP 1: Input ===== */}
-      {step === 1 && (
-        <>
-          {/* Tabs */}
-          <div className={`flex border-b mb-5 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setActiveTab('voice')}
-              className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'voice' ? 'border-current' : 'border-transparent'
-              }`}
-              style={activeTab === 'voice' ? { color: couleur, borderColor: couleur } : {}}
-            >
-              <Mic size={16} />
-              Voix
-            </button>
-            <button
-              onClick={() => setActiveTab('photo')}
-              className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-all flex items-center justify-center gap-1.5 ${
-                activeTab === 'photo' ? 'border-current' : 'border-transparent'
-              }`}
-              style={activeTab === 'photo' ? { color: couleur, borderColor: couleur } : {}}
-            >
-              <Camera size={16} />
-              Photo
-            </button>
-          </div>
-
-          {/* Voice Tab */}
-          {activeTab === 'voice' && (
-            <div className="flex flex-col items-center">
-              {/* Mic button */}
-              {isSupported ? (
-                <>
-                  <button
-                    onClick={toggleListening}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center mb-3 transition-all shadow-lg ${
-                      isListening ? 'animate-pulse' : 'hover:scale-105'
-                    }`}
-                    style={{
-                      backgroundColor: isListening ? '#EF4444' : couleur,
-                      boxShadow: isListening ? '0 0 0 8px rgba(239,68,68,0.2)' : undefined,
-                    }}
-                  >
-                    {isListening ? <MicOff size={32} className="text-white" /> : <Mic size={32} className="text-white" />}
-                  </button>
-                  <p className={`text-sm mb-4 ${isListening ? 'text-red-500 font-medium' : textMuted}`}>
-                    {isListening ? 'En écoute... appuyez pour arrêter' : 'Appuyez pour dicter'}
-                  </p>
-                </>
-              ) : (
-                <div className={`w-full p-3 rounded-lg mb-4 text-xs ${isDark ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
-                  <AlertCircle size={14} className="inline mr-1" />
-                  La saisie vocale n'est pas disponible sur ce navigateur. Saisissez le texte ci-dessous.
-                </div>
-              )}
-
-              {voiceError && (
-                <div className={`w-full p-3 rounded-lg mb-4 text-xs ${isDark ? 'bg-red-500/15 text-red-300' : 'bg-red-50 text-red-700'}`}>
-                  <AlertCircle size={14} className="inline mr-1" />
-                  {voiceError}
-                </div>
-              )}
-
-              {/* Transcript display */}
-              {(transcript || interimText) && (
-                <div className={`w-full rounded-xl border p-4 mb-4 min-h-[100px] ${cardBg}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-medium ${textMuted}`}>Transcription</span>
-                    {transcript && (
-                      <button onClick={() => { setTranscript(''); setInterimText(''); }} className={`text-xs ${textMuted} hover:text-red-500`}>
-                        Effacer
-                      </button>
-                    )}
-                  </div>
-                  <p className={`text-sm leading-relaxed ${textPrimary}`}>
-                    {transcript}
-                    {interimText && <span className={`italic ${textMuted}`}>{transcript ? ' ' : ''}{interimText}</span>}
-                  </p>
-                </div>
-              )}
-
-              {/* Manual text fallback */}
-              <div className="w-full mb-4">
-                <div className={`flex items-center gap-2 mb-2 ${textMuted}`}>
-                  <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                  <span className="text-[11px]">ou saisissez manuellement</span>
-                  <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                </div>
-                <textarea
-                  value={manualText}
-                  onChange={e => setManualText(e.target.value)}
-                  placeholder="Ex : Rénovation salle de bain 8m², pose carrelage sol et murs, remplacement baignoire par douche..."
-                  rows={3}
-                  className={`w-full rounded-lg border p-3 text-sm resize-none ${inputCls} focus:outline-none focus:ring-2`}
-                  style={{ '--tw-ring-color': couleur }}
-                />
-                <p className={`text-[11px] mt-1 ${textMuted}`}>
-                  {(transcript || manualText).length} caractères
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Photo Tab */}
-          {activeTab === 'photo' && (
-            <div>
-              {!preview ? (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:border-current ${isDark ? 'border-slate-600 hover:bg-slate-800/50' : 'border-slate-300 hover:bg-slate-50'}`}
-                  style={{ '--tw-border-opacity': 1 }}
-                >
-                  <Upload className={`w-10 h-10 mx-auto mb-3 ${textMuted}`} />
-                  <p className={`text-sm font-medium mb-1 ${textPrimary}`}>Ajouter une photo</p>
-                  <p className={`text-xs ${textMuted}`}>JPG, PNG ou HEIC</p>
-                </div>
-              ) : (
-                <div className="relative mb-4">
-                  <img src={preview} alt="Photo chantier" className="w-full h-48 object-cover rounded-xl" />
-                  <button
-                    onClick={() => { setFile(null); setPreview(null); }}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-
-              <textarea
-                value={photoDescription}
-                onChange={e => setPhotoDescription(e.target.value)}
-                placeholder="Décrivez les travaux visibles sur la photo..."
-                rows={3}
-                className={`w-full rounded-lg border p-3 text-sm resize-none mt-4 ${inputCls} focus:outline-none focus:ring-2`}
-                style={{ '--tw-ring-color': couleur }}
-              />
-            </div>
-          )}
-
-          {error && (
-            <div className={`p-3 rounded-lg text-xs mt-3 ${isDark ? 'bg-red-500/15 text-red-300' : 'bg-red-50 text-red-700'}`}>
-              <AlertCircle size={14} className="inline mr-1" />
-              {error}
-            </div>
-          )}
-
-          {/* Validation hint */}
-          {showValidationHint && currentText.length < 10 && (
-            <p className={`text-xs mt-3 ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-              Décrivez les travaux pour lancer l'analyse (minimum 10 caractères)
-            </p>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 sm:gap-3 mt-4">
-            <button onClick={handleBackToList} className={`shrink-0 px-3 sm:px-4 py-2.5 rounded-lg text-sm ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}>
-              <span className="sm:hidden">←</span>
-              <span className="hidden sm:inline">← Retour</span>
-            </button>
-            <button
-              onClick={() => { if (currentText.length < 10) { setShowValidationHint(true); return; } setShowValidationHint(false); handleStartAnalysis(); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-white font-semibold transition-all hover:shadow-lg ${currentText.length < 10 ? 'opacity-40 cursor-not-allowed' : ''}`}
-              style={{ backgroundColor: couleur }}
-            >
-              <Sparkles size={18} className="shrink-0" />
-              Analyser
-              <ArrowRight size={16} className="shrink-0" />
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* ===== STEP 2: Analysing ===== */}
-      {step === 2 && (
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="relative w-16 h-16 mb-6">
-            <div
-              className="absolute inset-0 rounded-full animate-ping opacity-20"
-              style={{ backgroundColor: couleur }}
-            />
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: couleur }}
-            >
-              <Sparkles size={28} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
-            </div>
-          </div>
-          <p className={`text-sm font-medium mb-2 ${textPrimary}`}>{progressLabel}</p>
-          <p className={`text-xs ${textMuted}`}>Quelques secondes...</p>
-        </div>
-      )}
-
-      {/* ===== STEP 3: Results ===== */}
-      {step === 3 && analyseResult && (
-        <div>
-          {/* Summary banner */}
-          <div className={`rounded-xl border p-4 mb-4 ${cardBg}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${textPrimary}`}>{analyseResult.description}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                analyseResult.confiance >= 80 ? 'bg-emerald-100 text-emerald-700' :
-                analyseResult.confiance >= 60 ? 'bg-amber-100 text-amber-700' :
-                'bg-red-100 text-red-700'
-              }`}>
-                {analyseResult.confiance >= 80 ? '🟢' : analyseResult.confiance >= 60 ? '🟡' : '🔴'} {analyseResult.confiance}% fiabilité
-              </span>
-            </div>
-
-            {/* Confidence explanation */}
-            <div className={`text-xs rounded-lg p-2.5 mb-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-              <p className={`font-medium mb-1.5 ${textMuted}`}>
-                {analyseResult.confiance >= 80
-                  ? '✅ Estimation fiable — votre description est suffisamment détaillée'
-                  : analyseResult.confiance >= 60
-                    ? '⚠️ Estimation approximative — ajustez les montants avant d\'envoyer'
-                    : '🔍 Estimation large — vérifiez chaque ligne et ajustez les prix'}
-              </p>
-              {analyseResult.confianceFactors && (
-                <div className="flex flex-wrap gap-1.5">
-                  {analyseResult.confianceFactors.map((f, i) => (
-                    <span key={i} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${
-                      f.points >= 15
-                        ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                        : f.points >= 10
-                          ? isDark ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'
-                          : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {f.points >= 15 ? '✓' : f.points >= 10 ? '~' : '?'} {f.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {analyseResult.notes && (
-              <p className={`text-xs ${textMuted}`}>
-                💡 {analyseResult.notes === 'Estimation locale (IA non configurée)'
-                  ? 'Estimation basée sur les prix moyens du marché. Ajustez les montants selon vos tarifs.'
-                  : analyseResult.notes}
-              </p>
-            )}
-          </div>
-
-          {/* Editable lines — card layout for mobile */}
-          <div className="space-y-2 mb-4">
-            {editableLines.map((line, idx) => (
-              <div key={line.id} className={`rounded-xl border p-3 ${cardBg}`}>
-                {/* Row 1: Designation + delete */}
-                <div className="flex items-start gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={line.designation}
-                    onChange={e => updateLine(idx, 'designation', e.target.value)}
-                    className={`flex-1 bg-transparent text-sm font-medium ${textPrimary} outline-none`}
-                    placeholder="Poste..."
-                  />
-                  <button onClick={() => removeLine(idx)} className="p-1 text-red-400 hover:text-red-600 rounded shrink-0">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                {/* Row 2: Qté × Unité × P.U. = Total */}
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <input
-                    type="number"
-                    value={line.quantite}
-                    onChange={e => updateLine(idx, 'quantite', parseFloat(e.target.value) || 0)}
-                    className={`w-12 sm:w-14 text-center rounded-lg px-1 py-1 text-xs sm:text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
-                    min="0"
-                    step="0.1"
-                  />
-                  <select
-                    value={line.unite}
-                    onChange={e => updateLine(idx, 'unite', e.target.value)}
-                    className={`rounded-lg px-1 py-1 text-[11px] sm:text-xs ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
-                  >
-                    {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  <span className={`text-[10px] sm:text-xs ${textMuted}`}>×</span>
-                  <input
-                    type="number"
-                    value={line.prixUnitaire}
-                    onChange={e => updateLine(idx, 'prixUnitaire', parseFloat(e.target.value) || 0)}
-                    className={`w-16 sm:w-20 text-right rounded-lg px-1 sm:px-2 py-1 text-xs sm:text-sm ${isDark ? 'bg-slate-700' : 'bg-slate-100'} ${textPrimary} outline-none`}
-                    min="0"
-                    step="0.01"
-                  />
-                  <span className={`ml-auto text-xs sm:text-sm font-semibold whitespace-nowrap ${textPrimary}`}>
-                    {fmtCurrency.format(line.quantite * line.prixUnitaire)}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {/* Add line */}
-            <button
-              onClick={addLine}
-              className={`w-full rounded-xl border border-dashed px-3 py-3 text-xs font-medium flex items-center justify-center gap-1 ${isDark ? 'border-slate-600 text-slate-400 hover:bg-slate-800' : 'border-slate-300 text-slate-500 hover:bg-slate-50'}`}
-            >
-              <Plus size={14} />
-              Ajouter un poste
-            </button>
-
-            {/* Undo banner */}
-            {undoLine && (
-              <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-800'}`}>
-                <span>Ligne supprimée</span>
-                <button onClick={handleUndo} className="font-semibold underline" style={{ color: couleur }}>
-                  Annuler
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Total */}
-          <div className={`rounded-xl border p-4 mb-6 ${cardBg}`}>
-            <div className="flex items-center justify-between">
-              <span className={`text-sm font-medium ${textPrimary}`}>Total HT</span>
-              <span className="text-xl font-bold" style={{ color: couleur }}>
-                {fmtCurrency.format(editableTotalHT)}
-              </span>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { if (!window.confirm('Refaire l\'analyse ? Les modifications actuelles seront perdues.')) return; setStep(1); setAnalyseResult(null); setEditableLines([]); }}
-              className={`px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 ${isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'}`}
-            >
-              <RefreshCw size={14} />
-              Refaire
-            </button>
-            <button
-              onClick={handleCreateDevis}
-              disabled={editableLines.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold transition-all hover:shadow-lg disabled:opacity-40"
-              style={{ backgroundColor: couleur }}
-            >
-              <FileText size={18} />
-              Créer le devis
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   // ---- DETAIL VIEW ----
   const renderDetailView = () => {
@@ -938,7 +506,7 @@ export default function IADevisAnalyse({
     return (
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <button onClick={handleBackToList} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+          <button onClick={handleBackToList} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
             <ChevronLeft size={20} className={textPrimary} />
           </button>
           <div className="flex-1">
@@ -952,7 +520,7 @@ export default function IADevisAnalyse({
           <p className={`text-sm mb-2 ${textPrimary}`}>{selectedAnalyse.description}</p>
           <div className="flex items-center gap-3 text-xs">
             {selectedAnalyse.source === 'voice' ? <Mic size={14} className={textMuted} /> : <Camera size={14} className={textMuted} />}
-            <span className={textMuted}>{selectedAnalyse.source === 'voice' ? 'Vocal' : 'Photo'}</span>
+            <span className={textMuted}>{selectedAnalyse.source === 'voice' ? 'Vocal' : selectedAnalyse.source === 'photo' ? 'Photo' : 'Texte'}</span>
             <span className={textMuted}>•</span>
             <span className={textMuted}>{lignes.length} postes</span>
             <span className={textMuted}>•</span>
@@ -990,7 +558,7 @@ export default function IADevisAnalyse({
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleDeleteAnalyse(selectedAnalyse.id)}
-            className={`px-4 py-2.5 rounded-lg text-sm text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
+            className={`px-4 py-2.5 rounded-xl text-sm text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
           >
             <Trash2 size={14} className="inline mr-1" />
             Supprimer
@@ -1010,123 +578,216 @@ export default function IADevisAnalyse({
     );
   };
 
-  // ---- CONVERT MODAL ----
-  const renderConvertModal = () => {
-    if (!showConvertModal) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-        <div className={`w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 ${isDark ? 'bg-slate-800' : 'bg-white'} max-h-[80vh] overflow-y-auto`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-lg font-bold ${textPrimary}`}>Créer le devis</h3>
-            <button onClick={() => setShowConvertModal(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-              <X size={18} className={textMuted} />
-            </button>
-          </div>
-
-          {/* Client */}
-          <div className="mb-4">
-            <label className={`text-xs font-medium mb-1 block ${textMuted}`}>Client (optionnel)</label>
-            <select
-              value={convertClient}
-              onChange={e => setConvertClient(e.target.value)}
-              className={`w-full rounded-lg border p-2.5 text-sm ${inputCls}`}
-            >
-              <option value="">— Sélectionner plus tard —</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.prenom ? `${c.prenom} ${c.nom}` : c.nom} {c.entreprise ? `(${c.entreprise})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* TVA */}
-          <div className="mb-4">
-            <label className={`text-xs font-medium mb-1 block ${textMuted}`}>TVA</label>
-            <div className="flex gap-2">
-              {[20, 10, 5.5, 0].map(rate => (
-                <button
-                  key={rate}
-                  onClick={() => setConvertTva(rate)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                    convertTva === rate ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
-                  }`}
-                  style={convertTva === rate ? { backgroundColor: couleur } : {}}
-                >
-                  {rate}%
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="mb-4">
-            <label className={`text-xs font-medium mb-1 block ${textMuted}`}>Notes</label>
-            <textarea
-              value={convertNotes}
-              onChange={e => setConvertNotes(e.target.value)}
-              rows={2}
-              placeholder="Conditions particulières..."
-              className={`w-full rounded-lg border p-2.5 text-sm resize-none ${inputCls}`}
-            />
-          </div>
-
-          {/* Total */}
-          {(() => {
-            const ht = editableTotalHT || analyseResult?.totalHT || 0;
-            const tvaAmount = ht * (convertTva / 100);
-            const ttc = ht + tvaAmount;
-            return (
-              <div className={`rounded-lg p-3 mb-4 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <div className="flex justify-between items-center">
-                  <span className={`text-sm ${textMuted}`}>Total HT</span>
-                  <span className={`text-sm font-semibold ${textPrimary}`}>
-                    {fmtCurrency.format(ht)}
-                  </span>
-                </div>
-                {convertTva > 0 && (
-                  <div className="flex justify-between items-center mt-1">
-                    <span className={`text-xs ${textMuted}`}>TVA ({convertTva}%)</span>
-                    <span className={`text-xs ${textMuted}`}>
-                      {fmtCurrency.format(tvaAmount)}
-                    </span>
-                  </div>
-                )}
-                <div className={`flex justify-between items-center mt-2 pt-2 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                  <span className={`text-sm font-semibold ${textPrimary}`}>Total TTC</span>
-                  <span className="text-lg font-bold" style={{ color: couleur }}>
-                    {fmtCurrency.format(ttc)}
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
-
-          <button
-            onClick={handleConfirmCreateDevis}
-            className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:shadow-lg flex items-center justify-center gap-2"
-            style={{ backgroundColor: couleur }}
-          >
-            <FileText size={18} />
-            Confirmer et créer le devis
-          </button>
-        </div>
-      </div>
-    );
+  // ---- Step label for header ----
+  const getStepLabel = () => {
+    switch (step) {
+      case 1: return 'Décrivez les travaux';
+      case 2: return 'Analyse en cours...';
+      case 3: return 'Résultats';
+      case 4: return 'Finalisation';
+      case 5: return 'Devis créé';
+      default: return '';
+    }
   };
 
-  // ===========================================================================
-  // MAIN RENDER
-  // ===========================================================================
+  // ---- Stepper steps ----
+  const STEPS = [
+    { n: 1, label: activeTab === 'voice' ? 'Dictée' : activeTab === 'text' ? 'Texte' : 'Photo' },
+    { n: 2, label: 'Analyse' },
+    { n: 3, label: 'Résultats' },
+    { n: 4, label: 'Finalisation' },
+    { n: 5, label: 'Terminé' },
+  ];
+
+  // ---- NEW VIEW ----
+  const renderNewView = () => (
+    <div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        {step < 5 && (
+          <button onClick={handleBackToList} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <ChevronLeft size={20} className={textPrimary} />
+          </button>
+        )}
+        <div className="flex-1">
+          <h2 className={`text-lg font-bold ${textPrimary}`}>
+            {step === 5 ? '' : 'Nouveau devis IA'}
+          </h2>
+          {step < 5 && (
+            <p className={`text-xs ${textMuted}`}>{getStepLabel()}</p>
+          )}
+        </div>
+        {step < 5 && (
+          <IAUsageCounter
+            used={availability.used}
+            limit={availability.limit}
+            isLifetime={isLifetime}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        )}
+      </div>
+
+      {/* Step indicator — show 5 steps, progressive disclosure */}
+      {step < 5 && (
+        <div className="flex items-center gap-1 mb-6">
+          {STEPS.map((s, i) => {
+            // Only show steps 4-5 after reaching step 3
+            if (s.n > 3 && step < 3) return null;
+            return (
+              <React.Fragment key={s.n}>
+                {i > 0 && !(s.n > 3 && step < 3) && (
+                  <div
+                    className={`flex-1 h-0.5 transition-all duration-300 ${step >= s.n ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
+                    style={step >= s.n ? { backgroundColor: couleur } : {}}
+                  />
+                )}
+                <button
+                  onClick={() => { if (s.n < step && step !== 2 && step !== 5) setStep(s.n); }}
+                  disabled={s.n >= step || step === 2 || step === 5}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                    step >= s.n ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'
+                  } ${s.n < step && step !== 2 && step !== 5 ? 'cursor-pointer hover:scale-110' : ''}`}
+                  style={step >= s.n ? { backgroundColor: couleur } : {}}
+                  title={s.label}
+                >
+                  {step > s.n ? '✓' : s.n}
+                </button>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Steps */}
+      {step === 1 && (
+        <IAInputStep
+          transcript={transcript}
+          setTranscript={setTranscript}
+          interimText={interimText}
+          setInterimText={setInterimText}
+          isListening={isListening}
+          isSupported={isSupported}
+          voiceError={voiceError}
+          toggleListening={toggleListening}
+          manualText={manualText}
+          setManualText={setManualText}
+          file={file}
+          setFile={setFile}
+          preview={preview}
+          setPreview={setPreview}
+          photoDescription={photoDescription}
+          setPhotoDescription={setPhotoDescription}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedTemplate={selectedTemplate}
+          onTemplateSelect={(text, id) => {
+            setManualText(text);
+            setSelectedTemplate(id);
+          }}
+          onAnalyse={handleStartAnalysis}
+          onBack={handleBackToList}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {step === 2 && (
+        <IAAnalysisStep
+          progressLabel={progressLabel}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {step === 3 && analyseResult && (
+        <IAResultsStep
+          analyseResult={analyseResult}
+          editableLines={editableLines}
+          updateLine={updateLine}
+          addLine={addLine}
+          removeLine={removeLine}
+          undoLine={undoLine}
+          onUndo={handleUndo}
+          onRefresh={handleRefresh}
+          onContinue={handleContinueToFinalize}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {step === 4 && (
+        <IAFinalizeStep
+          editableLines={editableLines}
+          analyseDescription={analyseResult?.description || ''}
+          confidence={analyseResult?.confiance || 75}
+          clients={clients}
+          chantiers={chantiers}
+          entreprise={entreprise}
+          onBack={() => setStep(3)}
+          onCreateDevis={handleFinalCreate}
+          onAddClient={addClient}
+          isSubmitting={isSubmitting}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
+      {step === 5 && createdDevis && (
+        <IASuccessStep
+          devisNumero={createdDevis.numero || ''}
+          clientName={createdDevis.clientName || ''}
+          lineCount={createdDevis.lineCount || 0}
+          totalTTC={createdDevis.totalTTC || 0}
+          onViewDevis={handleViewDevis}
+          onNewAnalysis={handleNewAnalysis}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+    </div>
+  );
 
   return (
     <div className={`min-h-screen pb-24 ${pageBg}`}>
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {view === 'list' && renderListView()}
+        {/* LIST VIEW */}
+        {view === 'list' && (
+          analyses.length === 0 ? (
+            <IAWelcomeScreen
+              onNewAnalysis={handleOpenNew}
+              onTemplateSelect={handleTemplateSelect}
+              availability={availability}
+              isLifetime={isLifetime}
+              isDark={isDark}
+              couleur={couleur}
+            />
+          ) : (
+            <IAHistoryList
+              analyses={analyses}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              sortOrder={sortOrder}
+              setSortOrder={setSortOrder}
+              filteredAnalyses={filteredAnalyses}
+              onSelectAnalyse={handleSelectAnalyse}
+              onNewAnalysis={handleOpenNew}
+              availability={availability}
+              isLifetime={isLifetime}
+              isDark={isDark}
+              couleur={couleur}
+            />
+          )
+        )}
+
+        {/* NEW VIEW */}
         {view === 'new' && renderNewView()}
+
+        {/* DETAIL VIEW */}
         {view === 'detail' && renderDetailView()}
       </div>
-      {renderConvertModal()}
     </div>
   );
 }
