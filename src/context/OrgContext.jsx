@@ -101,6 +101,14 @@ export function OrgProvider({ children }) {
 
     setLoading(true);
     try {
+      // Skip org RPC if we already know it's unavailable (prevents 400 console noise)
+      const orgUnavailableKey = 'cp_org_rpc_unavailable';
+      if (sessionStorage.getItem(orgUnavailableKey)) {
+        setRole('owner');
+        setLoading(false);
+        return;
+      }
+
       // 1. Try to get user's org via RPC
       const { data: orgData, error: orgError } = await supabase.rpc('get_user_org_id', {
         p_user_id: uid
@@ -109,6 +117,7 @@ export function OrgProvider({ children }) {
       // If RPC doesn't exist (404) or fails, fallback to owner mode
       if (orgError) {
         console.log('[OrgContext] Org RPC unavailable, using owner fallback');
+        sessionStorage.setItem(orgUnavailableKey, '1');
         setRole('owner');
         setLoading(false);
         return;

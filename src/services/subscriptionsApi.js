@@ -64,6 +64,12 @@ export async function fetchSubscription(orgId) {
     return { data: DEMO_SUBSCRIPTION, error: null };
   }
 
+  // Skip DB query if we already know the table is unavailable (prevents 404 console noise)
+  const subUnavailableKey = 'cp_sub_table_unavailable';
+  if (sessionStorage.getItem(subUnavailableKey)) {
+    return { data: { plan: 'gratuit', status: 'active' }, error: null };
+  }
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: null, error: { message: 'Non authentifié' } };
@@ -78,6 +84,12 @@ export async function fetchSubscription(orgId) {
         .limit(1)
         .maybeSingle();
 
+      // Table doesn't exist → cache and return free plan
+      if (orgErr && (orgErr.code === '42P01' || orgErr.message?.includes('404') || orgErr.code === 'PGRST204')) {
+        sessionStorage.setItem(subUnavailableKey, '1');
+        return { data: { plan: 'gratuit', status: 'active' }, error: null };
+      }
+
       if (!orgErr && orgSub) return { data: orgSub, error: null };
     }
 
@@ -87,6 +99,12 @@ export async function fetchSubscription(orgId) {
       .select('*')
       .eq('user_id', user.id)
       .single();
+
+    // Table doesn't exist → cache and return free plan
+    if (error && (error.code === '42P01' || error.message?.includes('relation') || error.code === 'PGRST204')) {
+      sessionStorage.setItem(subUnavailableKey, '1');
+      return { data: { plan: 'gratuit', status: 'active' }, error: null };
+    }
 
     if (error && error.code === 'PGRST116') {
       // No subscription found — create a free one (linked to org if available)
@@ -104,7 +122,9 @@ export async function fetchSubscription(orgId) {
 
     return { data, error };
   } catch (error) {
-    return { data: null, error };
+    // Network or unexpected error — cache and return free plan
+    sessionStorage.setItem(subUnavailableKey, '1');
+    return { data: { plan: 'gratuit', status: 'active' }, error: null };
   }
 }
 
