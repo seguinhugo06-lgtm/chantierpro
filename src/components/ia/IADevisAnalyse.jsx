@@ -628,20 +628,18 @@ export default function IADevisAnalyse({
         )}
       </div>
 
-      {/* Step indicator — show 5 steps, progressive disclosure */}
+      {/* Step indicator — always show all 5 steps with labels */}
       {step < 5 && (
-        <div className="flex items-center gap-1 mb-6">
-          {STEPS.map((s, i) => {
-            // Only show steps 4-5 after reaching step 3
-            if (s.n > 3 && step < 3) return null;
-            return (
-              <React.Fragment key={s.n}>
-                {i > 0 && !(s.n > 3 && step < 3) && (
-                  <div
-                    className={`flex-1 h-0.5 transition-all duration-300 ${step >= s.n ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
-                    style={step >= s.n ? { backgroundColor: couleur } : {}}
-                  />
-                )}
+        <div className="flex items-center gap-0 mb-6">
+          {STEPS.map((s, i) => (
+            <React.Fragment key={s.n}>
+              {i > 0 && (
+                <div
+                  className={`flex-1 h-0.5 transition-all duration-300 ${step >= s.n ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
+                  style={step >= s.n ? { backgroundColor: couleur } : {}}
+                />
+              )}
+              <div className="flex flex-col items-center gap-1">
                 <button
                   onClick={() => { if (s.n < step && step !== 2 && step !== 5) setStep(s.n); }}
                   disabled={s.n >= step || step === 2 || step === 5}
@@ -653,9 +651,14 @@ export default function IADevisAnalyse({
                 >
                   {step > s.n ? '✓' : s.n}
                 </button>
-              </React.Fragment>
-            );
-          })}
+                <span className={`text-[9px] font-medium whitespace-nowrap hidden sm:block ${
+                  step >= s.n ? '' : isDark ? 'text-slate-500' : 'text-slate-400'
+                }`} style={step >= s.n ? { color: couleur } : {}}>
+                  {s.label}
+                </span>
+              </div>
+            </React.Fragment>
+          ))}
         </div>
       )}
 

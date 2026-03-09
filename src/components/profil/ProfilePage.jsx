@@ -302,16 +302,33 @@ export default function ProfilePage({
                   {plan.name}
                 </button>
 
-                {/* Completeness */}
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                  completeness >= 80
-                    ? isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-50 text-emerald-700'
-                    : completeness >= 50
-                      ? isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-50 text-amber-700'
-                      : isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-50 text-red-700'
-                }`}>
-                  {completeness >= 80 ? '✅' : completeness >= 50 ? '⚠️' : '❌'} Profil {completeness}%
-                </span>
+                {/* Completeness — circular progress */}
+                <button
+                  onClick={() => setPage('settings')}
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    completeness >= 80
+                      ? isDark ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      : completeness >= 50
+                        ? isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                        : isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-50 text-red-700 hover:bg-red-100'
+                  }`}
+                  title="Compléter mon profil dans les Paramètres"
+                >
+                  <svg width="20" height="20" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke={isDark ? '#334155' : '#e2e8f0'} strokeWidth="3" />
+                    <circle
+                      cx="18" cy="18" r="15.5" fill="none"
+                      stroke={completeness >= 80 ? '#22c55e' : completeness >= 50 ? '#f97316' : '#ef4444'}
+                      strokeWidth="3" strokeLinecap="round"
+                      strokeDasharray={`${completeness * 0.974} 100`}
+                      transform="rotate(-90 18 18)"
+                    />
+                    <text x="18" y="19.5" textAnchor="middle" fontSize="10" fontWeight="700" fill={completeness >= 80 ? '#22c55e' : completeness >= 50 ? '#f97316' : '#ef4444'}>
+                      {completeness}
+                    </text>
+                  </svg>
+                  Profil
+                </button>
               </div>
             </div>
           </div>
@@ -341,31 +358,55 @@ export default function ProfilePage({
               )}
             </div>
 
-            {/* Assurances summary */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-              {entreprise.decennaleAssureur ? (
-                <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  <Shield size={12} /> Décennale ✓
-                </span>
-              ) : (
-                <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-                  <Shield size={12} /> Décennale manquante
-                </span>
+            {/* Assurances summary — action cards for missing, inline for valid */}
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+              {/* Missing assurances as action cards */}
+              {(!entreprise.decennaleAssureur || !entreprise.rcProAssureur) && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {!entreprise.decennaleAssureur && (
+                    <button
+                      onClick={() => setPage('settings')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
+                        isDark ? 'bg-red-500/10 border-red-500/20 text-red-300 hover:bg-red-500/20' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                      }`}
+                    >
+                      <Shield size={13} />
+                      Décennale manquante
+                      <ChevronRight size={12} className="opacity-50" />
+                    </button>
+                  )}
+                  {!entreprise.rcProAssureur && (
+                    <button
+                      onClick={() => setPage('settings')}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
+                        isDark ? 'bg-red-500/10 border-red-500/20 text-red-300 hover:bg-red-500/20' : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                      }`}
+                    >
+                      <Shield size={13} />
+                      RC Pro manquante
+                      <ChevronRight size={12} className="opacity-50" />
+                    </button>
+                  )}
+                </div>
               )}
-              {entreprise.rcProAssureur ? (
-                <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  <Shield size={12} /> RC Pro ✓
-                </span>
-              ) : (
-                <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-red-400' : 'text-red-500'}`}>
-                  <Shield size={12} /> RC Pro manquante
-                </span>
-              )}
-              {Array.isArray(entreprise.labels) && entreprise.labels.filter(l => l.actif).map((l, i) => (
-                <span key={i} className={`flex items-center gap-1 text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
-                  <Award size={12} /> {l.nom} ✓
-                </span>
-              ))}
+              {/* Valid assurances + labels */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {entreprise.decennaleAssureur && (
+                  <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                    <Shield size={12} /> Décennale ✓
+                  </span>
+                )}
+                {entreprise.rcProAssureur && (
+                  <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                    <Shield size={12} /> RC Pro ✓
+                  </span>
+                )}
+                {Array.isArray(entreprise.labels) && entreprise.labels.filter(l => l.actif).map((l, i) => (
+                  <span key={i} className={`flex items-center gap-1 text-xs ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                    <Award size={12} /> {l.nom} ✓
+                  </span>
+                ))}
+              </div>
             </div>
 
             {/* Edit link */}

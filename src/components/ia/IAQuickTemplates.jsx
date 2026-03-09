@@ -23,14 +23,14 @@ export default function IAQuickTemplates({ onSelect, isDark = false, couleur = '
       <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
         Templates rapides
       </p>
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+      <div className="flex flex-wrap gap-2">
         {QUICK_TEMPLATES.map(t => {
           const isActive = selected === t.id;
           return (
             <button
               key={t.id}
               onClick={() => onSelect(t.text, t.id)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap ${
                 isActive
                   ? 'text-white shadow-md'
                   : isDark

@@ -221,13 +221,16 @@ export default function IAInputStep({
           {!preview ? (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:border-current ${
-                isDark ? 'border-slate-600 hover:bg-slate-800/50' : 'border-slate-300 hover:bg-slate-50'
+              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('!border-orange-400', '!bg-orange-50/10'); }}
+              onDragLeave={e => { e.currentTarget.classList.remove('!border-orange-400', '!bg-orange-50/10'); }}
+              onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('!border-orange-400', '!bg-orange-50/10'); const f = e.dataTransfer.files?.[0]; if (f && f.type.startsWith('image/')) { const ev = { target: { files: [f] } }; handleFileChange(ev); } }}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all min-h-[180px] flex flex-col items-center justify-center ${
+                isDark ? 'border-slate-600 hover:border-slate-400 hover:bg-slate-800/50' : 'border-slate-300 hover:border-orange-400 hover:bg-orange-50/50'
               }`}
             >
-              <Upload className={`w-10 h-10 mx-auto mb-3 ${textMuted}`} />
+              <Upload className={`w-12 h-12 mx-auto mb-3 ${textMuted}`} />
               <p className={`text-sm font-medium mb-1 ${textPrimary}`}>Ajouter une photo</p>
-              <p className={`text-xs ${textMuted}`}>JPG, PNG ou HEIC</p>
+              <p className={`text-xs ${textMuted}`}>Glissez-déposez ou cliquez — JPG, PNG, HEIC</p>
             </div>
           ) : (
             <div className="relative mb-4">
@@ -285,10 +288,14 @@ export default function IAInputStep({
         </button>
         <button
           onClick={handleAnalyseClick}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-white font-semibold transition-all hover:shadow-lg ${
-            currentText.length < 10 ? 'opacity-40 cursor-not-allowed' : ''
+          disabled={currentText.length < 10}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-semibold transition-all ${
+            currentText.length < 10
+              ? 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
+              : 'text-white hover:shadow-lg hover:brightness-110'
           }`}
-          style={{ backgroundColor: couleur }}
+          style={currentText.length >= 10 ? { backgroundColor: couleur } : {}}
+          title={currentText.length < 10 ? 'Décrivez les travaux ou ajoutez une photo pour lancer l\'analyse' : 'Lancer l\'analyse IA'}
         >
           <Sparkles size={18} className="shrink-0" />
           Analyser

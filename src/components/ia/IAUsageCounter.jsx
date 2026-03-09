@@ -34,8 +34,12 @@ export default function IAUsageCounter({ used, limit, isLifetime = true, isDark 
 
   const barColor = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : couleur;
 
+  const tooltipText = pct >= 100
+    ? `Quota épuisé — ${used}/${limit} analyses utilisées`
+    : `${remaining} analyse${remaining > 1 ? 's' : ''} IA restante${remaining > 1 ? 's' : ''} ${isLifetime ? '(total)' : 'ce mois'}. ${isLifetime ? '' : 'Se réinitialise chaque mois.'}`;
+
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${bgColor}`}>
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${bgColor}`} title={tooltipText}>
       <Sparkles size={14} style={{ color: dotColor }} />
       <span className={`text-xs font-semibold tabular-nums ${textColor}`}>
         {remaining}/{limit}

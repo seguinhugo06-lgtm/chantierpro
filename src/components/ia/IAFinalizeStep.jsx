@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  User, Plus, ChevronDown, ChevronUp, Calendar, Percent,
+  User, Plus, ChevronDown, ChevronUp, Calendar, Percent, Info,
   FileText, Building2, StickyNote, CreditCard, Shield, Sparkles, ArrowLeft, ArrowRight,
 } from 'lucide-react';
 
@@ -174,6 +174,15 @@ export default function IAFinalizeStep({
         <label className={`flex items-center gap-2 text-sm font-semibold mb-2 ${textPrimary}`}>
           <Percent size={16} />
           TVA par défaut
+          <span className="relative group ml-1">
+            <Info size={14} className={`cursor-help ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+            <span className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-xl text-xs leading-relaxed shadow-xl border z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+              <strong className={isDark ? 'text-white' : 'text-slate-900'}>20%</strong> — Standard (constructions neuves)<br/>
+              <strong className={isDark ? 'text-white' : 'text-slate-900'}>10%</strong> — Rénovation (logement &gt; 2 ans)<br/>
+              <strong className={isDark ? 'text-white' : 'text-slate-900'}>5,5%</strong> — Amélioration énergétique<br/>
+              <strong className={isDark ? 'text-white' : 'text-slate-900'}>0%</strong> — Autoliquidation / Exonération
+            </span>
+          </span>
         </label>
         <div className="flex gap-2">
           {[20, 10, 5.5, 0].map(rate => (
