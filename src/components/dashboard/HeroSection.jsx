@@ -1,11 +1,11 @@
 /**
- * HeroSection Component — Compact greeting header
- * Just greeting + date + active chantiers count.
+ * HeroSection Component — Greeting header with gradient background
+ * Greeting + date + active chantiers count.
  * Urgent action banner moved to Dashboard.jsx for layout flexibility.
  */
 
 import { useMemo } from 'react';
-import { HardHat } from 'lucide-react';
+import { HardHat, CalendarDays } from 'lucide-react';
 import { getGreeting, formatDate, capitalize } from '../../lib/formatters';
 
 function getFormattedDate() {
@@ -23,7 +23,14 @@ export default function HeroSection({
   const formattedDate = useMemo(() => getFormattedDate(), []);
 
   return (
-    <section className={`px-4 sm:px-6 pt-5 pb-3 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+    <section
+      className="px-4 sm:px-6 pt-5 pb-4"
+      style={{
+        background: isDark
+          ? `linear-gradient(135deg, ${couleur}08 0%, transparent 60%)`
+          : `linear-gradient(135deg, ${couleur}0a 0%, transparent 60%)`,
+      }}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Greeting */}
         <h1 className={`text-xl sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -33,16 +40,24 @@ export default function HeroSection({
         </h1>
 
         {/* Metadata Row */}
-        <div className={`flex items-center gap-2 text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
-          <span>{formattedDate}</span>
-          <span className={isDark ? 'text-slate-600' : 'text-gray-300'}>•</span>
+        <div className={`flex items-center gap-3 text-sm mt-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays size={13} className="flex-shrink-0 opacity-60" />
+            {formattedDate}
+          </span>
+          <span className={isDark ? 'text-slate-700' : 'text-gray-300'}>·</span>
           <button
             onClick={onChantiersClick}
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 -mx-2 -my-0.5 rounded-md transition-colors duration-150 hover:bg-primary-500/10 ${isDark ? 'hover:text-primary-400' : 'hover:text-primary-600'}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 -mx-2 rounded-lg text-xs font-medium transition-all ${
+              isDark
+                ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                : 'hover:bg-white/80 hover:shadow-sm text-gray-500 hover:text-gray-700'
+            }`}
             title="Voir tous les chantiers en cours"
           >
-            <HardHat size={14} className="flex-shrink-0" />
-            <span className="font-medium">{activeChantiers}</span> chantier{activeChantiers !== 1 ? 's' : ''} actif{activeChantiers !== 1 ? 's' : ''}
+            <HardHat size={14} className="flex-shrink-0" style={{ color: couleur }} />
+            <span className="font-semibold" style={{ color: couleur }}>{activeChantiers}</span>
+            <span>chantier{activeChantiers !== 1 ? 's' : ''} actif{activeChantiers !== 1 ? 's' : ''}</span>
           </button>
         </div>
       </div>
@@ -52,7 +67,7 @@ export default function HeroSection({
 
 export function HeroSectionSkeleton({ isDark = false }) {
   return (
-    <section className={`px-4 sm:px-6 pt-5 pb-3 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+    <section className={`px-4 sm:px-6 pt-5 pb-4 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
       <div className="max-w-7xl mx-auto animate-pulse">
         <div className={`h-7 w-56 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />
         <div className={`h-4 w-40 rounded-md mt-2 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />

@@ -1189,29 +1189,33 @@ export default function Dashboard({
             {/* Devis IA */}
             <button
               onClick={() => setPage('ia-devis')}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none"
-              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none"
+              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)`, boxShadow: `0 4px 14px ${couleur}30` }}
             >
               <div className="relative z-10">
-                <MessageCircle size={26} className="mb-2 text-white/90" />
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-2">
+                  <MessageCircle size={20} className="text-white" />
+                </div>
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
                 <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">Décrivez vos travaux</p>
               </div>
-              <Sparkles size={44} className="absolute -top-1 -right-1 text-white/10 pointer-events-none" />
+              <Sparkles size={52} className="absolute -bottom-2 -right-2 text-white/[0.07] pointer-events-none" />
             </button>
 
             {/* Devis Express */}
             <button
               onClick={() => setShowDevisExpress(true)}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 outline-none"
-              style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)' }}
+              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 outline-none"
+              style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)', boxShadow: '0 4px 14px rgba(255,107,0,0.25)' }}
             >
               <div className="relative z-10">
-                <Zap size={26} className="mb-2 text-white/90" />
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-2">
+                  <Zap size={20} className="text-white" />
+                </div>
                 <p className="font-bold text-sm sm:text-base leading-tight">Devis Express</p>
                 <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">3 clics, c'est chiffré</p>
               </div>
-              <FileText size={40} className="absolute top-2 right-2 text-white/10 pointer-events-none" />
+              <FileText size={48} className="absolute -bottom-1 -right-1 text-white/[0.07] pointer-events-none" />
             </button>
           </div>
         </section>
@@ -1223,10 +1227,13 @@ export default function Dashboard({
             {/* À encaisser */}
             <button
               onClick={() => setEncaisserModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <Wallet size={15} className="text-orange-500" />
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                  <Wallet size={14} style={{ color: couleur }} />
+                </div>
                 <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
               </div>
               <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -1247,11 +1254,14 @@ export default function Dashboard({
             {/* Ce mois — CA encaissé (factures payées TTC ce mois) */}
             <button
               onClick={() => setCeMoisModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              style={{ borderLeftWidth: '3px', borderLeftColor: stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? '#10b981' : '#ef4444') : '#10b981' }}
               title="Factures payées ce mois (TTC)"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={15} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15') : 'bg-emerald-500/15'}`}>
+                  <TrendingUp size={14} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
+                </div>
                 <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
               </div>
               <div className="flex items-baseline gap-1.5">
@@ -1259,7 +1269,7 @@ export default function Dashboard({
                   {formatMoney(stats.caCeMois, modeDiscret)}
                 </p>
                 {stats.caCeMoisTendance != null && (
-                  <span className={`text-[11px] font-bold ${stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/15 dark:text-emerald-400' : 'text-red-600 bg-red-50 dark:bg-red-500/15 dark:text-red-400'}`}>
                     {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
                   </span>
                 )}
@@ -1354,30 +1364,33 @@ export default function Dashboard({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {sorted.map(item => (
-                    <div
-                      key={item.id}
-                      className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
-                    >
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorClasses[item.color]}`} title={colorTooltips[item.color]} aria-label={colorTooltips[item.color]} role="status" />
-                      {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
-                      <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
-                        <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
-                          {item.title}
-                        </p>
-                        <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
-                          {item.subtitle}
-                        </p>
-                      </div>
-                      <button
-                        onClick={item.action}
-                        className="ml-auto px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg text-xs font-semibold text-white transition-colors active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                        style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
+                  {sorted.map(item => {
+                    const borderColor = item.color === 'red' ? '#ef4444' : item.color === 'amber' ? '#f59e0b' : '#3b82f6';
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                        style={{ borderLeft: `3px solid ${borderColor}` }}
                       >
-                        {item.actionLabel}
-                      </button>
-                    </div>
-                  ))}
+                        {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
+                        <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
+                          <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
+                            {item.title}
+                          </p>
+                          <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
+                            {item.subtitle}
+                          </p>
+                        </div>
+                        <button
+                          onClick={item.action}
+                          className="ml-auto px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg text-xs font-semibold text-white transition-all active:scale-95 hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                          style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
+                        >
+                          {item.actionLabel}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -1396,13 +1409,18 @@ export default function Dashboard({
               <button
                 key={s.label}
                 onClick={s.action}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                className={`group flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-medium transition-all border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:shadow-sm ${
                   isDark
                     ? 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 focus-visible:ring-orange-400'
                     : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 focus-visible:ring-orange-500'
                 }`}
               >
-                <s.icon size={18} style={{ color: couleur }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
+                  style={{ background: `${couleur}12` }}
+                >
+                  <s.icon size={16} style={{ color: couleur }} />
+                </div>
                 <span className="leading-none">{s.label}</span>
               </button>
             ))}
@@ -1451,14 +1469,19 @@ export default function Dashboard({
                         {ch.avancement || 0}%
                       </span>
                     </div>
-                    {ch.avancement > 0 && (
-                      <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${Math.min(100, ch.avancement)}%`, backgroundColor: couleur }}
-                        />
-                      </div>
-                    )}
+                    <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.max(ch.avancement > 0 ? 4 : 0, Math.min(100, ch.avancement))}%`,
+                          background: ch.avancement >= 80
+                            ? 'linear-gradient(90deg, #10b981, #34d399)'
+                            : ch.avancement >= 40
+                              ? `linear-gradient(90deg, ${couleur}, ${couleur}cc)`
+                              : `linear-gradient(90deg, ${couleur}99, ${couleur}66)`,
+                        }}
+                      />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -1647,7 +1670,10 @@ export default function Dashboard({
 
         {/* Vue d'ensemble header with Personnaliser button */}
         <section className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
+          <div className="flex items-center gap-2">
+            <LayoutDashboard size={15} style={{ color: couleur }} />
+            <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Tableau de bord</h2>
+          </div>
           <button
             onClick={() => setShowWidgetConfig(!showWidgetConfig)}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
