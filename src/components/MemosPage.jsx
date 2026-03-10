@@ -813,35 +813,35 @@ function StatsBar({ memos, isDark, couleur }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
       {/* Cette semaine */}
-      <div className={`${isDark ? 'bg-orange-900/30' : 'bg-orange-50'} rounded-lg px-3 py-2 text-center`}>
-        <div className="text-lg font-bold text-orange-600">{stats.completedThisWeek}</div>
-        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cette semaine</div>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}>
+        <div className="text-lg font-bold" style={{ color: couleur }}>{stats.completedThisWeek}</div>
+        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Cette semaine</div>
       </div>
 
       {/* #2: Complétion — color + subline + progress bar */}
-      <div className={`${isDark ? 'bg-slate-800' : 'bg-slate-50'} rounded-lg px-3 py-2 text-center`}>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: completionColor }}>
         <div className="text-lg font-bold" style={{ color: completionColor }}>{stats.completionRate}%</div>
-        <div className={`h-1 rounded-full mt-1 mb-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-          <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, backgroundColor: completionColor }} />
+        <div className={`h-1 rounded-full mt-1 mb-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${stats.completionRate}%`, background: `linear-gradient(90deg, ${completionColor}, ${completionColor}cc)` }} />
         </div>
-        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {stats.completedThisMonth} / {stats.totalThisMonth || stats.total} ce mois
         </div>
       </div>
 
       {/* #1: En retard — conditional color */}
-      <div className={`${overdueNeutral ? (isDark ? 'bg-slate-800' : 'bg-slate-50') : (isDark ? 'bg-red-900/30' : 'bg-red-50')} rounded-lg px-3 py-2 text-center`}>
-        <div className={`text-lg font-bold ${overdueNeutral ? (isDark ? 'text-slate-500' : 'text-slate-400') : 'text-red-600'}`}>{stats.overdueCount}</div>
-        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>En retard</div>
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: overdueNeutral ? (isDark ? '#475569' : '#cbd5e1') : '#ef4444' }}>
+        <div className={`text-lg font-bold ${overdueNeutral ? (isDark ? 'text-slate-500' : 'text-slate-400') : 'text-red-500'}`}>{stats.overdueCount}</div>
+        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>En retard</div>
       </div>
 
       {/* #3: Ce mois — Lucide CheckCircle2 icon */}
-      <div className={`${isDark ? 'bg-blue-900/30' : 'bg-blue-50'} rounded-lg px-3 py-2 text-center`}>
-        <div className="text-lg font-bold text-blue-600 flex items-center justify-center gap-1">
-          <CheckCircle2 size={16} className="text-green-500" />
+      <div className={`rounded-xl border px-3 py-2.5 text-center transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#3b82f6' }}>
+        <div className="text-lg font-bold text-blue-500 flex items-center justify-center gap-1">
+          <CheckCircle2 size={14} className="text-emerald-500" />
           {stats.completedThisMonth}
         </div>
-        <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</div>
+        <div className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétées ce mois</div>
       </div>
     </div>
   );

@@ -1425,7 +1425,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Équipe</h1>
+            <p className={`text-sm ${textMuted} hidden sm:block`}>Gestion de votre équipe et sous-traitants</p>
+          </div>
           {/* Offline indicator — only shown when disconnected */}
           {!isOnline && (
             <span
@@ -1698,7 +1701,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/40">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
                 Équipe active maintenant
               </h3>
               <span className={`text-xs px-2 py-1 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -2197,13 +2202,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {isSousTraitants ? (
                           <>
                             <div className="grid grid-cols-2 gap-2">
-                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-purple-900/20' : 'bg-purple-50'}`}>
+                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-purple-900/20 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#8b5cf6' }}>
                                 <p className={`text-xs font-medium ${textMuted} mb-1`}>Tarif</p>
                                 <p className="text-xl font-bold text-purple-500">
                                   {modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')}€` : `${e.tauxHoraire || '?'}€/h`}
                                 </p>
                               </div>
-                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#64748b' }}>
                                 <p className={`text-xs font-medium ${textMuted} mb-1`}>SIRET</p>
                                 <p className={`text-sm font-medium ${e.siret ? textPrimary : textMuted}`}>
                                   {e.siret ? (e.siret.length > 10 ? '...' + e.siret.slice(-5) : e.siret) : 'Non renseigné'}
@@ -2229,13 +2234,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         ) : (
                           <>
                             <div className="grid grid-cols-3 gap-2">
-                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#10b981' }}>
                                 <p className={`text-xs font-medium ${textMuted} mb-1`}>Facturé</p>
                                 <p className={`text-xl font-bold ${textPrimary}`}>
                                   {modeDiscret ? '**' : e.tauxHoraire || 45}<span className="text-sm font-normal">€</span>
                                 </p>
                               </div>
-                              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                              <div className={`p-3 rounded-xl text-center border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-white border-slate-200'}`} style={{ borderLeftWidth: '3px', borderLeftColor: '#ef4444' }}>
                                 <p className={`text-xs font-medium ${textMuted} mb-1`}>Coût</p>
                                 <p className={`text-xl font-bold ${textPrimary}`}>
                                   {modeDiscret ? '**' : e.coutHoraireCharge || 28}<span className="text-sm font-normal">€</span>
@@ -2247,7 +2252,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 const kpiColor = monthHours > 0 ? couleur : dayOfMonth <= 5 ? '#94a3b8' : '#f59e0b';
                                 const kpiBg = monthHours > 0 ? `${couleur}15` : dayOfMonth <= 5 ? 'rgba(148,163,184,0.1)' : 'rgba(245,158,11,0.1)';
                                 return (
-                                  <div className="p-3 rounded-xl text-center" style={{ background: kpiBg }}>
+                                  <div className={`p-3 rounded-xl text-center border ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{ background: kpiBg, borderLeftWidth: '3px', borderLeftColor: kpiColor }}>
                                     <p className={`text-xs font-medium ${textMuted} mb-1`}>Ce mois</p>
                                     <p className="text-xl font-bold" style={{ color: kpiColor }}>
                                       {monthHours.toFixed(0)}<span className="text-sm font-normal">h</span>
@@ -2259,8 +2264,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                             {/* Margin indicator */}
                             {!modeDiscret && (
-                              <div className={`mt-3 flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50/50'}`}>
-                                <span className={`text-xs ${textMuted}`}>Marge/heure:</span>
+                              <div className={`mt-3 flex items-center justify-between p-2.5 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-slate-50/80 border-slate-100'}`}>
+                                <span className={`text-xs flex items-center gap-1.5 ${textMuted}`}>
+                                  <TrendingUp size={12} />
+                                  Marge/heure
+                                </span>
                                 <span className={`text-sm font-bold ${margin === 0 ? textMuted : margin > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                                   {margin > 0 ? '+' : ''}{margin}€
                                 </span>
@@ -2272,7 +2280,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Mobile quick pointage: one-tap start on active chantiers — #6: filter test names */}
                         {!isSousTraitants && chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
                           <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${textMuted}`}>Pointage rapide</p>
+                            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 flex items-center gap-1.5 ${textMuted}`}>
+                              <Timer size={10} className="opacity-60" />
+                              Pointage rapide
+                            </p>
                             <div className="flex flex-wrap gap-1.5">
                               {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 4).map(ch => {
                                 const isRunningHere = chrono.running && chrono.chantierId === ch.id && chrono.employeId === e.id;

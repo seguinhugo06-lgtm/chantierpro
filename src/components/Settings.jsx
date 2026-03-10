@@ -611,17 +611,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
       {/* Level 1: Group pills (hidden on mobile) */}
       <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5">
           {visibleTabGroups.map(group => {
             const activeInGroup = group.tabs.some(t => t.key === tab);
             return (
               <button
                 key={group.id}
                 onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
-                className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] text-sm transition-colors ${activeInGroup ? `${isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200'} -mb-[1px] font-semibold` : `${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}`}
+                className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
               >
                 {group.label}
+                {activeInGroup && (
+                  <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ backgroundColor: entreprise.couleur }} />
+                )}
               </button>
             );
           })}
@@ -631,13 +634,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
           if (!activeGroup || activeGroup.tabs.length <= 1) return null;
           return (
-            <div className={`flex gap-1 px-2 py-1.5 ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`}>
               {activeGroup.tabs.map(t => (
                 <button
                   key={t.key}
                   data-tab={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === t.key ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
                   style={tab === t.key ? { backgroundColor: entreprise.couleur } : {}}
                 >
                   {t.label}
