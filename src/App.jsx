@@ -1254,24 +1254,24 @@ export default function App() {
       {/* Sidebar - Optimized mobile layout */}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
         {/* Header with close button on mobile */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0">
           <button
             onClick={() => { setPage('profil'); setSidebarOpen(false); }}
-            className="flex items-center gap-3 flex-1 min-w-0 rounded-lg -m-1 p-1 transition-colors hover:bg-slate-800"
+            className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
             title="Mon profil"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: couleur}}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg transition-transform group-hover:scale-105" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)`}}>
               <Building2 size={18} className="text-white" />
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-white font-semibold text-sm truncate" title={entreprise.nom || 'BatiGesti'}>{safeStr(entreprise.nom, 'BatiGesti')}</p>
-              <p className="text-slate-500 text-xs truncate">{safeStr(user?.email)}</p>
+              <p className="text-slate-500 text-[11px] truncate">{safeStr(user?.email)}</p>
             </div>
           </button>
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="lg:hidden p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -1286,16 +1286,16 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
-                    style={{ background: n.badgeColor || '#ef4444' }}
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1306,8 +1306,8 @@ export default function App() {
             {/* Devis IA — sub-item right under Devis & Factures */}
             <button
               onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 pl-7 pr-3 py-2 rounded-xl text-xs font-medium transition-colors ${page === 'ia-devis' ? 'text-white' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
-              style={page === 'ia-devis' ? {background: couleur} : {}}
+              className={`w-full flex items-center gap-3 pl-7 pr-3 py-2 rounded-xl text-xs font-medium transition-all ${page === 'ia-devis' ? 'text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+              style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
             >
               <Sparkles size={14} aria-hidden="true" />
               <span className="flex-1 text-left">Devis IA</span>
@@ -1317,16 +1317,16 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
-                    style={{ background: n.badgeColor || '#ef4444' }}
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1341,21 +1341,21 @@ export default function App() {
 
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Organisation</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Organisation</p>
             {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
-                    style={{ background: n.badgeColor || '#ef4444' }}
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1367,21 +1367,21 @@ export default function App() {
 
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
-            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Gestion</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Gestion</p>
             {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
                 <n.icon size={18} aria-hidden="true" />
                 <span className="flex-1 text-left truncate">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
-                    style={{ background: n.badgeColor || '#ef4444' }}
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
                     {n.badge > 99 ? '99+' : n.badge}
@@ -1396,13 +1396,13 @@ export default function App() {
 
           {/* Profil section */}
           <nav className="space-y-0.5" aria-label="Profil">
-            <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Profil</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Profil</p>
             {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
               >
                 <n.icon size={18} aria-hidden="true" />
@@ -1413,34 +1413,32 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1.5">
+        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1">
           <div className="flex gap-1">
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm transition-colors ${modeDiscret ? 'bg-amber-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
               title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
             >
-              {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
+              {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
               <span className="hidden sm:inline text-xs">Discret</span>
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 text-sm transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-slate-300 text-sm transition-all"
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {isDark ? <Sun size={15} /> : <Moon size={15} />}
               <span className="hidden sm:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
             </button>
           </div>
-          <div className="border-t border-slate-700 pt-1.5 mt-1">
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:bg-red-900/50 hover:text-red-400 text-xs transition-colors"
-            >
-              <LogOut size={14} />
-              <span>Déconnexion</span>
-            </button>
-          </div>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-600 hover:bg-red-500/10 hover:text-red-400 text-xs transition-all"
+          >
+            <LogOut size={13} />
+            <span>Déconnexion</span>
+          </button>
         </div>
       </aside>
 
