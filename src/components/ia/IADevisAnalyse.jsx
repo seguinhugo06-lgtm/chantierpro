@@ -643,7 +643,7 @@ export default function IADevisAnalyse({
                 <button
                   onClick={() => { if (s.n < step && step !== 2 && step !== 5) setStep(s.n); }}
                   disabled={s.n >= step || step === 2 || step === 5}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all ${
+                  className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold transition-all ${
                     step >= s.n ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-500'
                   } ${s.n < step && step !== 2 && step !== 5 ? 'cursor-pointer hover:scale-110' : ''}`}
                   style={step >= s.n ? { backgroundColor: couleur } : {}}
@@ -651,7 +651,7 @@ export default function IADevisAnalyse({
                 >
                   {step > s.n ? '✓' : s.n}
                 </button>
-                <span className={`text-[9px] font-medium whitespace-nowrap hidden sm:block ${
+                <span className={`text-[8px] sm:text-[9px] font-medium whitespace-nowrap ${
                   step >= s.n ? '' : isDark ? 'text-slate-500' : 'text-slate-400'
                 }`} style={step >= s.n ? { color: couleur } : {}}>
                   {s.label}

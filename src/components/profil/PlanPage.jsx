@@ -196,10 +196,10 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
             <span className={`text-xs font-medium ${billing === 'monthly' ? textPrimary : textMuted}`}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative w-11 h-6 rounded-full transition-colors ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+              className={`relative w-12 h-7 rounded-full transition-colors ${billing === 'yearly' ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
               style={billing === 'yearly' ? { backgroundColor: couleur } : {}}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+              <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-[26px]' : 'translate-x-1'}`} />
             </button>
             <span className={`text-xs font-medium ${billing === 'yearly' ? textPrimary : textMuted}`}>
               Annuel
@@ -224,7 +224,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
               return (
                 <div
                   key={pid}
-                  className={`rounded-xl border-2 p-4 sm:p-5 relative transition-all ${
+                  className={`rounded-xl border-2 p-3 sm:p-5 relative transition-all ${
                     isCurrent
                       ? 'shadow-md'
                       : 'hover:shadow-sm'

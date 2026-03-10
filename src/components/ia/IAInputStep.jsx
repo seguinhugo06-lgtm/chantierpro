@@ -105,7 +105,7 @@ export default function IAInputStep({
             <>
               <button
                 onClick={toggleListening}
-                className={`w-24 h-24 rounded-full flex items-center justify-center mb-3 transition-all shadow-lg ${
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center mb-3 transition-all shadow-lg ${
                   isListening ? 'animate-pulse' : 'hover:scale-105'
                 }`}
                 style={{
@@ -113,7 +113,7 @@ export default function IAInputStep({
                   boxShadow: isListening ? '0 0 0 10px rgba(239,68,68,0.15), 0 0 0 20px rgba(239,68,68,0.08)' : `0 8px 25px ${couleur}40`,
                 }}
               >
-                {isListening ? <MicOff size={36} className="text-white" /> : <Mic size={36} className="text-white" />}
+                {isListening ? <MicOff size={30} className="text-white sm:w-9 sm:h-9" /> : <Mic size={30} className="text-white sm:w-9 sm:h-9" />}
               </button>
               <p className={`text-sm mb-4 ${isListening ? 'text-red-500 font-medium' : textMuted}`}>
                 {isListening ? 'En écoute... appuyez pour arrêter' : 'Appuyez pour dicter'}
@@ -197,8 +197,8 @@ export default function IAInputStep({
             value={manualText}
             onChange={e => setManualText(e.target.value)}
             placeholder="Décrivez les travaux en détail...&#10;&#10;Ex : Rénovation complète salle de bain 8m². Remplacement baignoire par douche italienne, pose carrelage sol 60×60 et faïence murale, installation meuble vasque double, WC suspendu, sèche-serviettes électrique..."
-            rows={6}
-            className={`w-full rounded-xl border p-4 text-sm resize-none ${inputCls} focus:outline-none focus:ring-2`}
+            rows={4}
+            className={`w-full rounded-xl border p-3 sm:p-4 text-sm resize-none ${inputCls} focus:outline-none focus:ring-2`}
             style={{ '--tw-ring-color': couleur }}
             autoFocus
           />

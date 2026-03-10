@@ -265,7 +265,7 @@ export default function ProfilePage({
     <div className={`min-h-screen pb-24 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
 
       {/* ═══════════════════ SECTION 1: HERO ═══════════════════ */}
-      <section className="relative overflow-hidden px-4 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
+      <section className="relative overflow-hidden px-3 sm:px-6 pt-6 pb-8 sm:pt-10 sm:pb-10">
         {/* Gradient background */}
         <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${hexToRgba(couleur, 0.06)}, transparent 70%)` }} />
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl" style={{ background: hexToRgba(couleur, 0.08) }} />
@@ -335,7 +335,7 @@ export default function ProfilePage({
 
           {/* Company info tags */}
           <div className={`rounded-xl border p-4 sm:p-5 animate-fade-slide-up ${cardBg}`} style={{ animationDelay: '100ms' }}>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <div className="flex flex-wrap gap-x-3 sm:gap-x-5 gap-y-2 text-sm">
               {entreprise.siret && (
                 <span className={`flex items-center gap-1.5 ${textMuted}`}>
                   <Hash size={13} /> {entreprise.siret}

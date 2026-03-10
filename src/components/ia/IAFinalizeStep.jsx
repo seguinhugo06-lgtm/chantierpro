@@ -176,7 +176,7 @@ export default function IAFinalizeStep({
           TVA par défaut
           <span className="relative group ml-1">
             <Info size={14} className={`cursor-help ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            <span className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-xl text-xs leading-relaxed shadow-xl border z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
+            <span className={`absolute bottom-full left-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 w-56 sm:w-64 p-3 rounded-xl text-xs leading-relaxed shadow-xl border z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity ${isDark ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}>
               <strong className={isDark ? 'text-white' : 'text-slate-900'}>20%</strong> — Standard (constructions neuves)<br/>
               <strong className={isDark ? 'text-white' : 'text-slate-900'}>10%</strong> — Rénovation (logement &gt; 2 ans)<br/>
               <strong className={isDark ? 'text-white' : 'text-slate-900'}>5,5%</strong> — Amélioration énergétique<br/>
@@ -271,12 +271,12 @@ export default function IAFinalizeStep({
               <Percent size={14} />
               Remise globale
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               {[0, 5, 10, 15, 20].map(r => (
                 <button
                   key={r}
                   onClick={() => setRemise(r)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all min-h-[40px] ${
                     remise === r
                       ? 'text-white'
                       : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
