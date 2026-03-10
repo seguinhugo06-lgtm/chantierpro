@@ -199,6 +199,7 @@ export default function IAHistoryList({
           <option value="recent">Récentes</option>
           <option value="oldest">Anciennes</option>
           <option value="montant_desc">Montant ↓</option>
+          <option value="montant_asc">Montant ↑</option>
         </select>
       </div>
 
@@ -210,7 +211,8 @@ export default function IAHistoryList({
         {filteredAnalyses.length === 0 && (
           <div className={`text-center py-8 ${textMuted}`}>
             <Search size={24} className="mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Aucune analyse trouvée</p>
+            <p className="text-sm">{searchTerm || statusFilter ? 'Aucune analyse correspondant aux filtres' : 'Aucune analyse pour le moment'}</p>
+            {!searchTerm && !statusFilter && <p className="text-xs mt-1 opacity-60">Lancez votre première analyse IA ci-dessus</p>}
           </div>
         )}
       </div>

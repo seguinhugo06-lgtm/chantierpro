@@ -1,16 +1,26 @@
-import React from 'react';
-import { Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, X } from 'lucide-react';
 
 /**
- * IAAnalysisStep — Step 2: Loading animation with progressive labels
+ * IAAnalysisStep — Step 2: Loading animation with progressive labels + cancel
  *
  * @param {string} progressLabel - Current progress message
+ * @param {function} [onCancel] - Callback to cancel the analysis
  * @param {boolean} isDark
  * @param {string} couleur
  */
-export default function IAAnalysisStep({ progressLabel = 'Analyse en cours...', isDark = false, couleur = '#f97316' }) {
+export default function IAAnalysisStep({ progressLabel = 'Analyse en cours...', onCancel, isDark = false, couleur = '#f97316' }) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+
+  // Elapsed timer
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fmtTime = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
 
   return (
     <div className="flex flex-col items-center justify-center py-16">
@@ -37,8 +47,8 @@ export default function IAAnalysisStep({ progressLabel = 'Analyse en cours...', 
       </div>
 
       {/* Label */}
-      <p className={`text-sm font-medium mb-2 ${textPrimary}`}>{progressLabel}</p>
-      <p className={`text-xs ${textMuted}`}>Quelques secondes...</p>
+      <p className={`text-sm font-medium mb-1 ${textPrimary}`}>{progressLabel}</p>
+      <p className={`text-xs ${textMuted}`}>{fmtTime}</p>
 
       {/* Progress dots */}
       <div className="flex items-center gap-1.5 mt-4">
@@ -54,6 +64,19 @@ export default function IAAnalysisStep({ progressLabel = 'Analyse en cours...', 
           />
         ))}
       </div>
+
+      {/* Cancel button */}
+      {onCancel && (
+        <button
+          onClick={onCancel}
+          className={`mt-6 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
+            isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+          }`}
+        >
+          <X size={14} />
+          Annuler
+        </button>
+      )}
     </div>
   );
 }

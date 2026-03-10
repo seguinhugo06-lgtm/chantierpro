@@ -698,6 +698,7 @@ export default function IADevisAnalyse({
       {step === 2 && (
         <IAAnalysisStep
           progressLabel={progressLabel}
+          onCancel={() => { setIsAnalysing(false); setStep(1); setError('Analyse annulée.'); }}
           isDark={isDark}
           couleur={couleur}
         />

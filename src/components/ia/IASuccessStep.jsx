@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, FileText, Sparkles, ArrowRight } from 'lucide-react';
+import { CheckCircle, FileText, Sparkles, ArrowRight, Copy, Check } from 'lucide-react';
 
 const fmtCurrency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -22,10 +22,18 @@ export default function IASuccessStep({
 
   // Animate in
   const [show, setShow] = useState(false);
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(devisNumero).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className={`flex flex-col items-center text-center transition-all duration-500 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -51,6 +59,13 @@ export default function IASuccessStep({
         <div className="flex items-center justify-center gap-2 mb-4">
           <Sparkles size={16} style={{ color: couleur }} />
           <span className="text-sm font-bold" style={{ color: couleur }}>{devisNumero}</span>
+          <button
+            onClick={handleCopy}
+            className={`p-1 rounded-lg transition-colors ${copied ? 'text-green-500' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+            title="Copier le numéro"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </button>
         </div>
 
         <div className="space-y-3">

@@ -56,9 +56,14 @@ export default function IAInputStep({
       ? manualText
       : photoDescription;
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
     if (!f || !f.type.startsWith('image/')) return;
+    if (f.size > MAX_FILE_SIZE) {
+      alert('Image trop lourde (max 10 Mo). Veuillez réduire la taille.');
+      return;
+    }
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
