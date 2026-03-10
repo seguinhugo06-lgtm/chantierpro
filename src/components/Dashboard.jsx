@@ -1929,29 +1929,33 @@ export default function Dashboard({
               const cardClass = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
               const titleClass = isDark ? 'text-white' : 'text-slate-900';
               const mutedClass = isDark ? 'text-slate-400' : 'text-slate-500';
+              const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
               return (
                 <div
-                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-shadow`}
+                  className={`${cardClass} rounded-2xl border p-5 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-0.5`}
                   onClick={() => setPage('settings')}
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${score >= 80 ? 'bg-emerald-100 text-emerald-600' : score >= 50 ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'} ${isDark ? 'bg-opacity-20' : ''}`}>
-                      <ShieldCheck size={20} />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${scoreColor}15` }}>
+                      <ShieldCheck size={18} style={{ color: scoreColor }} />
                     </div>
-                    <p className={`font-semibold ${titleClass}`}>Conformité</p>
+                    <div>
+                      <p className={`font-semibold text-sm ${titleClass}`}>Conformité</p>
+                      <p className={`text-[11px] ${mutedClass}`}>Score réglementaire</p>
+                    </div>
                   </div>
                   <div className="flex items-end gap-3">
-                    <p className={`text-3xl font-bold ${score >= 80 ? 'text-emerald-500' : score >= 50 ? 'text-amber-500' : 'text-red-500'}`}>{score}%</p>
-                    <div className="flex-1">
-                      <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                    <p className="text-3xl font-bold" style={{ color: scoreColor }}>{score}%</p>
+                    <div className="flex-1 pb-1.5">
+                      <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                         <div
-                          className={`h-2 rounded-full transition-all ${score >= 80 ? 'bg-emerald-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
-                          style={{ width: `${Math.min(100, score)}%` }}
+                          className="h-2 rounded-full transition-all"
+                          style={{ width: `${Math.min(100, score)}%`, background: `linear-gradient(90deg, ${scoreColor}, ${scoreColor}cc)` }}
                         />
                       </div>
                     </div>
                   </div>
-                  <p className={`text-xs ${mutedClass} mt-2`}>Score réglementaire · Voir détails →</p>
+                  <p className={`text-xs ${mutedClass} mt-2 flex items-center gap-1`}>Voir détails <ChevronRight size={12} /></p>
                   {/* A7: Insurance expiration alerts — contextual color */}
                   {(() => {
                     const alerts = [];
