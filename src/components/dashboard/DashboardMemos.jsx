@@ -24,11 +24,13 @@ export default function DashboardMemos({ memos = [], toggleMemo, setPage, couleu
   if (todayMemos.length === 0 && memos.filter(m => !m.is_done).length === 0) return null;
 
   return (
-    <div className={`rounded-xl border ${tc.card} p-4`}>
+    <div className={`rounded-2xl border ${tc.card} p-4`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <ClipboardList size={16} style={{ color: couleur }} />
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
+            <ClipboardList size={14} style={{ color: couleur }} />
+          </div>
           <h2 className={`text-sm font-semibold ${tc.text}`}>Tâches du jour</h2>
           {overdueCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs text-red-500 font-medium">
@@ -69,9 +71,9 @@ export default function DashboardMemos({ memos = [], toggleMemo, setPage, couleu
           })}
         </div>
       ) : (
-        <div className={`text-center py-3 ${tc.muted}`}>
-          <span className="text-lg">🎉</span>
-          <p className="text-xs mt-1">Rien de prévu aujourd'hui</p>
+        <div className={`text-center py-4 ${tc.muted}`}>
+          <CheckCircle2 size={22} className="mx-auto mb-1.5 text-emerald-500 opacity-60" />
+          <p className="text-xs">Rien de prévu aujourd'hui</p>
         </div>
       )}
     </div>

@@ -1297,7 +1297,7 @@ export default function Dashboard({
               id: `devis-${d.id}`,
               priority: days > 14 ? 1 : 2,
               color: days > 14 ? 'red' : 'amber',
-              icon: '📄',
+              iconComponent: FileText,
               title: `${clientNom} · ${displayNum}`,
               subtitle: `${formatMoney(d.total_ttc || d.total_ht || 0, modeDiscret)} · Sans réponse depuis ${days}j`,
               action: () => handleOpenRelance(d),
@@ -1307,12 +1307,12 @@ export default function Dashboard({
 
           // Suggestions IA
           suggestions.slice(0, 3).forEach(s => {
-            const icon = s.type === 'payment_late' ? '🧾' : s.type === 'low_margin' ? '📊' : '💡';
+            const IconComp = s.type === 'payment_late' ? Receipt : s.type === 'low_margin' ? BarChart3 : Lightbulb;
             actions.push({
               id: `sug-${s.id}`,
               priority: s.priority === 'high' ? 1 : 2,
               color: s.priority === 'high' ? 'red' : 'amber',
-              icon,
+              iconComponent: IconComp,
               title: s.title,
               subtitle: s.description?.slice(0, 60) || '',
               action: () => handleSuggestionAction(s),
@@ -1327,7 +1327,7 @@ export default function Dashboard({
               id: `memo-${m.id}`,
               priority: isOverdue ? 2 : 3,
               color: isOverdue ? 'amber' : 'blue',
-              icon: '📝',
+              iconComponent: ClipboardList,
               title: m.text,
               subtitle: isOverdue ? 'En retard' : 'Aujourd\'hui',
               action: () => setPage?.('memos'),
@@ -1372,7 +1372,11 @@ export default function Dashboard({
                         className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
                         style={{ borderLeft: `3px solid ${borderColor}` }}
                       >
-                        {item.icon && <span className="text-sm flex-shrink-0" aria-hidden="true">{item.icon}</span>}
+                        {item.iconComponent && (
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${borderColor}15` }}>
+                            <item.iconComponent size={14} style={{ color: borderColor }} />
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
                           <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
                             {item.title}

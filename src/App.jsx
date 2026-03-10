@@ -1715,7 +1715,7 @@ export default function App() {
         />
 
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
-        <nav className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'} pb-[env(safe-area-inset-bottom)]`}>
+        <nav className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700/80' : 'bg-white/95 border-slate-200'} pb-[env(safe-area-inset-bottom)]`}>
           <div className="flex items-center justify-around h-14">
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
@@ -1733,29 +1733,35 @@ export default function App() {
                     setSelectedChantier(null);
                     setSelectedDevis(null);
                   }}
-                  className={`flex flex-col items-center justify-center flex-1 h-full transition-colors relative ${
+                  className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
                     isActive
                       ? ''
-                      : isDark ? 'text-slate-500' : 'text-slate-400'
+                      : isDark ? 'text-slate-500 active:text-slate-300' : 'text-slate-400 active:text-slate-600'
                   }`}
                   style={isActive ? { color: couleur } : {}}
                 >
-                  <div className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${isActive ? 'bg-current/10' : ''}`}>
-                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
+                  {isActive && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
+                  )}
+                  <div
+                    className={`flex items-center justify-center w-12 h-7 rounded-full transition-all ${isActive ? '' : ''}`}
+                    style={isActive ? { backgroundColor: `${couleur}15` } : {}}
+                  >
+                    <item.icon size={21} strokeWidth={isActive ? 2.5 : 1.5} />
                   </div>
-                  <span className={`text-[10px] ${isActive ? 'font-semibold' : 'font-normal'}`}>{item.label}</span>
+                  <span className={`text-[10px] mt-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
                 </button>
               );
             })}
             {/* 5th item: Plus / Menu — opens sidebar for all pages */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${isDark ? 'text-slate-500 active:text-slate-300' : 'text-slate-400 active:text-slate-600'}`}
             >
               <div className="flex items-center justify-center w-12 h-7 rounded-full">
-                <Menu size={22} strokeWidth={1.5} />
+                <Menu size={21} strokeWidth={1.5} />
               </div>
-              <span className="text-[10px] font-normal">Plus</span>
+              <span className="text-[10px] mt-0.5 font-medium">Plus</span>
             </button>
           </div>
         </nav>
