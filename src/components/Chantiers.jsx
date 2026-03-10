@@ -2436,7 +2436,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Chantiers</h1>
+            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Suivi de vos projets</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* List/Map toggle */}

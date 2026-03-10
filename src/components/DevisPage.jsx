@@ -3721,7 +3721,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
+            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Gérez vos documents commerciaux</p>
+          </div>
         </div>
 
         {/* Split-button: + Nouveau devis — hidden for view-only roles */}

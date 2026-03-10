@@ -1563,7 +1563,10 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({displayClients.length})</h1>
+          <div>
+            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients</h1>
+            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {onImportClients && (
