@@ -53,15 +53,23 @@ function getLinePU(l) {
  * @param {Object} client - The client object
  * @param {Object} [chantier] - The chantier object (optional)
  * @param {Object} [entreprise] - Entreprise config (defaults to localStorage)
+ * @param {Object} [options] - Additional options
+ * @param {Object} [options.sourceFacture] - Source facture for avoir documents
+ * @param {Object} [options.avoirMotifs] - Mapping of avoir motif keys to labels
  * @returns {string} Complete HTML document string
  */
-export function buildDocumentHTML(doc, client, chantier, entreprise) {
+export function buildDocumentHTML(doc, client, chantier, entreprise, options = {}) {
   if (!entreprise) {
     entreprise = getEntrepriseFromStorage();
   }
 
   const couleur = entreprise?.couleur || '#f97316';
   const isFacture = doc.type === 'facture';
+  const isAvoir = doc.facture_type === 'avoir';
+  const avoirColor = '#dc2626';
+  const docColor = isAvoir ? avoirColor : couleur;
+  const sourceFacture = options.sourceFacture || null;
+  const avoirMotifs = options.avoirMotifs || {};
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
   const dateValidite = new Date(doc.date);
   dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
@@ -100,32 +108,34 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>${isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
+  <title>${isAvoir ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
-    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${couleur}; }
+    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${docColor}; }
     .logo-section { max-width: 55%; }
-    .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
+    .logo { font-size: 16pt; font-weight: bold; color: ${docColor}; margin-bottom: 8px; }
     .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
     .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
     .doc-type { text-align: right; }
-    .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
+    .doc-type h1 { font-size: 22pt; color: ${docColor}; margin-bottom: 8px; letter-spacing: 1px; }
     .doc-info { font-size: 9pt; color: #64748b; }
     .doc-info strong { color: #1e293b; }
     .client-section { display: flex; gap: 20px; margin-bottom: 20px; }
-    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${couleur}; }
+    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${docColor}; }
     .info-block h3 { font-size: 8pt; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .info-block .name { font-weight: 600; font-size: 11pt; margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 9pt; }
-    thead { background: ${couleur}; color: white; }
+    thead { background: ${docColor}; color: white; }
+    .avoir-ref { background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 9pt; color: #991b1b; }
+    .avoir-ref strong { color: #7f1d1d; }
     th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; }
     th:not(:first-child) { text-align: center; }
     th:last-child { text-align: right; }
     .totals { margin-left: auto; width: 260px; margin-top: 15px; }
     .totals .row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 10pt; }
     .totals .row.sub { background: #f8fafc; border-radius: 4px; margin-bottom: 2px; }
-    .totals .total { background: ${couleur}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
+    .totals .total { background: ${docColor}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
     .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 7.5pt; line-height: 1.6; }
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .conditions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -163,7 +173,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       </div>
     </div>
     <div class="doc-type">
-      <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <h1>${isAvoir ? 'AVOIR' : isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
@@ -192,6 +202,14 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
     </div>
     ` : ''}
   </div>
+
+  ${isAvoir ? `
+  <!-- RÉFÉRENCE AVOIR -->
+  <div class="avoir-ref">
+    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFacture?.numero || 'N/A'} du ${sourceFacture ? new Date(sourceFacture.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
+    ${doc.avoir_motif ? `<br>Motif : ${avoirMotifs[doc.avoir_motif] || doc.avoir_motif}${doc.avoir_motif_detail ? ` — ${doc.avoir_motif_detail}` : ''}` : ''}
+  </div>
+  ` : ''}
 
   <!-- TABLEAU PRESTATIONS -->
   <table>
@@ -230,7 +248,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   <!-- CONDITIONS -->
-  <div class="conditions">
+  ${!isAvoir ? `<div class="conditions">
     <h4>CONDITIONS GÉNÉRALES</h4>
     <div class="conditions-grid">
       <div>
@@ -249,9 +267,9 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
         Indemnité forfaitaire de recouvrement: 40 €
       </div>
     </div>
-  </div>
+  </div>` : ''}
 
-  ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
+  ${!isFacture && !isAvoir && (entreprise?.mentionGaranties !== false) ? `
   <!-- GARANTIES LÉGALES -->
   <div class="garanties">
     <h4>GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
@@ -261,7 +279,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   </div>
   ` : ''}
 
-  ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
+  ${!isFacture && !isAvoir && (entreprise?.mentionRetractation !== false) ? `
   <!-- DROIT DE RÉTRACTATION -->
   <div class="retractation">
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
@@ -271,7 +289,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   </div>
   ` : ''}
 
-  ${entreprise?.cgv ? `
+  ${!isAvoir && entreprise?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
     <h4>CONDITIONS PARTICULIÈRES</h4>
@@ -279,7 +297,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
   </div>
   ` : ''}
 
-  ${!isFacture ? `
+  ${!isFacture && !isAvoir ? `
   <!-- SIGNATURES -->
   <div class="signature-section">
     <div class="signature-box">
@@ -309,7 +327,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise) {
       ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
-    ${!isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
+    ${isAvoir ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Avoir émis conformément à l'article 441-3 du Code de Commerce. Ce document annule et remplace partiellement ou totalement la facture de référence.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>
   ${subscription.isFree() ? `
   <div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999;display:flex;align-items:center;justify-content:center;">

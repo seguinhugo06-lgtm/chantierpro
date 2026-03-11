@@ -52,6 +52,7 @@ import {
   ArrowRight,
   Banknote,
   ChevronRight,
+  RotateCcw,
 } from 'lucide-react';
 
 // Dashboard components
@@ -796,6 +797,14 @@ export default function Dashboard({
       ? Math.round((thisMonthCA / dayOfMonth) * 30)
       : null;
 
+    // Avoirs ce mois
+    const avoirsCeMois = safeDevis.filter(d => {
+      if (d.facture_type !== 'avoir') return false;
+      const dd = new Date(d.date);
+      return dd.getMonth() === thisMonth && dd.getFullYear() === thisYear;
+    });
+    const montantAvoirsCeMois = avoirsCeMois.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
+
     // Chantiers terminés (Dashboard-specific)
     const chantiersTermines = safeChantiers.filter((c) => c.statut === 'termine').length;
 
@@ -852,6 +861,8 @@ export default function Dashboard({
       isNewUser: kpis.isNewUser,
       hasRealData: kpis.hasRealData,
       lowStockItems: kpis.lowStockItems,
+      avoirsCeMois: avoirsCeMois.length,
+      montantAvoirsCeMois,
     };
   }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, kpis]);
 
@@ -1281,6 +1292,25 @@ export default function Dashboard({
               )}
             </button>
           </div>
+          {/* Avoirs ce mois — shown only if avoirs exist */}
+          {stats.avoirsCeMois > 0 && (
+            <button
+              onClick={() => setPage('devis')}
+              className={`mt-2 w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-red-900/20 border-red-800/50 hover:bg-red-900/30' : 'bg-red-50 border-red-200 hover:bg-red-100'}`}
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-red-500/15">
+                <RotateCcw size={14} className="text-red-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-xs font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                  {stats.avoirsCeMois} avoir{stats.avoirsCeMois > 1 ? 's' : ''} ce mois
+                </span>
+              </div>
+              <span className={`text-sm font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                -{formatMoney(stats.montantAvoirsCeMois, modeDiscret)}
+              </span>
+            </button>
+          )}
         </section>}
 
         {/* ========== ACTIONS DU JOUR — Unified priority list ========== */}

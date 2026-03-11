@@ -6,7 +6,8 @@ import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
   Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
-  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles
+  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
+  RotateCcw
 } from 'lucide-react';
 
 /**
@@ -117,6 +118,7 @@ export default function CommandPalette({
     { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('memos'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
+    { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: () => { setPage('devis'); onClose(); }, color: '#dc2626' },
     { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
     { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('dashboard'); onClose(); }, color: '#14b8a6' },
   ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
@@ -299,8 +301,8 @@ export default function CommandPalette({
             entityId: d.id,
             label: d.numero || `#${d.id?.slice(-6)}`,
             sublabel: `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
-            icon: d.type === 'facture' ? Receipt : FileText,
-            color: d.type === 'facture' ? '#8b5cf6' : '#f97316',
+            icon: d.facture_type === 'avoir' ? RotateCcw : d.type === 'facture' ? Receipt : FileText,
+            color: d.facture_type === 'avoir' ? '#dc2626' : d.type === 'facture' ? '#8b5cf6' : '#f97316',
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }
           });
         });

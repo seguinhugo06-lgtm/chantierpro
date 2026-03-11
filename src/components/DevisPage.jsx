@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw } from 'lucide-react';
 import supabase from '../supabaseClient';
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
@@ -9,6 +9,7 @@ import SmartTemplateWizard from './SmartTemplateWizard';
 import DevisWizard from './DevisWizard';
 import CatalogBrowser from './CatalogBrowser';
 import DevisExpressModal from './DevisExpressModal';
+import AvoirCreationModal from './modals/AvoirCreationModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
@@ -49,6 +50,18 @@ const CONDITIONS_PAIEMENT = {
   '45_jours_fdm': '45 jours fin de mois',
   '60_jours': '60 jours',
   'acompte_solde': '30% acompte, solde à réception',
+};
+
+// Avoir motifs — conformité française
+export const AVOIR_MOTIFS = {
+  erreur_facturation: 'Erreur de facturation',
+  retour_marchandise: 'Retour de marchandise',
+  remise_commerciale: 'Remise commerciale',
+  annulation_prestation: 'Annulation de prestation',
+  malfacon: 'Malfaçon',
+  litige: 'Litige',
+  geste_commercial: 'Geste commercial',
+  autre: 'Autre',
 };
 
 export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill }) {
@@ -110,6 +123,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
@@ -262,7 +276,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // B7: Period filter
     if (periodStart && new Date(d.date) < periodStart) return false;
     if (filter === 'devis' && d.type !== 'devis') return false;
-    if (filter === 'factures' && d.type !== 'facture') return false;
+    if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir')) return false;
+    if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
     if (filter === 'a_traiter') {
       const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
@@ -294,7 +309,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return {
       all: base.length,
       devis: base.filter(d => d.type === 'devis').length,
-      factures: base.filter(d => d.type === 'facture').length,
+      factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir').length,
+      avoirs: base.filter(d => d.facture_type === 'avoir').length,
       attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
       a_traiter: base.filter(d => {
         const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
@@ -885,61 +901,40 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setSnackbar({ type: 'success', message: `Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  // Créer un avoir (note de crédit) pour une facture
-  const createAvoir = async (facture) => {
-    const confirmed = await confirm({
-      title: 'Créer un avoir ?',
-      message: `Un avoir annulant la facture ${facture.numero} (${formatMoney(facture.total_ttc)}) sera créé. Les montants seront inversés (négatifs).`
-    });
-    if (!confirmed) return;
+  // Créer un avoir (note de crédit) — via AvoirCreationModal
+  const handleCreateAvoir = async (avoirData) => {
+    const { sourceFacture, type: avoirType, motif, motifDetail, lignes, totalHT, totalTVA, totalTTC } = avoirData;
 
     const avoir = {
       id: crypto.randomUUID(),
       numero: await generateNumero('avoir'),
       type: 'facture',
       facture_type: 'avoir',
-      devis_source_id: facture.devis_source_id,
-      avoir_source_id: facture.id,
-      client_id: facture.client_id,
-      client_nom: facture.client_nom,
-      chantier_id: facture.chantier_id,
+      avoir_source_id: sourceFacture.id,
+      avoir_type: avoirType,
+      avoir_motif: motif,
+      avoir_motif_detail: motifDetail || null,
+      devis_source_id: sourceFacture.devis_source_id,
+      client_id: sourceFacture.client_id,
+      client_nom: sourceFacture.client_nom,
+      chantier_id: sourceFacture.chantier_id,
       date: new Date().toISOString().split('T')[0],
-      statut: 'envoye',
-      tvaRate: facture.tvaRate,
-      lignes: (facture.lignes || []).map(l => ({
-        ...l,
-        id: generateId(),
-        prixUnitaire: -(Math.abs(l.prixUnitaire || 0)),
-        montant: -(Math.abs(l.montant || 0)),
-      })),
-      sections: facture.sections ? facture.sections.map(s => ({
-        ...s,
-        id: generateId(),
-        lignes: (s.lignes || []).map(l => ({
-          ...l,
-          id: generateId(),
-          prixUnitaire: -(Math.abs(l.prixUnitaire || 0)),
-          montant: -(Math.abs(l.montant || 0)),
-        })),
-      })) : undefined,
-      tvaParTaux: facture.tvaParTaux
-        ? Object.fromEntries(Object.entries(facture.tvaParTaux).map(([r, info]) => [r, { base: -(Math.abs(info.base || 0)), montant: -(Math.abs(info.montant || 0)) }]))
-        : {},
-      tvaDetails: facture.tvaParTaux
-        ? Object.fromEntries(Object.entries(facture.tvaParTaux).map(([r, info]) => [r, { base: -(Math.abs(info.base || 0)), montant: -(Math.abs(info.montant || 0)) }]))
-        : {},
-      total_ht: -(Math.abs(facture.total_ht || 0)),
-      tva: -(Math.abs(facture.tva || 0)),
-      total_ttc: -(Math.abs(facture.total_ttc || 0)),
-      notes: `Avoir sur facture ${facture.numero}`,
-      conditionsPaiement: facture.conditionsPaiement,
+      statut: 'brouillon',
+      tvaRate: sourceFacture.tvaRate,
+      lignes: lignes.map(l => ({ ...l, id: generateId() })),
+      total_ht: -(Math.abs(totalHT)),
+      tva: -(Math.abs(totalTVA)),
+      total_ttc: -(Math.abs(totalTTC)),
+      notes: `Avoir ${avoirType === 'total' ? 'total' : 'partiel'} sur facture ${sourceFacture.numero}. Motif : ${AVOIR_MOTIFS[motif] || motif}${motifDetail ? '. ' + motifDetail : ''}`,
+      conditionsPaiement: sourceFacture.conditionsPaiement,
     };
 
     await onSubmit(avoir);
+    setShowAvoirModal(false);
     setSnackbar({
       type: 'success',
-      message: `Avoir ${avoir.numero} créé`,
-      action: { label: 'Voir', onClick: () => { setSelected(avoir); setSnackbar(null); } }
+      message: `Avoir ${avoir.numero} créé en brouillon`,
+      action: { label: 'Voir', onClick: () => { setSelected(avoir); setMode('preview'); setSnackbar(null); } }
     });
   };
 
@@ -948,7 +943,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
     const isFacture = doc.type === 'facture';
+    const isAvoirDoc = doc.facture_type === 'avoir';
+    const sourceFactureDoc = isAvoirDoc && doc.avoir_source_id ? devis.find(d => d.id === doc.avoir_source_id) : null;
     const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
+    const avoirColor = '#dc2626';
+    const docColor = isAvoirDoc ? avoirColor : couleur;
     const dateValidite = new Date(doc.date);
     dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
     
@@ -987,30 +986,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
-    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${couleur}; }
+    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${docColor}; }
     .logo-section { max-width: 55%; }
-    .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
+    .logo { font-size: 16pt; font-weight: bold; color: ${docColor}; margin-bottom: 8px; }
     .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
     .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
     .missing-legal { color: #94a3b8; font-style: italic; font-size: 7pt; }
     @media print { .missing-legal { display: none; } }
     .doc-type { text-align: right; }
-    .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
+    .doc-type h1 { font-size: 22pt; color: ${docColor}; margin-bottom: 8px; letter-spacing: 1px; }
     .doc-info { font-size: 9pt; color: #64748b; }
     .doc-info strong { color: #1e293b; }
     .client-section { display: flex; gap: 20px; margin-bottom: 20px; }
-    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${couleur}; }
+    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${docColor}; }
     .info-block h3 { font-size: 8pt; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .info-block .name { font-weight: 600; font-size: 11pt; margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 9pt; }
-    thead { background: ${couleur}; color: white; }
+    thead { background: ${docColor}; color: white; }
+    .avoir-ref { background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 9pt; color: #991b1b; }
+    .avoir-ref strong { color: #7f1d1d; }
     th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; }
     th:not(:first-child) { text-align: center; }
     th:last-child { text-align: right; }
     .totals { margin-left: auto; width: 260px; margin-top: 15px; }
     .totals .row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 10pt; }
     .totals .row.sub { background: #f8fafc; border-radius: 4px; margin-bottom: 2px; }
-    .totals .total { background: ${couleur}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
+    .totals .total { background: ${docColor}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
     .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 7.5pt; line-height: 1.6; }
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .conditions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -1076,8 +1077,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ` : ''}
   </div>
 
+  ${isAvoirDoc ? `
+  <!-- RÉFÉRENCE AVOIR -->
+  <div class="avoir-ref">
+    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFactureDoc?.numero || 'N/A'} du ${sourceFactureDoc ? new Date(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
+    ${doc.avoir_motif ? `<br>Motif : ${AVOIR_MOTIFS[doc.avoir_motif] || doc.avoir_motif}${doc.avoir_motif_detail ? ` — ${doc.avoir_motif_detail}` : ''}` : ''}
+  </div>
+  ` : ''}
+
   <!-- TABLEAU PRESTATIONS -->
-  <table aria-label="Détail des prestations du devis">
+  <table aria-label="Détail des prestations du ${isAvoirDoc ? 'avoir' : 'devis'}">
     <thead>
       <tr>
         <th scope="col" style="width:40%">Description</th>
@@ -1113,7 +1122,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   <!-- CONDITIONS -->
-  <div class="conditions">
+  ${!isAvoirDoc ? `<div class="conditions">
     <h4>CONDITIONS GÉNÉRALES</h4>
     <div class="conditions-grid">
       <div>
@@ -1132,9 +1141,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
       </div>
     </div>
-  </div>
+  </div>` : ''}
 
-  ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
+  ${!isFacture && !isAvoirDoc && (entreprise?.mentionGaranties !== false) ? `
   <!-- GARANTIES LÉGALES -->
   <div class="garanties">
     <h4> GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
@@ -1144,7 +1153,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
+  ${!isFacture && !isAvoirDoc && (entreprise?.mentionRetractation !== false) ? `
   <!-- DROIT DE RÉTRACTATION -->
   <div class="retractation">
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
@@ -1154,7 +1163,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${(entreprise?.mediateur || entreprise?.mediateurContact) ? `
+  ${!isAvoirDoc && (entreprise?.mediateur || entreprise?.mediateurContact) ? `
   <!-- MÉDIATEUR DE LA CONSOMMATION -->
   <div class="retractation" style="margin-top:10px">
     <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
@@ -1164,7 +1173,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${entreprise?.cgv ? `
+  ${!isAvoirDoc && entreprise?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
     <h4>CONDITIONS PARTICULIÈRES</h4>
@@ -1172,7 +1181,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture ? `
+  ${!isFacture && !isAvoirDoc ? `
   <!-- SIGNATURES -->
   <div class="signature-section">
     <div class="signature-box">
@@ -1203,7 +1212,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.rcProMontantGarantie ? ` — Garantie: ${entreprise.rcProMontantGarantie} €` : ''}${entreprise.rcProZone ? ` — Zone: ${entreprise.rcProZone}` : ''}` : ''}
       ${entreprise?.mentionRGE !== false && Array.isArray(entreprise?.labels) && entreprise.labels.filter(l => l.actif).length > 0 ? '<br>' + entreprise.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
     </div>
-    ${!isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
+    ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Avoir émis conformément à l'article 441-3 du Code de Commerce. Ce document annule et remplace partiellement ou totalement la facture de référence.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>
 </body>
 </html>`;
@@ -1685,11 +1694,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const soldeFacture = getSoldeFacture(selected.id);
     const resteAFacturer = selected.total_ttc - facturesLiees.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const isDevis = selected.type === 'devis';
+    const isAvoir = selected.facture_type === 'avoir';
     const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture;
     const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
+
+    // Avoirs liés (pour factures) et facture source (pour avoirs)
+    const avoirsLies = !isAvoir && selected.type === 'facture' ? devis.filter(d => d.facture_type === 'avoir' && d.avoir_source_id === selected.id) : [];
+    const totalAvoirs = avoirsLies.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
+    const restantDu = (selected.total_ttc || 0) - totalAvoirs;
+    const sourceFacture = isAvoir && selected.avoir_source_id ? devis.find(d => d.id === selected.avoir_source_id) : null;
 
     const openChantierModal = () => {
       if (!addChantier) return;
@@ -1736,6 +1752,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       { id: 'envoye', label: 'Envoyé', statuses: ['envoye', 'vu'] },
       { id: 'accepte', label: 'Signé', statuses: ['accepte', 'signe'] },
       { id: 'facture', label: 'Facturé', statuses: ['acompte_facture', 'facture'] },
+    ] : isAvoir ? [
+      { id: 'brouillon', label: 'Brouillon', statuses: ['brouillon'] },
+      { id: 'emis', label: 'Émis', statuses: ['envoye'] },
+      { id: 'applique', label: 'Appliqué', statuses: ['payee'] },
     ] : [
       { id: 'envoye', label: 'Envoyée', statuses: ['brouillon', 'envoye'] },
       { id: 'payee', label: 'Payée', statuses: ['payee'] },
@@ -1759,6 +1779,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { text: '→ Créer facture', color: 'text-emerald-600' };
         if (selected.statut === 'acompte_facture') return { text: `→ Facturer solde (${formatMoney(resteAFacturer)})`, color: 'text-purple-600' };
         if (selected.statut === 'facture') return { text: '✓ Terminé', color: 'text-indigo-600' };
+      } else if (isAvoir) {
+        if (selected.statut === 'brouillon') return { text: '→ Émettre l\'avoir', color: 'text-amber-600' };
+        if (selected.statut === 'envoye') return { text: '→ Appliquer', color: 'text-emerald-600' };
+        if (selected.statut === 'payee') return { text: '✓ Appliqué', color: 'text-emerald-600' };
       } else {
         if (selected.statut === 'brouillon') return { text: '→ Envoyer', color: 'text-amber-600' };
         if (selected.statut === 'envoye') return { text: '→ Encaisser', color: 'text-purple-600' };
@@ -1788,6 +1812,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           confirmAndCreateSolde();
         }, color: 'bg-emerald-500 hover:bg-emerald-600' };
         if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: confirmAndCreateSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
+      } else if (isAvoir) {
+        if (selected.statut === 'brouillon') return { label: 'Émettre', icon: Send, action: async () => {
+          const ok = await confirm({ title: 'Émettre l\'avoir ?', message: `L'avoir ${selected.numero} sera émis et ne pourra plus être supprimé.` });
+          if (ok) { onUpdate(selected.id, { statut: 'envoye' }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
+        }, color: 'bg-amber-500 hover:bg-amber-600' };
+        if (selected.statut === 'envoye') return { label: 'Appliquer', icon: Check, action: async () => {
+          const ok = await confirm({ title: 'Appliquer l\'avoir ?', message: `L'avoir sera marqué comme appliqué. L'impact comptable sera enregistré.` });
+          if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
+        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
         if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
       }
@@ -1904,8 +1937,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         </button>
                       )}
                       {canPerform('devis', 'create') && selected.type === 'facture' && selected.facture_type !== 'avoir' && (
-                        <button onClick={() => { createAvoir(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <Receipt size={16} /> Créer un avoir
+                        <button onClick={() => { setShowAvoirModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <RotateCcw size={16} /> Créer un avoir
                         </button>
                       )}
                       {canPerform('devis', 'edit') && (
@@ -1913,8 +1946,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <Star size={16} /> Sauvegarder comme modèle
                       </button>
                       )}
-                      {canPerform('devis', 'delete') && (
-                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                      {canPerform('devis', 'delete') && !(isAvoir && selected.statut !== 'brouillon') && (
+                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                         <Trash2 size={16} /> Supprimer
                       </button>
                       )}
@@ -2225,6 +2258,88 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         </div>
+
+        {/* ============ AVOIR: Facture d'origine ============ */}
+        {isAvoir && sourceFacture && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
+                <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Facture d'origine</span>
+              </div>
+              <button
+                onClick={() => { setSelected(sourceFacture); }}
+                className={`text-sm font-medium px-3 py-1 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
+              >
+                {sourceFacture.numero} →
+              </button>
+            </div>
+            {selected.avoir_motif && (
+              <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                <span className="font-medium">Motif :</span> {AVOIR_MOTIFS[selected.avoir_motif] || selected.avoir_motif}
+                {selected.avoir_motif_detail && <p className={`mt-1 text-xs ${textMuted}`}>{selected.avoir_motif_detail}</p>}
+              </div>
+            )}
+            {selected.avoir_type && (
+              <div className="mt-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  selected.avoir_type === 'total'
+                    ? (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700')
+                    : (isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700')
+                }`}>
+                  {selected.avoir_type === 'total' ? 'Avoir total' : 'Avoir partiel'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============ FACTURE: Avoirs liés ============ */}
+        {!isAvoir && selected.type === 'facture' && avoirsLies.length > 0 && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
+              <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                Avoirs émis ({avoirsLies.length})
+              </span>
+            </div>
+            <div className="space-y-2">
+              {avoirsLies.map(avoir => (
+                <div key={avoir.id} className={`flex items-center justify-between py-2 px-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setSelected(avoir)} className="text-sm font-medium hover:underline" style={{ color: couleur }}>
+                      {avoir.numero}
+                    </button>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      avoir.statut === 'payee' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') :
+                      avoir.statut === 'envoye' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') :
+                      (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600')
+                    }`}>
+                      {avoir.statut === 'payee' ? 'Appliqué' : avoir.statut === 'envoye' ? 'Émis' : 'Brouillon'}
+                    </span>
+                  </div>
+                  <span className="text-sm font-semibold text-red-600">{formatMoney(avoir.total_ttc)}</span>
+                </div>
+              ))}
+            </div>
+            <div className={`flex items-center justify-between pt-3 mt-3 border-t ${isDark ? 'border-slate-600' : 'border-red-200'}`}>
+              <div className="space-y-1">
+                <div className="flex justify-between gap-6 text-xs">
+                  <span className={textMuted}>Montant facturé</span>
+                  <span className={`font-medium ${textPrimary}`}>{formatMoney(selected.total_ttc)}</span>
+                </div>
+                <div className="flex justify-between gap-6 text-xs">
+                  <span className={textMuted}>Total avoirs</span>
+                  <span className="font-medium text-red-600">-{formatMoney(totalAvoirs)}</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className={`text-xs ${textMuted}`}>Restant dû</p>
+                <p className={`text-lg font-bold ${restantDu > 0 ? textPrimary : 'text-emerald-600'}`}>{formatMoney(restantDu)}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ============ ZONE 2: SMART CONTEXT CARD ============ */}
         {/* Billing options - always visible for devis not yet invoiced */}
@@ -3295,6 +3410,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isDark={isDark}
           couleur={couleur}
         />
+
+        {/* Avoir Creation Modal */}
+        <AvoirCreationModal
+          isOpen={showAvoirModal}
+          onClose={() => setShowAvoirModal(false)}
+          facture={selected}
+          devis={devis}
+          onCreateAvoir={handleCreateAvoir}
+          isDark={isDark}
+          couleur={couleur}
+          modeDiscret={modeDiscret}
+          formatMoney={formatMoney}
+        />
       </div>
       {devisWizardElement}
     </>
@@ -3830,12 +3958,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
         const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
+        const avoirsEmis = cleanDevis.filter(d => d.facture_type === 'avoir');
+        const montantAvoirs = avoirsEmis.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
         const conversionResult = calcConversion(cleanDevis);
         const totalEnvoyes = conversionResult.envoyes;
         const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
 
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
             {/* CA encaissé */}
             <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
               <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
@@ -3869,6 +3999,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} retard` : `${facturesEnAttente.length} att.`}
               </p>
             </button>
+
+            {/* Avoirs */}
+            {avoirsEmis.length > 0 && (
+            <button onClick={() => setFilter('avoirs')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'avoirs' ? 'ring-2' : ''}`} style={filter === 'avoirs' ? { '--tw-ring-color': couleur } : {}}>
+              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Avoirs</p>
+              <p className="text-xs sm:text-base font-bold text-red-500 leading-tight mt-0.5 truncate">
+                {!canViewPrices ? '—' : modeDiscret ? '···' : `-${formatMoney(montantAvoirs)}`}
+              </p>
+              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{avoirsEmis.length} avoir{avoirsEmis.length > 1 ? 's' : ''}</p>
+            </button>
+            )}
           </div>
         );
       })()}
@@ -3927,10 +4068,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         {/* Row 2: Type filter pills */}
         <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
             const count = filterCounts[k] || 0;
             return (
               <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                {k === 'avoirs' && <RotateCcw size={11} />}
                 {k === 'a_traiter' && <Bell size={11} />}
                 {v}
                 {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
@@ -4043,7 +4185,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           const followUp = getFollowUpInfo();
 
           // Left border color by status
-          const borderLeftColor = d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
+          const isAvoirItem = d.facture_type === 'avoir';
+          const borderLeftColor = isAvoirItem ? '#dc2626'
+            : d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
             : ['envoye', 'vu'].includes(d.statut) ? '#3b82f6'
             : ['accepte', 'signe'].includes(d.statut) ? '#22c55e'
             : d.statut === 'facture' || d.statut === 'acompte_facture' ? '#8b5cf6'
@@ -4078,11 +4222,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Row 1: Numero + badges — stacked on mobile, inline on sm+ */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>
+                      {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
                       <p className={`font-semibold text-xs sm:text-sm truncate ${textPrimary}`}>{cleanNumero(d.numero)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
+                      {isAvoirItem && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>}
                       {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
                       {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
                       {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
@@ -4139,8 +4284,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       0 €
                     </span>
                   ) : (
-                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: couleur}}>
-                      {formatMoney(getDevisTTC(d))}
+                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
+                      {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
                     </p>
                   )}
                   {qa ? (
