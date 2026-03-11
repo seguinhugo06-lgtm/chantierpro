@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3 } from 'lucide-react';
 import supabase from '../supabaseClient';
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
@@ -23,6 +23,7 @@ import { isFacturXCompliant } from '../lib/facturx';
 import { getDocumentEmailStatus } from '../services/CommunicationsService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
 
 // Valid status transitions — enforced on buttons and dropdown
 const VALID_TRANSITIONS = {
@@ -276,7 +277,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // B7: Period filter
     if (periodStart && new Date(d.date) < periodStart) return false;
     if (filter === 'devis' && d.type !== 'devis') return false;
-    if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir')) return false;
+    if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir' || d.facture_type === 'situation')) return false;
+    if (filter === 'situations' && d.facture_type !== 'situation') return false;
     if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
     if (filter === 'a_traiter') {
@@ -309,7 +311,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return {
       all: base.length,
       devis: base.filter(d => d.type === 'devis').length,
-      factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir').length,
+      factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && d.facture_type !== 'situation').length,
+      situations: base.filter(d => d.facture_type === 'situation').length,
       avoirs: base.filter(d => d.facture_type === 'avoir').length,
       attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
       a_traiter: base.filter(d => {
@@ -940,6 +943,38 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
   const downloadPDF = (doc) => {
+    // Situation facture: use dedicated builder from devisHtmlBuilder
+    if (doc.facture_type === 'situation') {
+      const client = clients.find(c => c.id === doc.client_id);
+      const chantier = chantiers.find(c => c.id === doc.chantier_id);
+      const parentDevis = doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
+      // Reconstruct situation data from chantier.situations_data
+      const sitData = chantier?.situations_data;
+      const sit = sitData?.situations?.find(s => s.numero === doc.situation_numero) || null;
+      printSitFacture({
+        situation: {
+          ...(sit || {}),
+          numero: doc.situation_numero || sit?.numero || 1,
+          date: doc.date,
+          lignes: sit?.lignes || doc.lignes?.map(l => ({
+            description: l.description,
+            quantite: 1,
+            prixUnitaire: getLineTotal(l),
+            unite: l.unite || 'ens',
+            tva: l.tva !== undefined ? l.tva : (doc.tvaRate || 10),
+            cumulActuel: 100,
+            cumulPrecedent: 0,
+          })) || [],
+          retenueGarantiePct: sit?.isDGD ? 0 : (sitData?.retenue_garantie_pct || 5),
+        },
+        parentDevis: parentDevis || {},
+        client: client || {},
+        chantier: chantier || {},
+        entreprise: entreprise || {},
+        couleur,
+      });
+      return;
+    }
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
     const isFacture = doc.type === 'facture';
@@ -2379,7 +2414,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               )}
             </div>
             {(canAcompte || canFacturer) ? (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {canAcompte && (
                   <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
                     <div className="flex items-center gap-2 mb-1">
@@ -2396,6 +2431,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
                     </div>
                     <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
+                  </button>
+                )}
+                {canFacturer && selected.chantier_id && (
+                  <button onClick={() => { setSelectedChantier(selected.chantier_id); setPage('chantiers'); }} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-orange-700 bg-orange-900/30 hover:bg-orange-900/50' : 'border-orange-200 bg-white hover:bg-orange-50'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <BarChart3 size={16} className="text-orange-500" />
+                      <span className={`font-medium text-sm ${textPrimary}`}>Par situation</span>
+                    </div>
+                    <p className={`text-xs ${textMuted}`}>Avancement progressif</p>
                   </button>
                 )}
               </div>
@@ -4068,10 +4112,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         {/* Row 2: Type filter pills */}
         <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
             const count = filterCounts[k] || 0;
             return (
               <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}
                 {k === 'a_traiter' && <Bell size={11} />}
                 {v}
@@ -4186,7 +4231,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
           // Left border color by status
           const isAvoirItem = d.facture_type === 'avoir';
+          const isSituationItem = d.facture_type === 'situation';
           const borderLeftColor = isAvoirItem ? '#dc2626'
+            : isSituationItem ? '#f97316'
             : d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
             : ['envoye', 'vu'].includes(d.statut) ? '#3b82f6'
             : ['accepte', 'signe'].includes(d.statut) ? '#22c55e'
@@ -4222,12 +4269,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   {/* Row 1: Numero + badges — stacked on mobile, inline on sm+ */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
+                      {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : isSituationItem ? <BarChart3 size={13} className="text-orange-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
                       <p className={`font-semibold text-xs sm:text-sm truncate ${textPrimary}`}>{cleanNumero(d.numero)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
                       {isAvoirItem && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>}
+                      {d.facture_type === 'situation' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>Situation{d.situation_numero ? ` n°${d.situation_numero}` : ''}</span>}
                       {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
                       {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
                       {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}

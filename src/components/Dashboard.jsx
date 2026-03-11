@@ -863,6 +863,8 @@ export default function Dashboard({
       lowStockItems: kpis.lowStockItems,
       avoirsCeMois: avoirsCeMois.length,
       montantAvoirsCeMois,
+      // Situations de travaux
+      chantiersEnSituation: safeChantiers.filter(c => c.situations_data?.mode === 'situation' && c.statut === 'en_cours').length,
     };
   }, [safeChantiers, safeDevis, safeDepenses, safePointages, safeEquipe, kpis]);
 
@@ -1309,6 +1311,22 @@ export default function Dashboard({
               <span className={`text-sm font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
                 -{formatMoney(stats.montantAvoirsCeMois, modeDiscret)}
               </span>
+            </button>
+          )}
+          {/* Chantiers en facturation par situation */}
+          {stats.chantiersEnSituation > 0 && (
+            <button
+              onClick={() => setPage('chantiers')}
+              className={`mt-2 w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition-all hover:shadow-md ${isDark ? 'bg-orange-900/20 border-orange-800/50 hover:bg-orange-900/30' : 'bg-orange-50 border-orange-200 hover:bg-orange-100'}`}
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-orange-500/15">
+                <BarChart3 size={14} className="text-orange-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-xs font-medium ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
+                  {stats.chantiersEnSituation} chantier{stats.chantiersEnSituation > 1 ? 's' : ''} en situation
+                </span>
+              </div>
             </button>
           )}
         </section>}

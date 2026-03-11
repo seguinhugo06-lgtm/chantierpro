@@ -12,6 +12,7 @@ import SituationsTravaux from './chantiers/SituationsTravaux';
 import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
+import { calculateGlobalAvancement, getCumulativeInvoiced } from '../lib/situationUtils';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
@@ -54,7 +55,7 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
   return Math.round(normalizedProgress);
 };
 
-export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent }) {
+export default function Chantiers({ chantiers, addChantier, updateChantier, clients, depenses, setDepenses, pointages, setPointages, equipe, devis, ajustements, addAjustement, deleteAjustement, getChantierBilan, couleur, modeDiscret, entreprise, selectedChantier, setSelectedChantier, catalogue, deductStock, isDark, createMode, setCreateMode, setPage, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onPlanEvent, addDevis, generateNextNumero }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const isOnline = useOnlineStatus();
@@ -568,6 +569,39 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   Date de fin prévue : {dateFin.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               </div>
+            </div>
+          );
+        })()}
+
+        {/* === SECTION: SITUATION AVANCEMENT BAR === */}
+        {ch.situations_data?.mode === 'situation' && (() => {
+          const globalAv = calculateGlobalAvancement(ch.situations_data);
+          const sitCount = ch.situations_data?.situations?.length || 0;
+          const invoiced = getCumulativeInvoiced(ch.situations_data?.situations || []);
+          return (
+            <div className={`${cardBg} rounded-xl border p-4`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <BarChart3 size={16} style={{ color: couleur }} />
+                  <span className={`text-sm font-semibold ${textPrimary}`}>Avancement travaux</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{sitCount} situation{sitCount > 1 ? 's' : ''}</span>
+                </div>
+                <span className="text-sm font-bold tabular-nums" style={{ color: globalAv >= 100 ? '#10b981' : couleur }}>
+                  {modeDiscret ? '***' : `${globalAv.toFixed(0)}%`}
+                </span>
+              </div>
+              <div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(globalAv, 100)}%`, backgroundColor: globalAv >= 100 ? '#10b981' : couleur }}
+                />
+              </div>
+              {!modeDiscret && invoiced.totalFactureHT > 0 && (
+                <p className={`text-xs ${textMuted} mt-1.5`}>
+                  Facturé : {formatMoney(invoiced.totalFactureHT)} HT
+                  {invoiced.retenueRetenue > 0 && <> · Retenue : {formatMoney(invoiced.retenueRetenue)}</>}
+                </p>
+              )}
             </div>
           );
         })()}
@@ -1310,8 +1344,15 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           <SituationsTravaux
             chantier={ch}
             devis={devis.filter(d => d.chantier_id === ch.id)}
+            updateChantier={updateChantier}
+            addDevis={addDevis}
+            generateNextNumero={generateNextNumero}
+            clients={clients}
+            entreprise={entreprise}
+            modeDiscret={modeDiscret}
             isDark={isDark}
             couleur={couleur}
+            setPage={setPage}
             onClose={() => setActiveTab('finances')}
           />
         )}
@@ -2830,6 +2871,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </span>
                   {/* P3.9: Days countdown badge */}
                   {daysInfo && <span className={`text-[10px] font-bold ${daysInfo.color}`}>{daysInfo.text}</span>}
+                  {ch.situations_data?.mode === 'situation' && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap flex items-center gap-0.5 ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                      <BarChart3 size={9} /> Situation
+                    </span>
+                  )}
                   {isDraftChantier(ch) && (
                     <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
                       Brouillon

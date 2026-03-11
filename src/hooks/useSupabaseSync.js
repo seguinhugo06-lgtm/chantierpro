@@ -111,6 +111,9 @@ export const FIELD_MAPPINGS = {
       heures_estimees: item.heures_estimees || 0,
       latitude: item.latitude || null,
       longitude: item.longitude || null,
+      // Situations de travaux
+      situations_data: item.situations_data ? (typeof item.situations_data === 'string' ? item.situations_data : JSON.stringify(item.situations_data)) : null,
+      mode_facturation: item.mode_facturation || null,
     }),
     fromSupabase: (row) => ({
       id: row.id,
@@ -140,6 +143,9 @@ export const FIELD_MAPPINGS = {
       heures_estimees: row.heures_estimees || 0,
       latitude: row.latitude || null,
       longitude: row.longitude || null,
+      // Situations de travaux
+      situations_data: row.situations_data ? (typeof row.situations_data === 'string' ? JSON.parse(row.situations_data) : row.situations_data) : null,
+      mode_facturation: row.mode_facturation || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }),
@@ -209,6 +215,8 @@ export const FIELD_MAPPINGS = {
         avoir_type: item.avoir_type || null,
         avoir_motif: item.avoir_motif || null,
         avoir_motif_detail: item.avoir_motif_detail || null,
+        // Situation-specific fields
+        situation_numero: item.situation_numero || null,
         // Payment tracking (date_paiement + mode_paiement exist in DB, reference_paiement is local-only)
         date_paiement: item.date_paiement || null,
         mode_paiement: item.mode_paiement || null,
@@ -252,6 +260,8 @@ export const FIELD_MAPPINGS = {
       avoir_type: row.avoir_type || null,
       avoir_motif: row.avoir_motif || null,
       avoir_motif_detail: row.avoir_motif_detail || null,
+      // Situation-specific fields
+      situation_numero: row.situation_numero || null,
       // Payment tracking
       date_paiement: row.date_paiement || null,
       mode_paiement: row.mode_paiement || null,

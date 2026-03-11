@@ -5,3 +5,4 @@
 
 export { default as PhotoUpload, PhotoUploadSkeleton } from './PhotoUpload';
 export { default as PhotoReportButton, PhotoReportButtonSkeleton } from './PhotoReportButton';
+export { default as SituationsTravaux } from './SituationsTravaux';
