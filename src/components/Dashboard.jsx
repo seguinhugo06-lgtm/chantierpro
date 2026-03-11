@@ -83,6 +83,8 @@ import {
   // Bank Widget
   BankWidget,
   BankWidgetSkeleton,
+  // Relance Widget
+  RelanceWidget,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -98,6 +100,8 @@ import { MarginAnalysisModal } from './modals/MarginAnalysisModal';
 
 // Hooks
 import { useKPIs } from '../hooks/useKPIs';
+import { useRelances } from '../hooks/useRelances';
+import { useOrg } from '../context/OrgContext';
 
 // Services & Utils
 import { getPendingRelances, formatRelanceForDisplay } from '../services/RelanceService';
@@ -564,6 +568,14 @@ export default function Dashboard({
   const canSeeFinances = canAccess('finances');
   const canCreateDevis = canPerform('devis', 'create');
 
+  // Organization & Relances
+  const { orgId } = useOrg();
+  const relances = useRelances({
+    devis, clients, entreprise,
+    userId: user?.id,
+    orgId,
+  });
+
   // State
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [kpiPeriod, setKpiPeriod] = useState('month'); // For KPI card period selector
@@ -617,6 +629,7 @@ export default function Dashboard({
   const DEFAULT_WIDGETS = [
     { id: 'overview', label: 'Vue d\'ensemble', visible: true },
     { id: 'devis', label: 'Devis & Factures', visible: true },
+    { id: 'relances', label: 'Relances', visible: true },
     { id: 'chantiers', label: 'Chantiers', visible: true },
     { id: 'activity', label: 'Activité récente', visible: true },
     { id: 'conformity', label: 'Conformité', visible: true },
@@ -1806,6 +1819,22 @@ export default function Dashboard({
                 setSelectedDevis={setSelectedDevis}
                 onRelance={handleOpenRelance}
                 isDark={isDark}
+              />
+            )}
+
+            {/* Relance Widget — shows pending relances */}
+            {canAccess('devis') && isWidgetVisible('relances') && relances.isEnabled && (
+              <RelanceWidget
+                pending={relances.pending}
+                stats={relances.stats}
+                totalAtRisk={relances.totalAtRisk}
+                setPage={setPage}
+                setSelectedDevis={setSelectedDevis}
+                onRelance={(item) => handleOpenRelance(item.doc)}
+                isDark={isDark}
+                couleur={couleur}
+                modeDiscret={modeDiscret}
+                formatMoney={(n) => formatMoney(n, modeDiscret)}
               />
             )}
 

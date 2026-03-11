@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3 } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing } from 'lucide-react';
 import supabase from '../supabaseClient';
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
@@ -24,6 +24,10 @@ import { getDocumentEmailStatus } from '../services/CommunicationsService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
+import RelanceTimelineWidget from './RelanceTimelineWidget';
+import { useRelances } from '../hooks/useRelances';
+import { printMiseEnDemeure } from '../lib/miseEnDemeureBuilder';
+import { useOrg } from '../context/OrgContext';
 
 // Valid status transitions — enforced on buttons and dropdown
 const VALID_TRANSITIONS = {
@@ -73,6 +77,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
   const devisPermission = getPermission('devis');
   const isViewOnly = devisPermission === 'view' || devisPermission === 'view_no_prices';
+
+  // Organization context
+  const { orgId } = useOrg();
+
+  // Get userId for relances
+  const [relanceUserId, setRelanceUserId] = useState(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user?.id) setRelanceUserId(data.user.id);
+    });
+  }, []);
+
+  // Relances hook
+  const relances = useRelances({
+    devis, clients, entreprise,
+    userId: relanceUserId,
+    orgId,
+  });
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -288,6 +310,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       return false;
     }
     if (filter === 'factures_impayees' && !(d.type === 'facture' && d.statut !== 'payee')) return false;
+    if (filter === 'en_relance' && !relances.getDocumentPending(d.id)) return false;
     if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
     // Search by numero, client name/entreprise, chantier name, and objet
     if (debouncedSearch) {
@@ -808,6 +831,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         onUpdate(selected.id, updatePayload);
         setSelected(s => s ? { ...s, ...updatePayload } : s);
+
+        // Cancel any pending automatic relances for this document
+        if (relances.isEnabled) {
+          import('../lib/relanceEngine').then(({ cancelDocumentRelances }) => {
+            cancelDocumentRelances(selected.id, relanceUserId, orgId).catch(() => {});
+          });
+        }
 
         const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
         setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
@@ -2590,6 +2620,45 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
+        {/* Relance Timeline Widget */}
+        {relances.isEnabled && (() => {
+          const docType = selected.type === 'facture' ? 'facture' : 'devis';
+          const steps = docType === 'facture' ? relances.relanceConfig.factureSteps : relances.relanceConfig.devisSteps;
+          const docExecs = relances.getDocumentTimeline(selected.id);
+          const docExcluded = relances.isDocumentExcluded(selected.id) || relances.isClientExcluded(selected.client_id);
+          if (!steps?.length && docExecs.length === 0) return null;
+          const client = clients.find(c => c.id === selected.client_id);
+          return (
+            <RelanceTimelineWidget
+              executions={docExecs}
+              steps={steps || []}
+              doc={selected}
+              onSendNow={() => {
+                if (client) relances.skipToNextStep(selected, client).then(r => {
+                  if (r?.success) showToast('Relance envoyée !', 'success');
+                  else showToast(r?.error || 'Erreur envoi relance', 'error');
+                });
+              }}
+              onSkipToNext={() => {
+                if (client) relances.skipToNextStep(selected, client);
+              }}
+              onExclude={(scope, reason) => {
+                relances.addExclusion(scope, {
+                  documentId: scope === 'document' ? selected.id : undefined,
+                  clientId: scope === 'client' ? selected.client_id : undefined,
+                  reason,
+                }).then(() => showToast('Document exclu des relances', 'success'));
+              }}
+              isExcluded={docExcluded}
+              isEnabled={relances.isEnabled}
+              isDark={isDark}
+              couleur={couleur}
+              modeDiscret={modeDiscret}
+              formatMoney={formatMoney}
+            />
+          );
+        })()}
+
         {/* Pénalités de retard */}
         {selected.type === 'facture' && selected.statut !== 'payee' && (() => {
           const pen = calculatePenalites(selected);
@@ -2616,9 +2685,28 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span>{formatMoney(pen.total)}</span>
                 </div>
               </div>
-              <p className={`text-[10px] mt-2 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                Art. L441-10 C. com. — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
-              </p>
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-orange-200 dark:border-orange-700">
+                <p className={`text-[10px] ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                  Art. L441-10 C. com. — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
+                </p>
+                {pen.joursRetard >= 30 && (
+                  <button
+                    onClick={() => {
+                      const client = clients.find(c => c.id === selected.client_id);
+                      printMiseEnDemeure({
+                        doc: selected,
+                        client,
+                        entreprise,
+                        executions: relances.getDocumentTimeline(selected.id),
+                        couleur,
+                      });
+                    }}
+                    className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-900/70' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                  >
+                    📄 Mise en demeure
+                  </button>
+                )}
+              </div>
             </div>
           );
         })()}
@@ -4112,13 +4200,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         {/* Row 2: Type filter pills */}
         <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter']].map(([k, v]) => {
-            const count = filterCounts[k] || 0;
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
+            const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
             return (
               <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
                 {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}
                 {k === 'a_traiter' && <Bell size={11} />}
+                {k === 'en_relance' && <BellRing size={11} />}
                 {v}
                 {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
               </button>
@@ -4282,6 +4371,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       {d.statut === 'brouillon' && (isOrphan || isNameless) && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
                       )}
+                      {(() => {
+                        const docPending = relances.getDocumentPending(d.id);
+                        if (!docPending) return null;
+                        const stepLabel = docPending.nextStep?.step?.name || `J+${docPending.nextStep?.step?.delay || '?'}`;
+                        return (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-0.5 ${
+                            docPending.nextStep?.isDue
+                              ? (isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700')
+                              : (isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700')
+                          }`}>
+                            <BellRing size={9} />
+                            {docPending.nextStep?.isDue ? stepLabel : `Auto ${stepLabel}`}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   {/* Row 2: Client · Chantier · Date · Follow-up */}

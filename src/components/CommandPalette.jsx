@@ -117,6 +117,7 @@ export default function CommandPalette({
     { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
     { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('memos'); onClose(); }, color: '#f59e0b' },
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
+    { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
     { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
     { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: () => { setPage('devis'); onClose(); }, color: '#dc2626' },
     { id: 'filter-situations', label: 'Factures de situation', keywords: 'situations avancement travaux progressif facturation situation', icon: BarChart3, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },

@@ -8,7 +8,7 @@
  * @module RelanceConfigTab
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Mail,
   MessageSquare,
@@ -30,7 +30,13 @@ import {
   TrendingUp,
   Euro,
   CalendarClock,
+  Shield,
+  UserX,
+  FileX,
+  X,
 } from 'lucide-react';
+import { EXCLUSION_REASONS } from '../../lib/relanceUtils';
+import { formatMoney } from '../../lib/formatters';
 import { cn } from '../../lib/utils';
 
 // ============ DEFAULT SCENARIOS ============
@@ -735,28 +741,30 @@ function VariablesCard({ isDark, couleur }) {
 /**
  * Statistics card (read-only)
  */
-function StatsCard({ isDark, couleur }) {
+function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
 
+  const hasData = realStats && realStats.totalSent > 0;
+
   const stats = [
     {
       label: 'Taux de conversion après relance',
-      value: '--%',
+      value: hasData && realStats.conversionRate != null ? `${realStats.conversionRate}%` : '--%',
       icon: TrendingUp,
       color: '#22c55e',
     },
     {
       label: 'Délai moyen de paiement',
-      value: '-- jours',
+      value: hasData && realStats.averagePaymentDelay != null ? `${realStats.averagePaymentDelay} jours` : '-- jours',
       icon: CalendarClock,
       color: '#3b82f6',
     },
     {
       label: 'Montant récupéré grâce aux relances',
-      value: '--\u00A0\u20AC',
+      value: hasData ? (modeDiscret ? '***' : formatMoney(realStats.amountRecovered)) : '--\u00A0\u20AC',
       icon: Euro,
       color: '#f59e0b',
     },
@@ -801,6 +809,98 @@ function StatsCard({ isDark, couleur }) {
   );
 }
 
+/**
+ * Exclusions management card
+ */
+function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], isDark, couleur }) {
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
+  const borderColor = isDark ? 'border-slate-700' : 'border-slate-200';
+
+  if (!exclusions.length) return null;
+
+  const getClientName = (clientId) => {
+    const c = clients.find(cl => cl.id === clientId);
+    return c ? `${c.prenom || ''} ${c.nom || ''}`.trim() : 'Client inconnu';
+  };
+
+  const getDocNumero = (docId) => {
+    const d = devis.find(dv => dv.id === docId);
+    return d ? d.numero : 'Document';
+  };
+
+  return (
+    <div className={cn('rounded-2xl border p-5', cardBg, borderColor)}>
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: `${couleur}20` }}
+        >
+          <Shield className="w-5 h-5" style={{ color: couleur }} />
+        </div>
+        <div>
+          <h3 className={cn('text-base font-semibold', textPrimary)}>
+            Exclusions actives ({exclusions.length})
+          </h3>
+          <p className={cn('text-xs', textMuted)}>
+            Documents ou clients exclus des relances automatiques
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {exclusions.map(ex => (
+          <div
+            key={ex.id}
+            className={cn(
+              'flex items-center justify-between px-3 py-2.5 rounded-lg',
+              isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {ex.scope === 'client' ? (
+                <UserX className={cn('w-4 h-4 flex-shrink-0', textMuted)} />
+              ) : (
+                <FileX className={cn('w-4 h-4 flex-shrink-0', textMuted)} />
+              )}
+              <div className="min-w-0">
+                <div className={cn('text-sm font-medium truncate', textPrimary)}>
+                  {ex.scope === 'client'
+                    ? getClientName(ex.client_id)
+                    : getDocNumero(ex.document_id)
+                  }
+                </div>
+                <div className={cn('text-xs', textMuted)}>
+                  <span className={cn(
+                    'inline-flex px-1.5 py-0.5 rounded text-xs font-medium mr-1',
+                    ex.scope === 'client'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  )}>
+                    {ex.scope === 'client' ? 'Client' : 'Document'}
+                  </span>
+                  {EXCLUSION_REASONS[ex.reason] || ex.reason || 'Exclusion manuelle'}
+                </div>
+              </div>
+            </div>
+            {onRemove && (
+              <button
+                type="button"
+                onClick={() => onRemove(ex.id)}
+                className="flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Supprimer l'exclusion"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ============ MAIN COMPONENT ============
 
 /**
@@ -812,7 +912,11 @@ function StatsCard({ isDark, couleur }) {
  * @param {boolean} props.isDark - Dark mode flag
  * @param {string} props.couleur - Accent color hex
  */
-export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, couleur = '#f97316' }) {
+export default function RelanceConfigTab({
+  entreprise, setEntreprise, isDark, couleur = '#f97316',
+  stats, exclusions, onRemoveExclusion, onSaveConfig,
+  clients, devis, modeDiscret,
+}) {
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
 
@@ -825,17 +929,26 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
     };
   }, [entreprise?.relanceConfig]);
 
+  // Debounce timer ref for saving to DB
+  const saveTimerRef = useRef(null);
+
   const updateConfig = useCallback(
     (updates) => {
+      const newConfig = { ...relanceConfig, ...updates };
       setEntreprise(prev => ({
         ...prev,
-        relanceConfig: {
-          ...relanceConfig,
-          ...updates,
-        },
+        relanceConfig: newConfig,
       }));
+
+      // Debounced save to Supabase
+      if (onSaveConfig) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          onSaveConfig(newConfig);
+        }, 800);
+      }
     },
-    [relanceConfig, setEntreprise]
+    [relanceConfig, setEntreprise, onSaveConfig]
   );
 
   const handleGlobalToggle = useCallback(() => {
@@ -945,8 +1058,20 @@ export default function RelanceConfigTab({ entreprise, setEntreprise, isDark, co
       {/* Variables reference */}
       <VariablesCard isDark={isDark} couleur={couleur} />
 
+      {/* Exclusions */}
+      {exclusions && exclusions.length > 0 && (
+        <ExclusionsCard
+          exclusions={exclusions}
+          onRemove={onRemoveExclusion}
+          clients={clients || []}
+          devis={devis || []}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
       {/* Statistics */}
-      <StatsCard isDark={isDark} couleur={couleur} />
+      <StatsCard isDark={isDark} couleur={couleur} stats={stats} modeDiscret={modeDiscret} />
     </div>
   );
 }

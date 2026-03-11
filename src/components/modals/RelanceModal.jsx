@@ -29,6 +29,7 @@ import { Badge } from '../ui/Badge';
 import { toast } from '../../stores/toastStore';
 import { sendEmail, sendSMS } from '../../services/CommunicationsService';
 import { createRelanceRecord } from '../../services/RelanceService';
+import { supabase, isDemo } from '../../supabaseClient';
 
 /**
  * @typedef {'devis' | 'facture'} ItemType
@@ -408,13 +409,38 @@ export default function RelanceModal({
         throw new Error(results[0]?.error || "Echec de l'envoi");
       }
 
-      // Persist relance record to localStorage
+      // Persist relance record to localStorage + DB
       try {
         const record = createRelanceRecord(item.id, 'manual', channel);
         const history = JSON.parse(localStorage.getItem('cp_relance_history') || '{}');
         if (!history[item.id]) history[item.id] = [];
         history[item.id].push(record);
         localStorage.setItem('cp_relance_history', JSON.stringify(history));
+
+        // Also persist to relance_executions table
+        if (!isDemo && supabase) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            await supabase.from('relance_executions').insert({
+              user_id: user.id,
+              document_id: item.id,
+              document_type: item.type || 'devis',
+              document_numero: item.numero,
+              client_id: item.client_id || null,
+              step_id: 'manual',
+              step_name: 'Relance manuelle',
+              step_delay: 0,
+              sequence_type: item.type || 'devis',
+              channel: channel === 'both' ? 'email_sms' : channel,
+              status: 'sent',
+              subject: subject || '',
+              body: message || '',
+              triggered_by: 'manual',
+            }).then(({ error }) => {
+              if (error) console.warn('Failed to save relance execution to DB:', error);
+            });
+          }
+        }
       } catch (e) { console.warn('Failed to save relance history:', e); }
 
       // Success feedback

@@ -23,6 +23,8 @@ import RelanceConfigTab from './settings/RelanceConfigTab';
 import MultiEntreprise from './settings/MultiEntreprise';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
+import { useRelances } from '../hooks/useRelances';
+import { useOrg } from '../context/OrgContext';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -76,6 +78,12 @@ const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
   const { canManageTeam } = usePermissions();
+  const { orgId } = useOrg();
+  const relances = useRelances({
+    devis, clients, entreprise,
+    userId: user?.id,
+    orgId,
+  });
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -1218,6 +1226,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           updateEntreprise={updateEntreprise}
           isDark={isDark}
           couleur={couleur}
+          stats={relances.stats}
+          exclusions={relances.exclusions}
+          onRemoveExclusion={(id) => relances.deleteExclusion(id)}
+          onSaveConfig={(config) => relances.saveConfig(config)}
+          clients={clients}
+          devis={devis}
+          modeDiscret={modeDiscret}
         />
       )}
 

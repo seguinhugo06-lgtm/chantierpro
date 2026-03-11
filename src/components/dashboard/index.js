@@ -34,5 +34,8 @@ export { default as ScoreSanteWidget, ScoreSanteWidget as ScoreSanteWidgetNamed 
 // Bank Widget
 export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
 
+// Relance Widget
+export { default as RelanceWidget } from './RelanceWidget';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';
