@@ -265,8 +265,10 @@ function buildVariableMap(doc, client, entreprise) {
     total_du: doc?.total_ttc
       ? formatMoneyValue(calculatePenalties(doc.total_ttc, joursRetard).totalDu)
       : '0,00',
-    // Lien paiement (placeholder - à remplacer par l'URL réelle)
-    lien_paiement: '',
+    // Lien paiement en ligne
+    lien_paiement: doc?.payment_token
+      ? `${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}/pay/${doc.payment_token}`
+      : '',
   };
 }
 

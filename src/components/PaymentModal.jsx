@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info, Banknote, Building2, FileText, Wallet } from 'lucide-react';
-import { createPaymentLink, formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
+import { X, CreditCard, QrCode, Copy, Check, Loader, ExternalLink, Smartphone, Mail, Share2, AlertTriangle, Info, Banknote, Building2, FileText, Wallet, Link2, MessageCircle } from 'lucide-react';
+import { formatAmount, ACOMPTE_OPTIONS } from '../lib/stripe/payment';
+import supabase, { isDemo } from '../supabaseClient';
+import { buildPaymentUrl } from '../lib/paymentUtils';
 
-// Check if Stripe is configured
+// Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
 
 /** Offline payment modes */
@@ -16,10 +18,54 @@ const PAYMENT_MODES = [
 ];
 
 /**
- * Modal de paiement — 3 modes :
- * 1. Paiement intégral (Stripe QR)
- * 2. Paiement partiel (Stripe QR)
- * 3. Paiement reçu hors ligne (virement, chèque, espèces…)
+ * Create payment link via Supabase Edge Function
+ * Falls back to mock in demo mode
+ */
+async function createPaymentLinkEdge(documentId, montantCentimes) {
+  if (isDemo || !supabase) {
+    // Mock for demo mode
+    const token = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      token,
+      url: buildPaymentUrl(token),
+      link_id: `mock_${token}`,
+      existing: false,
+    };
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Non authentifié');
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-link`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        montant_centimes: montantCentimes,
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Erreur lors de la création du lien');
+  }
+
+  return await res.json();
+}
+
+/**
+ * Modal de paiement — 4 modes :
+ * 1. Envoyer un lien de paiement (CB/SEPA/Virement en ligne)
+ * 2. Paiement intégral (lien de paiement)
+ * 3. Paiement partiel (lien de paiement)
+ * 4. Paiement reçu hors ligne (virement, chèque, espèces…)
  */
 export default function PaymentModal({
   isOpen,
@@ -31,10 +77,11 @@ export default function PaymentModal({
   isDark,
   couleur
 }) {
-  const [paymentType, setPaymentType] = useState('full'); // 'full', 'custom', 'offline'
+  const [paymentType, setPaymentType] = useState('link'); // 'link', 'full', 'custom', 'offline'
   const [customAmount, setCustomAmount] = useState('');
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState('amount'); // 'amount', 'qr', 'offline_form'
 
@@ -56,8 +103,9 @@ export default function PaymentModal({
     if (isOpen) {
       setStep('amount');
       setPaymentLink(null);
-      setPaymentType('full');
+      setPaymentType('link');
       setCustomAmount('');
+      setError(null);
       setOfflineMode(entreprise?.modePaiementDefaut || 'virement');
       setOfflineDate(new Date().toISOString().split('T')[0]);
       setOfflineReference('');
@@ -68,35 +116,41 @@ export default function PaymentModal({
   if (!isOpen || !document) return null;
 
   const totalTTC = document.total_ttc || 0;
-  const amount = paymentType === 'full'
-    ? totalTTC
+  const amount = paymentType === 'custom'
+    ? (parseFloat(customAmount) || 0)
     : paymentType === 'offline'
       ? (parseFloat(offlineAmount) || totalTTC)
-      : parseFloat(customAmount) || 0;
+      : totalTTC;
 
   const handleGenerateLink = async () => {
     if (amount <= 0) return;
-
     setLoading(true);
-    try {
-      const link = await createPaymentLink({
-        devisId: document.id,
-        amount,
-        clientEmail: client?.email || '',
-        description: `Paiement ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero}`,
-        type: paymentType === 'full' ? 'solde' : 'acompte'
-      });
+    setError(null);
 
-      setPaymentLink(link);
+    try {
+      const montantCentimes = Math.round(amount * 100);
+      const result = await createPaymentLinkEdge(document.id, montantCentimes);
+
+      setPaymentLink({
+        paymentUrl: result.url,
+        token: result.token,
+        linkId: result.link_id,
+        existing: result.existing,
+      });
       setStep('qr');
 
       onPaymentCreated?.({
-        ...link,
+        paymentUrl: result.url,
+        token: result.token,
+        linkId: result.link_id,
+        amount,
         documentId: document.id,
-        documentType: document.type
+        documentType: document.type,
+        type: paymentType === 'custom' ? 'acompte' : 'solde',
       });
-    } catch (error) {
-      console.error('Erreur creation lien:', error);
+    } catch (err) {
+      console.error('Erreur creation lien:', err);
+      setError(err.message || 'Erreur lors de la création du lien de paiement');
     }
     setLoading(false);
   };
@@ -157,8 +211,19 @@ export default function PaymentModal({
     window.open(`mailto:${client.email}?subject=${subject}&body=${body}`);
   };
 
+  const sendByWhatsApp = () => {
+    if (!paymentLink?.paymentUrl) return;
+
+    const phone = (client?.telephone || client?.tel || '').replace(/\s/g, '').replace(/^0/, '+33');
+    const message = encodeURIComponent(
+      `Bonjour,\n\nVoici le lien de paiement pour votre ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero} (${formatAmount(amount)}).\n\n${paymentLink.paymentUrl}\n\nCordialement,\n${entreprise?.nom || ''}`
+    );
+
+    const url = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
+    window.open(url, '_blank');
+  };
+
   const selectedModeInfo = PAYMENT_MODES.find(m => m.value === offlineMode);
-  const ModeIcon = selectedModeInfo?.icon || Wallet;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -184,19 +249,6 @@ export default function PaymentModal({
 
         {/* Content — scrollable */}
         <div className="p-5 overflow-y-auto">
-          {/* Demo Mode Banner */}
-          {!STRIPE_CONFIGURED && step === 'amount' && paymentType !== 'offline' && (
-            <div className={`rounded-xl p-3 mb-4 flex items-start gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
-              <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-              <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode demonstration</p>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Le paiement CB necessite une integration Stripe. Utilisez "Paiement reçu" pour enregistrer un paiement hors ligne.
-                </p>
-              </div>
-            </div>
-          )}
-
           {step === 'amount' && (
             <>
               {/* Montant total */}
@@ -207,7 +259,28 @@ export default function PaymentModal({
 
               {/* Options de paiement */}
               <div className="space-y-3 mb-5">
-                {/* Option 1: Paiement intégral (Stripe) */}
+                {/* Option 1: Envoyer un lien de paiement (NEW) */}
+                <button
+                  onClick={() => setPaymentType('link')}
+                  className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
+                    paymentType === 'link'
+                      ? (isDark ? 'border-orange-500 bg-orange-900/20' : 'border-orange-500 bg-orange-50')
+                      : (isDark ? 'border-slate-600' : 'border-slate-200')
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <p className={`font-medium ${textPrimary}`}>Envoyer un lien de paiement</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
+                        Recommandé
+                      </span>
+                    </div>
+                    <p className={`text-sm ${textMuted}`}>CB, SEPA ou virement — le client choisit</p>
+                  </div>
+                  <Link2 size={20} style={{ color: paymentType === 'link' ? couleur : '#94a3b8' }} />
+                </button>
+
+                {/* Option 2: Paiement intégral */}
                 <button
                   onClick={() => setPaymentType('full')}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
@@ -217,15 +290,15 @@ export default function PaymentModal({
                   }`}
                 >
                   <div className="text-left">
-                    <p className={`font-medium ${textPrimary}`}>Paiement integral</p>
-                    <p className={`text-sm ${textMuted}`}>Le client paie la totalite</p>
+                    <p className={`font-medium ${textPrimary}`}>Paiement intégral</p>
+                    <p className={`text-sm ${textMuted}`}>QR Code pour la totalité</p>
                   </div>
                   <span className="text-lg font-bold" style={{ color: paymentType === 'full' ? couleur : '#94a3b8' }}>
                     {formatAmount(totalTTC)}
                   </span>
                 </button>
 
-                {/* Option 2: Paiement partiel (Stripe) */}
+                {/* Option 3: Paiement partiel */}
                 <button
                   onClick={() => setPaymentType('custom')}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
@@ -236,14 +309,14 @@ export default function PaymentModal({
                 >
                   <div className="text-left">
                     <p className={`font-medium ${textPrimary}`}>Paiement partiel</p>
-                    <p className={`text-sm ${textMuted}`}>Acompte ou montant personnalise</p>
+                    <p className={`text-sm ${textMuted}`}>Acompte ou montant personnalisé</p>
                   </div>
                   <span className="text-sm" style={{ color: paymentType === 'custom' ? couleur : '#94a3b8' }}>
                     Personnaliser
                   </span>
                 </button>
 
-                {/* Option 3: Paiement reçu hors ligne */}
+                {/* Option 4: Paiement reçu hors ligne */}
                 <button
                   onClick={() => { setPaymentType('offline'); setOfflineAmount(totalTTC.toFixed(2)); }}
                   className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
@@ -260,7 +333,7 @@ export default function PaymentModal({
                 </button>
               </div>
 
-              {/* Montant personnalise (mode custom) */}
+              {/* Montant personnalisé (mode custom) */}
               {paymentType === 'custom' && (
                 <div className="mb-5 space-y-3">
                   {/* Boutons raccourcis */}
@@ -367,6 +440,14 @@ export default function PaymentModal({
                 </div>
               )}
 
+              {/* Error message */}
+              {error && (
+                <div className={`rounded-xl p-3 mb-4 flex items-start gap-2 ${isDark ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5 text-red-500" />
+                  <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-700'}`}>{error}</p>
+                </div>
+              )}
+
               {/* Action buttons */}
               {paymentType === 'offline' ? (
                 <button
@@ -386,10 +467,14 @@ export default function PaymentModal({
                 >
                   {loading ? (
                     <Loader size={20} className="animate-spin" />
+                  ) : paymentType === 'link' ? (
+                    <Link2 size={20} />
                   ) : (
                     <QrCode size={20} />
                   )}
-                  Generer le QR Code
+                  {paymentType === 'link'
+                    ? `Générer le lien — ${formatAmount(amount)}`
+                    : `Générer le QR Code — ${formatAmount(amount)}`}
                 </button>
               )}
             </>
@@ -412,61 +497,75 @@ export default function PaymentModal({
 
                 <div className="text-center">
                   <p className={`text-lg font-bold ${textPrimary}`}>{formatAmount(amount)}</p>
-                  <p className={`text-sm ${textMuted}`}>Scannez pour payer</p>
+                  <p className={`text-sm ${textMuted}`}>
+                    {paymentType === 'link' ? 'Envoyez ce lien à votre client' : 'Scannez pour payer'}
+                  </p>
                 </div>
               </div>
 
-              {/* Instructions */}
+              {/* Info banner */}
               <div className={`rounded-xl p-4 mb-5 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
                 <div className="flex items-start gap-3">
                   <Smartphone size={20} className="text-blue-500 mt-0.5" />
                   <div>
-                    <p className={`font-medium text-sm ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Comment ca marche ?</p>
+                    <p className={`font-medium text-sm ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
+                      {paymentType === 'link' ? 'Lien multi-méthode' : 'Comment ça marche ?'}
+                    </p>
                     <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                      {STRIPE_CONFIGURED
-                        ? 'Le client scanne le QR code avec son telephone, puis paie par carte bancaire de maniere securisee.'
-                        : 'En mode demo, le lien de paiement n\'est pas fonctionnel. Activez Stripe pour encaisser de vrais paiements.'}
+                      {paymentType === 'link'
+                        ? 'Votre client pourra choisir de payer par carte bancaire, prélèvement SEPA ou virement bancaire.'
+                        : 'Le client scanne le QR code avec son téléphone, puis paie de manière sécurisée.'}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              {/* Sharing actions */}
+              <div className={`grid ${client?.email ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4`}>
                 <button
                   onClick={copyLink}
-                  className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-colors ${
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
                     isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
                   }`}
                 >
-                  {copied ? <Check size={20} className="text-green-500" /> : <Copy size={20} className={textSecondary} />}
-                  <span className={`text-xs ${textMuted}`}>{copied ? 'Copie !' : 'Copier'}</span>
+                  {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} className={textSecondary} />}
+                  <span className={`text-xs ${textMuted}`}>{copied ? 'Copié !' : 'Copier'}</span>
                 </button>
 
                 <button
-                  onClick={shareLink}
-                  className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-colors ${
+                  onClick={sendByWhatsApp}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
                     isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
                   }`}
                 >
-                  <Share2 size={20} className={textSecondary} />
-                  <span className={`text-xs ${textMuted}`}>Partager</span>
+                  <MessageCircle size={18} className="text-green-500" />
+                  <span className={`text-xs ${textMuted}`}>WhatsApp</span>
                 </button>
 
                 {client?.email && (
                   <button
                     onClick={sendByEmail}
-                    className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl transition-colors ${
+                    className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
                       isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
                     }`}
                   >
-                    <Mail size={20} className={textSecondary} />
+                    <Mail size={18} className={textSecondary} />
                     <span className={`text-xs ${textMuted}`}>Email</span>
                   </button>
                 )}
+
+                <button
+                  onClick={shareLink}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-colors ${
+                    isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'
+                  }`}
+                >
+                  <Share2 size={18} className={textSecondary} />
+                  <span className={`text-xs ${textMuted}`}>Partager</span>
+                </button>
               </div>
 
-              {/* Lien */}
+              {/* Lien URL */}
               <div className={`rounded-xl p-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex items-center gap-2`}>
                 <input
                   type="text"
@@ -478,15 +577,15 @@ export default function PaymentModal({
                   href={paymentLink.paymentUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                  className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}
                 >
                   <ExternalLink size={16} className={textSecondary} />
                 </a>
               </div>
 
-              {/* Nouveau paiement */}
+              {/* Nouveau montant */}
               <button
-                onClick={() => setStep('amount')}
+                onClick={() => { setStep('amount'); setPaymentLink(null); }}
                 className={`w-full mt-4 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
               >
                 Nouveau montant

@@ -49,9 +49,11 @@ function getLinePU(l) {
  * @param {Object} params.entreprise - L'entreprise
  * @param {string} params.couleur - Couleur accent (défaut: #f97316)
  * @param {'artisan'|'client'} params.mode - 'client' = page signature publique (masque les placeholders internes)
+ * @param {string} [params.paymentToken] - Token de paiement (pour QR code facture)
+ * @param {string} [params.paymentQrDataUrl] - Data URL du QR code (base64 PNG)
  * @returns {string} HTML complet
  */
-export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan' }) {
+export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl }) {
   const isClientMode = mode === 'client';
   const color = couleur || entreprise?.couleur || '#f97316';
   const isFacture = doc.type === 'facture';
@@ -293,6 +295,19 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  ${isFacture && paymentToken ? `
+  <!-- PAIEMENT EN LIGNE -->
+  <div style="margin-top:20px; padding:15px; border:2px solid ${color}; border-radius:8px; display:flex; align-items:center; gap:15px;">
+    ${paymentQrDataUrl ? `<img src="${paymentQrDataUrl}" style="width:80px;height:80px;" alt="QR Code paiement" />` : ''}
+    <div>
+      <strong style="color:${color}; font-size:9pt;">💳 Paiement en ligne</strong><br>
+      <span style="font-size:8pt; color:#475569;">Scannez le QR code ou visitez :</span><br>
+      <span style="font-size:7.5pt; color:#64748b; word-break:break-all;">${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}/pay/${paymentToken}</span><br>
+      <span style="font-size:7pt; color:#94a3b8;">Carte bancaire · Prélèvement SEPA · Virement</span>
+    </div>
+  </div>
+  ` : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">

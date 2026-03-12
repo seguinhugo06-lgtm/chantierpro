@@ -180,6 +180,7 @@ const AVAILABLE_VARIABLES = [
   { key: '{{date_échéance}}', description: 'Date d\'échéance' },
   { key: '{{entreprise_nom}}', description: 'Nom de l\'entreprise' },
   { key: '{{jours_retard}}', description: 'Jours de retard' },
+  { key: '{{lien_paiement}}', description: 'Lien de paiement en ligne' },
 ];
 
 // ============ SUB-COMPONENTS ============

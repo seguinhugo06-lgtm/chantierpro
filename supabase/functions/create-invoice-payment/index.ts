@@ -39,7 +39,7 @@ serve(async (req) => {
   }
 
   try {
-    const { payment_token, amount_cents } = await req.json()
+    const { payment_token, amount_cents, payment_link_id } = await req.json()
 
     if (!payment_token) {
       return new Response(JSON.stringify({ error: 'payment_token requis' }), {
@@ -83,15 +83,31 @@ serve(async (req) => {
       })
     }
 
-    // 2. Get artisan's Stripe secret key via RPC (reads from Vault securely)
-    const { data: vaultKey, error: keyError } = await supabaseAdmin
-      .rpc('get_stripe_secret_for_user', { p_user_id: facture.user_id })
+    // 2. Get Stripe Connect account ID (if using Connect)
+    const { data: stripeConfig } = await supabaseAdmin
+      .from('stripe_config')
+      .select('stripe_account_id, stripe_connect_status, absorb_fees')
+      .eq('user_id', facture.user_id)
+      .maybeSingle()
 
-    if (keyError) {
-      console.error('Stripe key retrieval error:', keyError)
+    const useConnect = stripeConfig?.stripe_account_id && stripeConfig?.stripe_connect_status === 'connected'
+    const absorbFees = stripeConfig?.absorb_fees ?? true
+
+    // Get Stripe key: platform key for Connect, or artisan's direct key
+    let stripeSecretKey: string | null = null
+
+    if (useConnect) {
+      // Stripe Connect: use platform key
+      stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') || null
+    } else {
+      // Direct: use artisan's own key from vault
+      const { data: vaultKey, error: keyError } = await supabaseAdmin
+        .rpc('get_stripe_secret_for_user', { p_user_id: facture.user_id })
+      if (keyError) {
+        console.error('Stripe key retrieval error:', keyError)
+      }
+      stripeSecretKey = vaultKey || Deno.env.get('STRIPE_SECRET_KEY') || null
     }
-
-    const stripeSecretKey = vaultKey || Deno.env.get('STRIPE_SECRET_KEY') || null
 
     if (!stripeSecretKey) {
       return new Response(JSON.stringify({ error: 'Clé Stripe non trouvée' }), {
@@ -100,7 +116,7 @@ serve(async (req) => {
       })
     }
 
-    // 3. Initialize Stripe with artisan's key
+    // 3. Initialize Stripe with appropriate key
     const stripe = new Stripe(stripeSecretKey, { apiVersion: '2023-10-16' })
 
     // 4. Calculate amount with commission
@@ -145,7 +161,7 @@ serve(async (req) => {
     const origin = req.headers.get('origin') || 'https://batigesti.vercel.app'
 
     // 6. Create Stripe Checkout session
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: any = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{
@@ -167,10 +183,20 @@ serve(async (req) => {
         user_id: facture.user_id,
         payment_type: isPartialPayment ? 'acompte' : 'solde',
         payment_token: payment_token,
+        payment_link_id: payment_link_id || '',
         amount_original_cents: baseAmountCents.toString(),
         commission_model: commission_model || 'artisan',
+        facture_numero: facture.numero || '',
       },
-    })
+    }
+
+    // Use Stripe Connect if available
+    const connectOptions: any = {}
+    if (useConnect && stripeConfig?.stripe_account_id) {
+      connectOptions.stripeAccount = stripeConfig.stripe_account_id
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams, connectOptions)
 
     // 7. Save session ID on facture
     await supabaseAdmin

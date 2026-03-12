@@ -7,7 +7,7 @@ import {
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
   Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
   UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
-  RotateCcw
+  RotateCcw, CreditCard
 } from 'lucide-react';
 
 /**
@@ -135,6 +135,7 @@ export default function CommandPalette({
     { id: 'nav-memos', label: 'Mémos', keywords: 'mémos notes rappels tâches todo inbox', icon: ClipboardList, action: () => { setPage('memos'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
+    { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe gocardless sepa carte bancaire prélèvement lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 

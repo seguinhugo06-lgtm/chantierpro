@@ -20,6 +20,7 @@ import {
 
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
+import PaymentConfigTab from './settings/PaymentConfigTab';
 import MultiEntreprise from './settings/MultiEntreprise';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
@@ -42,6 +43,7 @@ const TAB_GROUPS = [
   { id: 'finance', label: '💶 Finance', tabs: [
     { key: 'comptabilite', label: '🧮 Comptabilité' },
     { key: 'rentabilite', label: '📊 Rentabilité' },
+    { key: 'paiements', label: '💳 Paiements' },
   ]},
   { id: 'equipe', label: '👥 Équipe', tabs: [
     { key: 'team', label: '👥 Équipe & Accès' },
@@ -1703,6 +1705,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           )}
         </div>
+      )}
+
+      {/* PAIEMENTS EN LIGNE */}
+      {tab === 'paiements' && (
+        <PaymentConfigTab
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+          user={user}
+          modeDiscret={modeDiscret}
+        />
       )}
 
       {/* Données Import/Export Tab — removed */}
