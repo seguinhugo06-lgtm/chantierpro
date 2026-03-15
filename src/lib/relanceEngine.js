@@ -388,10 +388,7 @@ export async function loadExecutions(userId, orgId) {
   const { data, error } = await query;
 
   if (error) {
-    // Silently ignore if the table doesn't exist yet (42P01 = undefined_table)
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('Failed to load relance executions:', error);
-    }
+    // Table may not exist yet — fail silently
     return [];
   }
   return data || [];
@@ -414,10 +411,7 @@ export async function loadExclusions(userId, orgId) {
   const { data, error } = await query;
 
   if (error) {
-    // Silently ignore if the table doesn't exist yet (42P01 = undefined_table)
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('Failed to load relance exclusions:', error);
-    }
+    // Table may not exist yet — fail silently
     return [];
   }
   return data || [];

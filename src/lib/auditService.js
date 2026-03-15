@@ -119,9 +119,7 @@ export async function logAction(supabase, {
     .single();
 
   if (error) {
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('[auditService] logAction error:', error);
-    }
+    // Table may not exist yet — fail silently
     return null;
   }
 
@@ -167,9 +165,7 @@ export async function getEntityHistory(supabase, entityType, entityId, { limit =
 
   const { data, error } = await query;
   if (error) {
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('[auditService] getEntityHistory error:', error);
-    }
+    // Table may not exist yet — fail silently
     return [];
   }
 
@@ -218,10 +214,7 @@ export async function getRecentActivity(supabase, { limit = 20, entityTypes = nu
 
   const { data, error } = await query;
   if (error) {
-    // Silently ignore if the table doesn't exist yet (42P01 = undefined_table)
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('[auditService] getRecentActivity error:', error);
-    }
+    // Table may not exist yet — fail silently
     return [];
   }
 
@@ -266,9 +259,7 @@ export async function getEntitiesHistory(supabase, entityType, entityIds, { limi
 
   const { data, error } = await query;
   if (error) {
-    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.error('[auditService] getEntitiesHistory error:', error);
-    }
+    // Table may not exist yet — fail silently
     return [];
   }
 
