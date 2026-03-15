@@ -3,6 +3,7 @@ import { Plus, ArrowLeft, Calendar, Clock, User, MapPin, X, Edit3, Trash2, Check
 import { useConfirm, useToast } from '../context/AppContext';
 import EmptyState from './ui/EmptyState';
 import { usePermissions } from '../hooks/usePermissions';
+import { isProviderSyncReady, triggerAutoSync } from '../services/syncService';
 
 const DURATIONS = [
   { label: '30min', value: 30 },
@@ -47,7 +48,7 @@ const getNextHalfHour = () => {
   return `${String(next.getHours()).padStart(2, '0')}:00`;
 };
 
-export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo, couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill }) {
+export default function Planning({ events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo, couleur, setPage, setSelectedChantier, updateChantier, isDark, prefill, clearPrefill, devis = [] }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -83,6 +84,13 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const detailModalRef = useRef(null);
   const emptyForm = { title: '', date: '', time: '', endTime: '', type: 'rdv', employeId: '', clientId: '', chantierId: '', description: '', duration: 60, recurrence: 'never', recurrenceEnd: '', recurrenceDays: [], recurrenceOccurrences: '', recurrenceEndType: 'date', dateEnd: '', rappel: '' };
   const [form, setForm] = useState(emptyForm);
+  const [calendarSyncReady, setCalendarSyncReady] = useState(false);
+  const [calendarSyncing, setCalendarSyncing] = useState(false);
+
+  // Check if Google Calendar is connected
+  useEffect(() => {
+    isProviderSyncReady('google_calendar').then(ready => setCalendarSyncReady(ready)).catch(() => {});
+  }, []);
 
   // Format a Date object as YYYY-MM-DD in LOCAL timezone (NOT UTC)
   const formatLocalDate = (dateObj) => {
@@ -181,12 +189,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const JOURS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', memo: 'Tâche', autre: 'Autre' };
+  const TYPE_LABELS = { chantier: 'Chantier', rdv: 'RDV Client', relance: 'Relance', urgence: 'Urgence', memo: 'Tâche', autre: 'Autre', deadline: 'Échéance' };
   const TYPE_ICONS = { chantier: Home, rdv: User, relance: Phone, urgence: Zap, memo: ClipboardList, autre: Calendar };
 
   // Couleurs cohérentes avec la légende - chantiers toujours bleus
   const getChantierColor = (ch) => { if (ch.statut === 'termine') return '#64748b'; return '#3b82f6'; };
-  const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', memo: '#f59e0b', autre: '#8b5cf6' };
+  const typeColors = { chantier: '#3b82f6', rdv: '#22c55e', relance: '#f97316', urgence: '#ef4444', memo: '#f59e0b', autre: '#8b5cf6', deadline: '#8b5cf6' };
 
   // Helper pour obtenir la couleur d'un événement - TOUJOURS utiliser typeColors en priorité
   const getEventColor = (ev) => {
@@ -215,6 +223,37 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     subtasks: m.subtasks || [], chantier_id: m.chantier_id || '',
     is_done: m.is_done || false, fullText: m.text || '',
   }));
+
+  // UX-014: Devis/facture deadline events on the calendar
+  const getDevisEvents = () => {
+    const evts = [];
+    devis.forEach(d => {
+      // Show validity date for devis 'envoye' or 'vu'
+      if (d.type === 'devis' && d.date_validite && ['envoye', 'vu'].includes(d.statut)) {
+        const client = clients.find(c => c.id === d.client_id);
+        const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : '';
+        evts.push({
+          id: `devis_${d.id}`, title: `📋 Devis ${d.numero || ''} ${clientNom}`.trim(),
+          date: d.date_validite, type: 'deadline', isDeadline: true,
+          color: '#8b5cf6', description: `Échéance devis — ${d.total_ttc ? d.total_ttc.toLocaleString('fr-FR') + ' €' : ''}`,
+          devisId: d.id,
+        });
+      }
+      // Show due date for factures 'envoye' (unpaid)
+      if (d.type === 'facture' && d.date_echeance && d.statut === 'envoye') {
+        const client = clients.find(c => c.id === d.client_id);
+        const clientNom = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : '';
+        const isOverdue = new Date(d.date_echeance) < new Date();
+        evts.push({
+          id: `facture_${d.id}`, title: `${isOverdue ? '🔴' : '💰'} Facture ${d.numero || ''} ${clientNom}`.trim(),
+          date: d.date_echeance, type: 'deadline', isDeadline: true,
+          color: isOverdue ? '#ef4444' : '#10b981', description: `Échéance facture — ${d.total_ttc ? d.total_ttc.toLocaleString('fr-FR') + ' €' : ''}`,
+          devisId: d.id,
+        });
+      }
+    });
+    return evts;
+  };
   // Expand recurring events into virtual instances within visible range
   const expandRecurringEvents = (evts) => {
     const expanded = [];
@@ -258,7 +297,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     return expanded;
   };
 
-  const allEvents = useMemo(() => [...expandRecurringEvents(events), ...getChantierEvents(), ...getMemoEvents()], [events, chantiers, memos]);
+  const allEvents = useMemo(() => [...expandRecurringEvents(events), ...getChantierEvents(), ...getMemoEvents(), ...getDevisEvents()], [events, chantiers, memos, devis, clients]);
 
   const getEventsForDay = (day) => {
     if (!day) return [];
@@ -317,6 +356,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setQuickAdd(null);
     setForm(emptyForm);
     showToast('Événement créé', 'success');
+    // Auto-sync to Google Calendar if connected
+    if (calendarSyncReady) {
+      triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
+    }
   };
 
   const handleDeleteEvent = async (id) => {
@@ -334,6 +377,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       }
       setShowDetail(null);
       showToast('Événement supprimé', 'success');
+      // Auto-sync deletion to Google Calendar
+      if (calendarSyncReady) {
+        triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
+      }
     }
   };
 
@@ -358,6 +405,10 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
     setShowDetail(null); setEditMode(false);
     setForm(emptyForm);
     showToast('Événement mis à jour', 'success');
+    // Auto-sync update to Google Calendar
+    if (calendarSyncReady) {
+      triggerAutoSync('google_calendar', 'event', 'push').catch(() => {});
+    }
   };
 
   const startEdit = () => {
@@ -395,6 +446,12 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </button>
           )}
           <h1 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>Planning</h1>
+          {calendarSyncReady && (
+            <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+              <CalendarCheck size={10} />
+              Sync Google
+            </span>
+          )}
           <span className={`text-xs ${textMuted}`}>{(() => {
             if (viewMode === 'month') {
               const monthEvts = allEvents.filter(e => {

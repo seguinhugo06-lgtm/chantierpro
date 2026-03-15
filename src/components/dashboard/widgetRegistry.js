@@ -15,6 +15,7 @@ import {
   Heart,
   StickyNote,
   Shield,
+  CreditCard,
 } from 'lucide-react';
 
 export const WIDGET_REGISTRY = {
@@ -110,11 +111,25 @@ export const WIDGET_REGISTRY = {
     category: 'overview',
     deprecated: true,
   },
+  'reports': {
+    title: 'Rapports PDF',
+    icon: FileText,
+    defaultSize: 'third',
+    priority: 14,
+    category: 'finance',
+  },
+  'acomptes': {
+    title: 'Acomptes en cours',
+    icon: CreditCard,
+    defaultSize: 'third',
+    priority: 15,
+    category: 'finance',
+  },
   'plan-limits': {
     title: 'Plan & Limites',
     icon: Shield,
     defaultSize: 'third',
-    priority: 14,
+    priority: 16,
     category: 'system',
   },
 };

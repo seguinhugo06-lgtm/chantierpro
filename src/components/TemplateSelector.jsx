@@ -1,24 +1,11 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, FileText, Droplets, Zap, Layers, Brush, Ruler, LayoutGrid, Thermometer, Home, Mountain, ArrowLeft, Check, TrendingUp, Star, Trash2 } from 'lucide-react';
-import { TEMPLATES_METIER, getMetiers, prepareTemplateLines } from '../lib/templates/devis-templates';
+import { X, ChevronRight, FileText, ArrowLeft, Check, TrendingUp, Star, Trash2, Search } from 'lucide-react';
+import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 
 /**
- * Composant de selection de templates de devis par metier
- * Permet de demarrer un devis a partir d'un modele pre-rempli
+ * Composant de sélection de templates de devis par métier (unifié)
+ * Utilise le système MODELES_DEVIS (~308 modèles en 29 catégories)
  */
-
-// Mapping des icones par nom
-const ICON_MAP = {
-  Droplets,
-  Zap,
-  Layers,
-  Brush,
-  Ruler,
-  LayoutGrid,
-  Thermometer,
-  Home,
-  Mountain
-};
 
 export default function TemplateSelector({
   isOpen,
@@ -31,6 +18,7 @@ export default function TemplateSelector({
 }) {
   const [selectedMetier, setSelectedMetier] = useState(null);
   const [hoveredTemplate, setHoveredTemplate] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800" : "bg-white";
@@ -40,10 +28,14 @@ export default function TemplateSelector({
 
   if (!isOpen) return null;
 
-  const metiers = getMetiers();
+  const metiers = getMetiersWithModeles();
+  const selectedMetierData = selectedMetier ? MODELES_DEVIS[selectedMetier] : null;
+
+  // Recherche globale
+  const searchResults = searchQuery.length >= 2 ? searchModeles(searchQuery).slice(0, 12) : [];
 
   const handleSelectTemplate = (metierId, template) => {
-    const lines = prepareTemplateLines(template);
+    const lines = prepareModeleLignes(template);
     onSelectTemplate({
       metier: metierId,
       template,
@@ -51,25 +43,14 @@ export default function TemplateSelector({
     });
     onClose();
     setSelectedMetier(null);
+    setSearchQuery('');
   };
 
   const handleBack = () => {
     setSelectedMetier(null);
   };
 
-  const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' EUR';
-
-  // Calcule le total d'un template
-  const getTemplateTotal = (template) => {
-    return template.lignes.reduce((sum, l) => sum + (l.quantite * l.prixUnitaire), 0);
-  };
-
-  // Calcule la marge d'un template
-  const getTemplateMarge = (template) => {
-    const total = template.lignes.reduce((sum, l) => sum + (l.quantite * l.prixUnitaire), 0);
-    const cout = template.lignes.reduce((sum, l) => sum + ((l.prixAchat || 0) * l.quantite), 0);
-    return total > 0 ? ((total - cout) / total * 100).toFixed(0) : 0;
-  };
+  const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -85,15 +66,19 @@ export default function TemplateSelector({
                 <ArrowLeft size={20} className={textSecondary} />
               </button>
             )}
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: selectedMetier ? TEMPLATES_METIER[selectedMetier]?.color + '20' : `${couleur}20` }}>
-              <FileText size={20} style={{ color: selectedMetier ? TEMPLATES_METIER[selectedMetier]?.color : couleur }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: selectedMetierData ? selectedMetierData.color + '20' : `${couleur}20` }}>
+              {selectedMetierData ? (
+                <span className="text-xl">{selectedMetierData.icon}</span>
+              ) : (
+                <FileText size={20} style={{ color: couleur }} />
+              )}
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>
-                {selectedMetier ? TEMPLATES_METIER[selectedMetier]?.nom : 'Modèles de devis'}
+                {selectedMetierData ? selectedMetierData.nom : 'Modèles de devis'}
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {selectedMetier ? 'Choisissez un modèle' : 'Sélectionnez votre métier'}
+                {selectedMetier ? `${selectedMetierData?.modeles?.length || 0} modèles` : 'Sélectionnez votre métier'}
               </p>
             </div>
           </div>
@@ -109,86 +94,141 @@ export default function TemplateSelector({
         <div className="flex-1 overflow-y-auto p-5">
           {!selectedMetier ? (
             <div>
-              {/* Mes modèles personnalisés */}
-              {customTemplates.length > 0 && (
-                <div className="mb-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Star size={16} style={{ color: couleur }} />
-                    <p className={`text-sm font-semibold ${textPrimary}`}>Mes modèles</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
-                      {customTemplates.length}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {customTemplates.map(t => (
-                      <div
-                        key={t.id}
-                        className={`p-3 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
-                        onClick={() => {
-                          onSelectTemplate({
-                            template: t,
-                            lignes: (t.lignes || []).map(l => ({ ...l, id: Math.random().toString(36).slice(2) }))
-                          });
-                          onClose();
-                        }}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-medium ${textPrimary}`}>{t.nom}</p>
-                          <p className={`text-xs ${textMuted}`}>{t.category} · {(t.lignes || []).length} lignes</p>
+              {/* Barre de recherche globale */}
+              <div className="mb-4">
+                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                  <Search size={16} className={textMuted} />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un modèle..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className={`flex-1 bg-transparent text-sm outline-none ${textPrimary}`}
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className={`p-0.5 rounded ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
+                      <X size={14} className={textMuted} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Résultats de recherche */}
+              {searchQuery.length >= 2 ? (
+                <div>
+                  <p className={`text-xs font-medium ${textMuted} mb-3`}>
+                    {searchResults.length} résultat{searchResults.length > 1 ? 's' : ''} pour "{searchQuery}"
+                  </p>
+                  {searchResults.length > 0 ? (
+                    <div className="space-y-2">
+                      {searchResults.map(result => (
+                        <div
+                          key={`${result.metierId}-${result.id}`}
+                          className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
+                          onClick={() => handleSelectTemplate(result.metierId, result)}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm">{result.metierIcon}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                              {result.metierNom}
+                            </span>
+                          </div>
+                          <p className={`font-medium ${textPrimary}`}>{result.nom}</p>
+                          <p className={`text-xs ${textMuted}`}>{result.description}</p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-sm font-medium" style={{ color: couleur }}>
-                            ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
-                          </span>
-                          {onDeleteTemplate && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
-                              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={`text-sm text-center py-8 ${textMuted}`}>Aucun modèle trouvé</p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Mes modèles personnalisés */}
+                  {customTemplates.length > 0 && (
+                    <div className="mb-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Star size={16} style={{ color: couleur }} />
+                        <p className={`text-sm font-semibold ${textPrimary}`}>Mes modèles</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                          {customTemplates.length}
+                        </span>
                       </div>
+                      <div className="space-y-2">
+                        {customTemplates.map(t => (
+                          <div
+                            key={t.id}
+                            className={`p-3 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300'}`}
+                            onClick={() => {
+                              onSelectTemplate({
+                                template: t,
+                                lignes: (t.lignes || []).map(l => ({ ...l, id: Math.random().toString(36).slice(2) }))
+                              });
+                              onClose();
+                            }}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium ${textPrimary}`}>{t.nom}</p>
+                              <p className={`text-xs ${textMuted}`}>{t.categorie || t.category} · {(t.lignes || []).length} lignes</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-sm font-medium" style={{ color: couleur }}>
+                                ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                              </span>
+                              {onDeleteTemplate && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onDeleteTemplate(t.id); }}
+                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <p className={`text-xs font-medium ${textMuted} mb-3`}>Modèles par métier</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Liste des métiers */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {metiers.map(metier => (
+                      <button
+                        key={metier.id}
+                        onClick={() => setSelectedMetier(metier.id)}
+                        className={`relative p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg ${
+                          isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        {metier.isNew && (
+                          <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500 shadow-sm">
+                            NEW
+                          </span>
+                        )}
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ background: metier.color + '20' }}
+                        >
+                          <span className="text-2xl">{metier.icon}</span>
+                        </div>
+                        <div className="text-center">
+                          <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
+                          <p className={`text-xs ${textMuted}`}>{metier.modelesCount} modèles</p>
+                        </div>
+                      </button>
                     ))}
                   </div>
-                  <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                    <p className={`text-xs font-medium ${textMuted} mb-3`}>Modèles par métier</p>
-                  </div>
-                </div>
+                </>
               )}
-              {/* Liste des metiers */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {metiers.map(metier => {
-                const IconComponent = ICON_MAP[metier.icon] || FileText;
-                return (
-                  <button
-                    key={metier.id}
-                    onClick={() => setSelectedMetier(metier.id)}
-                    className={`p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-all hover:shadow-lg ${
-                      isDark ? 'border-slate-700 hover:border-slate-500 bg-slate-800' : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                    style={{ '--hover-color': metier.color }}
-                  >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
-                      style={{ background: metier.color + '20' }}
-                    >
-                      <IconComponent size={24} style={{ color: metier.color }} />
-                    </div>
-                    <div className="text-center">
-                      <p className={`font-medium ${textPrimary}`}>{metier.nom}</p>
-                      <p className={`text-xs ${textMuted}`}>{metier.templatesCount} modèles</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
             </div>
           ) : (
-            // Liste des templates du metier
+            // Liste des templates du métier
             <div className="space-y-3">
-              {TEMPLATES_METIER[selectedMetier]?.templates.map(template => (
+              {selectedMetierData?.modeles.map(template => (
                 <div
                   key={template.id}
                   className={`rounded-xl border-2 overflow-hidden transition-all ${
@@ -213,12 +253,12 @@ export default function TemplateSelector({
                         <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
                           {template.lignes.length} lignes
                         </span>
-                        <span className="text-sm font-medium" style={{ color: TEMPLATES_METIER[selectedMetier]?.color }}>
-                          ~{formatMoney(getTemplateTotal(template))} HT
+                        <span className="text-sm font-medium" style={{ color: selectedMetierData?.color }}>
+                          ~{formatMoney(calculateModeleTotal(template))} HT
                         </span>
-                        <span className={`text-xs flex items-center gap-1 ${Number(getTemplateMarge(template)) >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        <span className={`text-xs flex items-center gap-1 ${calculateModeleMarge(template) >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
                           <TrendingUp size={12} />
-                          {getTemplateMarge(template)}% marge
+                          {calculateModeleMarge(template)}% marge
                         </span>
                       </div>
                     </div>
@@ -236,7 +276,7 @@ export default function TemplateSelector({
                           <div key={idx} className="flex items-center justify-between text-xs">
                             <span className={`truncate flex-1 ${textSecondary}`}>{ligne.description}</span>
                             <span className={textMuted}>
-                              {ligne.quantite} {ligne.unite} x {ligne.prixUnitaire} EUR
+                              {ligne.quantite} {ligne.unite} × {ligne.prixUnitaire} €
                             </span>
                           </div>
                         ))}
@@ -247,7 +287,7 @@ export default function TemplateSelector({
                       <button
                         onClick={() => handleSelectTemplate(selectedMetier, template)}
                         className="w-full mt-3 py-2 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2"
-                        style={{ background: TEMPLATES_METIER[selectedMetier]?.color }}
+                        style={{ background: selectedMetierData?.color }}
                       >
                         <Check size={16} />
                         Utiliser ce modèle
@@ -263,7 +303,7 @@ export default function TemplateSelector({
         {/* Footer */}
         <div className={`p-4 border-t shrink-0 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
           <p className={`text-xs text-center ${textMuted}`}>
-            Les prix sont indicatifs et bases sur les moyennes du marche 2024-2025. Ajustez selon vos tarifs.
+            {Object.keys(MODELES_DEVIS).length} métiers · Les prix sont indicatifs et basés sur les moyennes du marché. Ajustez selon vos tarifs.
           </p>
         </div>
       </div>

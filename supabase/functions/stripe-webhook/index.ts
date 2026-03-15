@@ -104,7 +104,7 @@ serve(async (req) => {
           await supabaseAdmin
             .from('subscriptions')
             .update({
-              plan: 'decouverte',
+              plan: 'gratuit',
               status: 'canceled',
               stripe_subscription_id: null,
               stripe_price_id: null,

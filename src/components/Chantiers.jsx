@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, Phone, Clock, Calendar, DollarSign, TrendingUp, TrendingDown, AlertTriangle, Package, Users, FileText, ChevronRight, ChevronDown, ChevronUp, Save, Image, StickyNote, CheckSquare, Square, MoreVertical, MoreHorizontal, Percent, Coins, Receipt, Banknote, PiggyBank, Target, BarChart3, CircleDollarSign, Wallet, MessageSquare, AlertCircle, ArrowUpRight, ArrowDownRight, UserCog, Download, Share2, ArrowUpDown, SortAsc, SortDesc, Building2, Zap, Sparkles, ShoppingCart, FolderOpen, Wifi, WifiOff, Sun, Cloud, CloudRain, Wind, Thermometer, GripVertical, CheckCircle, Copy, Archive, Search, Paperclip, Upload, Map, List, ClipboardList, CheckCircle2, Navigation, Mic, CalendarPlus, Moon, Shield } from 'lucide-react';
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
+const GanttView = lazy(() => import('./GanttView'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId, findDuplicateChantiers } from '../lib/utils';
@@ -13,9 +14,16 @@ import RapportChantier from './chantiers/RapportChantier';
 import { CHANTIER_STATUS_LABELS, getAvailableChantierTransitions } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
 import { calculateGlobalAvancement, getCumulativeInvoiced } from '../lib/situationUtils';
+import ChantierJournal from './audit/ChantierJournal';
 import { getUserWeather, getChantierWeather } from '../services/WeatherService';
 import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
+import ChantierGarantiesTab from './chantiers/ChantierGarantiesTab';
+import ReceptionForm from './chantiers/ReceptionForm';
+import InterventionForm from './chantiers/InterventionForm';
+import { getReception, createReception, updateReserve as updateReserveService, leverToutesReserves } from '../services/receptionService';
+import { getByChantier as getGarantiesByChantier, GARANTIE_TYPES } from '../services/garantieService';
+import { getByChantier as getInterventionsByChantier, create as createIntervention } from '../services/interventionService';
 
 const PHOTO_CATS = ['avant', 'pendant', 'après', 'litige'];
 
@@ -43,9 +51,13 @@ const calculateSmartProgression = (chantier, bilan, tasksDone, tasksTotal) => {
     signals.push({ value: costProgress, weight: 0.3 });
   }
 
-  // If no signals available, fallback to task completion only
+  // If no signals available, fallback with micro-progressions
   if (signals.length === 0) {
-    return tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0;
+    if (tasksTotal > 0) return Math.round((tasksDone / tasksTotal) * 100) || 2; // Has tasks listed = some planning done
+    // Fallback to manual avancement or status-based minimum
+    if (chantier.statut === 'termine') return 100;
+    if (chantier.statut === 'en_cours') return Math.max(chantier.avancement || 0, 5);
+    return chantier.avancement || 0;
   }
 
   // Normalize weights if not all signals are present
@@ -197,7 +209,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
-  const [viewMode, setViewMode] = useState('list'); // list or map
+  const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
+  const [ganttTasks, setGanttTasks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
+  });
   const [showTaskTemplates, setShowTaskTemplates] = useState(false);
   const [newTaskCritical, setNewTaskCritical] = useState(false); // For marking new tasks as critical
   const [showTaskGenerator, setShowTaskGenerator] = useState(false); // Task generator modal
@@ -210,6 +225,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [taskFilter, setTaskFilter] = useState('all'); // all, pending, critical
   const [fabOpen, setFabOpen] = useState(false); // FAB chantier flottant
   const [showMoreTabs, setShowMoreTabs] = useState(false); // Dropdown "Plus" onglets
+  const [showReceptionForm, setShowReceptionForm] = useState(false);
+  const [showInterventionForm, setShowInterventionForm] = useState(null); // garantie object
+  const [chantierReception, setChantierReception] = useState(null);
+  const [chantierGaranties, setChantierGaranties] = useState([]);
+  const [chantierInterventions, setChantierInterventions] = useState([]);
   const [finExpanded, setFinExpanded] = useState({}); // Finance accordion sections
   const [animatedTaskId, setAnimatedTaskId] = useState(null);
   const [counterPulse, setCounterPulse] = useState(false);
@@ -220,6 +240,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   // Sync view → selectedChantier so App.jsx can hide global FABMenu
   useEffect(() => { setSelectedChantier?.(view || null); }, [view, setSelectedChantier]);
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+
+  // Persist gantt tasks to localStorage
+  useEffect(() => { try { localStorage.setItem('cp_gantt_tasks', JSON.stringify(ganttTasks)); } catch {} }, [ganttTasks]);
 
   // Fetch weather for active chantier
   useEffect(() => {
@@ -239,6 +262,31 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
     if (view) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }, [view]);
+
+  // Load reception/garanties data when viewing a chantier detail
+  useEffect(() => {
+    if (!view) {
+      setChantierReception(null);
+      setChantierGaranties([]);
+      setChantierInterventions([]);
+      return;
+    }
+    const loadGarantieData = async () => {
+      try {
+        const [reception, garanties, interventions] = await Promise.all([
+          getReception(view),
+          getGarantiesByChantier(view),
+          getInterventionsByChantier(view),
+        ]);
+        setChantierReception(reception);
+        setChantierGaranties(garanties || []);
+        setChantierInterventions(interventions || []);
+      } catch (e) {
+        // Silent fail — data loads when tab is opened
+      }
+    };
+    loadGarantieData();
   }, [view]);
 
   const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €';
@@ -462,6 +510,11 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     >
                       <Copy size={16} className={textMuted} />
                     </button>
+                    {(ch.statut === 'en_cours' || ch.statut === 'termine') && !chantierReception && (
+                      <button onClick={() => setShowReceptionForm(true)} className={`p-2 ${isDark ? 'hover:bg-blue-900/50' : 'hover:bg-blue-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Réceptionner le chantier">
+                        <Shield size={16} className="text-blue-500" />
+                      </button>
+                    )}
                     {ch.statut === 'en_cours' && (
                       <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier marqué comme terminé ✅', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
                         <CheckCircle size={16} className="text-emerald-500" />
@@ -1042,7 +1095,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Avancement</span>
                   <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
+                    <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
                   </div>
                   <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
                 </div>
@@ -1238,11 +1291,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             { key: 'situations', label: 'Situations', icon: Receipt },
             { key: 'messages', label: 'Messages', icon: MessageSquare, badge: msgCount > 0 ? msgCount : null },
             { key: 'documents', label: 'Documents', icon: Paperclip },
+            { key: 'soustraitants', label: 'Sous-traitants', icon: UserCog },
+            ...(chantierReception || ch.statut === 'termine' ? [{ key: 'garanties', label: 'Garanties', icon: Shield, badge: chantierGaranties.filter(g => g.statut === 'active').length > 0 ? chantierGaranties.filter(g => g.statut === 'active').length : null }] : []),
             { key: 'notes', label: 'Notes', icon: StickyNote },
           ];
           const rareTabs = [
             { key: 'rapports', label: 'Rapports', icon: FileText },
             { key: 'memos', label: 'Mémos', icon: ClipboardList },
+            { key: 'journal', label: 'Journal', icon: Clock },
           ];
           const isRareTabActive = rareTabs.some(t => t.key === activeTab);
 
@@ -1579,6 +1635,170 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
           </div>
         )}
 
+        {activeTab === 'soustraitants' && (
+          <div role="tabpanel" id="panel-soustraitants" aria-labelledby="tab-soustraitants" className={`${cardBg} rounded-2xl border p-5`}>
+            <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><UserCog size={18} style={{ color: couleur }} /> Sous-traitants du chantier</h3>
+            <p className={`text-sm ${textMuted} mb-4`}>Gérez les sous-traitants affectés à ce chantier, suivez leurs interventions et montants.</p>
+
+            {/* Sous-traitants affectés */}
+            {(() => {
+              // Check equipe for sous-traitants assigned to this chantier
+              const stEquipe = (equipe || []).filter(m => m.type === 'sous_traitant');
+              // Also check ch.soustraitants if it exists
+              const stDirect = ch.soustraitants || [];
+              const allSt = stEquipe.length > 0 ? stEquipe : stDirect;
+
+              if (allSt.length === 0) {
+                return (
+                  <div className={`p-8 text-center rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                    <UserCog size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                    <p className={`${textMuted} mb-1`}>Aucun sous-traitant affecté</p>
+                    <p className={`text-xs ${textMuted}`}>Affectez des sous-traitants depuis le module Sous-traitants.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {allSt.map((st, idx) => {
+                    const stName = st.entreprise || st.nom || st.name || 'Sous-traitant';
+                    const stRole = st.role_sur_chantier || st.specialite || st.metier || '';
+                    const stStatut = st.statut || 'actif';
+                    const noteQualite = st.noteQualite || st.note_moyenne || 0;
+                    return (
+                      <div key={st.id || idx} className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: couleur }}>
+                              {stName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className={`font-medium text-sm ${textPrimary}`}>{stName}</p>
+                              {stRole && <p className={`text-xs ${textMuted}`}>{stRole}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {noteQualite > 0 && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-yellow-500 text-xs">★</span>
+                                <span className={`text-xs font-medium ${textMuted}`}>{Number(noteQualite).toFixed(1)}</span>
+                              </div>
+                            )}
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              stStatut === 'actif' ? 'bg-green-100 text-green-700' :
+                              stStatut === 'favori' ? 'bg-yellow-100 text-yellow-700' :
+                              stStatut === 'bloque' ? 'bg-red-100 text-red-700' :
+                              'bg-slate-100 text-slate-600'
+                            }`}>
+                              {stStatut === 'actif' ? 'Actif' : stStatut === 'favori' ? 'Favori' : stStatut === 'bloque' ? 'Bloqué' : stStatut}
+                            </span>
+                          </div>
+                        </div>
+                        {(st.montant_prevu || st.telephone || st.phone) && (
+                          <div className={`mt-3 pt-3 border-t flex items-center gap-4 text-xs ${isDark ? 'border-slate-600' : 'border-slate-200'} ${textMuted}`}>
+                            {(st.telephone || st.phone) && (
+                              <span className="flex items-center gap-1"><Phone size={12} /> {st.telephone || st.phone}</span>
+                            )}
+                            {st.montant_prevu && (
+                              <span className="flex items-center gap-1"><DollarSign size={12} /> {Number(st.montant_prevu).toLocaleString('fr-FR')} €</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {activeTab === 'garanties' && (
+          <div role="tabpanel" id="panel-garanties" aria-labelledby="tab-garanties">
+            <ChantierGarantiesTab
+              chantier={ch}
+              reception={chantierReception}
+              garanties={chantierGaranties}
+              interventions={chantierInterventions}
+              onReceptionner={() => setShowReceptionForm(true)}
+              onSignalerDesordre={(garantie) => setShowInterventionForm(garantie)}
+              onUpdateReserve={async (reserveId, data) => {
+                try {
+                  await updateReserveService(reserveId, data);
+                  const updated = await getReception(view);
+                  setChantierReception(updated);
+                  showToast('Réserve mise à jour', 'success');
+                } catch (e) { showToast('Erreur mise à jour réserve', 'error'); }
+              }}
+              onLeverToutesReserves={async () => {
+                if (!chantierReception?.id) return;
+                try {
+                  await leverToutesReserves(chantierReception.id);
+                  const updated = await getReception(view);
+                  setChantierReception(updated);
+                  showToast('Toutes les réserves ont été levées ✅', 'success');
+                } catch (e) { showToast('Erreur levée des réserves', 'error'); }
+              }}
+              isDark={isDark}
+              couleur={couleur}
+              modeDiscret={modeDiscret}
+            />
+          </div>
+        )}
+
+        {/* Réception Modal */}
+        {showReceptionForm && (
+          <ReceptionForm
+            chantier={ch}
+            onSubmit={async (data) => {
+              try {
+                await createReception(null, { ...data, chantierId: ch.id, userId: null, orgId: null });
+                if (ch.statut === 'en_cours') {
+                  updateChantier(ch.id, { statut: 'termine', date_fin: data.dateReception });
+                }
+                const [reception, garanties, interventions] = await Promise.all([
+                  getReception(ch.id),
+                  getGarantiesByChantier(ch.id),
+                  getInterventionsByChantier(ch.id),
+                ]);
+                setChantierReception(reception);
+                setChantierGaranties(garanties || []);
+                setChantierInterventions(interventions || []);
+                setShowReceptionForm(false);
+                setActiveTab('garanties');
+                showToast('Réception validée — 3 garanties créées ✅', 'success');
+              } catch (e) {
+                showToast('Erreur lors de la réception', 'error');
+              }
+            }}
+            onClose={() => setShowReceptionForm(false)}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        )}
+
+        {/* Intervention Modal */}
+        {showInterventionForm && (
+          <InterventionForm
+            garantie={showInterventionForm}
+            chantier={ch}
+            onSubmit={async (data) => {
+              try {
+                await createIntervention(null, { ...data, chantierId: ch.id, userId: null, orgId: null });
+                const interventions = await getInterventionsByChantier(ch.id);
+                setChantierInterventions(interventions || []);
+                setShowInterventionForm(null);
+                showToast('Désordre signalé ✅', 'success');
+              } catch (e) {
+                showToast('Erreur lors du signalement', 'error');
+              }
+            }}
+            onClose={() => setShowInterventionForm(null)}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        )}
+
         {activeTab === 'memos' && (
           <div role="tabpanel" id="panel-memos" aria-labelledby="tab-memos" className={`${cardBg} rounded-2xl border p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} style={{ color: couleur }} /> Mémos</h3>
@@ -1664,6 +1884,17 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {activeTab === 'journal' && (
+          <div role="tabpanel" id="panel-journal" aria-labelledby="tab-journal" className={`${cardBg} rounded-2xl border`}>
+            <ChantierJournal
+              chantierId={ch.id}
+              isDark={isDark}
+              couleur={couleur}
+              modeDiscret={modeDiscret}
+            />
           </div>
         )}
 
@@ -2494,6 +2725,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               <List size={16} />
             </button>
             <button
+              onClick={() => setViewMode('gantt')}
+              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'gantt' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              style={viewMode === 'gantt' ? { background: couleur } : {}}
+              title="Vue Gantt"
+            >
+              <BarChart3 size={16} />
+            </button>
+            <button
               onClick={() => setViewMode('map')}
               className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'map' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
               style={viewMode === 'map' ? { background: couleur } : {}}
@@ -2755,6 +2994,21 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
               </div>
             </div>
           </div>
+          {/* Gantt View */}
+          {viewMode === 'gantt' && (
+            <Suspense fallback={<div className={`h-[400px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
+              <GanttView
+                chantiers={chantiers.filter(c => c.statut === 'en_cours' || c.statut === 'prospect')}
+                equipe={equipe}
+                taches={ganttTasks}
+                setTaches={setGanttTasks}
+                onUpdateChantier={updateChantier}
+                isDark={isDark}
+                couleur={couleur}
+              />
+            </Suspense>
+          )}
+
           {/* Map View */}
           {viewMode === 'map' && (
             <Suspense fallback={<div className={`h-[500px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
@@ -2935,7 +3189,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
+                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
                       <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
                     </div>
@@ -2964,9 +3218,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   </div>
                 </div>
 
-                {/* CTA for Prospect: create devis + view detail */}
-                {ch.statut === 'prospect' && setPage && (
+                {/* CTA for Prospect: create devis, start chantier, view detail */}
+                {ch.statut === 'prospect' && (
                   <div className="flex gap-2 mt-2">
+                    {setPage && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setPage('devis', { chantier_id: ch.id, client_id: ch.client_id, objet: ch.nom }); }}
                       className="flex-1 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all hover:shadow-sm active:scale-[0.98]"
@@ -2974,11 +3229,19 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     >
                       <FileText size={13} /> Créer un devis
                     </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); updateChantier(ch.id, { statut: 'en_cours', dateDebut: new Date().toISOString().split('T')[0] }); showToast('Chantier démarré !', 'success'); }}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98]"
+                      style={{ background: couleur }}
+                    >
+                      <Zap size={13} /> Démarrer
+                    </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setView(ch.id); }}
                       className={`py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
                     >
-                      <ChevronRight size={13} /> Détail
+                      <ChevronRight size={13} />
                     </button>
                   </div>
                 )}

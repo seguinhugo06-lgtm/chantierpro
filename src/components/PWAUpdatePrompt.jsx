@@ -19,9 +19,9 @@ import { Button } from './ui/Button';
  * @property {string} [couleur] - Brand color
  */
 
-// Check if user dismissed install prompt recently (within 7 days)
+// Check if user dismissed install prompt recently (within 90 days)
 const DISMISS_KEY = 'pwa-install-dismissed';
-const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DISMISS_DURATION = 90 * 24 * 60 * 60 * 1000; // 90 days
 
 // Detect iOS Safari
 function isIOS() {
@@ -132,7 +132,7 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark =
   const cardBorder = isDark ? 'border-slate-700' : 'border-slate-200';
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
-  const textMuted = isDark ? 'text-slate-500' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
   const stepBg = isDark ? 'bg-slate-700/50' : 'bg-slate-100';
   const closeBtnHover = isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
 

@@ -18,9 +18,31 @@ export default function HeroSection({
   isDark = false,
   couleur = '#f97316',
   onChantiersClick,
+  devisEnAttente = 0,
+  facturesEnRetard = 0,
+  memosAujourdhui = 0,
+  actionsCount = 0,
 }) {
   const greeting = useMemo(() => getGreeting(), []);
   const formattedDate = useMemo(() => getFormattedDate(), []);
+
+  // Build contextual recap parts
+  const recapParts = useMemo(() => {
+    const parts = [];
+    if (actionsCount > 0) {
+      parts.push(`${actionsCount} action${actionsCount > 1 ? 's' : ''} en cours`);
+    }
+    if (facturesEnRetard > 0) {
+      parts.push(`${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard`);
+    }
+    if (devisEnAttente > 0) {
+      parts.push(`${devisEnAttente} devis en attente`);
+    }
+    if (memosAujourdhui > 0) {
+      parts.push(`${memosAujourdhui} memo${memosAujourdhui > 1 ? 's' : ''} du jour`);
+    }
+    return parts;
+  }, [actionsCount, facturesEnRetard, devisEnAttente, memosAujourdhui]);
 
   return (
     <section
@@ -38,6 +60,13 @@ export default function HeroSection({
           <span style={{ color: couleur }}>{userName}</span>
           {' '}👋
         </h1>
+
+        {/* Contextual Recap */}
+        {recapParts.length > 0 && (
+          <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+            {recapParts.join(' · ')}
+          </p>
+        )}
 
         {/* Metadata Row */}
         <div className={`flex items-center gap-3 text-sm mt-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>

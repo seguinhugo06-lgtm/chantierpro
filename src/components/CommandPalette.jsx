@@ -136,6 +136,7 @@ export default function CommandPalette({
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
     { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe gocardless sepa carte bancaire prélèvement lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' },
+    { id: 'nav-rapports', label: 'Rapports PDF', keywords: 'rapport pdf export activite financier synthese bilan chantier', icon: FileText, action: () => { setPage('finances'); onClose(); }, color: '#f97316' },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 

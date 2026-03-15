@@ -85,7 +85,7 @@ serve(async (req) => {
         .upsert({
           user_id: user.id,
           stripe_customer_id: customerId,
-          plan: 'decouverte',
+          plan: 'gratuit',
           status: 'active',
         })
     }
@@ -99,7 +99,7 @@ serve(async (req) => {
       cancel_url: `${req.headers.get('origin')}/?billing=cancel`,
       subscription_data: {
         metadata: { supabase_user_id: user.id, plan_id: planId },
-        trial_period_days: planId !== 'decouverte' ? 14 : undefined,
+        trial_period_days: planId !== 'gratuit' ? 14 : undefined,
       },
       allow_promotion_codes: true,
     })

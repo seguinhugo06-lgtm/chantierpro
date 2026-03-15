@@ -37,5 +37,17 @@ export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
 // Relance Widget
 export { default as RelanceWidget } from './RelanceWidget';
 
+// Reports Widget
+export { default as ReportsWidget } from './ReportsWidget';
+
+// Acomptes Widget
+export { default as AcomptesWidget } from './AcomptesWidget';
+
+// Activity Feed Widget (audit-driven)
+export { default as ActivityFeedWidget } from './ActivityFeedWidget';
+
+// Consolidated Widget (multi-entreprise)
+export { default as ConsolidatedWidget } from './ConsolidatedWidget';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';

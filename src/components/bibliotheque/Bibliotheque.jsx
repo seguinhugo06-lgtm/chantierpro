@@ -100,7 +100,7 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
   const toolbarBg = isDark ? 'bg-gray-800/50' : 'bg-white/80';
   const btnBase = isDark
     ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'

@@ -67,7 +67,7 @@ export default function SearchBar({
   const itemHover = isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50';
   const highlightBg = isDark ? 'bg-gray-700' : 'bg-gray-100';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-500';
 
   // ── Autocomplete results ──────────────────────────────────────────────────
   const autocompleteResults = useMemo(() => {

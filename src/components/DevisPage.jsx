@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing } from 'lucide-react';
-import supabase from '../supabaseClient';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List } from 'lucide-react';
+import supabase, { isDemo } from '../supabaseClient';
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
@@ -28,6 +28,29 @@ import RelanceTimelineWidget from './RelanceTimelineWidget';
 import { useRelances } from '../hooks/useRelances';
 import { printMiseEnDemeure } from '../lib/miseEnDemeureBuilder';
 import { useOrg } from '../context/OrgContext';
+import { useData } from '../context/DataContext';
+import { MODELES_DEVIS } from '../lib/data/modeles-devis';
+import AcompteEcheancierModal from './devis/AcompteEcheancierModal';
+import AcompteSuiviCard from './devis/AcompteSuiviCard';
+import {
+  getNextEtapeAFacturer,
+  computeEtapeMontants,
+  computeSoldeMontants,
+  buildFactureLignesForEtape,
+  isLastEtape,
+  isEcheancierTermine,
+  updateEtape,
+  ETAPE_STATUT,
+} from '../lib/acompteUtils';
+import { cn } from '../lib/utils';
+import AuditTimeline from './audit/AuditTimeline';
+import VersionSelector from './audit/VersionSelector';
+import SnapshotViewer from './audit/SnapshotViewer';
+import DiffViewer from './audit/DiffViewer';
+import LockBanner from './audit/LockBanner';
+import { getEntityHistory } from '../lib/auditService';
+import { getSnapshots } from '../lib/snapshotService';
+import { isProviderSyncReady, createSignatureRequest as createYousignSignature } from '../services/syncService';
 
 // Valid status transitions — enforced on buttons and dropdown
 const VALID_TRANSITIONS = {
@@ -81,6 +104,36 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Organization context
   const { orgId } = useOrg();
 
+  // Template operations from DataContext
+  const { customTemplates: ctxTemplates, addTemplate, deleteTemplate: deleteCtxTemplate, templateUsages, trackTemplateUsage } = useData();
+
+  // Enrich template usages with actual template data for "recently used" display
+  const enrichedRecentTemplates = useMemo(() => {
+    return templateUsages.slice(0, 10).map(usage => {
+      // Check custom templates first
+      if (usage.template_id) {
+        const tmpl = ctxTemplates.find(t => t.id === usage.template_id);
+        if (tmpl) return { ...tmpl, used_at: usage.used_at };
+      }
+      // Check builtin templates
+      if (usage.template_builtin_id) {
+        for (const [metierId, metier] of Object.entries(MODELES_DEVIS)) {
+          const modele = metier.modeles?.find(m => m.id === usage.template_builtin_id);
+          if (modele) {
+            return {
+              ...modele,
+              metierId,
+              metierNom: metier.nom,
+              categorie: metier.nom,
+              used_at: usage.used_at,
+            };
+          }
+        }
+      }
+      return null;
+    }).filter(Boolean);
+  }, [templateUsages, ctxTemplates]);
+
   // Get userId for relances
   const [relanceUserId, setRelanceUserId] = useState(null);
   useEffect(() => {
@@ -116,6 +169,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
+  const [tableSortBy, setTableSortBy] = useState('date'); // date, numero, client, montant, statut
+  const [tableSortDir, setTableSortDir] = useState('desc'); // 'asc' | 'desc'
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const debouncedCatalogueSearch = useDebounce(catalogueSearch, 300);
   // Centralized modal management - reduces cognitive load
@@ -135,6 +191,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // DevisWizard uses direct useState (NOT useDevisModals) to avoid centralized modal conflicts
   const [showDevisWizard, setShowDevisWizard] = useState(false);
 
+  // Échéancier d'acomptes
+  const [showEcheancierModal, setShowEcheancierModal] = useState(false);
+  const [echeancierCache, setEcheancierCache] = useState({}); // { devisId: echeancierData }
+
   const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
@@ -151,6 +211,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
+
+  // Versioning state
+  const [devisSnapshots, setDevisSnapshots] = useState([]);
+  const [viewingSnapshot, setViewingSnapshot] = useState(null);
+  const [comparingSnapshots, setComparingSnapshots] = useState(null); // { a, b }
+
+  // Load snapshots when viewing a devis
+  useEffect(() => {
+    if (mode !== 'preview' || !selected?.id || selected.type === 'facture') {
+      setDevisSnapshots([]);
+      return;
+    }
+    let cancelled = false;
+    getSnapshots(isDemo ? null : supabase, 'devis', selected.id)
+      .then(snaps => { if (!cancelled) setDevisSnapshots(snaps); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selected?.id, mode]);
   const [showCreateMenu, setShowCreateMenu] = useState(false); // split-button dropdown
   const [complianceDismissed, setComplianceDismissed] = useState(() => localStorage.getItem('complianceDismissed') === 'true');
   const [templateName, setTemplateName] = useState('');
@@ -158,6 +236,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
   const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
+  const [yousignReady, setYousignReady] = useState(false);
+  const [yousignSending, setYousignSending] = useState(false);
+
+  // Check if Yousign is connected
+  useEffect(() => {
+    isProviderSyncReady('yousign').then(ready => setYousignReady(ready)).catch(() => {});
+  }, []);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
@@ -208,7 +293,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
     }
   }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
-  
+
+  // Fetch échéancier when selected devis changes (if it has one)
+  useEffect(() => {
+    if (selected?.echeancier_id && !echeancierCache[selected.id]) {
+      fetchEcheancier(selected.id);
+    }
+    // Also fetch échéancier for source devis when viewing acompte/solde facture
+    if (selected?.devis_source_id && (selected.facture_type === 'acompte' || selected.facture_type === 'solde')) {
+      const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
+      if (sourceDevis?.echeancier_id && !echeancierCache[sourceDevis.id]) {
+        fetchEcheancier(sourceDevis.id);
+      }
+    }
+  }, [selected?.id, selected?.echeancier_id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [form, setForm] = useState({
     type: 'devis',
     clientId: '',
@@ -280,6 +379,38 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
   };
 
+  // Table sort helper — applied when viewMode === 'table'
+  const getTableSorted = (items) => {
+    const dir = tableSortDir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      switch (tableSortBy) {
+        case 'numero':
+          return dir * (a.numero || '').localeCompare(b.numero || '', 'fr');
+        case 'client': {
+          const ca = cleanClientName(clients.find(c => c.id === a.client_id)) || a.client_nom || '';
+          const cb = cleanClientName(clients.find(c => c.id === b.client_id)) || b.client_nom || '';
+          return dir * ca.localeCompare(cb, 'fr');
+        }
+        case 'montant':
+          return dir * ((getDevisTTC(a) || 0) - (getDevisTTC(b) || 0));
+        case 'statut':
+          return dir * ((statusOrder[a.statut] ?? 99) - (statusOrder[b.statut] ?? 99));
+        case 'date':
+        default:
+          return dir * (new Date(a.date) - new Date(b.date));
+      }
+    });
+  };
+
+  const handleTableSort = (col) => {
+    if (tableSortBy === col) {
+      setTableSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setTableSortBy(col);
+      setTableSortDir(col === 'date' || col === 'montant' ? 'desc' : 'asc');
+    }
+  };
+
   // B7: Period date boundaries
   const periodStart = useMemo(() => {
     const now = new Date();
@@ -302,6 +433,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir' || d.facture_type === 'situation')) return false;
     if (filter === 'situations' && d.facture_type !== 'situation') return false;
     if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
+    if (filter === 'acomptes' && !(d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id)))) return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
     if (filter === 'a_traiter') {
       const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
@@ -337,6 +469,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && d.facture_type !== 'situation').length,
       situations: base.filter(d => d.facture_type === 'situation').length,
       avoirs: base.filter(d => d.facture_type === 'avoir').length,
+      acomptes: base.filter(d => d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id))).length,
       attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
       a_traiter: base.filter(d => {
         const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
@@ -721,6 +854,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         lignes: templateData.lignes
       }]
     }));
+    // Track template usage
+    if (templateData.template?.id) {
+      trackTemplateUsage(templateData.template.id);
+    }
     setSnackbar({ type: 'success', message: `Modèle "${templateData.template.nom}" appliqué` });
   };
 
@@ -841,14 +978,168 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
         const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
         setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
+
+        // Update échéancier étape to 'paye' if this is an acompte facture
+        if (selected.facture_type === 'acompte' && selected.devis_source_id) {
+          const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
+          const echeancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
+          if (echeancier) {
+            const etape = echeancier.etapes?.find(e => e.facture_id === selected.id);
+            if (etape) {
+              const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
+              const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
+              try {
+                if (isDemo || !supabase) {
+                  const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
+                  stored[sourceDevis.id] = updatedEcheancier;
+                  localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
+                } else {
+                  supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id).then(() => {});
+                }
+                setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
+              } catch (err) {
+                console.error('Error updating echeancier on payment:', err);
+              }
+            }
+          }
+        }
       }
     }
   };
 
   // Workflow facturation
   const getAcompteFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
+  const getAllAcompteFactures = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
+
+  // Fetch échéancier for a given devis (with cache)
+  const fetchEcheancier = async (devisId) => {
+    if (echeancierCache[devisId]) return echeancierCache[devisId];
+    if (isDemo || !supabase) {
+      const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
+      const data = stored[devisId] || null;
+      if (data) setEcheancierCache(prev => ({ ...prev, [devisId]: data }));
+      return data;
+    }
+    try {
+      const { data } = await supabase.from('acompte_echeanciers').select('*').eq('devis_id', devisId).single();
+      if (data) setEcheancierCache(prev => ({ ...prev, [devisId]: data }));
+      return data;
+    } catch { return null; }
+  };
+
+  // Facturer une étape d'échéancier
+  const facturerEtape = async (echeancier, etape) => {
+    if (!selected || !echeancier) return;
+    const last = isLastEtape(etape, echeancier.etapes);
+
+    let montants, lignes, factureType;
+    if (last) {
+      // Solde: deduct all previous acomptes
+      montants = computeSoldeMontants(selected, echeancier.etapes);
+      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
+      factureType = 'solde';
+    } else {
+      montants = computeEtapeMontants(selected, etape.pourcentage, entreprise?.tvaDefaut || 20);
+      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
+      factureType = 'acompte';
+    }
+
+    const facture = {
+      id: crypto.randomUUID(),
+      numero: await generateNumero('facture'),
+      type: 'facture',
+      facture_type: factureType,
+      devis_source_id: selected.id,
+      client_id: selected.client_id,
+      chantier_id: selected.chantier_id,
+      date: new Date().toISOString().split('T')[0],
+      statut: 'envoye',
+      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
+      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
+      tvaParTaux: montants.tvaParTaux,
+      tvaDetails: montants.tvaParTaux,
+      lignes,
+      total_ht: montants.montant_ht,
+      tva: montants.tva,
+      total_ttc: montants.montant_ttc,
+      acompte_pct: etape.pourcentage,
+      objet: last
+        ? `Facture de solde — ${selected.objet || selected.numero || ''}`
+        : `Acompte ${etape.pourcentage}% — ${etape.label || ''} — ${selected.objet || selected.numero || ''}`,
+    };
+
+    await onSubmit(facture);
+
+    // Update échéancier étape
+    const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, {
+      statut: ETAPE_STATUT.FACTURE,
+      facture_id: facture.id,
+      date_facture: new Date().toISOString().split('T')[0],
+    });
+
+    const echeancierTermine = isEcheancierTermine(updatedEtapes);
+    const updatedEcheancier = {
+      ...echeancier,
+      etapes: updatedEtapes,
+      statut: echeancierTermine ? 'termine' : 'actif',
+      updated_at: new Date().toISOString(),
+    };
+
+    // Persist échéancier update
+    if (isDemo || !supabase) {
+      const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
+      stored[selected.id] = updatedEcheancier;
+      localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
+    } else {
+      await supabase.from('acompte_echeanciers')
+        .update({ etapes: updatedEtapes, statut: updatedEcheancier.statut, updated_at: updatedEcheancier.updated_at })
+        .eq('id', echeancier.id);
+    }
+
+    // Update cache
+    setEcheancierCache(prev => ({ ...prev, [selected.id]: updatedEcheancier }));
+
+    // Update devis status and acompte tracking fields
+    const newDevisStatut = echeancierTermine ? 'facture' : 'acompte_facture';
+    const totalPctFacture = updatedEtapes
+      .filter(e => e.statut === ETAPE_STATUT.FACTURE || e.statut === ETAPE_STATUT.PAYE)
+      .reduce((s, e) => s + (e.pourcentage || 0), 0);
+    const montantFacture = updatedEtapes
+      .filter(e => e.statut === ETAPE_STATUT.FACTURE || e.statut === ETAPE_STATUT.PAYE)
+      .reduce((s, e) => s + (e.montant_ttc || 0), 0);
+    const existingAcomptes = selected.acomptes_ids || [];
+    const updatedAcomptesIds = factureType === 'acompte'
+      ? [...existingAcomptes, facture.id]
+      : existingAcomptes;
+    const devisUpdate = {
+      statut: newDevisStatut,
+      acompte_pct: totalPctFacture,
+      mode_facturation: 'echeancier',
+      acomptes_ids: updatedAcomptesIds,
+      montant_facture: Math.round(montantFacture * 100) / 100,
+      ...(factureType === 'solde' ? { facture_solde_id: facture.id } : {}),
+    };
+    onUpdate(selected.id, devisUpdate);
+    setSelected({ ...selected, ...devisUpdate });
+
+    setSnackbar({
+      type: 'success',
+      message: `Facture ${last ? 'de solde' : 'd\'acompte'} ${facture.numero} créée`,
+      action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } },
+    });
+  };
+
+  // Handle échéancier creation callback
+  const handleEcheancierCreated = (echeancier) => {
+    if (!selected) return;
+    setEcheancierCache(prev => ({ ...prev, [selected.id]: echeancier }));
+    const updates = { echeancier_id: echeancier.id, mode_facturation: 'echeancier' };
+    onUpdate(selected.id, updates);
+    setSelected({ ...selected, ...updates });
+    setSnackbar({ type: 'success', message: 'Échéancier créé avec succès' });
+  };
 
   const createAcompte = async () => {
     if (!selected || (selected.statut !== 'accepte' && selected.statut !== 'signe')) return showToast('Le devis doit être accepté ou signé', 'error');
@@ -877,20 +1168,28 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
     };
     await onSubmit(facture);
-    onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
+    const acompteUpdate = {
+      statut: 'acompte_facture',
+      acompte_pct: acomptePct,
+      mode_facturation: 'acompte',
+      acomptes_ids: [...(selected.acomptes_ids || []), facture.id],
+      montant_facture: Math.round(ttc * 100) / 100,
+    };
+    onUpdate(selected.id, acompteUpdate);
     setShowAcompteModal(false);
-    setSelected({ ...selected, statut: 'acompte_facture', acompte_pct: acomptePct });
+    setSelected({ ...selected, ...acompteUpdate });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
   const confirmAndCreateSolde = async () => {
     if (!selected) return;
-    const acompte = getAcompteFacture(selected.id);
-    const reste = acompte ? selected.total_ttc - (acompte.total_ttc || 0) : selected.total_ttc;
+    const allAcomptes = getAllAcompteFactures(selected.id);
+    const totalAcomptesTTC = allAcomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
+    const reste = allAcomptes.length > 0 ? selected.total_ttc - totalAcomptesTTC : selected.total_ttc;
     const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const label = acompte ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
+    const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
     const ok = await confirm({
-      title: acompte ? 'Facturer le solde ?' : 'Créer la facture complète ?',
+      title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
       message: `${label} pour ${clientName}. Cette action est irréversible.`
     });
     if (!ok) return;
@@ -899,29 +1198,33 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const createSolde = async () => {
     if (!selected) return;
-    const acompte = getAcompteFacture(selected.id);
-    const montantAcompteHT = acompte ? acompte.total_ht : 0;
-    const montantSoldeHT = selected.total_ht - montantAcompteHT;
-    // Use stored multi-rate TVA, proportionally adjusted for solde
-    const acompteTva = acompte?.tva || 0;
-    const tva = (selected.tva || 0) - acompteTva;
+    // Support multiple acomptes
+    const allAcomptes = getAllAcompteFactures(selected.id);
+    const totalAcompteHT = allAcomptes.reduce((s, a) => s + (a.total_ht || 0), 0);
+    const totalAcompteTVA = allAcomptes.reduce((s, a) => s + (a.tva || 0), 0);
+    const montantSoldeHT = selected.total_ht - totalAcompteHT;
+    const tva = (selected.tva || 0) - totalAcompteTVA;
     const ttc = montantSoldeHT + tva;
     // Copy lignes with their per-line TVA rates preserved
     const lignes = (selected.lignes || []).map(l => ({ ...l, tva: l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 20) }));
-    if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
+    // Add negative line for each acompte already invoiced
+    allAcomptes.forEach(acompte => {
+      lignes.push({ id: `acompte_${acompte.id}`, description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -(acompte.total_ht || 0), montant: -(acompte.total_ht || 0) });
+    });
     // Build tvaParTaux for the solde
     const tvaParTaux = {};
     const srcTva = selected.tvaParTaux || selected.tvaDetails;
-    const acompteSrcTva = acompte?.tvaParTaux || acompte?.tvaDetails;
     if (srcTva && typeof srcTva === 'object') {
       Object.entries(srcTva).forEach(([rate, info]) => {
-        const acompteForRate = acompteSrcTva?.[rate]?.montant || 0;
-        tvaParTaux[rate] = { base: (info.base || 0) - (acompteSrcTva?.[rate]?.base || 0), montant: (info.montant || 0) - acompteForRate };
+        const acompteBase = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.base || 0), 0);
+        const acompteMontant = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.montant || 0), 0);
+        tvaParTaux[rate] = { base: (info.base || 0) - acompteBase, montant: (info.montant || 0) - acompteMontant };
       });
     }
+    const hasAcomptes = allAcomptes.length > 0;
     const facture = {
-      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale',
-      devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
+      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
+      devis_source_id: selected.id, acompte_facture_id: allAcomptes[0]?.id || null, client_id: selected.client_id, chantier_id: selected.chantier_id,
       date: new Date().toISOString().split('T')[0], statut: 'envoye',
       date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
       tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
@@ -929,9 +1232,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
     };
     await onSubmit(facture);
-    await onUpdate(selected.id, { statut: 'facture' });
-    setSelected({ ...selected, statut: 'facture' });
-    setSnackbar({ type: 'success', message: `Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
+    const soldeUpdate = {
+      statut: 'facture',
+      facture_solde_id: facture.id,
+      montant_facture: Math.round((selected.total_ttc || 0) * 100) / 100,
+      ...(hasAcomptes ? { mode_facturation: selected.mode_facturation || 'acompte' } : { mode_facturation: 'direct' }),
+    };
+    await onUpdate(selected.id, soldeUpdate);
+    setSelected({ ...selected, ...soldeUpdate });
+    setSnackbar({ type: 'success', message: `Facture ${hasAcomptes ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
   // Créer un avoir (note de crédit) — via AvoirCreationModal
@@ -1309,6 +1618,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         const client = clients.find(c => c.id === doc.client_id);
         await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
         showToast('Facture Factur-X téléchargée ✓', 'success');
+        // Auto-upload to Google Drive if connected
+        triggerDriveUpload(doc);
       } catch (err) {
         console.error('Factur-X generation failed, fallback to HTML:', err);
         showToast('Erreur Factur-X, export HTML de secours', 'warning');
@@ -1321,6 +1632,21 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     // Devis & autres: comportement HTML existant
     fallbackHtmlPrint(content, doc);
+    // Also try Drive upload for devis
+    triggerDriveUpload(doc);
+  };
+
+  // Google Drive auto-upload (fire-and-forget)
+  const triggerDriveUpload = async (doc) => {
+    try {
+      const driveReady = await isProviderSyncReady('google_drive');
+      if (!driveReady) return;
+      const { triggerAutoSync } = await import('../services/syncService');
+      await triggerAutoSync('google_drive', 'document', 'push');
+      showToast('📁 Document sauvegardé sur Google Drive', 'success');
+    } catch {
+      // Silently fail — Drive upload is non-critical
+    }
   };
 
   // Legacy HTML print/download (used for devis and as fallback)
@@ -1760,7 +2086,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const resteAFacturer = selected.total_ttc - facturesLiees.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const isDevis = selected.type === 'devis';
     const isAvoir = selected.facture_type === 'avoir';
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture;
+    const currentEcheancier = echeancierCache[selected.id] || null;
+    const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
+    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier;
     const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
@@ -1896,6 +2224,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return (
     <>
       <div className="space-y-4">
+        {/* Lock Banner */}
+        {isDevis && relanceUserId && (
+          <LockBanner
+            entityType="devis"
+            entityId={selected.id}
+            userId={relanceUserId}
+            userName={entreprise?.nom || ''}
+            orgId={orgId}
+            isDark={isDark}
+            couleur={couleur}
+          />
+        )}
+
         {/* ============ ZONE 1: UNIFIED HEADER ============ */}
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
           {/* Top row: back, title, client, actions */}
@@ -1908,6 +2249,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.facture_type === 'avoir' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') : selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
                   {selected.facture_type === 'avoir' ? 'Avoir' : selected.type === 'facture' ? 'Facture' : 'Devis'}
                 </span>
+                {isDevis && devisSnapshots.length > 0 && (
+                  <VersionSelector
+                    snapshots={devisSnapshots}
+                    onSelectVersion={(snap) => setViewingSnapshot(snap)}
+                    onCompareVersions={(a, b) => setComparingSnapshots({ a, b })}
+                    isDark={isDark}
+                    couleur={couleur}
+                  />
+                )}
                 {needsFollowUp(selected) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
@@ -1999,6 +2349,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       {canPerform('devis', 'edit') && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
                         <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
                           <Edit3 size={16} /> Créer un avenant
+                        </button>
+                      )}
+                      {canPerform('devis', 'create') && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && (
+                        <button onClick={() => { setShowEcheancierModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                          <CreditCard size={16} /> Demander un acompte
                         </button>
                       )}
                       {canPerform('devis', 'create') && selected.type === 'facture' && selected.facture_type !== 'avoir' && (
@@ -2189,13 +2544,57 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   )}
 
                   {['envoye', 'vu'].includes(selected.statut) && (
-                    <button
-                      onClick={() => setShowSignaturePad(true)}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      <PenTool size={16} /> Faire signer
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowSignaturePad(true)}
+                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
+                        style={{ backgroundColor: couleur }}
+                      >
+                        <PenTool size={16} /> Faire signer
+                      </button>
+                      {yousignReady && (
+                        <button
+                          onClick={async () => {
+                            if (!selected) return;
+                            const client = clients.find(c => c.id === selected.client_id);
+                            if (!client?.email) {
+                              setSnackbar({ type: 'warning', message: 'Email du client requis pour la e-signature' });
+                              return;
+                            }
+                            setYousignSending(true);
+                            try {
+                              const result = await createYousignSignature({
+                                documentName: `${selected.type === 'facture' ? 'Facture' : 'Devis'} ${selected.numero}`,
+                                documentBase64: '', // Would be generated from PDF builder
+                                signataires: [{
+                                  name: `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Client',
+                                  email: client.email,
+                                  phone: client.telephone,
+                                }],
+                                externalId: selected.id,
+                                message: `Merci de signer ce ${selected.type === 'facture' ? 'la facture' : 'le devis'} ${selected.numero}.`,
+                              });
+                              if (result.success) {
+                                setSnackbar({ type: 'success', message: `📝 Demande de e-signature envoyée via Yousign` });
+                              } else {
+                                throw new Error(result.error || 'Erreur Yousign');
+                              }
+                            } catch (err) {
+                              setSnackbar({ type: 'error', message: `Erreur e-signature: ${err.message}` });
+                            } finally {
+                              setYousignSending(false);
+                            }
+                          }}
+                          disabled={yousignSending}
+                          className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md ${
+                            isDark ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                          }`}
+                        >
+                          {yousignSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                          E-signature
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {(selected.statut === 'accepte' || selected.statut === 'signe') && (
@@ -2406,109 +2805,62 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
+        {/* ============ LEGAL COMPLIANCE BANNER ============ */}
+        {(() => {
+          const legal = getLegalIssues();
+          if (legal.length === 0 || selected.statut === 'refuse') return null;
+          return (
+            <div className={`rounded-xl border p-3 flex items-start gap-3 ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
+              <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                  Profil entreprise incomplet — {legal.length} mention{legal.length > 1 ? 's' : ''} légale{legal.length > 1 ? 's' : ''} manquante{legal.length > 1 ? 's' : ''}
+                </p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400/80' : 'text-amber-700'}`}>
+                  {legal.map(i => i.label).join(' · ')}
+                </p>
+              </div>
+              {setPage && (
+                <button
+                  onClick={() => setPage('settings', { tab: 'legal' })}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors ${isDark ? 'bg-amber-800/40 text-amber-300 hover:bg-amber-800/60' : 'bg-amber-200 text-amber-800 hover:bg-amber-300'}`}
+                >
+                  Compléter →
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ============ ZONE 2: SMART CONTEXT CARD ============ */}
         {/* Billing options - always visible for devis not yet invoiced */}
 
-        {/* Show billing options for all devis statuses (except already invoiced) */}
-        {isDevis && selected.statut !== 'facture' && selected.statut !== 'acompte_facture' && (
-          <div className={`rounded-xl border p-4 ${
-            (selected.statut === 'accepte' || selected.statut === 'signe')
-              ? (isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200')
-              : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')
-          }`}>
-            <div className="flex items-center gap-2 mb-3">
-              {(selected.statut === 'accepte' || selected.statut === 'signe') ? (
-                <>
-                  <CheckCircle size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                    Devis signé — Choisir le mode de facturation
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Receipt size={18} className={textMuted} />
-                  <p className={`text-sm font-medium ${textMuted}`}>
-                    Options de facturation
-                  </p>
-                  {selected.statut === 'brouillon' && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
-                      Envoyer d'abord recommandé
-                    </span>
-                  )}
-                  {(selected.statut === 'envoye' || selected.statut === 'vu') && (
-                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
-                      Signature recommandée
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-            {(canAcompte || canFacturer) ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {canAcompte && (
-                  <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <CreditCard size={16} className="text-purple-500" />
-                      <span className={`font-medium text-sm ${textPrimary}`}>Acompte 30%</span>
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc * 0.3)}</p>
-                  </button>
-                )}
-                {canFacturer && (
-                  <button onClick={confirmAndCreateSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Receipt size={16} className="text-emerald-500" />
-                      <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
-                  </button>
-                )}
-                {canFacturer && selected.chantier_id && (
-                  <button onClick={() => { setSelectedChantier(selected.chantier_id); setPage('chantiers'); }} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-orange-700 bg-orange-900/30 hover:bg-orange-900/50' : 'border-orange-200 bg-white hover:bg-orange-50'}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <BarChart3 size={16} className="text-orange-500" />
-                      <span className={`font-medium text-sm ${textPrimary}`}>Par situation</span>
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>Avancement progressif</p>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <p className={`text-xs ${textMuted} mt-1`}>
-                {selected.statut === 'brouillon' ? 'Envoyez le devis au client pour pouvoir le facturer ensuite.'
-                  : selected.statut === 'envoye' || selected.statut === 'vu' ? 'Le client doit d\'abord accepter le devis avant facturation.'
-                  : 'Ce statut ne permet pas encore la facturation.'}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Acompte facturé: Show progress */}
-        {isDevis && selected.statut === 'acompte_facture' && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <CreditCard size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                  Acompte {selected.acompte_pct}% facturé
-                </span>
-                {acompteFacture && (
-                  <button onClick={() => setSelected(acompteFacture)} className="text-xs text-blue-500 hover:underline">
-                    ({acompteFacture.numero})
-                  </button>
-                )}
-              </div>
-              <span className={`font-bold ${textPrimary}`}>{formatMoney(resteAFacturer)} restant</span>
-            </div>
-            <div className={`h-2 rounded-full mb-3 ${isDark ? 'bg-slate-700' : 'bg-blue-200'}`}>
-              <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${selected.acompte_pct}%` }} />
-            </div>
-            {canFacturer && (
-              <button onClick={confirmAndCreateSolde} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
-                <Receipt size={16} /> Facturer le solde
-              </button>
-            )}
-          </div>
+        {/* Facturation: AcompteSuiviCard handles all cases (échéancier, legacy acompte, options, guidance) */}
+        {isDevis && selected.statut !== 'facture' && (
+          <AcompteSuiviCard
+            devis={selected}
+            echeancier={currentEcheancier}
+            facturesLiees={facturesLiees}
+            allDevis={devis}
+            isDark={isDark}
+            couleur={couleur}
+            textPrimary={textPrimary}
+            textMuted={textMuted}
+            modeDiscret={modeDiscret}
+            formatMoney={formatMoney}
+            canAcompte={canAcompte}
+            canFacturer={canFacturer}
+            hasChantier={!!selected.chantier_id}
+            acompteFacture={acompteFacture}
+            resteAFacturer={resteAFacturer}
+            onFacturerEtape={facturerEtape}
+            onFacturerSolde={confirmAndCreateSolde}
+            onOpenAcompteSimple={() => setShowAcompteModal(true)}
+            onOpenEcheancierModal={() => setShowEcheancierModal(true)}
+            onSelectFacture={(f) => setSelected(f)}
+            onFacturer100={confirmAndCreateSolde}
+            onOpenSituation={selected.chantier_id ? () => { setSelectedChantier(selected.chantier_id); setPage('chantiers'); } : null}
+          />
         )}
 
         {/* Devis follow-up alert */}
@@ -2717,9 +3069,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
                 <TabsTrigger value="document" variant="underline" className="pb-3">Document</TabsTrigger>
-                {(isDevis && facturesLiees.length > 0) && (
+                {isDevis && (
                   <TabsTrigger value="historique" variant="underline" className="pb-3">
-                    Historique {facturesLiees.length > 0 && <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{facturesLiees.length}</span>}
+                    Historique
                   </TabsTrigger>
                 )}
                 {selected.type === 'facture' && selected.devis_source_id && (
@@ -2946,71 +3298,117 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               )}
             </TabsContent>
 
-            {isDevis && facturesLiees.length > 0 && (
+            {isDevis && (
               <TabsContent value="historique" className="mt-0 p-4 sm:p-6">
-                {(() => {
-                  // Build full chronological timeline
-                  const events = [];
-                  events.push({ date: selected.created_at || selected.date, label: `${selected.type === 'facture' ? 'Facture' : 'Devis'} créé`, color: 'bg-blue-500', icon: '📝' });
-                  if (selected.statut !== 'brouillon' && selected.date !== (selected.created_at || selected.date)) {
-                    events.push({ date: selected.sent_at || selected.date, label: 'Envoyé au client', color: 'bg-amber-500', icon: '📤' });
-                  }
-                  if (selected.viewed_at || selected.vu_date) {
-                    events.push({ date: selected.viewed_at || selected.vu_date, label: 'Vu par le client', color: 'bg-purple-500', icon: '👁️' });
-                  }
-                  if (selected.signatureDate) {
-                    events.push({ date: selected.signatureDate, label: 'Signé / Accepté', color: 'bg-emerald-500', icon: '✍️' });
-                  }
-                  if (selected.relance_planifiee) {
-                    const isPast = new Date(selected.relance_planifiee) < new Date();
-                    events.push({ date: selected.relance_planifiee, label: isPast ? 'Relance prévue (échue)' : 'Relance planifiée', color: isPast ? 'bg-red-500' : 'bg-amber-500', icon: '⏰' });
-                  }
-                  facturesLiees.forEach(f => {
-                    events.push({ date: f.date, label: `${f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'} créé${f.facture_type === 'acompte' ? '' : 'e'}`, color: f.statut === 'payee' ? 'bg-emerald-500' : 'bg-indigo-500', icon: f.statut === 'payee' ? '✅' : '🧾', sub: `${f.numero} · ${formatMoney(f.total_ttc)}`, clickFn: () => setSelected(f) });
-                  });
-                  events.sort((a, b) => new Date(a.date) - new Date(b.date));
+                <DevisHistoriqueTab
+                  selected={selected}
+                  facturesLiees={facturesLiees}
+                  setSelected={setSelected}
+                  isDark={isDark}
+                  couleur={couleur}
+                  modeDiscret={modeDiscret}
+                  formatMoney={formatMoney}
+                  textPrimary={textPrimary}
+                  textMuted={textMuted}
+                />
+              </TabsContent>
+            )}
 
-                  return (
-                    <div className="relative">
-                      {/* Vertical line */}
-                      <div className={`absolute left-[5px] top-3 bottom-3 w-0.5 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                      <div className="space-y-4">
-                        {events.map((ev, i) => (
-                          <div key={i} className={`flex items-start gap-3 relative ${ev.clickFn ? `cursor-pointer rounded-lg p-2 -mx-2 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}` : ''}`} onClick={ev.clickFn}>
-                            <span className={`w-3 h-3 rounded-full flex-shrink-0 mt-0.5 z-10 ${ev.color}`} />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${textPrimary}`}>
-                                <span className="mr-1.5">{ev.icon}</span>
-                                {ev.label}
-                              </p>
-                              <p className={`text-xs ${textMuted}`}>{new Date(ev.date).toLocaleDateString('fr-FR')}</p>
-                              {ev.sub && <p className={`text-xs ${textMuted}`}>{ev.sub}</p>}
+            {selected.type === 'facture' && selected.devis_source_id && (() => {
+              const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
+              const isAcompteFacture = selected.facture_type === 'acompte';
+              const isSoldeFacture = selected.facture_type === 'solde';
+              const allAcomptesForSource = devis.filter(d => d.type === 'facture' && d.devis_source_id === selected.devis_source_id && d.facture_type === 'acompte');
+              const sourceEcheancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
+
+              return (
+                <TabsContent value="source" className="mt-0 p-4 sm:p-6 space-y-4">
+                  {/* Devis source link */}
+                  <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                    <p className={`text-sm ${textMuted} mb-2`}>
+                      {isAcompteFacture ? 'Facture d\'acompte créée à partir du devis :' : isSoldeFacture ? 'Facture de solde créée à partir du devis :' : 'Cette facture a été créée à partir du devis :'}
+                    </p>
+                    <button
+                      onClick={() => { if (sourceDevis) setSelected(sourceDevis); }}
+                      className="text-sm font-medium hover:underline flex items-center gap-2"
+                      style={{ color: couleur }}
+                    >
+                      <FileText size={16} />
+                      {sourceDevis ? `${sourceDevis.numero} · ${formatMoney(sourceDevis.total_ttc)}` : 'Voir le devis source'}
+                    </button>
+                  </div>
+
+                  {/* Acompte context: show all acompte factures linked to same devis */}
+                  {(isAcompteFacture || isSoldeFacture) && allAcomptesForSource.length > 0 && (
+                    <div className={`rounded-lg border p-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
+                        Factures d'acompte ({allAcomptesForSource.length})
+                      </p>
+                      <div className="space-y-2">
+                        {allAcomptesForSource.map((ac, idx) => {
+                          const isCurrent = ac.id === selected.id;
+                          return (
+                            <div
+                              key={ac.id}
+                              onClick={() => !isCurrent && setSelected(ac)}
+                              className={cn(
+                                'flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
+                                isCurrent ? (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200') : 'cursor-pointer',
+                                !isCurrent && (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'),
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={cn('font-medium', isCurrent ? (isDark ? 'text-blue-300' : 'text-blue-700') : textPrimary)}>
+                                  {ac.numero}
+                                </span>
+                                {ac.acompte_pct && <span className={`text-xs ${textMuted}`}>{ac.acompte_pct}%</span>}
+                                {isCurrent && <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>actuel</span>}
+                              </div>
+                              <span className={cn('font-semibold', textPrimary)}>{formatMoney(ac.total_ttc)}</span>
                             </div>
-                            {ev.clickFn && <ChevronRight size={16} className={`${textMuted} mt-0.5`} />}
+                          );
+                        })}
+                      </div>
+                      {/* Total acomptes vs devis */}
+                      {sourceDevis && (
+                        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} flex items-center justify-between`}>
+                          <span className={`text-xs ${textMuted}`}>Total acomptes / Devis</span>
+                          <span className={`text-sm font-bold ${textPrimary}`}>
+                            {formatMoney(allAcomptesForSource.reduce((s, a) => s + (a.total_ttc || 0), 0))} / {formatMoney(sourceDevis.total_ttc)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Échéancier progress if available */}
+                  {sourceEcheancier && sourceEcheancier.etapes?.length > 0 && (
+                    <div className={`rounded-lg border p-4 ${isDark ? 'border-blue-800 bg-blue-900/10' : 'border-blue-200 bg-blue-50/50'}`}>
+                      <p className={`text-sm font-medium mb-2 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                        <ClipboardList size={14} className="inline mr-1" />
+                        Échéancier de paiement
+                      </p>
+                      <div className="space-y-1">
+                        {sourceEcheancier.etapes.map(etape => (
+                          <div key={etape.numero} className={`flex items-center justify-between text-xs py-1 ${textMuted}`}>
+                            <div className="flex items-center gap-1.5">
+                              {(etape.statut === 'facture' || etape.statut === 'paye') ? (
+                                <CheckCircle size={12} className={etape.statut === 'paye' ? 'text-emerald-500' : 'text-blue-500'} />
+                              ) : (
+                                <span className={`w-3 h-3 rounded-full border ${isDark ? 'border-slate-600' : 'border-slate-300'}`} />
+                              )}
+                              <span className={textPrimary}>{etape.label}</span>
+                              <span>{etape.pourcentage}%</span>
+                            </div>
+                            <span className={`font-medium ${textPrimary}`}>{formatMoney(etape.montant_ttc)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
-                  );
-                })()}
-              </TabsContent>
-            )}
-
-            {selected.type === 'facture' && selected.devis_source_id && (
-              <TabsContent value="source" className="mt-0 p-4 sm:p-6">
-                <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-sm ${textMuted} mb-2`}>Cette facture a été créée à partir du devis :</p>
-                  <button
-                    onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }}
-                    className="text-sm font-medium hover:underline flex items-center gap-2"
-                    style={{ color: couleur }}
-                  >
-                    <FileText size={16} />
-                    Voir le devis source
-                  </button>
-                </div>
-              </TabsContent>
-            )}
+                  )}
+                </TabsContent>
+              );
+            })()}
 
               {/* Email tracking tab */}
               <TabsContent value="emails" className="mt-0 p-4 sm:p-6">
@@ -3081,6 +3479,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
         )}
+
+        {/* Modal Échéancier d'acomptes */}
+        <AcompteEcheancierModal
+          isOpen={showEcheancierModal}
+          onClose={() => setShowEcheancierModal(false)}
+          devis={selected}
+          isDark={isDark}
+          couleur={couleur}
+          modeDiscret={modeDiscret}
+          onEcheancierCreated={handleEcheancierCreated}
+        />
 
         {/* Modal Preview */}
         {showPreview && (
@@ -3532,11 +3941,40 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           onClose={() => setShowPaymentModal(false)}
           document={selected}
           client={selected ? clients.find(c => c.id === selected.client_id) : null}
-          onPaymentSaved={(payment) => {
+          onPaymentSaved={async (payment) => {
             if (selected) {
               const updatedMontantPaye = (selected.montant_paye || 0) + (payment.montant || 0);
-              onUpdate(selected.id, { montant_paye: updatedMontantPaye });
-              setSelected(s => ({ ...s, montant_paye: updatedMontantPaye }));
+              const isPaid = updatedMontantPaye >= (selected.total_ttc || 0);
+              onUpdate(selected.id, {
+                montant_paye: updatedMontantPaye,
+                ...(isPaid ? { statut: 'payee' } : {}),
+              });
+              setSelected(s => ({ ...s, montant_paye: updatedMontantPaye, ...(isPaid ? { statut: 'payee' } : {}) }));
+
+              // If this is an acompte facture and it's paid, update échéancier étape to 'paye'
+              if (isPaid && selected.facture_type === 'acompte' && selected.devis_source_id) {
+                const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
+                const echeancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
+                if (echeancier) {
+                  const etape = echeancier.etapes?.find(e => e.facture_id === selected.id);
+                  if (etape) {
+                    const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
+                    const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
+                    try {
+                      if (isDemo || !supabase) {
+                        const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
+                        stored[sourceDevis.id] = updatedEcheancier;
+                        localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
+                      } else {
+                        await supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id);
+                      }
+                      setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
+                    } catch (err) {
+                      console.error('Error updating echeancier on payment:', err);
+                    }
+                  }
+                }
+              }
             }
           }}
           isDark={isDark}
@@ -3555,6 +3993,49 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           modeDiscret={modeDiscret}
           formatMoney={formatMoney}
         />
+
+        {/* Snapshot Viewer */}
+        {viewingSnapshot && (
+          <SnapshotViewer
+            snapshot={viewingSnapshot}
+            entityType="devis"
+            isDark={isDark}
+            couleur={couleur}
+            modeDiscret={modeDiscret}
+            onClose={() => setViewingSnapshot(null)}
+            onRestore={async (snap) => {
+              const confirmed = await showConfirm('Restaurer cette version ?', 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.');
+              if (!confirmed) return;
+              const restoreData = { ...snap.data };
+              delete restoreData.id;
+              delete restoreData.created_at;
+              delete restoreData.updated_at;
+              delete restoreData.user_id;
+              delete restoreData.organization_id;
+              await onUpdate(selected.id, restoreData);
+              setSelected(s => ({ ...s, ...restoreData }));
+              setViewingSnapshot(null);
+              showToast('Version restaurée avec succès', 'success');
+            }}
+            onCompare={(snap) => {
+              setComparingSnapshots({ a: snap, b: { ...devisSnapshots[0], data: selected } });
+              setViewingSnapshot(null);
+            }}
+          />
+        )}
+
+        {/* Diff Viewer */}
+        {comparingSnapshots && (
+          <DiffViewer
+            snapshotA={comparingSnapshots.a}
+            snapshotB={comparingSnapshots.b}
+            entityType="devis"
+            isDark={isDark}
+            couleur={couleur}
+            modeDiscret={modeDiscret}
+            onClose={() => setComparingSnapshots(null)}
+          />
+        )}
       </div>
       {devisWizardElement}
     </>
@@ -3938,10 +4419,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isOpen={showTemplateSelector}
           onClose={() => setShowTemplateSelector(false)}
           onSelectTemplate={handleTemplateSelect}
-          customTemplates={JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]')}
+          customTemplates={ctxTemplates}
           onDeleteTemplate={(id) => {
-            const t = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
-            localStorage.setItem('chantierPro_customTemplates', JSON.stringify(t.filter(x => x.id !== id)));
+            deleteCtxTemplate(id);
             showToast('Modèle supprimé', 'success');
           }}
           isDark={isDark}
@@ -4162,6 +4642,27 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             ))}
           </div>
           <div className="flex-1" />
+          {/* View mode toggle */}
+          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
+              title="Vue cartes"
+              aria-label="Vue cartes"
+              aria-pressed={viewMode === 'cards'}
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 transition-colors border-l ${viewMode === 'table' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              title="Vue tableau"
+              aria-label="Vue tableau"
+              aria-pressed={viewMode === 'table'}
+            >
+              <List size={14} />
+            </button>
+          </div>
           {/* Sort */}
           <select
             value={sortBy}
@@ -4200,10 +4701,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
         {/* Row 2: Type filter pills */}
         <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
+          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
             const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
+            if (k === 'acomptes' && count === 0) return null;
             return (
               <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
+                {k === 'acomptes' && <CreditCard size={11} />}
                 {k === 'situations' && <BarChart3 size={11} />}
                 {k === 'avoirs' && <RotateCcw size={11} />}
                 {k === 'a_traiter' && <Bell size={11} />}
@@ -4296,6 +4799,90 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           )}
         </div>
+      ) : viewMode === 'table' ? (
+        /* ========== TABLE VIEW ========== */
+        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
+                  {[
+                    { key: 'numero', label: 'N°' },
+                    { key: 'client', label: 'Client' },
+                    { key: 'date', label: 'Date' },
+                    { key: 'montant', label: 'Montant TTC' },
+                    { key: 'statut', label: 'Statut' },
+                  ].map(col => (
+                    <th
+                      key={col.key}
+                      onClick={() => handleTableSort(col.key)}
+                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'} ${col.key === 'montant' ? 'text-right' : ''}`}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {tableSortBy === col.key ? (
+                          tableSortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                        ) : (
+                          <ArrowUpDown size={10} className="opacity-30" />
+                        )}
+                      </span>
+                    </th>
+                  ))}
+                  <th className={`px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Actions</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
+                {getTableSorted(filtered).map((d, idx) => {
+                  const client = clients.find(c => c.id === d.client_id);
+                  const clientName = cleanClientName(client) || d.client_nom || '—';
+                  const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
+                  const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
+                  const isAvoirItem = d.facture_type === 'avoir';
+                  return (
+                    <tr
+                      key={d.id}
+                      onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }}
+                      className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                    >
+                      <td className={`px-3 py-2.5 font-medium text-xs whitespace-nowrap ${textPrimary}`}>
+                        <span className="inline-flex items-center gap-1.5">
+                          {isAvoirItem ? <RotateCcw size={12} className="text-red-500" /> : d.type === 'facture' ? <Receipt size={12} className="text-violet-500" /> : <FileText size={12} style={{ color: couleur }} />}
+                          {cleanNumero(d.numero)}
+                        </span>
+                      </td>
+                      <td className={`px-3 py-2.5 text-xs truncate max-w-[180px] ${textSecondary}`}>
+                        {clientName}
+                      </td>
+                      <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${textMuted}`}>
+                        {new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className={`px-3 py-2.5 text-xs font-bold text-right whitespace-nowrap tabular-nums`} style={{ color: isAvoirItem ? '#dc2626' : couleur }}>
+                        {!canViewPrices ? '—' : modeDiscret ? '···' : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); setSelected(d); setMode('preview'); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Voir">
+                            <Eye size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                          </button>
+                          {!isViewOnly && canPerform('devis', 'edit') && (
+                            <button onClick={(e) => { e.stopPropagation(); setEditingDevis(d); setShowDevisWizard(true); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
+                              <Edit3 size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="space-y-2">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
@@ -4365,7 +4952,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
                       {isAvoirItem && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>}
                       {d.facture_type === 'situation' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>Situation{d.situation_numero ? ` n°${d.situation_numero}` : ''}</span>}
-                      {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
+                      {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
+                      {d.facture_type === 'acompte' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
+                      {d.facture_type === 'solde' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Solde</span>}
                       {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
                       {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
                       {d.statut === 'brouillon' && (isOrphan || isNameless) && (
@@ -4603,15 +5192,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 />
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
-                  const customTemplates = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
-                  customTemplates.push({
-                    id: generateId(),
+                  await addTemplate({
                     nom: templateName.trim(),
-                    category: templateCategory.trim() || 'Mes modèles',
+                    categorie: templateCategory.trim() || 'Mes modèles',
                     description: `Créé depuis ${selected.numero}`,
-                    date: new Date().toISOString(),
                     lignes: (selected.lignes || []).map(l => ({
                       description: l.description,
                       quantite: l.quantite,
@@ -4620,10 +5206,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       prixAchat: l.prixAchat || 0,
                       tva: l.tva,
                     })),
-                    tvaRate: selected.tvaRate,
+                    tva_defaut: selected.tvaRate || 10,
                     notes: selected.notes || '',
                   });
-                  localStorage.setItem('chantierPro_customTemplates', JSON.stringify(customTemplates));
                   setShowSaveTemplateModal(false);
                   setTemplateName('');
                   setTemplateCategory('Mes modèles');
@@ -4640,15 +5225,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         </div>
       )}
 
-      {/* Template Selector Modal (legacy) */}
+      {/* Template Selector Modal */}
       <TemplateSelector
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
-        customTemplates={JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]')}
+        customTemplates={ctxTemplates}
         onDeleteTemplate={(id) => {
-          const t = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
-          localStorage.setItem('chantierPro_customTemplates', JSON.stringify(t.filter(x => x.id !== id)));
+          deleteCtxTemplate(id);
           showToast('Modèle supprimé', 'success');
         }}
         isDark={isDark}
@@ -4719,7 +5303,116 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         isDark={isDark}
         couleur={couleur}
         tvaDefaut={entreprise?.tvaDefaut || 10}
+        customTemplates={ctxTemplates}
+        recentTemplates={enrichedRecentTemplates}
+        onTrackUsage={trackTemplateUsage}
       />
     </div>
+  );
+}
+
+// ── Devis Historique tab (extracted sub-component) ──
+function DevisHistoriqueTab({ selected, facturesLiees, setSelected, isDark, couleur, modeDiscret, formatMoney, textPrimary, textMuted }) {
+  const [auditEntries, setAuditEntries] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Load audit history for this devis
+  React.useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+
+    getEntityHistory(isDemo ? null : supabase, 'devis', selected?.id, { limit: 50 })
+      .then(entries => {
+        if (!cancelled) setAuditEntries(entries);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [selected?.id]);
+
+  // Build legacy events from devis data (creation, send, signature, factures)
+  const legacyEntries = React.useMemo(() => {
+    if (!selected) return [];
+    const entries = [];
+
+    entries.push({
+      id: `legacy-created-${selected.id}`,
+      entity_type: 'devis',
+      entity_id: selected.id,
+      action: 'created',
+      changes: {},
+      metadata: {},
+      user_name: '',
+      created_at: selected.created_at || selected.date,
+    });
+
+    if (selected.statut !== 'brouillon' && (selected.sent_at || selected.date !== (selected.created_at || selected.date))) {
+      entries.push({
+        id: `legacy-sent-${selected.id}`,
+        entity_type: 'devis',
+        entity_id: selected.id,
+        action: 'sent',
+        changes: {},
+        metadata: {},
+        user_name: '',
+        created_at: selected.sent_at || selected.date,
+      });
+    }
+
+    if (selected.signatureDate) {
+      entries.push({
+        id: `legacy-signed-${selected.id}`,
+        entity_type: 'devis',
+        entity_id: selected.id,
+        action: 'signed',
+        changes: {},
+        metadata: { signataire: selected.signataire },
+        user_name: selected.signataire || '',
+        created_at: selected.signatureDate,
+      });
+    }
+
+    facturesLiees.forEach(f => {
+      entries.push({
+        id: `legacy-facture-${f.id}`,
+        entity_type: 'facture',
+        entity_id: f.id,
+        action: 'created',
+        changes: {},
+        metadata: { numero: f.numero, total_ttc: f.total_ttc, facture_type: f.facture_type, statut: f.statut },
+        user_name: '',
+        created_at: f.date || f.created_at,
+      });
+    });
+
+    return entries;
+  }, [selected, facturesLiees]);
+
+  // Merge audit entries with legacy entries, deduplicate by timestamp proximity
+  const mergedEntries = React.useMemo(() => {
+    // If we have real audit entries, use them; append legacy facture entries
+    if (auditEntries.length > 0) {
+      const factureLegacy = legacyEntries.filter(e => e.entity_type === 'facture');
+      const all = [...auditEntries, ...factureLegacy];
+      all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return all;
+    }
+
+    // No audit entries yet — show legacy timeline
+    legacyEntries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return legacyEntries;
+  }, [auditEntries, legacyEntries]);
+
+  return (
+    <AuditTimeline
+      entries={mergedEntries}
+      isDark={isDark}
+      couleur={couleur}
+      modeDiscret={modeDiscret}
+      isLoading={isLoading}
+      emptyMessage="Aucun historique pour ce devis"
+      showEntityBadge={true}
+    />
   );
 }

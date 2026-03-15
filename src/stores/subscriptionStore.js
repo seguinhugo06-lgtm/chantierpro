@@ -421,10 +421,10 @@ export const useSubscriptionStore = create((set, get) => ({
    * Set plan + subscription data (called after API fetch)
    */
   setSubscription: (subscription) => {
-    // Map legacy plan names
+    // Map legacy plan names to current: gratuit / artisan / equipe
     let plan = subscription?.plan || 'gratuit';
-    if (plan === 'pro') plan = 'artisan'; // backward compat
-    if (plan === 'free') plan = 'gratuit';
+    if (plan === 'free' || plan === 'decouverte' || plan === 'solo') plan = 'gratuit';
+    if (plan === 'pro' || plan === 'entreprise') plan = 'equipe';
 
     set({
       subscription,

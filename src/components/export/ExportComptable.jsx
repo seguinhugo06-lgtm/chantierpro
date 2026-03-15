@@ -51,7 +51,7 @@ const downloadFile = (content, filename, mimeType = 'text/csv') => {
 
 // ─── Accounting mapping ─────────────────────────────────────────────────────
 
-const mapFactureToEntries = (facture, client) => {
+const mapFactureToEntries = (facture, client, allFactures = []) => {
   // Data model: date (ISO string), total_ht, total_ttc, tva
   const date = new Date(facture.date || facture.createdAt || facture.created_at);
   const ref = facture.numero || `F-${date.getFullYear()}-${String(facture.id).slice(0, 4)}`;
@@ -61,20 +61,27 @@ const mapFactureToEntries = (facture, client) => {
   const totalTTC = facture.total_ttc || 0;
   const totalHT = facture.total_ht || 0;
   const totalTVA = facture.tva || (totalTTC - totalHT);
-  return [
+
+  // Acompte: use 419100 (Clients - Avances et acomptes reçus) instead of 411000
+  const isAcompte = facture.facture_type === 'acompte';
+  const isSolde = facture.facture_type === 'solde';
+  const compteClient = isAcompte ? '419100' : '411000';
+  const libellePrefix = isAcompte ? `Acompte ${ref}` : `Facture ${ref}`;
+
+  const entries = [
     {
       date,
       ref,
-      libelle: `Facture ${ref} - ${clientName}`,
+      libelle: `${libellePrefix} - ${clientName}`,
       debit: totalTTC,
       credit: 0,
-      compte: '411000',
+      compte: compteClient,
       journal: 'VE',
     },
     {
       date,
       ref,
-      libelle: `Facture ${ref} - Prestations`,
+      libelle: `${libellePrefix} - Prestations`,
       debit: 0,
       credit: totalHT,
       compte: '706000',
@@ -83,13 +90,43 @@ const mapFactureToEntries = (facture, client) => {
     {
       date,
       ref,
-      libelle: `Facture ${ref} - TVA collectée`,
+      libelle: `${libellePrefix} - TVA collectée`,
       debit: 0,
       credit: totalTVA,
       compte: '445710',
       journal: 'VE',
     },
   ];
+
+  // Solde: add regularization entry to transfer acompte from 419100 to 411000
+  if (isSolde && facture.devis_source_id) {
+    const acomptes = allFactures.filter(
+      f => f.type === 'facture' && f.facture_type === 'acompte' && f.devis_source_id === facture.devis_source_id
+    );
+    const totalAcomptesTTC = acomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
+    if (totalAcomptesTTC > 0) {
+      entries.push({
+        date,
+        ref,
+        libelle: `Régularisation acomptes - ${clientName}`,
+        debit: totalAcomptesTTC,
+        credit: 0,
+        compte: '411000',
+        journal: 'VE',
+      });
+      entries.push({
+        date,
+        ref,
+        libelle: `Régularisation acomptes - ${clientName}`,
+        debit: 0,
+        credit: totalAcomptesTTC,
+        compte: '419100',
+        journal: 'VE',
+      });
+    }
+  }
+
+  return entries;
 };
 
 const mapDepenseToEntries = (depense) => {
@@ -421,7 +458,7 @@ export default function ExportComptable({
 
   const entries = useMemo(() => {
     const factureEntries = factures.flatMap((f) =>
-      mapFactureToEntries(f, clientsMap[f.client_id])
+      mapFactureToEntries(f, clientsMap[f.client_id], factures)
     );
     const depenseEntries = filteredDepenses.flatMap((d) => mapDepenseToEntries(d));
     const paiementEntries = filteredPaiements.flatMap((p) => {

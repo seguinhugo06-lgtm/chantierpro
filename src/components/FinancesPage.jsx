@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
-import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff } from 'lucide-react';
+import { Wallet, Download, BarChart3, Landmark, CreditCard, Eye, EyeOff, FileText } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 
 // Lazy load the 5 sub-modules
@@ -8,6 +8,7 @@ const ExportComptable = lazy(() => import('./export/ExportComptable'));
 const AnalyticsPage = lazy(() => import('./AnalyticsPage'));
 const BankModule = lazy(() => import('./bank/BankModule'));
 const PaiementsTab = lazy(() => import('./finances/PaiementsTab'));
+const RapportsTab = lazy(() => import('./finances/RapportsTab'));
 
 const LoadingSpinner = ({ couleur }) => (
   <div className="flex items-center justify-center py-16">
@@ -22,11 +23,12 @@ const TAB_CONFIG = [
   { key: 'banque', label: 'Banque', icon: Landmark },
   { key: 'export', label: 'Export Comptable', icon: Download },
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
+  { key: 'rapports', label: 'Rapports', icon: FileText },
 ];
 
-export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal }) {
+export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal }) {
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
-  const textMuted = isDark ? 'text-slate-400' : 'text-slate-500';
+  const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
   const [activeTab, setActiveTab] = useState('tresorerie');
   const [localDiscret, setLocalDiscret] = useState(false);
   const modeDiscret = modeDiscretGlobal || localDiscret;
@@ -151,10 +153,30 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             depenses={depenses}
             equipe={equipe}
             paiements={paiements}
+            entreprise={entreprise}
             isDark={isDark}
             couleur={couleur}
             setPage={setPage}
             modeDiscret={modeDiscret}
+          />
+        </Suspense>
+      </div>
+
+      <div style={{ display: activeTab === 'rapports' ? 'block' : 'none' }}>
+        <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+          <RapportsTab
+            devis={devis}
+            depenses={depenses}
+            clients={clients}
+            chantiers={chantiers}
+            entreprise={entreprise}
+            equipe={equipe}
+            paiements={paiements}
+            pointages={pointages}
+            isDark={isDark}
+            couleur={couleur}
+            modeDiscret={modeDiscret}
+            setPage={setPage}
           />
         </Suspense>
       </div>

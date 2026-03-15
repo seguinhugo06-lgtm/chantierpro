@@ -22,6 +22,9 @@ import {
 import { generateId } from '../../lib/utils';
 import { validateForm, hasErrors, required, email as emailValidator, phone as phoneValidator, siret as siretValidator, positiveNumber } from '../../lib/validation';
 import useConfirm from '../../hooks/useConfirm';
+import SubcontractorDetailPage from './SubcontractorDetailPage';
+import StarRating from '../ui/StarRating';
+import { getComplianceScore } from '../../services/subcontractorService';
 
 // ---------- Constants ----------
 
@@ -850,9 +853,67 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     );
   }
 
-  // ---------- RENDER: Detail View ----------
+  // ---------- RENDER: Detail View (Enriched) ----------
 
   if (view === 'detail' && selected) {
+    // Map old localStorage format to new enriched format for detail page
+    const enrichedSt = {
+      id: selected.id,
+      nom: selected.nom || selected.contact || '',
+      prenom: '',
+      entreprise: selected.nom || '',
+      rolePoste: getCorpsMetier(selected.corpsMetier)?.label || '',
+      typeContrat: 'Auto-entrepreneur',
+      telephone: selected.telephone || '',
+      email: selected.email || '',
+      siret: selected.siret || '',
+      adresse: selected.adresse || '',
+      competences: Array.isArray(selected.competences) ? selected.competences
+        : (typeof selected.competences === 'string' ? selected.competences.split(',').map(s => s.trim()).filter(Boolean) : []),
+      certifications: Array.isArray(selected.certifications) ? selected.certifications
+        : (typeof selected.certifications === 'string' ? selected.certifications.split(',').map(s => ({ nom: s.trim() })).filter(c => c.nom) : []),
+      notes: selected.notes || '',
+      tauxHoraire: parseFloat(selected.tauxHoraire) || 0,
+      coutHoraireCharge: 0,
+      assureurDecennale: '',
+      numeroPoliceDecennale: '',
+      expirationDecennale: selected.dateExpirationAssurance || null,
+      assureurRcPro: '',
+      numeroPoliceRcPro: selected.assuranceRcPro || '',
+      expirationRcPro: selected.dateExpirationAssurance || null,
+      derniereVerificationUrssaf: selected.attestationUrssaf && selected.dateAttestationUrssaf ? selected.dateAttestationUrssaf : null,
+      noteMoyenne: selected.noteQualite || 0,
+      nombreEvaluations: selected.noteQualite > 0 ? 1 : 0,
+      statut: selected.actif === false ? 'inactif' : 'actif',
+      isArchived: false,
+      reviews: [],
+      assignments: (selected.chantierIds || []).map(cId => {
+        const ch = chantiers.find(c => c.id === cId);
+        return { id: cId, chantierId: cId, chantierName: ch?.nom || 'Chantier', statut: 'en_cours', montantPrevu: 0, montantFacture: 0 };
+      }),
+      documents: (selected.documents || []).map(d => ({
+        id: d.id || generateId('doc'),
+        type: d.type === 'RC Pro' ? 'attestation_rc_pro' : d.type === 'Décennale' ? 'attestation_decennale' : d.type === 'Attestation URSSAF' ? 'attestation_urssaf' : d.type === 'Kbis' ? 'kbis' : 'autre',
+        nom: d.nom || d.fichier || 'Document',
+        fileUrl: '#',
+        fileSize: 0,
+        dateExpiration: d.dateExpiration || null,
+        createdAt: d.dateAjout || new Date().toISOString(),
+      })),
+    };
+
+    return (
+      <SubcontractorDetailPage
+        subcontractorId={selected.id}
+        onBack={() => { setView('list'); setSelectedId(null); }}
+        onEdit={() => openForm(selected.id)}
+        isDark={isDark}
+        couleur={couleur}
+        chantiers={chantiers}
+      />
+    );
+
+    // Legacy detail view code below (kept for reference but unreachable)
     const compliance = getComplianceStatus(selected);
     const cm = getCorpsMetier(selected.corpsMetier);
     const linkedChantiers = chantiers.filter(ch => (selected.chantierIds || []).includes(ch.id));
@@ -1309,16 +1370,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
 
                     <div className="flex flex-wrap items-center gap-3">
                       {st.noteQualite > 0 && (
-                        <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map(i => (
-                            <Star
-                              key={i}
-                              size={12}
-                              className={i <= st.noteQualite ? 'text-amber-400' : isDark ? 'text-slate-600' : 'text-slate-300'}
-                              fill={i <= st.noteQualite ? '#fbbf24' : 'none'}
-                            />
-                          ))}
-                        </div>
+                        <StarRating value={st.noteQualite} readOnly size="xs" showValue isDark={isDark} />
                       )}
                       <ComplianceBadge status={compliance} small />
                       {chantierCount > 0 && (

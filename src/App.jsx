@@ -63,12 +63,15 @@ const MemosPage = lazyWithRetry(() => import('./components/MemosPage'), 'Mémos'
 const ShortcutsHelp = lazyWithRetry(() => import('./components/ShortcutsHelp'), 'Raccourcis');
 const PipelineKanban = lazyWithRetry(() => import('./components/pipeline/PipelineKanban'), 'Pipeline');
 const AvisGoogle = lazyWithRetry(() => import('./components/avis/AvisGoogle'), 'AvisGoogle');
+const ChatPage = lazyWithRetry(() => import('./components/chat/ChatPage'), 'Messagerie');
+const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const ProfilePage = lazyWithRetry(() => import('./components/profil/ProfilePage'), 'Profil');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 import CookieConsent from './components/CookieConsent';
 import CGUAcceptanceModal, { CGU_VERSION } from './components/CGUAcceptanceModal';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
+import { useEntreprise } from './context/EntrepriseContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
@@ -81,10 +84,11 @@ import { usePermissions } from './hooks/usePermissions';
 import { PermissionGate } from './components/ui/PermissionGate';
 import { fetchSubscription, fetchUsage, computeLiveUsage } from './services/subscriptionsApi';
 import { isDraftChantier } from './lib/utils';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Wallet, Library, UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Share, Smartphone, CreditCard, Tag, Sparkles, Kanban, Star, User, MessageCircle, Shield } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
+import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
 const safeStr = (v, fallback = '') => {
@@ -169,13 +173,40 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
-  // Settings state (declared early because notifications useMemo depends on entreprise)
-  const [entreprise, setEntreprise] = useState({
-    nom: 'Martin Renovation', logo: '', couleur: '#f97316',
-    formeJuridique: '', capital: '', adresse: '', tel: '', email: '', siteWeb: '',
-    siret: '', codeApe: '', rcs: '', tvaIntra: '', validiteDevis: 30, tvaDefaut: 10,
-    delaiPaiement: 30, acompteDefaut: 30, tauxFraisStructure: 15
-  });
+  // Multi-entreprise context
+  const {
+    activeEntreprise,
+    entrepriseId,
+    hasMultiple: hasMultipleEntreprises,
+    switchEntreprise,
+    refreshEntreprises,
+    updateEntreprise: ctxUpdateEntreprise,
+    loading: entrepriseLoading,
+  } = useEntreprise();
+
+  // Entreprise defaults — fallback when context hasn't loaded yet
+  const ENTREPRISE_DEFAULTS = {
+    nom: 'BatiGesti', logo: '', couleur: '#f97316',
+    formeJuridique: '', capital: '', adresse: '', codePostal: '', ville: '',
+    tel: '', email: '', siteWeb: '', siret: '', codeApe: '', rcs: '',
+    tvaIntra: '', validiteDevis: 30, tvaDefaut: 10, delaiPaiement: 30,
+    acompteDefaut: 30, tauxFraisStructure: 15, iban: '', bic: '',
+    cgv: '', mentionDevis: '', mentionFacture: '',
+  };
+
+  // entreprise: active entreprise from context, merged with defaults for safety
+  const entreprise = useMemo(() => {
+    if (!activeEntreprise) return ENTREPRISE_DEFAULTS;
+    return { ...ENTREPRISE_DEFAULTS, ...activeEntreprise };
+  }, [activeEntreprise]);
+
+  // setEntreprise: backward-compat wrapper that updates via context
+  const setEntreprise = useCallback((updater) => {
+    const newVal = typeof updater === 'function' ? updater(entreprise) : updater;
+    if (entrepriseId) {
+      ctxUpdateEntreprise(entrepriseId, newVal);
+    }
+  }, [entreprise, entrepriseId, ctxUpdateEntreprise]);
   // Track which notification IDs have been read (persisted in localStorage)
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_read_notifs') || '[]'); } catch { return []; }
@@ -556,50 +587,20 @@ export default function App() {
     }
   };
 
-  // Load settings from localStorage
+  // Load UI settings from localStorage (entreprise is now managed by EntrepriseContext)
   useEffect(() => {
     try {
-      const e = localStorage.getItem('cp_entreprise'); if (e) setEntreprise(JSON.parse(e));
       const t = localStorage.getItem('cp_theme'); if (t) setTheme(t);
       const m = localStorage.getItem('cp_mode_discret'); if (m) setModeDiscret(JSON.parse(m));
     } catch (err) { console.warn('Failed to load settings from localStorage:', err.message); }
   }, []);
 
-  // Sync entreprise from Supabase on login (cloud → local merge)
+  // Keep localStorage cache of entreprise in sync (for offline/legacy compat)
   useEffect(() => {
-    if (isDemo || !supabase || !user?.id) return;
-    (async () => {
-      try {
-        // Use organization_id if available, fallback to user_id
-        let query = supabase.from('entreprise').select('settings_json');
-        if (orgId && orgId !== 'demo-org-id') {
-          query = query.eq('organization_id', orgId);
-        } else {
-          query = query.eq('user_id', user.id);
-        }
-        const { data, error } = await query.maybeSingle();
-        if (error) { console.warn('Failed to load entreprise from Supabase:', error.message); return; }
-        if (data?.settings_json && typeof data.settings_json === 'object') {
-          const cloud = data.settings_json;
-          setEntreprise(prev => {
-            // If local has default/empty nom, cloud wins entirely
-            const localIsDefault = !prev.nom || prev.nom === 'Martin Renovation';
-            if (localIsDefault && cloud.nom) return { ...prev, ...cloud };
-            // Otherwise merge: cloud fills empty fields, local overrides non-empty
-            const merged = { ...prev };
-            for (const [key, val] of Object.entries(cloud)) {
-              if (val != null && val !== '' && (!merged[key] || merged[key] === '')) {
-                merged[key] = val;
-              }
-            }
-            return merged;
-          });
-        }
-      } catch (e) { console.warn('Entreprise Supabase sync error:', e.message); }
-    })();
-  }, [user?.id, orgId]);
-
-  useEffect(() => { try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch (e) { console.warn('Failed to save entreprise:', e.message); } }, [entreprise]);
+    if (activeEntreprise) {
+      try { localStorage.setItem('cp_entreprise', JSON.stringify(entreprise)); } catch {}
+    }
+  }, [entreprise, activeEntreprise]);
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
   useEffect(() => {
@@ -647,15 +648,27 @@ export default function App() {
     const ref = params.get('ref');
     if (path === '/bank/callback' && ref) {
       window.history.replaceState({}, '', '/');
-      setPage('dashboard');
-      import('./lib/integrations/gocardless').then(async ({ checkConnection }) => {
+      setPage('finances');
+      showToast('Vérification de la connexion bancaire...', 'info');
+      import('./lib/integrations/saltedge').then(async ({ checkConnection, syncTransactions }) => {
         try {
           const result = await checkConnection(ref);
           if (result.status === 'linked') {
             console.log('[BANK] Connection successful:', result.details);
+            showToast('Compte bancaire connecté ! Synchronisation en cours...', 'success');
+            // Auto-sync transactions after successful connection
+            try {
+              await syncTransactions();
+              showToast('Transactions synchronisées avec succès', 'success');
+            } catch (syncErr) {
+              console.warn('[BANK] Auto-sync failed (can retry manually):', syncErr);
+            }
+          } else {
+            showToast('Connexion bancaire en attente — veuillez réessayer', 'warning');
           }
         } catch (e) {
           console.error('[BANK] Callback error:', e);
+          showToast('Erreur lors de la connexion bancaire', 'error');
         }
       });
     }
@@ -927,6 +940,8 @@ export default function App() {
       confidentialite: 'Confidentialité',
       'mentions-legales': 'Mentions légales',
       'checkout-success': 'Paiement confirmé',
+      messagerie: 'Messagerie',
+      garanties: 'Garanties',
     };
     const title = PAGE_TITLES[page] || page.charAt(0).toUpperCase() + page.slice(1);
     document.title = `${title} — BatiGesti`;
@@ -1175,6 +1190,8 @@ export default function App() {
       badgeColor: '#ef4444',
       badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
+    { id: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
+    { id: 'garanties', icon: Shield, label: 'Garanties' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
@@ -1218,13 +1235,13 @@ export default function App() {
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
-    const updated = { ...entreprise, cguAcceptedAt: now, cguVersion: version };
-    setEntreprise(updated);
-    // Persist to localStorage immediately
-    try { localStorage.setItem('cp_entreprise', JSON.stringify(updated)); } catch {}
-    // Sync to Supabase
+    const cguData = { cguAcceptedAt: now, cguVersion: version };
+    // Update via context (persists to entreprises table)
+    setEntreprise(prev => ({ ...prev, ...cguData }));
+    // Also sync to legacy entreprise table for backward compat
     if (supabase && user?.id) {
       try {
+        const updated = { ...entreprise, ...cguData };
         const upsertData = { user_id: user.id, settings_json: updated };
         if (orgId && orgId !== 'demo-org-id') upsertData.organization_id = orgId;
         await supabase.from('entreprise')
@@ -1249,29 +1266,37 @@ export default function App() {
       </a>
 
       {/* Mobile overlay */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-      
-      {/* Sidebar - Optimized mobile layout */}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
+
+      {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
+      <aside className={`fixed top-0 left-0 z-50 h-full bg-slate-900 transform transition-all duration-200 flex flex-col
+        ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
+        md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
-        <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0">
-          <button
-            onClick={() => { setPage('profil'); setSidebarOpen(false); }}
-            className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
-            title="Mon profil"
-          >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg transition-transform group-hover:scale-105" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)`}}>
-              <Building2 size={18} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-white font-semibold text-sm truncate" title={entreprise.nom || 'BatiGesti'}>{safeStr(entreprise.nom, 'BatiGesti')}</p>
-              <p className="text-slate-500 text-[11px] truncate">{safeStr(user?.email)}</p>
-            </div>
-          </button>
+        <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 md:justify-center xl:justify-start">
+          <div className="hidden xl:block flex-1 min-w-0">
+            <EntrepriseSwitcher
+              isDark={true}
+              user={user}
+              onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
+            />
+          </div>
+          {/* Collapsed logo icon for md-xl */}
+          <div className="hidden md:flex xl:hidden items-center justify-center w-10 h-10 rounded-xl text-white font-bold text-lg" style={{ background: couleur }}>
+            B
+          </div>
+          {/* Mobile open: show full switcher */}
+          <div className="md:hidden flex-1 min-w-0">
+            <EntrepriseSwitcher
+              isDark={true}
+              user={user}
+              onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
+            />
+          </div>
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="md:hidden p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -1286,15 +1311,16 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
+                title={n.label}
               >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
+                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
                     style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
@@ -1306,26 +1332,28 @@ export default function App() {
             {/* Devis IA — sub-item right under Devis & Factures */}
             <button
               onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 pl-7 pr-3 py-2 rounded-xl text-xs font-medium transition-all ${page === 'ia-devis' ? 'text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+              className={`w-full flex items-center gap-3 md:justify-center xl:justify-start md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all ${page === 'ia-devis' ? 'text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
               style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
+              title="Devis IA"
             >
-              <Sparkles size={14} aria-hidden="true" />
-              <span className="flex-1 text-left">Devis IA</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+              <Sparkles size={14} className="flex-shrink-0" aria-hidden="true" />
+              <span className="flex-1 text-left hidden xl:inline">Devis IA</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
             </button>
             {nav.slice(2, 4).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
+                title={n.label}
               >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
+                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
                     style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
@@ -1341,20 +1369,21 @@ export default function App() {
 
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Organisation</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Organisation</p>
             {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
+                title={n.label}
               >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
+                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
                     style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
@@ -1367,20 +1396,21 @@ export default function App() {
 
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Gestion</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Gestion</p>
             {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
+                title={n.label}
               >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
+                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
                 {n.badge > 0 && (
                   <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold"
+                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
                     style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
                     title={n.badgeTitle}
                   >
@@ -1396,17 +1426,18 @@ export default function App() {
 
           {/* Profil section */}
           <nav className="space-y-0.5" aria-label="Profil">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Profil</p>
+            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Profil</p>
             {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
+                title={n.label}
               >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
+                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
               </button>
             ))}
           </nav>
@@ -1414,14 +1445,14 @@ export default function App() {
 
         {/* Bottom actions - fixed at bottom */}
         <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1">
-          <div className="flex gap-1">
+          <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
               title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
-              <span className="hidden sm:inline text-xs">Discret</span>
+              <span className="hidden xl:inline text-xs">Discret</span>
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
@@ -1429,7 +1460,7 @@ export default function App() {
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              <span className="hidden sm:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
+              <span className="hidden xl:inline text-xs">{isDark ? 'Clair' : 'Sombre'}</span>
             </button>
           </div>
           <button
@@ -1437,39 +1468,33 @@ export default function App() {
             className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-600 hover:bg-red-500/10 hover:text-red-400 text-xs transition-all"
           >
             <LogOut size={13} />
-            <span>Déconnexion</span>
+            <span className="hidden xl:inline">Déconnexion</span>
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className={`lg:pl-64 min-h-screen overflow-x-hidden ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
         <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Menu button - mobile only */}
+            {/* Menu button - mobile only (sidebar visible from md: up) */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className={`lg:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
+              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-white hover:bg-slate-700' : 'hover:bg-slate-200'}`}
               aria-label="Ouvrir le menu"
             >
               <Menu size={20} />
             </button>
 
-            {/* Logo - compact on mobile */}
-            <div className="flex items-center gap-2 min-w-0">
-              <div
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0"
-                style={{background: couleur}}
-              >
-                <Building2 size={18} className="text-white" />
-              </div>
-              <span className={`font-semibold text-sm truncate hidden sm:block lg:text-base ${tc.text}`} title={entreprise.nom || 'BatiGesti'}>
-                {safeStr(entreprise.nom, 'BatiGesti')}
-              </span>
-            </div>
+            {/* Logo / Company switcher - compact on mobile */}
+            <EntrepriseSwitcher
+              isDark={isDark}
+              compact
+              onNavigateSettings={() => setPage('settings')}
+            />
 
             {/* Status badges - compact on mobile */}
             <div className="hidden sm:flex items-center gap-1.5">
@@ -1653,13 +1678,13 @@ export default function App() {
         </ErrorBoundary>
 
         {/* Page content */}
-        <main id="main-content" className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 lg:pb-0 overflow-x-hidden`}>
+        <main id="main-content" key={page} className={`${page === 'dashboard' || page === 'profil' || page === 'plan' ? '' : 'p-3 sm:p-4 lg:p-6'} ${tc.text} max-w-[1800px] mx-auto pb-20 md:pb-0 overflow-x-hidden animate-fade-in`}>
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} setAiPrefill={setAiPrefill} modeDiscret={modeDiscret} setModeDiscret={setModeDiscret} couleur={couleur} isDark={isDark} showHelp={showHelp} setShowHelp={setShowHelp} user={user} onOpenSearch={() => setShowSearch(true)} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} />}
               {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} />}
               {page === 'chantiers' && <Chantiers chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} setDepenses={setDepenses} pointages={pointages} setPointages={setPointages} equipe={equipe} devis={devis} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} />}
-              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} />}
+              {page === 'planning' && <Planning events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent} chantiers={chantiers} clients={clients} equipe={equipe} memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)} devis={devis} />}
               {page === 'memos' && <MemosPage memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} chantiers={chantiers} clients={clients} setPage={setPage} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} />}
               {page === 'bibliotheque' && <BibliothequePrix isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} addDevis={addDevis} />}
@@ -1676,9 +1701,11 @@ export default function App() {
               {page === 'avis-google' && <FeatureGuard feature="avis_google"><AvisGoogle chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'profil' && <ProfilePage user={user} entreprise={entreprise} devis={devis} clients={clients} chantiers={chantiers} catalogue={catalogue} depenses={depenses} paiements={paiements} equipe={equipe} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} />}
-              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
-              {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'analytique' && <AnalyticsPage devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} entreprise={entreprise} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
+              {page === 'finances' && <FinancesPage devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} entreprise={entreprise} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} setPage={setPage} modeDiscret={modeDiscret} />}
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
+              {page === 'messagerie' && <ChatPage isDark={isDark} couleur={couleur} showToast={showToast} user={user} equipe={equipe} />}
+              {page === 'garanties' && <GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
@@ -1713,13 +1740,13 @@ export default function App() {
         />
 
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
-        <nav className={`fixed bottom-0 left-0 right-0 z-40 lg:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700/80' : 'bg-white/95 border-slate-200'} pb-[env(safe-area-inset-bottom)]`}>
+        <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700/80' : 'bg-white/95 border-slate-200'} pb-[env(safe-area-inset-bottom)]`}>
           <div className="flex items-center justify-around h-14">
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
               { id: 'devis', icon: FileText, label: 'Devis' },
               { id: 'chantiers', icon: Building2, label: 'Chantiers' },
-              { id: 'memos', icon: ClipboardList, label: 'Tâches' },
+              { id: 'clients', icon: Users, label: 'Clients' },
             ].filter(item => canAccess(item.id)).map(item => {
               const isActive = item.id === page;
               return (

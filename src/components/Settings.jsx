@@ -1,31 +1,26 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
 import AdminHelp from './admin-help/AdminHelp';
 import {
-  INTEGRATION_TYPES,
-  SYNC_STATUS,
-  getIntegrations,
-  saveIntegration,
-  removeIntegration,
   exportInvoicesToCSV,
   exportExpensesToCSV,
   generateFEC,
   downloadFile,
   calculateTVASummary,
-  syncToPennylane,
-  syncToIndy
 } from '../lib/integrations/accounting';
 
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
-import MultiEntreprise from './settings/MultiEntreprise';
+import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
 import { useRelances } from '../hooks/useRelances';
 import { useOrg } from '../context/OrgContext';
+import TemplateManager from './settings/TemplateManager';
+import IntegrationsHub from './integrations/IntegrationsHub';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
@@ -37,6 +32,7 @@ const TAB_GROUPS = [
   ]},
   { id: 'documents', label: '📄 Documents', tabs: [
     { key: 'documents', label: '📄 Documents' },
+    { key: 'templates', label: '📋 Modèles' },
     { key: 'facture2026', label: '🧾 Facture 2026' },
     { key: 'relances', label: '📨 Relances' },
   ]},
@@ -47,6 +43,9 @@ const TAB_GROUPS = [
   ]},
   { id: 'equipe', label: '👥 Équipe', tabs: [
     { key: 'team', label: '👥 Équipe & Accès' },
+  ]},
+  { id: 'integrations', label: '🔗 Intégrations', tabs: [
+    { key: 'integrations', label: '🔗 Intégrations' },
   ]},
   { id: 'avance', label: '⚙️ Avancé', tabs: [
     { key: 'donnees', label: '💾 Données' },
@@ -122,24 +121,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const supabaseSaveRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
   const updateEntreprise = useCallback((updater) => {
-    setEntreprise((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      // Debounced Supabase sync (1.5s after last change)
-      if (!isDemo && supabase && user?.id) {
-        if (supabaseSaveRef.current) clearTimeout(supabaseSaveRef.current);
-        supabaseSaveRef.current = setTimeout(async () => {
-          try {
-            const { error } = await supabase
-              .from('entreprise')
-              .upsert({ user_id: user.id, settings_json: next }, { onConflict: 'user_id' });
-            if (error) console.warn('Supabase entreprise sync failed:', error.message);
-          } catch (e) {
-            console.warn('Supabase entreprise sync error:', e.message);
-          }
-        }, 1500);
-      }
-      return next;
-    });
+    // setEntreprise is now a context wrapper that persists to entreprises table
+    setEntreprise(updater);
+    // Also sync to legacy entreprise table for backward compat
+    if (!isDemo && supabase && user?.id) {
+      if (supabaseSaveRef.current) clearTimeout(supabaseSaveRef.current);
+      supabaseSaveRef.current = setTimeout(async () => {
+        try {
+          const current = typeof updater === 'function' ? updater(entreprise) : updater;
+          const { error } = await supabase
+            .from('entreprise')
+            .upsert({ user_id: user.id, settings_json: current }, { onConflict: 'user_id' });
+          if (error) console.warn('Supabase legacy entreprise sync failed:', error.message);
+        } catch (e) {
+          console.warn('Supabase legacy entreprise sync error:', e.message);
+        }
+      }, 1500);
+    }
     setSaveStatus('saving');
     // Debounce the toast to avoid spam
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -149,7 +147,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       // Reset indicator after 3s
       setTimeout(() => setSaveStatus(null), 3000);
     }, 800);
-  }, [setEntreprise, showToast, user?.id]);
+  }, [setEntreprise, showToast, user?.id, entreprise]);
 
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {
@@ -252,10 +250,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   }, [showSetupWizard, showExportModal, showProfileDetail]);
 
   // Comptabilite state
-  const [comptaSubTab, setComptaSubTab] = useState('integrations');
-  const [integrations, setIntegrations] = useState(getIntegrations);
-  const [connecting, setConnecting] = useState(null);
-  const [syncing, setSyncing] = useState(null);
+  const [comptaSubTab, setComptaSubTab] = useState('export');
   const [exportPeriod, setExportPeriod] = useState(() => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -351,47 +346,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return calculateTVASummary(devis, depenses, exportPeriod.debut, exportPeriod.fin);
   }, [devis, depenses, exportPeriod]);
 
-  // Comptabilite handlers
-  const handleConnect = async (integrationId) => {
-    setConnecting(integrationId);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    saveIntegration(integrationId, {
-      status: SYNC_STATUS.CONNECTED,
-      connectedAt: new Date().toISOString(),
-      lastSync: null
-    });
-    setIntegrations(getIntegrations());
-    setConnecting(null);
-    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} connecté`, 'success');
-  };
-
-  const handleDisconnect = (integrationId) => {
-    removeIntegration(integrationId);
-    setIntegrations(getIntegrations());
-    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} déconnecté`, 'info');
-  };
-
-  const handleSync = async (integrationId) => {
-    setSyncing(integrationId);
-    try {
-      if (integrationId === 'pennylane') {
-        await syncToPennylane(factures, depenses, integrations[integrationId]?.apiKey);
-      } else if (integrationId === 'indy') {
-        await syncToIndy(factures, integrations[integrationId]?.apiKey);
-      }
-      saveIntegration(integrationId, {
-        ...integrations[integrationId],
-        lastSync: new Date().toISOString(),
-        status: SYNC_STATUS.UP_TO_DATE
-      });
-      setIntegrations(getIntegrations());
-      showToast('Synchronisation terminée', 'success');
-    } catch (error) {
-      showToast('Erreur de synchronisation', 'error');
-    }
-    setSyncing(null);
-  };
-
   const handleExportCSV = (type) => {
     if (type === 'factures') {
       const csv = exportInvoicesToCSV(factures, clients, entreprise);
@@ -408,17 +362,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     const fec = generateFEC(factures, depenses, clients, chantiers, entreprise, exportPeriod.debut, exportPeriod.fin);
     downloadFile(fec, `FEC_${entreprise?.siret || 'SIRET'}_${exportPeriod.debut.replace(/-/g, '')}_${exportPeriod.fin.replace(/-/g, '')}.txt`, 'text/plain');
     showToast('Fichier FEC généré', 'success');
-  };
-
-  const getIntegrationIcon = (iconName) => {
-    switch (iconName) {
-      case 'receipt': return Receipt;
-      case 'calculator': return Calculator;
-      case 'credit-card': return CreditCard;
-      case 'file-spreadsheet': return FileSpreadsheet;
-      case 'file-text': return FileText;
-      default: return Building2;
-    }
   };
 
   // Export comptable Excel
@@ -1212,6 +1155,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
+      {/* MODÈLES DE DEVIS */}
+      {tab === 'templates' && (
+        <TemplateManager
+          isDark={isDark}
+          couleur={couleur}
+          modeDiscret={modeDiscret}
+        />
+      )}
+
       {/* FACTURE 2026 */}
       {tab === 'facture2026' && (
         <Facture2026Tab
@@ -1344,7 +1296,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Sub-tabs */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { id: 'integrations', label: 'Intégrations', icon: Link2 },
               { id: 'export', label: 'Export', icon: Download },
               { id: 'tva', label: 'Résumé TVA', icon: Calculator }
             ].map(subtab => (
@@ -1363,139 +1314,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </button>
             ))}
           </div>
-
-          {/* Integrations Sub-tab */}
-          {comptaSubTab === 'integrations' && (
-            <div className="space-y-4">
-              <p className={`text-sm ${textSecondary} mb-4`}>
-                Connectez vos outils comptables pour synchroniser automatiquement vos factures et dépenses.
-              </p>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                {Object.values(INTEGRATION_TYPES).filter(i => i.apiSupported).map(integration => {
-                  const isConnected = integrations[integration.id]?.status === SYNC_STATUS.CONNECTED ||
-                                     integrations[integration.id]?.status === SYNC_STATUS.UP_TO_DATE;
-                  const Icon = getIntegrationIcon(integration.icon);
-                  const isSyncing = syncing === integration.id;
-                  const isConnecting = connecting === integration.id;
-
-                  return (
-                    <div
-                      key={integration.id}
-                      className={`${cardBg} rounded-xl border p-4 transition-all hover:shadow-lg ${
-                        isConnected ? (isDark ? 'border-emerald-800' : 'border-emerald-200') : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center"
-                            style={{ background: `${integration.color}20` }}
-                          >
-                            <Icon size={20} style={{ color: integration.color }} />
-                          </div>
-                          <div>
-                            <h3 className={`font-semibold ${textPrimary}`}>{integration.name}</h3>
-                            <p className={`text-xs ${textMuted}`}>{integration.description}</p>
-                          </div>
-                        </div>
-                        {isConnected && (
-                          <CheckCircle size={20} className="text-emerald-500" />
-                        )}
-                      </div>
-
-                      {isConnected ? (
-                        <div className="space-y-3">
-                          <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
-                            <span>Dernière sync:</span>
-                            <span>{integrations[integration.id]?.lastSync
-                              ? new Date(integrations[integration.id].lastSync).toLocaleDateString('fr-FR')
-                              : 'Jamais'
-                            }</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSync(integration.id)}
-                              disabled={isSyncing}
-                              className="flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white disabled:opacity-50"
-                              style={{ background: couleur }}
-                            >
-                              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                              {isSyncing ? 'Sync...' : 'Synchroniser'}
-                            </button>
-                            <button
-                              onClick={() => handleDisconnect(integration.id)}
-                              className={`py-2 px-3 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                            >
-                              <Unlink size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleConnect(integration.id)}
-                          disabled={isConnecting}
-                          className={`w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
-                            isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                          } disabled:opacity-50`}
-                        >
-                          {isConnecting ? (
-                            <>
-                              <RefreshCw size={14} className="animate-spin" />
-                              Connexion...
-                            </>
-                          ) : (
-                            <>
-                              <Link2 size={14} />
-                              Connecter
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      <a
-                        href={integration.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center gap-1 text-xs mt-3 ${textMuted} hover:underline`}
-                      >
-                        <ExternalLink size={12} />
-                        {integration.website.replace('https://', '')}
-                      </a>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Autre logiciel card */}
-              <div
-                className={`${cardBg} rounded-xl border-2 border-dashed p-4 ${isDark ? 'border-slate-600' : 'border-slate-300'}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${couleur}15` }}
-                  >
-                    <FileText size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-semibold ${textPrimary}`}>Autre logiciel comptable</h3>
-                    <p className={`text-xs mt-1 ${textMuted}`}>
-                      Vous utilisez un autre logiciel ? Exportez vos données au format FEC ou CSV depuis l'onglet Export.
-                    </p>
-                    <button
-                      onClick={() => setComptaSubTab('export')}
-                      className="mt-3 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-                      style={{ color: couleur }}
-                    >
-                      <Download size={14} />
-                      Aller à l'Export
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Export Sub-tab */}
           {comptaSubTab === 'export' && (
@@ -2024,13 +1842,22 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <TeamManagement isDark={isDark} couleur={entreprise.couleur || couleur} />
       )}
 
-      {/* Multi-entreprise Tab */}
-      {tab === 'multi' && (
-        <MultiEntreprise
-          entreprise={entreprise}
-          setEntreprise={setEntreprise}
+      {/* Intégrations Tab */}
+      {tab === 'integrations' && (
+        <IntegrationsHub
           isDark={isDark}
           couleur={entreprise.couleur || couleur}
+          showToast={showToast}
+          user={user}
+        />
+      )}
+
+      {/* Multi-entreprise Tab */}
+      {tab === 'multi' && (
+        <EntrepriseSettingsPage
+          isDark={isDark}
+          couleur={entreprise.couleur || couleur}
+          showToast={showToast}
         />
       )}
 

@@ -1,5 +1,6 @@
 import { Component, useState } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { captureException } from '../../lib/sentry';
 
 /**
  * ErrorBoundary - Catches JavaScript errors in child components
@@ -35,8 +36,10 @@ class ErrorBoundary extends Component {
       this.props.onError(error, errorInfo);
     }
 
-    // In production, you could send to error tracking service here
-    // e.g., Sentry.captureException(error);
+    // Send to Sentry in production
+    captureException(error, {
+      componentStack: errorInfo?.componentStack,
+    });
   }
 
   handleReset = () => {

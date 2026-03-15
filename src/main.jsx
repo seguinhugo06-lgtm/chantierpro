@@ -3,11 +3,16 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
 import { OrgProvider } from './context/OrgContext'
+import { EntrepriseProvider } from './context/EntrepriseContext'
 import { DataProvider } from './context/DataContext'
 import { DEMO_DATA, seedSecondaryDemoData } from './lib/demo-data'
 import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
+import { initSentry } from './lib/sentry'
 import './index.css'
+
+// ── Initialize Sentry error monitoring (production only) ────────────
+initSentry()
 
 // ── Stale chunk reload handler ──────────────────────────────────────
 // When a new deployment happens, old JS chunks (e.g. DevisPage-abc123.js)
@@ -142,9 +147,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : (
       <AppProvider>
         <OrgProvider>
-          <DataProvider initialData={initialData}>
-            <App />
-          </DataProvider>
+          <EntrepriseProvider>
+            <DataProvider initialData={initialData}>
+              <App />
+            </DataProvider>
+          </EntrepriseProvider>
         </OrgProvider>
       </AppProvider>
     )}

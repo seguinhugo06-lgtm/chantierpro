@@ -90,6 +90,7 @@ export const FIELD_MAPPINGS = {
     toSupabase: (item) => ({
       id: item.id,
       client_id: item.clientId || item.client_id || null,
+      entreprise_id: item.entrepriseId || item.entreprise_id || null,
       nom: item.nom,
       description: item.description || null,
       adresse: item.adresse || null,
@@ -119,6 +120,8 @@ export const FIELD_MAPPINGS = {
       id: row.id,
       clientId: row.client_id,
       client_id: row.client_id,
+      entrepriseId: row.entreprise_id || null,
+      entreprise_id: row.entreprise_id || null,
       nom: row.nom,
       description: row.description,
       adresse: row.adresse,
@@ -184,6 +187,7 @@ export const FIELD_MAPPINGS = {
         client_id: item.client_id,
         client_nom: item.client_nom || null,
         chantier_id: item.chantier_id || null,
+        entreprise_id: item.entrepriseId || item.entreprise_id || null,
         numero: normalizeNumero(item.numero) || item.numero,
         type: item.type,
         statut,
@@ -209,6 +213,11 @@ export const FIELD_MAPPINGS = {
         devis_source_id: item.devis_source_id || null,
         acompte_facture_id: item.acompte_facture_id || null,
         acompte_pct: item.acompte_pct || null,
+        echeancier_id: item.echeancier_id || null,
+        mode_facturation: item.mode_facturation || null,
+        acomptes_ids: item.acomptes_ids || [],
+        facture_solde_id: item.facture_solde_id || null,
+        montant_facture: item.montant_facture || 0,
         montant_paye: item.montant_paye || 0,
         // Avoir-specific fields
         avoir_source_id: item.avoir_source_id || null,
@@ -227,6 +236,8 @@ export const FIELD_MAPPINGS = {
       client_id: row.client_id,
       client_nom: row.client_nom || '',
       chantier_id: row.chantier_id || null,
+      entrepriseId: row.entreprise_id || null,
+      entreprise_id: row.entreprise_id || null,
       numero: normalizeNumero(row.numero),
       type: row.type || 'devis',
       statut: row.statut || 'brouillon',
@@ -254,6 +265,11 @@ export const FIELD_MAPPINGS = {
       devis_source_id: row.devis_source_id || null,
       acompte_facture_id: row.acompte_facture_id || null,
       acompte_pct: row.acompte_pct ? parseFloat(row.acompte_pct) : null,
+      echeancier_id: row.echeancier_id || null,
+      mode_facturation: row.mode_facturation || null,
+      acomptes_ids: row.acomptes_ids || [],
+      facture_solde_id: row.facture_solde_id || null,
+      montant_facture: row.montant_facture ? parseFloat(row.montant_facture) : 0,
       montant_paye: row.montant_paye ? parseFloat(row.montant_paye) : 0,
       // Avoir-specific fields
       avoir_source_id: row.avoir_source_id || null,
@@ -876,22 +892,91 @@ export const FIELD_MAPPINGS = {
       updated_at: row.updated_at,
     }),
   },
+
+  // ── Devis Templates (user-saved quote templates) ────────────────────
+  devis_templates: {
+    toSupabase: (item) => ({
+      id: item.id,
+      nom: item.nom,
+      description: item.description || null,
+      categorie: item.categorie || 'Mes modèles',
+      lignes: JSON.stringify(item.lignes || []),
+      tags: item.tags || [],
+      source: item.source || 'user',
+      builtin_id: item.builtin_id || null,
+      favori: item.favori || false,
+      usage_count: item.usage_count || 0,
+      last_used_at: item.last_used_at || null,
+      prix_min: item.prix_min || null,
+      prix_max: item.prix_max || null,
+      marge_cible: item.marge_cible || null,
+      tva_defaut: item.tva_defaut || 10,
+      notes: item.notes || null,
+    }),
+    fromSupabase: (row) => ({
+      id: row.id,
+      nom: row.nom,
+      description: row.description,
+      categorie: row.categorie,
+      lignes: row.lignes ? (typeof row.lignes === 'string' ? JSON.parse(row.lignes) : row.lignes) : [],
+      tags: row.tags || [],
+      source: row.source || 'user',
+      builtin_id: row.builtin_id || null,
+      favori: row.favori || false,
+      usage_count: row.usage_count || 0,
+      last_used_at: row.last_used_at,
+      prix_min: row.prix_min,
+      prix_max: row.prix_max,
+      marge_cible: row.marge_cible,
+      tva_defaut: row.tva_defaut || 10,
+      notes: row.notes,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }),
+  },
+
+  // ── Template Usages (tracking template usage) ────────────────────
+  template_usages: {
+    toSupabase: (item) => ({
+      id: item.id,
+      template_id: item.template_id || null,
+      template_builtin_id: item.template_builtin_id || null,
+      devis_id: item.devis_id || null,
+      used_at: item.used_at || new Date().toISOString(),
+    }),
+    fromSupabase: (row) => ({
+      id: row.id,
+      template_id: row.template_id,
+      template_builtin_id: row.template_builtin_id,
+      devis_id: row.devis_id,
+      used_at: row.used_at,
+    }),
+  },
 };
 
 /**
  * Load all data from Supabase for the current user
  */
-export async function loadAllData(userId, orgId) {
+export async function loadAllData(userId, orgId, entrepriseId) {
   if (isDemo || !supabase || !userId) {
     logger.debug('Skipping Supabase load - demo mode or no user');
     return null;
   }
 
   try {
-    logger.debug('Loading data from Supabase for user:', userId, 'org:', orgId);
+    logger.debug('Loading data from Supabase for user:', userId, 'org:', orgId, 'entreprise:', entrepriseId || 'all');
 
     // Helper: scope query to org (falls back to user_id if no orgId)
     const scoped = (table) => scopeToOrg(supabase.from(table).select('*'), orgId, userId);
+
+    // Helper: scope to org + optionally filter by entreprise_id
+    const scopedWithEntreprise = (table) => {
+      let query = scopeToOrg(supabase.from(table).select('*'), orgId, userId);
+      if (entrepriseId) {
+        query = query.eq('entreprise_id', entrepriseId);
+      }
+      return query;
+    };
 
     const [
       clientsRes,
@@ -917,10 +1002,12 @@ export async function loadAllData(userId, orgId) {
       ajustementsRes,
       ouvragesRes,
       memosRes,
+      devisTemplatesRes,
+      templateUsagesRes,
     ] = await Promise.all([
       scoped('clients').then(r => r, (e) => { console.error('Load clients failed:', e); return { data: [] }; }),
-      scoped('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; }),
-      scoped('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; }),
+      scopedWithEntreprise('chantiers').then(r => r, (e) => { console.error('Load chantiers failed:', e); return { data: [] }; }),
+      scopedWithEntreprise('devis').then(r => r, (e) => { console.error('Load devis failed:', e); return { data: [] }; }),
       scoped('depenses').then(r => r, (e) => { console.error('Load depenses failed:', e); return { data: [] }; }),
       scoped('equipe').then(r => r, (e) => { console.error('Load equipe failed:', e); return { data: [] }; }),
       scoped('pointages').then(r => r, (e) => { console.error('Load pointages failed:', e); return { data: [] }; }),
@@ -941,6 +1028,8 @@ export async function loadAllData(userId, orgId) {
       scopeToOrg(supabase.from('ajustements').select('*'), orgId, userId).order('created_at', { ascending: false }).then(r => r, () => ({ data: [] })),
       scoped('ouvrages').then(r => r, () => ({ data: [] })),
       scopeToOrg(supabase.from('memos').select('*'), orgId, userId).order('position', { ascending: true }).then(r => r, () => ({ data: [] })),
+      scoped('devis_templates').then(r => r, () => ({ data: [] })),
+      scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
     ]);
 
     // Log any query errors from core tables
@@ -972,6 +1061,8 @@ export async function loadAllData(userId, orgId) {
       ajustements: (ajustementsRes?.data || []).map(FIELD_MAPPINGS.ajustements.fromSupabase),
       ouvrages: (ouvragesRes?.data || []).map(FIELD_MAPPINGS.ouvrages.fromSupabase),
       memos: (memosRes?.data || []).map(FIELD_MAPPINGS.memos.fromSupabase),
+      devisTemplates: (devisTemplatesRes?.data || []).map(FIELD_MAPPINGS.devis_templates.fromSupabase),
+      templateUsages: (templateUsagesRes?.data || []).map(FIELD_MAPPINGS.template_usages.fromSupabase),
     };
 
     logger.debug('Loaded data from Supabase:', {
@@ -1008,17 +1099,47 @@ const _numeroCursor = {};
  * Queries Supabase for the max sequence to avoid duplicates.
  * Uses an in-memory cursor to guarantee monotonic numbers even under rapid creation.
  */
-export async function getNextNumero(type, userId, localDevis = []) {
+export async function getNextNumero(type, userId, localDevis = [], entrepriseId = null) {
+  // If we have an entrepriseId and Supabase, try the atomic RPC first
+  if (!isDemo && supabase && entrepriseId) {
+    try {
+      const rpcType = type === 'avoir' ? 'avoir' : type === 'facture' ? 'facture' : 'devis';
+      const { data, error } = await supabase.rpc('fn_next_document_number', {
+        p_entreprise_id: entrepriseId,
+        p_type: rpcType,
+      });
+      if (!error && data) {
+        // Update cursor to stay in sync locally
+        const m = data.match(/^([A-Z]+)-(\d{4})-(\d+)$/);
+        if (m) {
+          const cursorKey = `${m[1]}-${m[2]}`;
+          _numeroCursor[cursorKey] = parseInt(m[3], 10);
+        }
+        return data;
+      }
+      console.warn('getNextNumero: RPC failed, falling back to legacy', error?.message);
+    } catch (e) {
+      console.warn('getNextNumero: RPC unavailable, falling back to legacy', e.message);
+    }
+  }
+
+  // Legacy fallback: compute from existing numeros
   const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
   const year = new Date().getFullYear();
   const cursorKey = `${prefix}-${year}`;
   const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
 
-  // Local max from in-memory devis
-  const localMax = localDevis
-    .filter(d => type === 'avoir'
+  // Local max from in-memory devis (optionally filtered by entreprise)
+  const filtered = localDevis.filter(d => {
+    const typeMatch = type === 'avoir'
       ? d.facture_type === 'avoir'
-      : (d.type || 'devis') === type && d.facture_type !== 'avoir')
+      : (d.type || 'devis') === type && d.facture_type !== 'avoir';
+    if (!typeMatch) return false;
+    // If entrepriseId provided, only count docs from this entreprise
+    if (entrepriseId && d.entrepriseId && d.entrepriseId !== entrepriseId) return false;
+    return true;
+  });
+  const localMax = filtered
     .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
     .reduce((max, n) => Math.max(max, n), 0);
 
@@ -1026,12 +1147,16 @@ export async function getNextNumero(type, userId, localDevis = []) {
   if (!isDemo && supabase && userId) {
     try {
       const likePattern = `${prefix}-${year}-%`;
-      // Fetch ALL numeros for this year to find true max (string sort can miss 00010 vs 00002)
-      const { data } = await supabase
+      let query = supabase
         .from('devis')
         .select('numero')
         .eq('user_id', userId)
         .like('numero', likePattern);
+      // Filter by entreprise if available
+      if (entrepriseId) {
+        query = query.eq('entreprise_id', entrepriseId);
+      }
+      const { data } = await query;
       if (data && data.length > 0) {
         supabaseMax = data.reduce((max, row) => {
           const m = (row.numero || '').match(pattern);

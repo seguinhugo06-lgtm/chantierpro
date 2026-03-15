@@ -2,8 +2,11 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, u
 import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem, getNextNumero } from '../hooks/useSupabaseSync';
-import { isDemo, auth } from '../supabaseClient';
+import { isDemo, auth, supabase } from '../supabaseClient';
 import { useOrg } from './OrgContext';
+import { useEntreprise } from './EntrepriseContext';
+import { logAction, computeChanges } from '../lib/auditService';
+import { createSnapshot } from '../lib/snapshotService';
 import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
@@ -15,6 +18,19 @@ import { toast } from '../stores/toastStore';
  */
 
 const DataContext = createContext(null);
+
+// ── Audit: tracked fields per entity type ──
+const DEVIS_TRACKED_FIELDS = ['statut', 'client_id', 'client_nom', 'objet', 'lignes', 'total_ht', 'total_ttc', 'totalHt', 'totalTtc', 'notes', 'conditions', 'validite', 'remise_globale', 'remiseGlobale'];
+const CLIENT_TRACKED_FIELDS = ['nom', 'prenom', 'email', 'telephone', 'adresse', 'ville', 'code_postal', 'codePostal', 'type', 'siret', 'tva_intra'];
+const CHANTIER_TRACKED_FIELDS = ['nom', 'statut', 'adresse', 'description', 'avancement', 'client_id', 'clientId', 'date_debut', 'dateDebut', 'date_fin', 'dateFin', 'montant_devis', 'montantDevis'];
+
+// Fire-and-forget audit helper (never blocks the main action)
+const _audit = (sb, params) => {
+  logAction(sb, params).catch(err => console.error('[audit]', err));
+};
+const _snapshot = (sb, params) => {
+  createSnapshot(sb, params).catch(err => console.error('[snapshot]', err));
+};
 
 /** Validate that a string looks like a UUID (v4 format) */
 const isValidUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -91,8 +107,12 @@ export function DataProvider({ children, initialData = {} }) {
   // Organization context (RBAC)
   const { orgId, loading: orgLoading } = useOrg();
 
-  // User ID from Supabase auth
+  // Multi-entreprise context
+  const { entrepriseId, loading: entrepriseLoading } = useEntreprise();
+
+  // User ID and name from Supabase auth
   const [userId, setUserId] = useState(null);
+  const [userName, setUserName] = useState('');
 
   // Queue for saves attempted before userId was available (race condition fix)
   const pendingSavesRef = useRef([]);
@@ -190,6 +210,31 @@ export function DataProvider({ children, initialData = {} }) {
     return initialData.memos ?? [];
   });
 
+  // Custom templates (user-saved devis templates)
+  const [customTemplates, setCustomTemplates] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      // Migrate from legacy localStorage key if needed
+      if (!data?.customTemplates) {
+        try {
+          const legacy = JSON.parse(localStorage.getItem('chantierPro_customTemplates') || '[]');
+          if (legacy.length > 0) return legacy;
+        } catch (e) { /* ignore */ }
+      }
+      return data?.customTemplates ?? [];
+    }
+    return [];
+  });
+
+  // Template usage tracking
+  const [templateUsages, setTemplateUsages] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.templateUsages ?? [];
+    }
+    return [];
+  });
+
   // Loading state — for real users, start as loading until Supabase data arrives
   const [dataLoading, setDataLoading] = useState(!isDemo);
   const [dataLoaded, setDataLoaded] = useState(() => isDemo && !!loadDemoData()); // Already loaded if demo data exists
@@ -236,12 +281,14 @@ export function DataProvider({ children, initialData = {} }) {
         echanges,
         ouvrages,
         memos,
+        customTemplates,
+        templateUsages,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -253,6 +300,7 @@ export function DataProvider({ children, initialData = {} }) {
       if (user?.id) {
         logger.debug('📱 User authenticated:', user.id);
         setUserId(user.id);
+        setUserName(user.user_metadata?.nom || user.email || '');
       }
     };
     getCurrentUser();
@@ -262,6 +310,7 @@ export function DataProvider({ children, initialData = {} }) {
       if (event === 'SIGNED_IN' && session?.user) {
         logger.debug('🔑 User signed in:', session.user.id);
         setUserId(session.user.id);
+        setUserName(session.user.user_metadata?.nom || session.user.email || '');
         setDataLoaded(false); // Reset to trigger data reload
       } else if (event === 'SIGNED_OUT') {
         logger.debug('🚪 User signed out');
@@ -301,18 +350,26 @@ export function DataProvider({ children, initialData = {} }) {
     });
   }, [userId]);
 
-  // Load data from Supabase when userId + orgId are available
+  // Reload data when entrepriseId changes (company switch)
+  useEffect(() => {
+    if (!isDemo && entrepriseId) {
+      setDataLoaded(false); // trigger reload
+    }
+  }, [entrepriseId]);
+
+  // Load data from Supabase when userId + orgId + entrepriseId are available
   useEffect(() => {
     if (isDemo) { setDataLoading(false); return; }
     if (!userId) return; // Still waiting for auth — keep dataLoading true
     if (orgLoading) return; // Still resolving organization
+    if (entrepriseLoading) return; // Still resolving entreprise
     if (dataLoaded) { setDataLoading(false); return; } // Already loaded
 
     const loadData = async () => {
       setDataLoading(true);
       try {
-        logger.debug('📥 Loading data from Supabase... (org:', orgId, ')');
-        const data = await loadAllData(userId, orgId);
+        logger.debug('📥 Loading data from Supabase... (org:', orgId, ', entreprise:', entrepriseId, ')');
+        const data = await loadAllData(userId, orgId, entrepriseId);
         if (data) {
           // Deduplicate by ID and sanitize to remove ghost records with non-UUID IDs
           const dedup = (arr) => [...new Map(arr.map(item => [item.id, item])).values()];
@@ -335,6 +392,10 @@ export function DataProvider({ children, initialData = {} }) {
           if (data.ouvrages) setOuvrages(clean(data.ouvrages));
           // Memos loaded into state
           if (data.memos) setMemos(clean(data.memos));
+          // Custom templates loaded into state
+          if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
+          // Template usages loaded into state
+          if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
           setDataLoaded(true);
           logger.debug('✅ Data loaded from Supabase:', {
             clients: data.clients.length,
@@ -350,7 +411,7 @@ export function DataProvider({ children, initialData = {} }) {
     };
 
     loadData();
-  }, [userId, orgId, orgLoading, dataLoaded]);
+  }, [userId, orgId, orgLoading, entrepriseId, entrepriseLoading, dataLoaded]);
 
   // ============ CLIENT OPERATIONS ============
   const addClient = useCallback(async (data) => {
@@ -363,6 +424,9 @@ export function DataProvider({ children, initialData = {} }) {
 
     // Optimistic update (prevent duplicates)
     setClients(prev => prev.some(c => c.id === newClient.id) ? prev : [...prev, newClient]);
+
+    // Audit: log creation
+    _audit(isDemo ? null : supabase, { entityType: 'client', entityId: newClient.id, action: 'created', userId, orgId, userName });
 
     // Save to Supabase
     if (!isDemo) {
@@ -390,9 +454,18 @@ export function DataProvider({ children, initialData = {} }) {
   }, [userId]);
 
   const updateClient = useCallback(async (id, data) => {
+    const oldClient = clients.find(c => c.id === id);
     setClients(prev => prev.map(c =>
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
+
+    // Audit: log changes
+    if (oldClient) {
+      const changes = computeChanges(oldClient, { ...oldClient, ...data }, CLIENT_TRACKED_FIELDS);
+      if (Object.keys(changes).length > 0) {
+        _audit(isDemo ? null : supabase, { entityType: 'client', entityId: id, action: 'updated', changes, userId, orgId, userName });
+      }
+    }
 
     if (!isDemo) {
       if (userId) {
@@ -416,6 +489,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   const deleteClient = useCallback(async (id) => {
     setClients(prev => prev.filter(c => c.id !== id));
+
+    // Audit: log deletion
+    _audit(isDemo ? null : supabase, { entityType: 'client', entityId: id, action: 'deleted', userId, orgId, userName });
 
     if (!isDemo && userId) {
       try {
@@ -445,23 +521,28 @@ export function DataProvider({ children, initialData = {} }) {
     }
     // Auto-generate numero if missing (Devis Express, AI, etc.)
     if (!data.numero) {
-      data.numero = await getNextNumero(data.type || 'devis', userId, devis);
+      data.numero = await getNextNumero(data.type || 'devis', userId, devis, entrepriseId);
     }
     // Prevent duplicate numeros — check both local + Supabase
     if (devis.some(d => d.numero === data.numero)) {
       console.warn('addDevis: duplicate numero detected, regenerating:', data.numero);
-      data.numero = await getNextNumero(data.type || 'devis', userId, devis);
+      data.numero = await getNextNumero(data.type || 'devis', userId, devis, entrepriseId);
     }
 
     const newDevis = {
       id: crypto.randomUUID(),
       statut: DEVIS_STATUS.BROUILLON,
       type: 'devis',
+      entrepriseId: data.entrepriseId || data.entreprise_id || entrepriseId || null,
+      entreprise_id: data.entrepriseId || data.entreprise_id || entrepriseId || null,
       ...data,
       createdAt: new Date().toISOString()
     };
 
     setDevis(prev => prev.some(d => d.id === newDevis.id) ? prev : [...prev, newDevis]);
+
+    // Audit: log creation (fire-and-forget)
+    _audit(isDemo ? null : supabase, { entityType: 'devis', entityId: newDevis.id, action: 'created', userId, orgId, userName });
 
     if (!isDemo) {
       if (userId) {
@@ -492,16 +573,32 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newDevis;
-  }, [userId, devis]);
+  }, [userId, devis, entrepriseId]);
 
   const updateDevis = useCallback(async (id, data) => {
     // Prevent removing client_id (BUG-001: DB NOT NULL constraint)
     if (data.client_id === null || data.client_id === undefined) {
       delete data.client_id; // Keep existing client_id
     }
+    const oldDevis = devis.find(d => d.id === id);
     setDevis(prev => prev.map(d =>
       d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
     ));
+
+    // Audit: log changes (fire-and-forget)
+    if (oldDevis) {
+      const sb = isDemo ? null : supabase;
+      const isStatusChange = data.statut && data.statut !== oldDevis.statut;
+      const action = isStatusChange ? 'status_changed' : 'updated';
+      const changes = computeChanges(oldDevis, { ...oldDevis, ...data }, DEVIS_TRACKED_FIELDS);
+      if (Object.keys(changes).length > 0) {
+        _audit(sb, { entityType: 'devis', entityId: id, action, changes, userId, orgId, userName });
+      }
+      // Auto-snapshot on status changes (envoyé, signé, facturé)
+      if (isStatusChange && ['envoye', 'accepte', 'signe', 'acompte_facture', 'facture'].includes(data.statut)) {
+        _snapshot(sb, { entityType: 'devis', entityId: id, data: { ...oldDevis, ...data }, trigger: 'auto_status_change', userId, orgId });
+      }
+    }
 
     if (!isDemo) {
       if (userId) {
@@ -550,6 +647,9 @@ export function DataProvider({ children, initialData = {} }) {
   const deleteDevis = useCallback(async (id) => {
     setDevis(prev => prev.filter(d => d.id !== id));
 
+    // Audit: log deletion
+    _audit(isDemo ? null : supabase, { entityType: 'devis', entityId: id, action: 'deleted', userId, orgId, userName });
+
     if (!isDemo && userId) {
       try {
         await deleteItem('devis', id, userId, orgId);
@@ -580,11 +680,16 @@ export function DataProvider({ children, initialData = {} }) {
       avancement: 0,
       photos: [],
       taches: [],
+      entrepriseId: data.entrepriseId || data.entreprise_id || entrepriseId || null,
+      entreprise_id: data.entrepriseId || data.entreprise_id || entrepriseId || null,
       ...data,
       createdAt: new Date().toISOString()
     };
 
     setChantiers(prev => prev.some(c => c.id === newChantier.id) ? prev : [...prev, newChantier]);
+
+    // Audit: log creation
+    _audit(isDemo ? null : supabase, { entityType: 'chantier', entityId: newChantier.id, action: 'created', userId, orgId, userName });
 
     if (!isDemo) {
       if (userId) {
@@ -605,12 +710,21 @@ export function DataProvider({ children, initialData = {} }) {
     }
 
     return newChantier;
-  }, [userId]);
+  }, [userId, entrepriseId]);
 
   const updateChantier = useCallback(async (id, data) => {
+    const oldChantier = chantiers.find(c => c.id === id);
     setChantiers(prev => prev.map(c =>
       c.id === id ? { ...c, ...data, updatedAt: new Date().toISOString() } : c
     ));
+
+    // Audit: log changes
+    if (oldChantier) {
+      const changes = computeChanges(oldChantier, { ...oldChantier, ...data }, CHANTIER_TRACKED_FIELDS);
+      if (Object.keys(changes).length > 0) {
+        _audit(isDemo ? null : supabase, { entityType: 'chantier', entityId: id, action: 'updated', changes, userId, orgId, userName });
+      }
+    }
 
     if (!isDemo) {
       if (userId) {
@@ -637,6 +751,9 @@ export function DataProvider({ children, initialData = {} }) {
 
   const deleteChantier = useCallback(async (id) => {
     setChantiers(prev => prev.filter(c => c.id !== id));
+
+    // Audit: log deletion
+    _audit(isDemo ? null : supabase, { entityType: 'chantier', entityId: id, action: 'deleted', userId, orgId, userName });
 
     if (!isDemo && userId) {
       try {
@@ -1186,6 +1303,111 @@ export function DataProvider({ children, initialData = {} }) {
     }
   }, [userId, memos]);
 
+  // ============ TEMPLATE OPERATIONS ============
+  const addTemplate = useCallback(async (data) => {
+    const newTemplate = {
+      id: crypto.randomUUID(),
+      source: 'user',
+      favori: false,
+      usage_count: 0,
+      ...data,
+      created_at: new Date().toISOString(),
+    };
+
+    setCustomTemplates(prev => prev.some(t => t.id === newTemplate.id) ? prev : [...prev, newTemplate]);
+
+    if (!isDemo && userId) {
+      try {
+        const saved = await saveItem('devis_templates', newTemplate, userId, orgId);
+        if (saved) {
+          setCustomTemplates(prev => prev.map(t => t.id === newTemplate.id ? saved : t));
+          return saved;
+        }
+      } catch (error) {
+        console.error('Error saving template:', error);
+        await queueOffline('create', 'devis_templates', newTemplate);
+      }
+    }
+
+    // Cleanup legacy localStorage key if demo
+    if (isDemo) {
+      try { localStorage.removeItem('chantierPro_customTemplates'); } catch (e) { /* ignore */ }
+    }
+
+    return newTemplate;
+  }, [userId, orgId]);
+
+  const updateTemplate = useCallback(async (id, data) => {
+    setCustomTemplates(prev => prev.map(t =>
+      t.id === id ? { ...t, ...data, updated_at: new Date().toISOString() } : t
+    ));
+
+    if (!isDemo && userId) {
+      try {
+        const current = customTemplates.find(t => t.id === id);
+        if (current) {
+          await saveItem('devis_templates', { ...current, ...data }, userId, orgId);
+        }
+      } catch (error) {
+        console.error('Error updating template:', error);
+        await queueOffline('update', 'devis_templates', { id, ...data });
+      }
+    }
+  }, [userId, orgId, customTemplates]);
+
+  const deleteTemplate = useCallback(async (id) => {
+    setCustomTemplates(prev => prev.filter(t => t.id !== id));
+
+    if (!isDemo && userId) {
+      try {
+        await deleteItem('devis_templates', id, userId, orgId);
+      } catch (error) {
+        console.error('Error deleting template:', error);
+        await queueOffline('delete', 'devis_templates', { id });
+      }
+    }
+  }, [userId, orgId]);
+
+  const toggleTemplateFavori = useCallback(async (id) => {
+    const template = customTemplates.find(t => t.id === id);
+    if (!template) return;
+    await updateTemplate(id, { favori: !template.favori });
+  }, [customTemplates, updateTemplate]);
+
+  // Track template usage (for recently used section)
+  const trackTemplateUsage = useCallback(async (templateIdOrBuiltinId, devisId) => {
+    const usage = {
+      id: crypto.randomUUID(),
+      template_id: null,
+      template_builtin_id: null,
+      devis_id: devisId || null,
+      used_at: new Date().toISOString(),
+    };
+
+    // Determine if this is a DB template or builtin
+    const dbTemplate = customTemplates.find(t => t.id === templateIdOrBuiltinId);
+    if (dbTemplate) {
+      usage.template_id = templateIdOrBuiltinId;
+      // Increment usage_count on the template
+      await updateTemplate(templateIdOrBuiltinId, {
+        usage_count: (dbTemplate.usage_count || 0) + 1,
+        last_used_at: new Date().toISOString(),
+      });
+    } else {
+      usage.template_builtin_id = templateIdOrBuiltinId;
+    }
+
+    setTemplateUsages(prev => [usage, ...prev].slice(0, 50));
+
+    if (!isDemo && userId) {
+      try {
+        await saveItem('template_usages', usage, userId, orgId);
+      } catch (error) {
+        console.error('Error tracking template usage:', error);
+      }
+    }
+  }, [userId, orgId, customTemplates, updateTemplate]);
+
   // ============ CALCULATED VALUES ============
   const getChantierBilan = useCallback((chantierId) => {
     const chantier = chantiers.find(c => c.id === chantierId);
@@ -1202,8 +1424,8 @@ export function DataProvider({ children, initialData = {} }) {
 
   // Helper to get next unique numero for devis/facture
   const generateNextNumero = useCallback(async (type) => {
-    return getNextNumero(type, userId, devis);
-  }, [userId, devis]);
+    return getNextNumero(type, userId, devis, entrepriseId);
+  }, [userId, devis, entrepriseId]);
 
   // ============ CONTEXT VALUE ============
   const value = useMemo(() => ({
@@ -1312,11 +1534,22 @@ export function DataProvider({ children, initialData = {} }) {
     deleteMemo,
     toggleMemo,
 
+    // Template operations
+    customTemplates,
+    setCustomTemplates,
+    templateUsages,
+    addTemplate,
+    updateTemplate,
+    deleteTemplate,
+    toggleTemplateFavori,
+    trackTemplateUsage,
+
     // Calculated values
     getChantierBilan
   }), [
     clients, devis, chantiers, depenses, pointages, equipe, ajustements,
     catalogue, paiements, echanges, ouvrages, planningEvents, memos, loading, dataLoading,
+    customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
     addChantier, updateChantier, deleteChantier, getChantier,
@@ -1330,6 +1563,7 @@ export function DataProvider({ children, initialData = {} }) {
     addOuvrage, updateOuvrage, deleteOuvrage,
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
+    addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
     getChantierBilan
   ]);
 

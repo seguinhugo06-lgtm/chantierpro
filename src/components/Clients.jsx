@@ -6,6 +6,9 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { useFormValidation, clientSchema } from '../lib/validation';
 import FormError from './ui/FormError';
+import AuditTimeline from './audit/AuditTimeline';
+import { getEntityHistory, getEntitiesHistory } from '../lib/auditService';
+import supabase, { isDemo } from '../supabaseClient';
 import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
 import { formatClientName } from '../lib/formatters';
 import { usePermissions } from '../hooks/usePermissions';
@@ -786,6 +789,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
               { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
               { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
+              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
             ];
 
             return tabs.map(tab => (
@@ -1313,6 +1317,19 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           </div>
         )}
 
+        {activeTab === 'activite' && (
+          <div className={`${cardBg} rounded-xl sm:rounded-2xl border`}>
+            <ClientActivityTab
+              clientId={client.id}
+              clientDevis={clientDevis}
+              clientChantiers={clientChantiers}
+              isDark={isDark}
+              couleur={couleur}
+              modeDiscret={modeDiscret}
+            />
+          </div>
+        )}
+
         {activeTab === 'photos' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
@@ -1638,18 +1655,75 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       })()}
 
       {/* === DUPLICATE BANNER — compact + dismissable === */}
-      {!duplicateDismissed && duplicateMap.size > 0 && !kpiFilter && (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-amber-900/10 border-amber-800/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
-          <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-          <span className="flex-1">{Math.ceil(duplicateMap.size / 2)} doublon{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} détecté{Math.ceil(duplicateMap.size / 2) > 1 ? 's' : ''} · <span className="underline cursor-pointer" onClick={() => setFilterStatus('')}>Résoudre</span></span>
-          <button
-            onClick={() => { setDuplicateDismissed(true); localStorage.setItem('clientDuplicateDismissed', 'true'); }}
-            className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      {!duplicateDismissed && duplicateMap.size > 0 && !kpiFilter && (() => {
+        const dupeCount = Math.ceil(duplicateMap.size / 2);
+        // Build list of duplicate pairs for guided resolution
+        const dupePairs = [];
+        const visited = new Set();
+        duplicateMap.forEach((dupes, clientId) => {
+          if (visited.has(clientId)) return;
+          const client = clients.find(c => c.id === clientId);
+          if (!client) return;
+          dupes.forEach(dupeId => {
+            if (visited.has(dupeId)) return;
+            const dupe = clients.find(c => c.id === dupeId);
+            if (!dupe) return;
+            dupePairs.push({ a: client, b: dupe });
+            visited.add(clientId);
+            visited.add(dupeId);
+          });
+        });
+        return (
+          <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
+            <div className="flex items-center gap-2 px-3 py-2 text-xs">
+              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+              <span className={`flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+                {dupeCount} doublon{dupeCount > 1 ? 's' : ''} détecté{dupeCount > 1 ? 's' : ''} — Résolvez-les pour garder votre base propre
+              </span>
+              <button
+                onClick={() => { setDuplicateDismissed(true); localStorage.setItem('clientDuplicateDismissed', 'true'); }}
+                className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {/* Guided resolution list */}
+            <div className={`border-t px-3 py-2 space-y-2 max-h-48 overflow-y-auto ${isDark ? 'border-amber-800/30' : 'border-amber-200'}`}>
+              {dupePairs.slice(0, 5).map((pair, idx) => (
+                <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-lg ${isDark ? 'bg-slate-800/60' : 'bg-white'}`}>
+                  <div className="flex-1 min-w-0">
+                    <span className={`font-semibold ${textPrimary}`}>{pair.a.nom} {pair.a.prenom || ''}</span>
+                    <span className={`mx-1.5 ${textMuted}`}>↔</span>
+                    <span className={`font-semibold ${textPrimary}`}>{pair.b.nom} {pair.b.prenom || ''}</span>
+                    {pair.a.telephone && pair.b.telephone && pair.a.telephone.replace(/\s/g, '') === pair.b.telephone.replace(/\s/g, '') && (
+                      <span className={`ml-1.5 text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>📱 même tél</span>
+                    )}
+                    {pair.a.email && pair.b.email && pair.a.email.toLowerCase() === pair.b.email.toLowerCase() && (
+                      <span className={`ml-1.5 text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>✉ même email</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => mergeClients(pair.a.id, pair.b.id)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex-shrink-0 hover:opacity-90"
+                    style={{ background: couleur }}
+                  >
+                    Fusionner
+                  </button>
+                  <button
+                    onClick={() => setViewId(pair.a.id)}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium flex-shrink-0 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                  >
+                    Comparer
+                  </button>
+                </div>
+              ))}
+              {dupePairs.length > 5 && (
+                <p className={`text-[10px] text-center ${textMuted}`}>+{dupePairs.length - 5} autre{dupePairs.length - 5 > 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* === SEARCH + FILTERS COMPACT === */}
       <div className="space-y-2">
@@ -1886,7 +1960,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight`}><HighlightText text={formatClientName(c)} query={debouncedSearch} /></h3>
+                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight truncate`} title={`${c.nom || ''} ${c.prenom || ''}`.trim()}><HighlightText text={formatClientName(c)} query={debouncedSearch} /></h3>
                       </div>
                       {c.entreprise && (
                         <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
@@ -2111,6 +2185,67 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Client Activity Tab (sub-component) ──
+function ClientActivityTab({ clientId, clientDevis, clientChantiers, isDark, couleur, modeDiscret }) {
+  const [entries, setEntries] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    setIsLoading(true);
+
+    const sb = isDemo ? null : supabase;
+
+    const load = async () => {
+      const results = [];
+
+      // Get client audit entries
+      const clientEntries = await getEntityHistory(sb, 'client', clientId, { limit: 50 });
+      results.push(...clientEntries);
+
+      // Get linked devis/factures audit entries
+      const devisIds = (clientDevis || []).map(d => d.id);
+      if (devisIds.length > 0) {
+        const devisEntries = await getEntitiesHistory(sb, 'devis', devisIds, { limit: 50 });
+        results.push(...devisEntries);
+      }
+
+      // Get linked chantiers audit entries
+      const chantierIds = (clientChantiers || []).map(c => c.id);
+      if (chantierIds.length > 0) {
+        const chantierEntries = await getEntitiesHistory(sb, 'chantier', chantierIds, { limit: 50 });
+        results.push(...chantierEntries);
+      }
+
+      // Sort by date DESC
+      results.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      if (!cancelled) {
+        setEntries(results.slice(0, 100));
+        setIsLoading(false);
+      }
+    };
+
+    load().catch(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [clientId, clientDevis, clientChantiers]);
+
+  return (
+    <div className="p-4">
+      <AuditTimeline
+        entries={entries}
+        isDark={isDark}
+        couleur={couleur}
+        modeDiscret={modeDiscret}
+        isLoading={isLoading}
+        emptyMessage="Aucune activité enregistrée pour ce client"
+        showEntityBadge={true}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
  * BankConnectionModal - Multi-step modal for connecting a bank account
  *
  * Steps:
- * 1. API Configuration (first time): Enter GoCardless secret_id + secret_key
+ * 1. API Configuration (first time): Enter Salt Edge App-ID + Secret
  * 2. Bank Selection: Searchable grid of French banks
  * 3. Confirmation: After redirect, shows IBAN + account details
  *
@@ -17,7 +17,7 @@ import {
   ExternalLink, Key, AlertCircle, Link2, RefreshCw, X,
 } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from '../ui/Modal';
-import { listInstitutions, storeApiKeys, createConnection, getStatus } from '../../lib/integrations/gocardless';
+import { listInstitutions, storeApiKeys, createConnection, getStatus } from '../../lib/integrations/saltedge';
 import { isDemo } from '../../supabaseClient';
 
 // ============================================================================

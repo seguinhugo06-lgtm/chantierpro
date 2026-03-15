@@ -85,7 +85,7 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
   const sub = useSubscriptionStore((s) => s.subscription);
   const plan = PLANS[planId] || PLANS.gratuit;
 
-  const suggestions = PLAN_SUGGESTIONS[planId] || PLAN_SUGGESTIONS.pro;
+  const suggestions = PLAN_SUGGESTIONS[planId] || PLAN_SUGGESTIONS.artisan;
   const userEmail = sub?.user_email || 'votre adresse email';
 
   const nextBilling = sub?.current_period_end

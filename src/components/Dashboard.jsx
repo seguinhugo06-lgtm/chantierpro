@@ -85,6 +85,14 @@ import {
   BankWidgetSkeleton,
   // Relance Widget
   RelanceWidget,
+  // Reports Widget
+  ReportsWidget,
+  // Acomptes Widget
+  AcomptesWidget,
+  // Activity Feed Widget (audit-driven)
+  ActivityFeedWidget,
+  // Consolidated Widget (multi-entreprise)
+  ConsolidatedWidget,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -584,6 +592,7 @@ export default function Dashboard({
   const [ceMoisModalOpen, setCeMoisModalOpen] = useState(false);
   const [marginAnalysisModal, setMarginAnalysisModal] = useState({ isOpen: false, chantierId: null, chantierNom: null });
   const [showWidgetConfig, setShowWidgetConfig] = useState(false);
+  const [dragWidget, setDragWidget] = useState(null); // UX-004: drag & drop widget reorder
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDevisExpress, setShowDevisExpress] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
@@ -638,6 +647,7 @@ export default function Dashboard({
     { id: 'score', label: 'Score Santé', visible: false },
     { id: 'weather', label: 'Alertes Météo', visible: false },
     { id: 'stock', label: 'Stock', visible: false },
+    { id: 'reports', label: 'Rapports PDF', visible: false },
     { id: 'subscription', label: 'Abonnement', visible: false },
   ];
 
@@ -1177,6 +1187,10 @@ export default function Dashboard({
         isDark={isDark}
         couleur={couleur}
         onChantiersClick={() => setPage?.('chantiers')}
+        devisEnAttente={stats.devisEnAttente || 0}
+        facturesEnRetard={(stats.facturesOverdue || []).length}
+        memosAujourdhui={todayMemos.length}
+        actionsCount={staleDevis.length + suggestions.length + todayMemos.length}
       />
 
       {/* Main Content */}
@@ -1301,7 +1315,7 @@ export default function Dashboard({
                 )}
               </div>
               {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {stats.caCeMoisTendanceLabel}
                 </p>
               )}
@@ -1399,15 +1413,20 @@ export default function Dashboard({
           const sorted = actions.sort((a, b) => a.priority - b.priority).slice(0, 5);
           if (sorted.length === 0) return null;
 
-          const colorClasses = {
-            red: isDark ? 'bg-red-500' : 'bg-red-500',
-            amber: isDark ? 'bg-amber-500' : 'bg-amber-500',
-            blue: isDark ? 'bg-blue-500' : 'bg-blue-500',
+          const priorityBg = {
+            red: isDark ? 'bg-red-950/40' : 'bg-red-50/80',
+            amber: isDark ? 'bg-amber-950/30' : 'bg-amber-50/70',
+            blue: isDark ? 'bg-slate-800/50' : 'bg-slate-50/60',
           };
-          const colorTooltips = {
+          const priorityHover = {
+            red: isDark ? 'hover:bg-red-950/60' : 'hover:bg-red-100/80',
+            amber: isDark ? 'hover:bg-amber-950/50' : 'hover:bg-amber-100/70',
+            blue: isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-100/60',
+          };
+          const priorityLabels = {
             red: 'Urgent',
-            amber: 'À surveiller',
-            blue: 'Information',
+            amber: 'A surveiller',
+            blue: 'A faire',
           };
 
           return (
@@ -1424,24 +1443,35 @@ export default function Dashboard({
                     </span>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto overscroll-contain">
                   {sorted.map(item => {
                     const borderColor = item.color === 'red' ? '#ef4444' : item.color === 'amber' ? '#f59e0b' : '#3b82f6';
                     return (
                       <div
                         key={item.id}
-                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-all ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'}`}
+                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-all ${priorityBg[item.color] || ''} ${priorityHover[item.color] || ''}`}
                         style={{ borderLeft: `3px solid ${borderColor}` }}
                       >
                         {item.iconComponent && (
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${borderColor}15` }}>
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${borderColor}20` }}>
                             <item.iconComponent size={14} style={{ color: borderColor }} />
                           </div>
                         )}
                         <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
-                          <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
-                            {item.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
+                              {item.title}
+                            </p>
+                            <span
+                              className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: `${borderColor}18`,
+                                color: borderColor,
+                              }}
+                            >
+                              {priorityLabels[item.color] || ''}
+                            </span>
+                          </div>
                           <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
                             {item.subtitle}
                           </p>
@@ -1765,8 +1795,25 @@ export default function Dashboard({
               </div>
               <div className="space-y-1">
                 {widgetConfig.map((w, idx) => (
-                  <div key={w.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                    <GripVertical size={14} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                  <div
+                    key={w.id}
+                    draggable
+                    onDragStart={(e) => { setDragWidget(idx); e.dataTransfer.effectAllowed = 'move'; e.currentTarget.style.opacity = '0.5'; }}
+                    onDragEnd={(e) => { setDragWidget(null); e.currentTarget.style.opacity = '1'; }}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragWidget === null || dragWidget === idx) return;
+                      const arr = [...widgetConfig];
+                      const [item] = arr.splice(dragWidget, 1);
+                      arr.splice(idx, 0, item);
+                      updateWidgetConfig(arr);
+                      setDragWidget(null);
+                    }}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-grab active:cursor-grabbing transition-colors ${dragWidget === idx ? 'ring-2 ring-offset-1' : ''} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
+                    style={dragWidget === idx ? { ringColor: couleur } : undefined}
+                  >
+                    <GripVertical size={14} className={`flex-shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
                     <button onClick={() => toggleWidgetVisibility(w.id)} className="flex-shrink-0">
                       {w.visible
                         ? <Eye size={16} className="text-green-500" />
@@ -1798,6 +1845,16 @@ export default function Dashboard({
             />
           </section>
         )}
+
+        {/* Consolidated Widget - Multi-entreprise view */}
+        <section className="px-4 sm:px-6 pb-6">
+          <ConsolidatedWidget
+            devis={devis}
+            isDark={isDark}
+            modeDiscret={modeDiscret}
+            couleur={couleur}
+          />
+        </section>
 
         {/* Revenue Chart - Full width — finance roles only */}
         {canSeeFinances && isWidgetVisible('revenue') && (
@@ -1855,6 +1912,26 @@ export default function Dashboard({
               />
             )}
 
+            {/* Acomptes Widget — shows pending acompte steps */}
+            {canSeeFinances && isWidgetVisible('acomptes') && (
+              <AcomptesWidget
+                devis={devis}
+                isDark={isDark}
+                couleur={couleur}
+                formatMoney={(n) => formatMoney(n, modeDiscret)}
+                setPage={setPage}
+                setSelected={setSelectedDevis}
+              />
+            )}
+
+            {/* Reports Widget — finance roles only */}
+            {canSeeFinances && isWidgetVisible('reports') && (
+              <ReportsWidget
+                isDark={isDark}
+                setPage={setPage}
+              />
+            )}
+
             {/* Score Santé Entreprise */}
             {isWidgetVisible('score') && (
               <ScoreSanteWidget
@@ -1863,13 +1940,14 @@ export default function Dashboard({
               />
             )}
 
-            {/* Recent Activity — hidden if empty to reduce scroll */}
-            {isWidgetVisible('activity') && recentActivity.length > 0 && (
-              <RecentActivityWidget
-                activities={recentActivity}
+            {/* Recent Activity — audit-driven feed */}
+            {isWidgetVisible('activity') && (
+              <ActivityFeedWidget
                 isDark={isDark}
-                formatMoney={(n) => formatMoney(n, modeDiscret)}
+                modeDiscret={modeDiscret}
                 onActivityClick={handleActivityClick}
+                orgId={orgId}
+                userId={user?.id}
               />
             )}
 

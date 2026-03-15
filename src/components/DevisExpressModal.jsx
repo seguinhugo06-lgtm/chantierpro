@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2 } from 'lucide-react';
-import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge } from '../lib/data/modeles-devis';
+import { X, ChevronLeft, ChevronRight, Search, Check, FileText, Euro, TrendingUp, Minus, Plus, Trash2, Edit3, FolderOpen, UserPlus, Loader2, Star, Clock } from 'lucide-react';
+import { MODELES_DEVIS, getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
 import TemplateSelector from './TemplateSelector';
 import QuickClientModal from './QuickClientModal';
@@ -18,7 +18,10 @@ export default function DevisExpressModal({
   addClient,
   isDark = false,
   couleur = '#f97316',
-  tvaDefaut = 10
+  tvaDefaut = 10,
+  recentTemplates = [],
+  onTrackUsage,
+  customTemplates = [],
 }) {
   const [step, setStep] = useState(1); // 1: Métier, 2: Modèle, 3: Personnalisation
   const [selectedMetier, setSelectedMetier] = useState(null);
@@ -26,6 +29,7 @@ export default function DevisExpressModal({
   const [selectedClient, setSelectedClient] = useState(null);
   const [lignes, setLignes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
   const [clientSearch, setClientSearch] = useState('');
   const [notes, setNotes] = useState('');
   const [remise, setRemise] = useState(0);
@@ -54,6 +58,7 @@ export default function DevisExpressModal({
     setSelectedClient(null);
     setLignes([]);
     setSearchQuery('');
+    setGlobalSearch('');
     setClientSearch('');
     setNotes('');
     setRemise(0);
@@ -189,6 +194,11 @@ export default function DevisExpressModal({
         modele_source: selectedModele?.id,
       });
 
+      // Track template usage
+      if (onTrackUsage && selectedModele?.id) {
+        try { onTrackUsage(selectedModele.id, result?.id); } catch {}
+      }
+
       // If parent returned false explicitly, treat as error
       if (result === false) {
         setCreationError('Impossible de créer le devis. Vérifiez le client sélectionné.');
@@ -248,6 +258,12 @@ export default function DevisExpressModal({
     ).slice(0, 10);
   }, [clients, clientSearch]);
 
+  // Global search results (step 1)
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearch || globalSearch.length < 2) return [];
+    return searchModeles(globalSearch).slice(0, 8);
+  }, [globalSearch]);
+
   if (!isOpen) return null;
 
   return (
@@ -297,51 +313,142 @@ export default function DevisExpressModal({
           {/* Step 1: Métiers */}
           {step === 1 && (
             <div className="space-y-4">
-              {/* Option: Charger un modèle existant */}
-              <button
-                onClick={() => setShowTemplateSelector(true)}
-                className={`w-full p-4 rounded-xl border-2 ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
-                style={{ borderColor: `${couleur}60` }}
-              >
-                <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${couleur}15` }}
-                >
-                  <FolderOpen size={24} style={{ color: couleur }} />
-                </div>
-                <div className="text-left flex-1">
-                  <p className={`font-semibold ${textPrimary}`}>Charger un modèle</p>
-                  <p className={`text-sm ${textMuted}`}>Utiliser un template pré-enregistré</p>
-                </div>
-                <ChevronRight className={textMuted} size={20} />
-              </button>
-
-              {/* Séparateur */}
-              <div className="flex items-center gap-3">
-                <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                <span className={`text-xs ${textMuted}`}>ou choisir un métier</span>
-                <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+              {/* Global search */}
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} size={18} />
+                <input
+                  type="text"
+                  placeholder="Rechercher un modèle dans tous les métiers..."
+                  aria-label="Rechercher un modèle"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}
+                  style={{ '--tw-ring-color': couleur }}
+                />
               </div>
 
-              {/* Grille des métiers */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {metiers.map(metier => (
+              {/* Global search results */}
+              {globalSearchResults.length > 0 && (
+                <div className="space-y-2">
+                  <p className={`text-xs font-medium ${textMuted}`}>
+                    {globalSearchResults.length} résultat{globalSearchResults.length > 1 ? 's' : ''}
+                  </p>
+                  {globalSearchResults.map(modele => (
+                    <button
+                      key={`${modele.metierId}-${modele.id}`}
+                      onClick={() => {
+                        setSelectedModele(modele);
+                        setLignes(prepareModeleLignes(modele, tvaDefaut));
+                        setGlobalSearch('');
+                        setStep(3);
+                      }}
+                      className={`w-full p-3 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-left transition-all flex items-center gap-3`}
+                    >
+                      <span className="text-xl">{modele.metierIcon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm truncate ${textPrimary}`}>{modele.nom}</p>
+                        <p className={`text-xs ${textMuted}`}>{modele.metierNom}</p>
+                      </div>
+                      <span className="text-sm font-semibold" style={{ color: couleur }}>
+                        ~{calculateModeleTotal(modele).toLocaleString('fr-FR')} €
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Show rest only when not actively searching */}
+              {globalSearch.length < 2 && (
+                <>
+                  {/* Recent templates */}
+                  {recentTemplates.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock size={14} style={{ color: couleur }} />
+                        <p className={`text-xs font-semibold ${textMuted}`}>Récemment utilisés</p>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                        {recentTemplates.slice(0, 5).map((rt, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              if (rt.lignes) {
+                                setSelectedModele({ id: rt.id, nom: rt.nom, description: rt.description || '' });
+                                setLignes(rt.lignes.map((l, i) => ({
+                                  id: `ligne-${Date.now()}-${i}`,
+                                  description: l.description,
+                                  quantite: l.quantite || 1,
+                                  unite: l.unite || 'u',
+                                  prixUnitaire: l.prixUnitaire || 0,
+                                  prixAchat: l.prixAchat || 0,
+                                  tva: l.tva || tvaDefaut,
+                                  total: (l.quantite || 1) * (l.prixUnitaire || 0),
+                                })));
+                                setStep(3);
+                              }
+                            }}
+                            className={`flex-shrink-0 px-3 py-2 rounded-lg border text-left ${borderColor} ${bgCard} ${bgHover} transition-all max-w-[200px]`}
+                          >
+                            <p className={`text-xs font-medium truncate ${textPrimary}`}>{rt.nom}</p>
+                            <p className={`text-[10px] ${textMuted} truncate`}>{rt.metierNom || rt.categorie || ''}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Option: Charger un modèle existant */}
                   <button
-                    key={metier.id}
-                    onClick={() => handleSelectMetier(metier)}
-                    className={`p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-center transition-all hover:scale-[1.02] hover:shadow-md`}
+                    onClick={() => setShowTemplateSelector(true)}
+                    className={`w-full p-4 rounded-xl border-2 ${bgHover} flex items-center gap-4 transition-all hover:shadow-md`}
+                    style={{ borderColor: `${couleur}60` }}
                   >
                     <div
-                      className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl"
-                      style={{ backgroundColor: `${metier.color}20` }}
+                      className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${couleur}15` }}
                     >
-                      {metier.icon}
+                      <FolderOpen size={24} style={{ color: couleur }} />
                     </div>
-                    <p className={`font-medium text-xs sm:text-sm leading-tight line-clamp-2 ${textPrimary}`}>{metier.nom}</p>
-                    <p className={`text-xs ${textMuted} mt-1`}>{metier.modelesCount} modèles</p>
+                    <div className="text-left flex-1">
+                      <p className={`font-semibold ${textPrimary}`}>Charger un modèle</p>
+                      <p className={`text-sm ${textMuted}`}>Utiliser un template pré-enregistré</p>
+                    </div>
+                    <ChevronRight className={textMuted} size={20} />
                   </button>
-                ))}
-              </div>
+
+                  {/* Séparateur */}
+                  <div className="flex items-center gap-3">
+                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    <span className={`text-xs ${textMuted}`}>ou choisir un métier</span>
+                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                  </div>
+
+                  {/* Grille des métiers */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {metiers.map(metier => (
+                      <button
+                        key={metier.id}
+                        onClick={() => handleSelectMetier(metier)}
+                        className={`relative p-4 rounded-xl border ${borderColor} ${bgCard} ${bgHover} text-center transition-all hover:scale-[1.02] hover:shadow-md`}
+                      >
+                        {metier.isNew && (
+                          <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-emerald-500 shadow-sm z-10">
+                            NEW
+                          </span>
+                        )}
+                        <div
+                          className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center text-2xl"
+                          style={{ backgroundColor: `${metier.color}20` }}
+                        >
+                          {metier.icon}
+                        </div>
+                        <p className={`font-medium text-xs sm:text-sm leading-tight line-clamp-2 ${textPrimary}`}>{metier.nom}</p>
+                        <p className={`text-xs ${textMuted} mt-1`}>{metier.modelesCount} modèles</p>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -704,6 +811,7 @@ export default function DevisExpressModal({
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
+        customTemplates={customTemplates}
         isDark={isDark}
         couleur={couleur}
       />

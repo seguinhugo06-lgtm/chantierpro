@@ -93,8 +93,6 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
 
   const [showImportModal, setShowImportModal] = useState(false);
   const [showBankConnectModal, setShowBankConnectModal] = useState(false);
-  const [dsp2Email, setDsp2Email] = useState(() => { try { return localStorage.getItem('cp_bank_waitlist_email') || ''; } catch { return ''; } });
-  const [dsp2Submitted, setDsp2Submitted] = useState(() => { try { return !!localStorage.getItem('cp_bank_waitlist_email'); } catch { return false; } });
   const [filterStatut, setFilterStatut] = useState('all');
   const [filterType, setFilterType] = useState('all'); // all, credit, debit
   const [filterMonth, setFilterMonth] = useState('all');
@@ -254,38 +252,20 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
               ))}
             </div>
 
-            {/* DSP2 Coming Soon + CSV Import */}
+            {/* Connection buttons */}
             <div className="flex flex-col items-center gap-3 max-w-sm mx-auto">
-              {/* DSP2 Waitlist */}
-              <div className={`w-full p-4 rounded-xl border ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-blue-50/50 border-blue-200'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Landmark size={16} style={{ color: couleur }} />
-                  <span className={`text-sm font-semibold ${tc.text}`}>Connexion bancaire automatique</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-white" style={{ backgroundColor: couleur }}>Bientôt</span>
-                </div>
-                <p className={`text-xs mb-3 ${tc.textMuted}`}>
-                  Synchronisez automatiquement vos comptes — BNP, Crédit Agricole, LCL, Société Générale et plus.
-                </p>
-                {dsp2Submitted ? (
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                    <CheckCircle size={14} /> Vous serez prévenu(e) lors du lancement
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input type="email" placeholder="votre@email.com" value={dsp2Email} onChange={e => setDsp2Email(e.target.value)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm border ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 placeholder-slate-400'}`} />
-                    <button onClick={() => {
-                      if (!dsp2Email || !dsp2Email.includes('@')) return;
-                      try { localStorage.setItem('cp_bank_waitlist_email', dsp2Email); } catch {}
-                      setDsp2Submitted(true);
-                    }}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors hover:brightness-110"
-                      style={{ backgroundColor: couleur }}>
-                      M'avertir
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* DSP2 Real Connect */}
+              <button
+                onClick={() => setShowBankConnectModal(true)}
+                className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-3.5 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:brightness-110"
+                style={{ background: couleur }}
+              >
+                <Landmark size={18} />
+                Connecter ma banque
+              </button>
+              <p className={`text-xs ${tc.textMuted} text-center`}>
+                Boursorama, BNP, Crédit Agricole, LCL, Société Générale et 200+ banques françaises via DSP2.
+              </p>
               {/* CSV Import */}
               <button
                 onClick={() => setShowImportModal(true)}
@@ -322,6 +302,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
           <BankConnectModal
             isOpen={showBankConnectModal}
             onClose={() => setShowBankConnectModal(false)}
+            onConnected={() => { setShowBankConnectModal(false); reload(); }}
             isDark={isDark}
             couleur={couleur}
           />
@@ -671,6 +652,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
         <BankConnectModal
           isOpen={showBankConnectModal}
           onClose={() => setShowBankConnectModal(false)}
+          onConnected={() => { setShowBankConnectModal(false); reload(); }}
           isDark={isDark}
           couleur={couleur}
         />
@@ -680,103 +662,314 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
 }
 
 // ---------------------------------------------------------------------------
-// BankConnectModal — informational modal about bank connection (coming soon)
+// BankConnectModal — Real Salt Edge bank connection flow
 // ---------------------------------------------------------------------------
 
-function BankConnectModal({ isOpen, onClose, isDark, couleur }) {
+function BankConnectModal({ isOpen, onClose, onConnected, isDark, couleur }) {
+  const [step, setStep] = React.useState('keys'); // keys | institutions | connecting | success | error
+  const [secretId, setSecretId] = React.useState('');
+  const [secretKey, setSecretKey] = React.useState('');
+  const [keysLoading, setKeysLoading] = React.useState(false);
+  const [keysConfigured, setKeysConfigured] = React.useState(false);
+  const [institutions, setInstitutions] = React.useState([]);
+  const [instLoading, setInstLoading] = React.useState(false);
+  const [instSearch, setInstSearch] = React.useState('');
+  const [connecting, setConnecting] = React.useState(false);
+  const [selectedInst, setSelectedInst] = React.useState(null);
+  const [errorMsg, setErrorMsg] = React.useState('');
+
   if (!isOpen) return null;
 
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const textPrimary = isDark ? 'text-slate-100' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300 placeholder-slate-400';
 
-  const features = [
-    { icon: Zap, title: 'Import automatique', desc: 'Vos transactions arrivent automatiquement chaque jour' },
-    { icon: Link2, title: 'Rapprochement intelligent', desc: 'Les factures sont associees automatiquement aux paiements recus' },
-    { icon: Shield, title: 'Securise (PSD2)', desc: 'Connexion via les standards bancaires europeens DSP2' },
-    { icon: Clock, title: 'Temps reel', desc: 'Notifications instantanees quand un client paie' },
-  ];
+  // Check if Salt Edge is already configured
+  React.useEffect(() => {
+    import('../../lib/integrations/saltedge').then(async ({ getStatus }) => {
+      try {
+        const status = await getStatus();
+        if (status.enabled) {
+          setKeysConfigured(true);
+          setStep('institutions');
+          loadInstitutions();
+        }
+      } catch {}
+    });
+  }, []);
 
-  const banks = [
-    'Boursorama', 'Societe Generale', 'BNP Paribas', 'Credit Agricole',
-    'CIC / Credit Mutuel', 'La Banque Postale', 'Caisse d\'Epargne', 'LCL',
-    'Qonto', 'Shine', 'N26', 'Revolut',
-  ];
+  const loadInstitutions = async () => {
+    setInstLoading(true);
+    try {
+      const { listInstitutions } = await import('../../lib/integrations/saltedge');
+      const list = await listInstitutions('FR');
+      setInstitutions(list || []);
+    } catch (e) {
+      setErrorMsg(e.message || 'Impossible de charger les banques');
+      setStep('error');
+    } finally {
+      setInstLoading(false);
+    }
+  };
+
+  const handleSaveKeys = async () => {
+    if (!secretId.trim() || !secretKey.trim()) return;
+    setKeysLoading(true);
+    setErrorMsg('');
+    try {
+      const { storeApiKeys } = await import('../../lib/integrations/saltedge');
+      await storeApiKeys(secretId.trim(), secretKey.trim());
+      setKeysConfigured(true);
+      setStep('institutions');
+      loadInstitutions();
+    } catch (e) {
+      setErrorMsg(e.message || 'Erreur lors de la sauvegarde des clés');
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  const handleSelectInstitution = async (inst) => {
+    setSelectedInst(inst);
+    setConnecting(true);
+    setErrorMsg('');
+    setStep('connecting');
+    try {
+      const { createConnection } = await import('../../lib/integrations/saltedge');
+      const redirectUrl = `${window.location.origin}/bank/callback`;
+      const result = await createConnection(inst, redirectUrl);
+      if (result.link && result.link !== '#demo-redirect') {
+        // Save requisition_id for callback
+        try { localStorage.setItem('cp_bank_pending_requisition', result.requisition_id); } catch {}
+        // Redirect to bank
+        window.location.href = result.link;
+      } else {
+        // Demo mode — simulate success
+        setStep('success');
+        if (onConnected) onConnected();
+      }
+    } catch (e) {
+      setErrorMsg(e.message || 'Erreur de connexion');
+      setStep('error');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const filteredInstitutions = institutions.filter(inst =>
+    !instSearch.trim() || inst.name.toLowerCase().includes(instSearch.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden`}>
+      <div className={`${cardBg} rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col`}>
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+        <div className="p-5 border-b flex items-center justify-between flex-shrink-0" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
               <Landmark size={20} style={{ color: couleur }} />
             </div>
             <div>
               <h2 className={`font-bold text-lg ${textPrimary}`}>Connexion bancaire</h2>
-              <p className={`text-sm ${textMuted}`}>Synchronisation automatique</p>
+              <p className={`text-sm ${textMuted}`}>
+                {step === 'keys' ? 'Configuration API' : step === 'institutions' ? 'Choisissez votre banque' : step === 'connecting' ? 'Connexion en cours...' : step === 'success' ? 'Connecté !' : 'Erreur'}
+              </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}
-          >
+          <button onClick={onClose} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} transition-colors`}>
             <X size={20} className={textMuted} />
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
-          {/* Coming soon badge */}
-          <div className={`rounded-xl p-4 text-center ${isDark ? 'bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-700' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200'}`}>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-2" style={{ background: `${couleur}20`, color: couleur }}>
-              <Clock size={12} />
-              Bientot disponible
-            </div>
-            <h3 className={`text-lg font-semibold ${textPrimary}`}>
-              Synchronisation bancaire automatique
-            </h3>
-            <p className={`text-sm mt-1 ${textMuted}`}>
-              Connectez votre compte bancaire pour importer automatiquement
-              vos transactions et rapprocher vos factures en temps reel.
-            </p>
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-2 gap-3">
-            {features.map((f, i) => (
-              <div key={i} className={`p-3 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
-                <f.icon size={18} style={{ color: couleur }} className="mb-1.5" />
-                <p className={`text-sm font-medium ${textPrimary}`}>{f.title}</p>
-                <p className={`text-xs ${textMuted} mt-0.5`}>{f.desc}</p>
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+          {/* Step 1: API Keys */}
+          {step === 'keys' && (
+            <>
+              <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
+                <p className={`text-sm font-medium ${textPrimary} mb-1`}>Clés API Salt Edge (Account Information)</p>
+                <p className={`text-xs ${textMuted}`}>
+                  Créez un compte gratuit sur{' '}
+                  <a href="https://www.saltedge.com/clients/sign_up" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: couleur }}>
+                    saltedge.com
+                  </a>
+                  {' '}puis copiez votre App-ID et Secret depuis votre Dashboard Client.
+                </p>
               </div>
-            ))}
-          </div>
 
-          {/* Supported banks */}
-          <div>
-            <p className={`text-sm font-medium mb-2 ${textPrimary}`}>Banques compatibles</p>
-            <div className="flex flex-wrap gap-1.5">
-              {banks.map((bank, i) => (
-                <span key={i} className={`text-xs px-2.5 py-1 rounded-lg ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                  {bank}
-                </span>
-              ))}
+              <div>
+                <label className={`text-sm font-medium ${textPrimary} block mb-1.5`}>App-ID</label>
+                <input
+                  type="text"
+                  value={secretId}
+                  onChange={e => setSecretId(e.target.value)}
+                  placeholder="Ex: AbCdEfGhIjKlMnOp"
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm ${inputBg}`}
+                />
+              </div>
+
+              <div>
+                <label className={`text-sm font-medium ${textPrimary} block mb-1.5`}>Secret</label>
+                <input
+                  type="password"
+                  value={secretKey}
+                  onChange={e => setSecretKey(e.target.value)}
+                  placeholder="••••••••••••••••"
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm ${inputBg}`}
+                />
+              </div>
+
+              {errorMsg && (
+                <div className="flex items-center gap-2 text-red-500 text-sm">
+                  <AlertTriangle size={14} /> {errorMsg}
+                </div>
+              )}
+
+              <div className={`rounded-xl p-3 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                <div className="flex items-start gap-2">
+                  <Shield size={14} style={{ color: couleur }} className="mt-0.5 flex-shrink-0" />
+                  <p className={`text-xs ${textMuted}`}>
+                    Vos clés sont chiffrées dans Supabase Vault. BatiGesti n'a jamais accès à vos identifiants bancaires — seul Salt Edge communique avec votre banque via le protocole DSP2.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveKeys}
+                disabled={!secretId.trim() || !secretKey.trim() || keysLoading}
+                className="w-full px-5 py-3 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: couleur }}
+              >
+                {keysLoading ? (
+                  <span className="flex items-center justify-center gap-2"><RefreshCw size={16} className="animate-spin" /> Vérification...</span>
+                ) : (
+                  'Sauvegarder et continuer'
+                )}
+              </button>
+            </>
+          )}
+
+          {/* Step 2: Institution selection */}
+          {step === 'institutions' && (
+            <>
+              <div className="relative">
+                <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                <input
+                  type="text"
+                  value={instSearch}
+                  onChange={e => setInstSearch(e.target.value)}
+                  placeholder="Rechercher votre banque..."
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm ${inputBg}`}
+                  autoFocus
+                />
+              </div>
+
+              {instLoading ? (
+                <div className="py-12 text-center">
+                  <RefreshCw size={24} className={`mx-auto mb-3 animate-spin ${textMuted}`} />
+                  <p className={`text-sm ${textMuted}`}>Chargement des banques...</p>
+                </div>
+              ) : filteredInstitutions.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Building2 size={24} className={`mx-auto mb-2 ${textMuted}`} />
+                  <p className={`text-sm ${textMuted}`}>Aucune banque trouvée</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
+                  {filteredInstitutions.map(inst => (
+                    <button
+                      key={inst.id}
+                      onClick={() => handleSelectInstitution(inst)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${isDark ? 'border-slate-700 hover:bg-slate-700 hover:border-slate-600' : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
+                    >
+                      {inst.logo ? (
+                        <img src={inst.logo} alt="" className="w-8 h-8 rounded-lg object-contain bg-white p-0.5" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                          <Building2 size={16} style={{ color: couleur }} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${textPrimary}`}>{inst.name}</p>
+                        {inst.transaction_total_days && (
+                          <p className={`text-xs ${textMuted}`}>Historique: {inst.transaction_total_days}j</p>
+                        )}
+                      </div>
+                      <ChevronDown size={14} className={`${textMuted} -rotate-90`} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {keysConfigured && (
+                <p className={`text-xs text-center ${textMuted}`}>
+                  {institutions.length} banques disponibles via Salt Edge
+                </p>
+              )}
+            </>
+          )}
+
+          {/* Step 3: Connecting */}
+          {step === 'connecting' && (
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <RefreshCw size={28} className="animate-spin" style={{ color: couleur }} />
+              </div>
+              <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>Connexion en cours</h3>
+              <p className={`text-sm ${textMuted} mb-2`}>
+                Vous allez être redirigé vers {selectedInst?.name || 'votre banque'} pour autoriser l'accès en lecture seule à votre compte.
+              </p>
+              <p className={`text-xs ${textMuted}`}>
+                Vos identifiants bancaires ne transitent jamais par BatiGesti.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* CTA */}
-          <div className={`rounded-xl p-4 text-center ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
-            <p className={`text-sm ${textMuted} mb-3`}>
-              En attendant, importez vos releves CSV manuellement.
-            </p>
-            <button
-              onClick={onClose}
-              className="px-5 py-2.5 text-white text-sm font-medium rounded-xl transition-all hover:shadow-lg"
-              style={{ background: couleur }}
-            >
-              Compris !
-            </button>
-          </div>
+          {/* Success */}
+          {step === 'success' && (
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-green-100">
+                <CheckCircle size={28} className="text-green-600" />
+              </div>
+              <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>Compte connecté !</h3>
+              <p className={`text-sm ${textMuted} mb-4`}>
+                Vos transactions seront importées automatiquement.
+              </p>
+              <button
+                onClick={onClose}
+                className="px-6 py-2.5 text-white text-sm font-medium rounded-xl"
+                style={{ background: couleur }}
+              >
+                Fermer
+              </button>
+            </div>
+          )}
+
+          {/* Error */}
+          {step === 'error' && (
+            <div className="py-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-red-100">
+                <AlertTriangle size={28} className="text-red-600" />
+              </div>
+              <h3 className={`text-lg font-semibold mb-2 ${textPrimary}`}>Erreur de connexion</h3>
+              <p className={`text-sm text-red-500 mb-4`}>{errorMsg}</p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => { setErrorMsg(''); setStep(keysConfigured ? 'institutions' : 'keys'); }}
+                  className={`px-4 py-2 text-sm font-medium rounded-xl border ${isDark ? 'border-slate-600 text-slate-300' : 'border-slate-300 text-slate-700'}`}
+                >
+                  Réessayer
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-white text-sm font-medium rounded-xl"
+                  style={{ background: couleur }}
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,50 +1,70 @@
-# CLAUDE.md — Règles projet ChantierPro (BatiGesti)
+# BatiGesti — Règles projet
 
-## Déploiement
+## Commandes essentielles
 
-- **Hébergement : Vercel** — PAS Netlify. Ne jamais utiliser `netlify-cli`. Ignorer `netlify.toml` (legacy).
-- Le déploiement est automatique au push sur `main`.
-- Vérifier le statut avec `npx vercel ls` (pas netlify).
-- Domaine de production : `batigesti.fr`
+```bash
+npm run dev          # Dev server (Vite, port 5173)
+npm run build        # Build prod — vérifier 0 erreurs avant push
+```
 
-## Stack technique
+## Stack
 
-- **Frontend** : React 18 + Vite + Tailwind CSS
-- **Backend** : Supabase (auth, DB, storage, Edge Functions)
-- **Paiement** : Stripe (mode démo actuellement)
-- **State** : Zustand (subscriptionStore, toastStore)
-- **Icônes** : lucide-react
-- **PWA** : vite-plugin-pwa + workbox
-- **PDF** : 3 systèmes — `DevisPDF.jsx` (React PDF Renderer), `DevisPage.jsx` (HTML inline), `devisHtmlBuilder.js` (HTML builder réutilisable)
+- **Frontend**: React 18 + Vite 5 + Tailwind CSS
+- **Backend**: Supabase (auth, PostgreSQL, storage, Edge Functions en Deno/TypeScript)
+- **State**: Zustand (`subscriptionStore`, `toastStore`) + React Context (`DataContext`, `AppContext`)
+- **Paiement**: Stripe (checkout + webhooks)
+- **PDF**: `devisHtmlBuilder.js` (principal) + `DevisPDF.jsx` (React PDF Renderer) + Factur-X (`facturx-pdf.js`)
+- **PWA**: vite-plugin-pwa + workbox (offline-first)
+- **Icônes**: lucide-react uniquement
+- **Monitoring**: Sentry (prod, `VITE_SENTRY_DSN`) + Plausible Analytics
 
 ## Architecture
 
-- SPA mono-page, navigation via `setPage('nom-page')` dans App.jsx
+- SPA mono-page — navigation via `setPage('nom-page')` dans `App.jsx`
 - Lazy loading avec `lazyWithRetry()` pour tous les composants de page
-- Feature gating via `FeatureGuard` + `subscriptionStore.FEATURE_MIN_PLAN`
-- 3 plans : Gratuit (0€), Artisan (14.90€/mois), Équipe (29.90€/mois)
-- Mode démo avec `isDemo` flag (localStorage)
+- Feature gating : `<FeatureGuard feature="tresorerie">` + `subscriptionStore`
+- 3 plans : **Gratuit** (0€) / **Artisan** (14,90€/mois) / **Équipe** (29,90€/mois)
+- Mode démo : `isDemo` flag → localStorage au lieu de Supabase
+- Multi-tenant via `organization_id` + RLS policies sur toutes les tables
+- Edge Functions : pattern action-dispatch (`{ action: 'sync' | 'validate' | ... }`)
 
-## Conventions
+## Conventions critiques
 
-- Langue de l'UI : **français**
-- Commits en anglais, messages de commit conventionnels (`feat:`, `fix:`, `refactor:`)
-- Dark mode supporté partout via prop `isDark`
-- Couleur accent configurable via prop `couleur` (défaut : `#f97316`)
-- Composants dans `/src/components/{domaine}/`
-- Stores dans `/src/stores/`
-- Services/API dans `/src/services/`
-- Utilitaires dans `/src/lib/`
+- Langue UI : **français** — commits en **anglais** (`feat:`, `fix:`, `refactor:`)
+- Dark mode : prop `isDark` sur tous les composants
+- Couleur accent : prop `couleur` (défaut `#f97316`)
+- DB mapping : `fromSupabase()`/`toSupabase()` pour snake_case ↔ camelCase
+- Plans : ne jamais hardcoder les noms — utiliser `PLANS[planId].name`
+- Validation : utiliser `src/lib/validation.js` (`useFormValidation` hook)
 
-## Build
+## Structure fichiers
 
-- `npm run build` pour builder (Vite)
-- `npm run dev` pour le dev server local
-- Vérifier 0 erreurs avant push
+```
+src/
+├── components/{domaine}/   # UI (Chantiers/, DevisPage.jsx, etc.)
+├── stores/                 # Zustand (subscriptionStore.js)
+├── services/               # API clients (syncService.js, webhookService.js)
+├── lib/                    # Utilitaires (validation.js, facturx.js, analytics.js)
+├── context/                # React Context (DataContext, AppContext, OrgContext)
+├── hooks/                  # Custom hooks (usePermissions, useFormValidation)
+supabase/
+├── migrations/             # SQL migrations (054 max)
+├── functions/              # Edge Functions (Deno TypeScript)
+```
 
 ## Points d'attention
 
-- Ne jamais hardcoder "Pro" pour les plans — utiliser `PLANS[planId].name` ou `getMinPlanNameForFeature()`
-- Les labels/certifications (RGE, Qualibat, etc.) sont dans `entreprise.labels[]`, pas dans des champs individuels
-- `aiPrefill` est encore utilisé par le ChatInterface du Dashboard, ne pas le supprimer
-- Le flux IA devis utilise un stepper 5 étapes inline (pas de modal, pas de changement de page)
+- `aiPrefill` est utilisé par ChatInterface du Dashboard — ne pas supprimer
+- Labels/certifications → `entreprise.labels[]` (pas de champs individuels)
+- Flux IA devis = stepper 5 étapes inline (pas de modal)
+- Déploiement = **Vercel** (PAS Netlify) — auto-deploy au push sur `main`
+- Domaine prod : `batigesti.fr`
+
+## Règles détaillées
+
+Voir `.claude/rules/` pour les conventions par domaine :
+- @.claude/rules/code-style.md — conventions de code
+- @.claude/rules/supabase.md — patterns Supabase & Edge Functions
+- @.claude/rules/components.md — patterns composants React
+- @.claude/rules/subscriptions.md — système d'abonnements
+- @.claude/rules/testing.md — tests et qualité

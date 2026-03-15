@@ -8,10 +8,12 @@ import {
   Users, HardHat, CreditCard,
   Building2, ArrowUpRight, ArrowDownRight, Percent,
   PieChart as PieChartIcon, BarChart3,
-  Calendar, Info, FileEdit,
+  Calendar, Info, FileEdit, Download, Loader2,
 } from 'lucide-react';
 import { useAnalytique } from '../hooks/useAnalytique';
 import { formatConversion } from '../lib/statsUtils';
+import { computeActivityReport } from '../lib/reportDataService';
+import { generateActivityPDF, downloadReportPDF } from '../lib/reportPdfBuilder';
 
 const formatEUR = (value) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value || 0);
@@ -92,7 +94,8 @@ function ComparisonBadge({ value, isDark, suffix = '%', invert = false }) {
   );
 }
 
-export default function AnalyticsPage({ devis = [], clients = [], chantiers = [], depenses = [], equipe = [], paiements = [], isDark, couleur, setPage }) {
+export default function AnalyticsPage({ devis = [], clients = [], chantiers = [], depenses = [], equipe = [], paiements = [], entreprise, isDark, couleur, setPage }) {
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   // ─── Period state (persisted to localStorage) ──────────────────────
   const [period, setPeriod] = useState(() => {
@@ -181,6 +184,46 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
     );
   };
 
+  // ─── Export PDF handler ─────────────────────────────────────────────
+  const handleExportPDF = useCallback(async () => {
+    setExportingPDF(true);
+    try {
+      // Map analytics period key to date range
+      const now = new Date();
+      let debut, fin;
+      switch (period) {
+        case 'month':
+          debut = new Date(now.getFullYear(), now.getMonth(), 1);
+          fin = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+          break;
+        case 'quarter': {
+          const qMonth = Math.floor(now.getMonth() / 3) * 3;
+          debut = new Date(now.getFullYear(), qMonth, 1);
+          fin = new Date(now.getFullYear(), qMonth + 3, 0, 23, 59, 59);
+          break;
+        }
+        case 'year':
+          debut = new Date(now.getFullYear(), 0, 1);
+          fin = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+          break;
+        case '12m':
+          debut = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          fin = now;
+          break;
+        default:
+          debut = new Date(2020, 0, 1);
+          fin = now;
+      }
+      const data = computeActivityReport(devis, clients, chantiers, depenses, paiements, debut, fin);
+      const result = await generateActivityPDF(data, entreprise, { couleur });
+      if (result) downloadReportPDF(result.blob, result.filename);
+    } catch (e) {
+      console.error('Error exporting PDF:', e);
+    } finally {
+      setExportingPDF(false);
+    }
+  }, [period, devis, clients, chantiers, depenses, paiements, entreprise, couleur]);
+
   // ─── Render ────────────────────────────────────────────────────────
   return (
     <div className={`min-h-screen ${bgPage} p-4 md:p-6 space-y-6`}>
@@ -217,6 +260,17 @@ export default function AnalyticsPage({ devis = [], clients = [], chantiers = []
           {period !== 'all' && comparisons.ca !== null && (
             <span className={`text-xs ${textSecondary} hidden sm:inline`}>Comparaison N-1 active</span>
           )}
+          <button
+            onClick={handleExportPDF}
+            disabled={exportingPDF}
+            className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm'
+            } disabled:opacity-50`}
+            title="Exporter en PDF"
+          >
+            {exportingPDF ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            <span className="hidden sm:inline">{exportingPDF ? 'Export...' : 'Exporter PDF'}</span>
+          </button>
         </div>
       </div>
 

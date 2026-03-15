@@ -53,7 +53,7 @@ function getLinePU(l) {
  * @param {string} [params.paymentQrDataUrl] - Data URL du QR code (base64 PNG)
  * @returns {string} HTML complet
  */
-export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl }) {
+export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mode = 'artisan', paymentToken, paymentQrDataUrl, echeancier }) {
   const isClientMode = mode === 'client';
   const color = couleur || entreprise?.couleur || '#f97316';
   const isFacture = doc.type === 'facture';
@@ -230,11 +230,13 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       </div>
     </div>
     <div class="doc-type">
-      <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <h1>${isFacture ? (doc.facture_type === 'acompte' ? "FACTURE D'ACOMPTE" : doc.facture_type === 'solde' ? 'FACTURE DE SOLDE' : 'FACTURE') : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
         ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
+        ${isFacture && doc.devis_source_id && doc.devis_source_numero ? `Réf. devis: ${doc.devis_source_numero}<br>` : ''}
+        ${isFacture && doc.acompte_pct && doc.facture_type === 'acompte' ? `Acompte: ${doc.acompte_pct}%<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -288,13 +290,24 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       : `<div class="row sub"><span>TVA ${doc.tvaRate || doc.tva_rate || 10}%</span><span>${tva.toFixed(2)} €</span></div>`
     ) : ''}
     <div class="row total"><span>Total TTC</span><span>${totalTTC.toFixed(2)} €</span></div>
-    ${acomptePct ? `
+    ${echeancier && echeancier.etapes && echeancier.etapes.length > 0 ? `
+    <div style="margin-top:12px;border-top:1px dashed #ccc;padding-top:10px;">
+      <div style="font-size:8pt;font-weight:600;color:#334155;margin-bottom:6px;">ÉCHÉANCIER DE PAIEMENT</div>
+      ${echeancier.etapes.map((et, idx) => {
+        const statusIcon = et.statut === 'facture' || et.statut === 'paye' ? '✓' : et.statut === 'a_facturer' ? '○' : '○';
+        const statusColor = et.statut === 'facture' || et.statut === 'paye' ? '#22c55e' : '#94a3b8';
+        return `<div class="row sub" style="padding:2px 0;"><span style="color:${statusColor};font-weight:500;">${statusIcon} ${et.label} (${et.pourcentage}%)</span><span>${(et.montant_ttc || 0).toFixed(2)} €</span></div>`;
+      }).join('')}
+    </div>
+    ` : acomptePct ? `
     <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${acomptePct}%</span><span>${(totalTTC * acomptePct / 100).toFixed(2)} €</span></div>
     <div class="row sub"><span>Solde à régler</span><span>${(totalTTC * (100 - acomptePct) / 100).toFixed(2)} €</span></div>
     ` : ''}
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  ${isFacture && doc.facture_type === 'solde' ? '<div style="margin-top:10px;font-size:7pt;color:#64748b;font-style:italic;">Solde de tout compte conformément à l\'article L441-3 du Code de commerce.</div>' : ''}
 
   ${isFacture && paymentToken ? `
   <!-- PAIEMENT EN LIGNE -->

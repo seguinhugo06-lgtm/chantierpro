@@ -26,7 +26,7 @@ import Widget, {
 } from './Widget';
 import { cn } from '../../lib/utils';
 import { isDemo } from '../../supabaseClient';
-import { getConnections, getTransactions, syncAll } from '../../lib/integrations/gocardless';
+import { getConnections, getTransactions, syncAll } from '../../lib/integrations/saltedge';
 
 // ============================================================================
 // Utility

@@ -666,6 +666,7 @@ export default function TresorerieModule({
   });
   const [wizardStep, setWizardStep] = useState(0); // 0=solde, 1=charges, 2=done
   const [wizardCharges, setWizardCharges] = useState({}); // { chargeLabel: montant }
+  const [wizardMinimized, setWizardMinimized] = useState(false); // UX-017: minimizable wizard
   const showWizard = !wizardDismissed && previsions.length === 0 && !tresorerieLoading && !(settings.soldeInitial > 0);
 
   const handleWizardFinish = useCallback(async () => {
@@ -1707,9 +1708,29 @@ export default function TresorerieModule({
 
       {/* ── Wizard bootstrapping (Feature 4) ─────────────────────── */}
       {showWizard && wizardStep < 2 && (
-        <div className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80 border-slate-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-blue-200'}`}>
+        <div className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80 border-slate-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-blue-200'}`}>
+          {/* Minimized bar */}
+          {wizardMinimized ? (
+            <button
+              onClick={() => setWizardMinimized(false)}
+              className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/50'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
+                  <Wallet size={16} />
+                </div>
+                <div className="text-left">
+                  <p className={`text-sm font-semibold ${textPrimary}`}>Configuration trésorerie</p>
+                  <p className={`text-xs ${textSecondary}`}>Étape {wizardStep + 1}/2 — Cliquez pour continuer</p>
+                </div>
+              </div>
+              <ChevronDown size={18} className={textSecondary} />
+            </button>
+          ) : (
+          <>
           {/* Progress */}
           <div className="flex items-center gap-0 px-5 pt-4 pb-2">
+            <div className="flex items-center gap-0 flex-1">
             {[0, 1].map(s => (
               <React.Fragment key={s}>
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
@@ -1720,6 +1741,10 @@ export default function TresorerieModule({
                 {s < 1 && <div className={`flex-1 h-0.5 mx-2 rounded ${wizardStep > s ? '' : isDark ? 'bg-slate-700' : 'bg-gray-200'}`} style={wizardStep > s ? { backgroundColor: couleur } : undefined} />}
               </React.Fragment>
             ))}
+            </div>
+            <button onClick={() => setWizardMinimized(true)} className={`p-1.5 rounded-lg ml-2 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`} title="Réduire">
+              <ChevronUp size={16} />
+            </button>
           </div>
 
           {wizardStep === 0 && (
@@ -1818,6 +1843,8 @@ export default function TresorerieModule({
                 </button>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       )}
