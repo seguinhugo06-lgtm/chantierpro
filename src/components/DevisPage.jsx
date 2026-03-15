@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Zap, Link2 } from 'lucide-react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Zap, Link2, Mic, LayoutGrid, List as ListIcon } from 'lucide-react';
+import PipelineKanban from './devis/PipelineKanban';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
@@ -33,6 +34,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -900,7 +902,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   // Build payment URL for a facture
-  const getPaymentUrl = (token) => token ? `${window.location.origin}/facture/payer/${token}` : null;
+  const getPaymentUrl = (token) => token ? `${window.location.origin}/pay/${token}` : null;
 
   const sendWhatsApp = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
@@ -2203,14 +2205,51 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             <Sparkles size={16} />
             <span className="hidden sm:inline">Devis express</span>
           </button>
+          <button
+            onClick={() => setPage?.('devis-ia')}
+            className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-violet-500 to-purple-600 text-white"
+          >
+            <Mic size={16} />
+            <span className="hidden sm:inline">Devis IA</span>
+          </button>
           <button onClick={() => setShowDevisWizard(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
             <Plus size={16} />
             <span className="hidden sm:inline">Nouveau</span>
           </button>
+          {/* View mode toggle */}
+          <div className={`hidden sm:flex items-center rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-l-xl transition-colors ${viewMode === 'list' ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
+              title="Vue liste"
+            >
+              <ListIcon size={16} className={viewMode === 'list' ? '' : textMuted} style={viewMode === 'list' ? { color: couleur } : {}} />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-2 rounded-r-xl transition-colors ${viewMode === 'kanban' ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
+              title="Vue Kanban"
+            >
+              <LayoutGrid size={16} className={viewMode === 'kanban' ? '' : textMuted} style={viewMode === 'kanban' ? { color: couleur } : {}} />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Kanban view */}
+      {viewMode === 'kanban' && (
+        <PipelineKanban
+          devis={devis}
+          clients={clients}
+          onUpdateStatut={(id, statut) => onUpdate(id, { statut })}
+          onSelectDevis={(d) => { setSelected(d); setMode('preview'); }}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
+
       {/* === SECTION: VUE D'ENSEMBLE === */}
-      <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+      {viewMode === 'list' && <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
           <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Vue d'ensemble</h2>
@@ -2342,9 +2381,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         );
       })()}
-      </div>
+      </div>}
 
       {/* === SECTION: LISTE DES DOCUMENTS === */}
+      {viewMode === 'list' && <>
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
@@ -2569,6 +2609,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         isDark={isDark}
         couleur={couleur}
       />
+
+      </>}
 
       {/* Devis Wizard - Step-by-step devis creation */}
       <DevisWizard

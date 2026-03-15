@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /portal/*
+Disallow: /devis/signer/*
+Disallow: /facture/payer/*
+Disallow: /pay/*
+
+Sitemap: https://batigesti.fr/sitemap.xml

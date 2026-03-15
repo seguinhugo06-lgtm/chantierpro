@@ -8,6 +8,15 @@
  */
 
 /**
+ * Build payment URL for PDF display
+ */
+function buildPaymentUrlForPdf(token) {
+  // Use the production URL or fallback
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app';
+  return `${baseUrl}/pay/${token}`;
+}
+
+/**
  * Formatte un RCS complet
  */
 function getRCSComplet(entreprise) {
@@ -28,9 +37,11 @@ function getRCSComplet(entreprise) {
  * @param {Object} params.chantier - Le chantier (optionnel)
  * @param {Object} params.entreprise - L'entreprise
  * @param {string} params.couleur - Couleur accent (défaut: #f97316)
+ * @param {string} [params.paymentToken] - Token de paiement (pour QR code facture)
+ * @param {string} [params.paymentQrDataUrl] - Data URL du QR code (base64 PNG)
  * @returns {string} HTML complet
  */
-export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
+export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, paymentToken, paymentQrDataUrl }) {
   const color = couleur || entreprise?.couleur || '#f97316';
   const isFacture = doc.type === 'facture';
   const isMicro = (entreprise?.formeJuridique || entreprise?.forme_juridique) === 'Micro-entreprise';
@@ -262,6 +273,21 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur }) {
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+
+  ${isFacture && paymentToken && paymentQrDataUrl ? `
+  <!-- PAIEMENT EN LIGNE -->
+  <div style="margin: 16px 0; padding: 14px; border: 2px solid ${color}; border-radius: 8px; display: flex; align-items: center; gap: 16px; page-break-inside: avoid;">
+    <img src="${paymentQrDataUrl}" alt="QR Code paiement" style="width: 80px; height: 80px; flex-shrink: 0;" />
+    <div style="flex: 1;">
+      <div style="font-size: 11pt; font-weight: 700; color: ${color}; margin-bottom: 4px;">Payer en ligne</div>
+      <div style="font-size: 8pt; color: #475569; line-height: 1.5;">
+        Scannez ce QR code ou rendez-vous sur :<br>
+        <a href="${buildPaymentUrlForPdf(paymentToken)}" style="color: ${color}; word-break: break-all;">${buildPaymentUrlForPdf(paymentToken)}</a><br>
+        <span style="color: #94a3b8;">Paiement par carte bancaire ou prélèvement SEPA accepté.</span>
+      </div>
+    </div>
+  </div>
+  ` : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">

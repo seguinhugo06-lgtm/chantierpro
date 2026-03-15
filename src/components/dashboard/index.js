@@ -33,3 +33,8 @@ export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
 
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';
+
+// V2 Widgets
+export { default as ConversionFunnelWidget } from './ConversionFunnelWidget';
+export { default as TopClientsWidget } from './TopClientsWidget';
+export { default as ProfitabilityWidget } from './ProfitabilityWidget';

@@ -9,6 +9,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { toast } from '../stores/toastStore';
 import { useModal, useMultiModal } from './useModal';
 import { useData } from '../context/DataContext';
+import { captureException } from '../lib/sentry';
 
 /**
  * @typedef {'devis' | 'facture' | 'chantier' | 'client'} ItemType
@@ -157,7 +158,7 @@ export function useQuickActions(config) {
         onSuccess?.();
         return true;
       } catch (error) {
-        console.error(`${actionName} error:`, error);
+        captureException(error, { context: `useQuickActions.${actionName}` });
         toast.error(
           errorMsg || ERROR_MESSAGES[actionName] || ERROR_MESSAGES.default,
           error.message
@@ -220,7 +221,7 @@ export function useQuickActions(config) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // Log for demo
-        console.log(`Relance ${method} envoyée pour ${type} #${id}`);
+        if (import.meta.env.DEV) console.log(`Relance ${method} envoyee pour ${type} #${id}`);
       });
     },
     [itemId, type, executeAction]
@@ -242,7 +243,7 @@ export function useQuickActions(config) {
   const convertir = useCallback(
     async (devisId = itemId) => {
       if (type !== 'devis') {
-        console.warn('convertir is only available for devis');
+        if (import.meta.env.DEV) console.warn('convertir is only available for devis');
         return false;
       }
 
@@ -269,7 +270,7 @@ export function useQuickActions(config) {
         // Update devis status
         dataContext?.updateDevis?.(devisId, { statut: 'accepte' });
 
-        console.log(`Devis #${devisId} converti en facture`);
+        if (import.meta.env.DEV) console.log(`Devis #${devisId} converti en facture`);
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -330,7 +331,7 @@ export function useQuickActions(config) {
         // Add duplicate
         addFn?.(duplicate);
 
-        console.log(`${type} #${id} dupliqué`);
+        if (import.meta.env.DEV) console.log(`${type} #${id} duplique`);
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -364,7 +365,7 @@ export function useQuickActions(config) {
 
           deleteFn?.(id);
 
-          console.log(`${type} #${id} supprimé`);
+          if (import.meta.env.DEV) console.log(`${type} #${id} supprime`);
         });
       };
 
@@ -396,7 +397,7 @@ export function useQuickActions(config) {
         // Simulate PDF download
         await new Promise((resolve) => setTimeout(resolve, 800));
 
-        console.log(`Téléchargement PDF pour ${type} #${id}`);
+        if (import.meta.env.DEV) console.log(`Téléchargement PDF pour ${type} #${id}`);
       });
     },
     [itemId, type, executeAction]
@@ -414,7 +415,7 @@ export function useQuickActions(config) {
         // Copy to clipboard
         await navigator.clipboard.writeText(shareUrl);
 
-        console.log(`Lien partagé: ${shareUrl}`);
+        if (import.meta.env.DEV) console.log(`Lien partagé: ${shareUrl}`);
       });
     },
     [itemId, type, executeAction]
@@ -426,7 +427,7 @@ export function useQuickActions(config) {
   const terminer = useCallback(
     async (chantierId = itemId) => {
       if (type !== 'chantier') {
-        console.warn('terminer is only available for chantier');
+        if (import.meta.env.DEV) console.warn('terminer is only available for chantier');
         return false;
       }
 
@@ -440,7 +441,7 @@ export function useQuickActions(config) {
           avancement: 100,
         });
 
-        console.log(`Chantier #${chantierId} terminé`);
+        if (import.meta.env.DEV) console.log(`Chantier #${chantierId} terminé`);
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -462,7 +463,7 @@ export function useQuickActions(config) {
       if (route && navigate) {
         navigate(route);
       } else {
-        console.log(`Navigate to ${route}`);
+        if (import.meta.env.DEV) console.log(`Navigate to ${route}`);
       }
     },
     [itemId, type]
@@ -709,7 +710,7 @@ export function useChantierActions(chantierId, chantierData = {}, options = {}) 
       {
         label: 'Documenter',
         icon: icons?.documenter,
-        onClick: () => console.log('Open photo upload'),
+        onClick: () => { if (import.meta.env.DEV) console.log('Open photo upload'); },
       },
       {
         label: 'GPS',

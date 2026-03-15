@@ -166,6 +166,58 @@ async function handleCheckoutSessionCompleted(
   return { handled: true, facture_id: facture.id, facture_numero: facture.numero };
 }
 
+
+/**
+ * Handle SaaS subscription checkout (metadata.plan_id present)
+ */
+async function handleSubscriptionCheckout(
+  session: Record<string, unknown>,
+  supabase: ReturnType<typeof getSupabaseClient>
+) {
+  const metadata = session.metadata as Record<string, string> || {};
+  const userId = metadata.user_id;
+  const planId = metadata.plan_id;
+  const customerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
+
+  if (\!userId || \!planId) {
+    console.error('[WEBHOOK] Missing user_id or plan_id in subscription metadata');
+    return { handled: false, reason: 'missing_metadata' };
+  }
+
+  console.log(`[WEBHOOK] Subscription checkout user=${userId}, plan=${planId}`);
+
+  const { error: upsertError } = await supabase
+    .from('subscriptions')
+    .upsert({
+      user_id: userId,
+      plan: planId,
+      status: 'active',
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+      current_period_start: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+
+  if (upsertError) {
+    console.error(`[WEBHOOK] Failed to upsert subscription:`, upsertError);
+    return { handled: false, reason: 'upsert_failed', error: upsertError.message };
+  }
+
+  console.log(`[WEBHOOK] Subscription activated: user=${userId}, plan=${planId}`);
+
+  await supabase.from('events_log').insert([{
+    event_type: 'subscription_activated',
+    entity_type: 'subscription',
+    entity_id: userId,
+    success: true,
+    metadata: { plan_id: planId, stripe_customer_id: customerId },
+    triggered_at: new Date().toISOString(),
+  }]).catch(() => {});
+
+  return { handled: true, user_id: userId, plan: planId };
+}
+
 async function handleCheckoutSessionExpired(
   session: Record<string, unknown>,
   supabase: ReturnType<typeof getSupabaseClient>
@@ -223,10 +275,10 @@ serve(async (req) => {
 
     console.log(`[WEBHOOK] Received event: ${eventType}`);
 
-    // Get the facture to find the artisan's user_id
-    let userId: string | null = null;
+    // Get user_id from metadata or facture lookup
+    let userId: string | null = session?.metadata?.user_id || null;
 
-    if (session?.metadata?.facture_id) {
+    if (\!userId && session?.metadata?.facture_id) {
       const { data: facture } = await supabase
         .from('devis')
         .select('user_id')
@@ -265,7 +317,12 @@ serve(async (req) => {
 
     switch (eventType) {
       case 'checkout.session.completed':
-        result = await handleCheckoutSessionCompleted(session, supabase);
+        // Route to subscription handler if plan_id metadata is present
+        if (session?.metadata?.plan_id) {
+          result = await handleSubscriptionCheckout(session, supabase);
+        } else {
+          result = await handleCheckoutSessionCompleted(session, supabase);
+        }
         break;
 
       case 'checkout.session.expired':

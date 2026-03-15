@@ -10,6 +10,7 @@
  */
 
 import { supabase } from '../supabaseClient';
+import { captureException } from '../lib/sentry';
 
 // ============================================================================
 // CONFIGURATION
@@ -123,7 +124,7 @@ async function checkRateLimit(type) {
   // Check if over limit
   if (state.count >= limit) {
     const waitTime = 60000 - (now - state.resetTime);
-    console.warn(`Rate limit reached for ${type}, waiting ${waitTime}ms`);
+    if (import.meta.env.DEV) console.warn(`Rate limit reached for ${type}, waiting ${waitTime}ms`);
     await sleep(waitTime);
     state.count = 0;
     state.resetTime = Date.now();
@@ -148,7 +149,7 @@ async function withRetry(fn, maxAttempts = CONFIG.retry.maxAttempts) {
       return await fn();
     } catch (error) {
       lastError = error;
-      console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
+      if (import.meta.env.DEV) console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
 
       if (attempt < maxAttempts) {
         const delay = CONFIG.retry.baseDelayMs * Math.pow(2, attempt - 1);
@@ -168,7 +169,7 @@ async function withRetry(fn, maxAttempts = CONFIG.retry.maxAttempts) {
 async function logCommunication(log) {
   try {
     if (!supabase) {
-      console.log('[DEMO] Would log communication:', log);
+      if (import.meta.env.DEV) console.log('[DEMO] Would log communication:', log);
       return 'demo-log-id';
     }
 
@@ -184,7 +185,7 @@ async function logCommunication(log) {
     if (error) throw error;
     return data?.id || null;
   } catch (error) {
-    console.error('Failed to log communication:', error);
+    captureException(error, { context: 'CommunicationsService.logCommunication' });
     return null;
   }
 }
@@ -204,7 +205,7 @@ async function updateCommunicationLog(logId, status, extra = {}) {
       .update({ status, ...extra, updated_at: new Date().toISOString() })
       .eq('id', logId);
   } catch (error) {
-    console.error('Failed to update communication log:', error);
+    captureException(error, { context: 'CommunicationsService.updateCommunicationLog' });
   }
 }
 
@@ -226,7 +227,7 @@ export async function sendSMS(to, message, options = {}) {
 
   // Validate
   if (!formattedNumber || formattedNumber.length < 10) {
-    console.error('Invalid phone number:', to);
+    captureException(new Error(`Invalid phone number: ${to}`), { context: 'CommunicationsService.sendSMS' });
     return { success: false, error: 'Invalid phone number' };
   }
 
@@ -236,7 +237,7 @@ export async function sendSMS(to, message, options = {}) {
 
   // Check config
   if (!CONFIG.twilio.accountSid || !CONFIG.twilio.authToken) {
-    console.warn('[DEMO] SMS would be sent to:', formattedNumber, 'Message:', message);
+    if (import.meta.env.DEV) console.log('[DEMO] SMS would be sent to:', formattedNumber);
     return { success: true, messageId: 'demo-sms-id' };
   }
 
@@ -287,11 +288,11 @@ export async function sendSMS(to, message, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.sid });
     }
 
-    console.log(`SMS sent to ${formattedNumber}, SID: ${result.sid}`);
+    if (import.meta.env.DEV) console.log(`SMS sent to ${formattedNumber}, SID: ${result.sid}`);
     return { success: true, messageId: result.sid };
 
   } catch (error) {
-    console.error('Failed to send SMS:', error);
+    captureException(error, { context: 'CommunicationsService.sendSMS' });
 
     // Update log
     if (logId) {
@@ -384,7 +385,7 @@ export async function sendEmail(to, subject, html, options = {}) {
 
   // Check config
   if (!CONFIG.sendgrid.apiKey) {
-    console.warn('[DEMO] Email would be sent to:', to, 'Subject:', subject);
+    if (import.meta.env.DEV) console.log('[DEMO] Email would be sent to:', to, 'Subject:', subject);
     return { success: true, messageId: 'demo-email-id' };
   }
 
@@ -439,11 +440,11 @@ export async function sendEmail(to, subject, html, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.messageId });
     }
 
-    console.log(`Email sent to ${to}, ID: ${result.messageId}`);
+    if (import.meta.env.DEV) console.log(`Email sent to ${to}, ID: ${result.messageId}`);
     return { success: true, messageId: result.messageId };
 
   } catch (error) {
-    console.error('Failed to send email:', error);
+    captureException(error, { context: 'CommunicationsService.sendEmail' });
 
     // Update log
     if (logId) {
@@ -516,7 +517,7 @@ export async function notifyDevisEnvoye(devisId) {
       : { data: null, error: { message: 'Demo mode' } };
 
     if (error || !devis) {
-      console.error('Failed to fetch devis:', error);
+      captureException(error || new Error('Devis not found'), { context: 'CommunicationsService.notifyDevisEnvoye' });
       return { sms: { success: false, error: 'Devis not found' }, email: { success: false, error: 'Devis not found' } };
     }
 
@@ -535,7 +536,7 @@ export async function notifyDevisEnvoye(devisId) {
           const { data: token } = await supabase.rpc('generate_signature_token', { p_devis_id: devisId });
           if (token) signatureLink = `${CONFIG.baseUrl}/devis/signer/${token}`;
         }
-      } catch (err) { console.warn('Could not generate signature token:', err); }
+      } catch (err) { captureException(err, { context: 'CommunicationsService.notifyDevisEnvoye.signatureToken' }); }
     }
 
     const variables = {
@@ -585,7 +586,7 @@ export async function notifyDevisEnvoye(devisId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyDevisEnvoye:', error);
+    captureException(error, { context: 'CommunicationsService.notifyDevisEnvoye' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -644,7 +645,7 @@ export async function notifyDevisAccepte(devisId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyDevisAccepte:', error);
+    captureException(error, { context: 'CommunicationsService.notifyDevisAccepte' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -711,7 +712,7 @@ export async function notifyChantierDemarre(chantierId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyChantierDemarre:', error);
+    captureException(error, { context: 'CommunicationsService.notifyChantierDemarre' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -776,7 +777,7 @@ export async function notifyChantierTermine(chantierId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyChantierTermine:', error);
+    captureException(error, { context: 'CommunicationsService.notifyChantierTermine' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -851,7 +852,7 @@ export async function notifyFactureEnvoyee(factureId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyFactureEnvoyee:', error);
+    captureException(error, { context: 'CommunicationsService.notifyFactureEnvoyee' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -911,7 +912,7 @@ export async function notifyPaiementRecu(factureId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    console.error('Error in notifyPaiementRecu:', error);
+    captureException(error, { context: 'CommunicationsService.notifyPaiementRecu' });
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -941,7 +942,7 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to email if we have one
     if (options.fallbackEmail) {
-      console.log('SMS failed, falling back to email');
+      if (import.meta.env.DEV) console.log('SMS failed, falling back to email');
       return sendEmail(options.fallbackEmail, subject, html, options);
     }
 
@@ -953,7 +954,7 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to SMS if we have a phone
     if (options.fallbackPhone) {
-      console.log('Email failed, falling back to SMS');
+      if (import.meta.env.DEV) console.log('Email failed, falling back to SMS');
       return sendSMS(options.fallbackPhone, message, options);
     }
 
@@ -982,7 +983,7 @@ export async function getCommunicationHistory(clientId, limit = 50) {
     return data || [];
 
   } catch (error) {
-    console.error('Failed to get communication history:', error);
+    captureException(error, { context: 'CommunicationsService.getCommunicationHistory' });
     return [];
   }
 }

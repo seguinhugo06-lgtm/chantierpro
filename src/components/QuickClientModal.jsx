@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertCircle, AlertTriangle } from 'lucide-react';
+import { findDuplicates } from '../lib/dedup';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
@@ -11,6 +12,7 @@ export default function QuickClientModal({
   isOpen,
   onClose,
   onSubmit,
+  clients = [],
   isDark = false,
   couleur = '#f97316'
 }) {
@@ -25,6 +27,8 @@ export default function QuickClientModal({
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [duplicates, setDuplicates] = useState([]);
+  const [dupDismissed, setDupDismissed] = useState(false);
   const inputRef = useRef(null);
 
   // Validation helpers
@@ -61,6 +65,8 @@ export default function QuickClientModal({
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
+      setDuplicates([]);
+      setDupDismissed(false);
     }
   }, [isOpen]);
 
@@ -91,6 +97,16 @@ export default function QuickClientModal({
     }
 
     setErrors({});
+
+    // Check for duplicates before saving
+    if (!dupDismissed) {
+      const dups = findDuplicates(form, clients);
+      if (dups.length > 0) {
+        setDuplicates(dups);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     // Simulate quick save animation
@@ -325,6 +341,38 @@ export default function QuickClientModal({
               )}
             </AnimatePresence>
           </div>
+
+          {/* Duplicate warning */}
+          {duplicates.length > 0 && !dupDismissed && (
+            <div className={`p-3 rounded-xl border ${isDark ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'}`}>
+              <div className="flex items-start gap-2 mb-2">
+                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${textPrimary}`}>Doublon potentiel détecté</p>
+                  {duplicates.slice(0, 2).map((dup, i) => (
+                    <p key={i} className={`text-xs mt-1 ${textMuted}`}>
+                      {dup.client.nom} {dup.client.prenom || ''} — {dup.reasons.join(', ')}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 ml-6">
+                <button
+                  onClick={() => { setDuplicates([]); setDupDismissed(false); }}
+                  className={`text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-white border border-slate-200'} ${textMuted}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => { setDupDismissed(true); setDuplicates([]); }}
+                  className="text-xs px-3 py-1.5 rounded-lg text-white"
+                  style={{ background: couleur }}
+                >
+                  Créer quand même
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action buttons */}
           <div className="flex gap-3 pt-2">

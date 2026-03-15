@@ -47,6 +47,13 @@ export const auth = {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     return { data, error };
   },
+  resetPassword: async (email) => {
+    if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { data, error };
+  },
   signOut: async () => {
     if (isDemo || !supabase) return { error: null };
     const { error } = await supabase.auth.signOut();

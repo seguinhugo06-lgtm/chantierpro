@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
-  Zap, Receipt, Clock, BarChart3, History, Star
+  Zap, Receipt, Clock, BarChart3, History, Star, CreditCard, Wallet
 } from 'lucide-react';
 
 /**
@@ -122,6 +122,8 @@ export default function CommandPalette({
     { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
     { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
     { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
+    { id: 'nav-finances', label: 'Finances', keywords: 'tresorerie banque paiements', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
+    { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'stripe gocardless sepa carte transactions', icon: CreditCard, action: () => { setPage('finances'); onClose(); } },
     { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
     { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration reglages', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
@@ -322,6 +324,28 @@ export default function CommandPalette({
     }
   }, [selectedIndex, selectableItems]);
 
+  // Focus trap — keep focus inside the palette
+  const paletteRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleFocusTrap = (e) => {
+      if (e.key !== 'Tab' || !paletteRef.current) return;
+      const focusable = paletteRef.current.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleFocusTrap);
+    return () => document.removeEventListener('keydown', handleFocusTrap);
+  }, [isOpen]);
+
   // Keyboard navigation
   const handleKeyDown = (e) => {
     // ⌘1-9 quick select
@@ -379,6 +403,7 @@ export default function CommandPalette({
 
           {/* Palette */}
           <motion.div
+            ref={paletteRef}
             className={`relative w-full max-w-2xl ${cardBg} rounded-2xl shadow-2xl border ${borderColor} overflow-hidden`}
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -405,7 +430,7 @@ export default function CommandPalette({
               {query && (
                 <button
                   onClick={() => setQuery('')}
-                  className={`p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 ${textMuted}`}
+                  className={`p-1 rounded-md ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} ${textMuted}`}
                 >
                   <X size={18} />
                 </button>
@@ -447,7 +472,7 @@ export default function CommandPalette({
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.1, delay: Math.min(currentIndex * 0.02, 0.1) }}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 mx-1 rounded-xl transition-colors ${
-                        isSelected ? selectedBg : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        isSelected ? selectedBg : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')
                       }`}
                       style={isSelected ? { backgroundColor: isDark ? '#334155' : '#f1f5f9' } : {}}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}

@@ -5,6 +5,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import supabase, { isDemo } from '../supabaseClient';
+import { captureException } from '../lib/sentry';
 
 
 /**
@@ -291,12 +292,12 @@ const FIELD_MAPPINGS = {
  */
 export async function loadAllData(userId) {
   if (isDemo || !supabase || !userId) {
-    console.log('Skipping Supabase load - demo mode or no user');
+    if (import.meta.env.DEV) console.log('Skipping Supabase load - demo mode or no user');
     return null;
   }
 
   try {
-    console.log('Loading data from Supabase for user:', userId);
+    if (import.meta.env.DEV) console.log('Loading data from Supabase for user:', userId);
 
     const [
       clientsRes,
@@ -326,19 +327,15 @@ export async function loadAllData(userId) {
       catalogue: (catalogueRes.data || []).map(FIELD_MAPPINGS.catalogue.fromSupabase),
     };
 
-    console.log('Loaded data from Supabase:', {
+    if (import.meta.env.DEV) console.log('Loaded data from Supabase:', {
       clients: data.clients.length,
       chantiers: data.chantiers.length,
       devis: data.devis.length,
-      depenses: data.depenses.length,
-      equipe: data.equipe.length,
-      pointages: data.pointages.length,
-      catalogue: data.catalogue.length,
     });
 
     return data;
   } catch (error) {
-    console.error('Error loading data from Supabase:', error);
+    captureException(error, { context: 'useSupabaseSync.loadAllData' });
     return null;
   }
 }
@@ -352,7 +349,7 @@ export async function saveItem(table, item, userId) {
   try {
     const mapping = FIELD_MAPPINGS[table];
     if (!mapping) {
-      console.warn(`No mapping for table: ${table}`);
+      if (import.meta.env.DEV) console.warn(`No mapping for table: ${table}`);
       return item;
     }
 
@@ -361,7 +358,7 @@ export async function saveItem(table, item, userId) {
       user_id: userId,
     };
 
-    console.log(`💾 Saving to ${table}:`, supabaseData);
+    if (import.meta.env.DEV) console.log(`Saving to ${table}:`, supabaseData.id);
 
     const { data, error } = await supabase
       .from(table)
@@ -370,15 +367,15 @@ export async function saveItem(table, item, userId) {
       .single();
 
     if (error) {
-      console.error(`❌ Error saving to ${table}:`, error);
+      captureException(error, { context: `useSupabaseSync.saveItem.${table}` });
       // Throw error so the caller can handle it (rollback optimistic update)
       throw new Error(`Failed to save to ${table}: ${error.message}`);
     }
 
-    console.log(`✅ Saved to ${table}:`, data?.id);
+    if (import.meta.env.DEV) console.log(`Saved to ${table}:`, data?.id);
     return mapping.fromSupabase(data);
   } catch (error) {
-    console.error(`❌ Error saving to ${table}:`, error);
+    captureException(error, { context: `useSupabaseSync.saveItem.${table}` });
     throw error;
   }
 }
@@ -397,14 +394,14 @@ export async function deleteItem(table, itemId, userId) {
       .eq('user_id', userId);
 
     if (error) {
-      console.error(`Error deleting from ${table}:`, error);
+      captureException(error, { context: `useSupabaseSync.deleteItem.${table}` });
       return false;
     }
 
-    console.log(`Deleted from ${table}:`, itemId);
+    if (import.meta.env.DEV) console.log(`Deleted from ${table}:`, itemId);
     return true;
   } catch (error) {
-    console.error(`Error deleting from ${table}:`, error);
+    captureException(error, { context: `useSupabaseSync.deleteItem.${table}` });
     return false;
   }
 }

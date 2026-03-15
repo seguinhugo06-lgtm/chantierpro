@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../supabaseClient';
+import { captureException } from './sentry';
 
 // ============================================================================
 // TYPES (JSDoc)
@@ -112,7 +113,7 @@ const GROUP_DISCOUNTS = [
  */
 export async function checkStockLevels(userId) {
   if (!supabase) {
-    console.warn('[StockAlerts] Supabase not available');
+    if (import.meta.env.DEV) console.warn('[StockAlerts] Supabase not available');
     return [];
   }
 
@@ -187,7 +188,7 @@ export async function checkStockLevels(userId) {
 
     return alerts;
   } catch (error) {
-    console.error('[StockAlerts] Error checking stock levels:', error);
+    captureException(error, { context: 'stockAlerts.checkStockLevels' });
     return [];
   }
 }
@@ -201,7 +202,7 @@ export async function checkStockLevels(userId) {
  */
 export async function predictStockNeeds(userId, daysAhead = 14) {
   if (!supabase) {
-    console.warn('[StockAlerts] Supabase not available');
+    if (import.meta.env.DEV) console.warn('[StockAlerts] Supabase not available');
     return [];
   }
 
@@ -301,7 +302,7 @@ export async function predictStockNeeds(userId, daysAhead = 14) {
 
     return predictions;
   } catch (error) {
-    console.error('[StockAlerts] Error predicting stock needs:', error);
+    captureException(error, { context: 'stockAlerts.predictStockNeeds' });
     return [];
   }
 }
@@ -315,7 +316,7 @@ export async function predictStockNeeds(userId, daysAhead = 14) {
  */
 export async function suggestReorder(productId, userId) {
   if (!supabase) {
-    console.warn('[StockAlerts] Supabase not available');
+    if (import.meta.env.DEV) console.warn('[StockAlerts] Supabase not available');
     return null;
   }
 
@@ -343,7 +344,7 @@ export async function suggestReorder(productId, userId) {
 
     if (movementsError) {
       // Table might not exist, estimate from devis
-      console.warn('[StockAlerts] stock_movements table not found, estimating from devis');
+      if (import.meta.env.DEV) console.warn('[StockAlerts] stock_movements table not found, estimating from devis');
     }
 
     // Calculate average monthly consumption
@@ -416,7 +417,7 @@ export async function suggestReorder(productId, userId) {
       unit: product.unite || 'unités',
     };
   } catch (error) {
-    console.error('[StockAlerts] Error suggesting reorder:', error);
+    captureException(error, { context: 'stockAlerts.suggestReorder' });
     return null;
   }
 }
@@ -429,7 +430,7 @@ export async function suggestReorder(productId, userId) {
  */
 export async function detectWaste(userId) {
   if (!supabase) {
-    console.warn('[StockAlerts] Supabase not available');
+    if (import.meta.env.DEV) console.warn('[StockAlerts] Supabase not available');
     return [];
   }
 
@@ -493,7 +494,7 @@ export async function detectWaste(userId) {
 
     return wasteAlerts;
   } catch (error) {
-    console.error('[StockAlerts] Error detecting waste:', error);
+    captureException(error, { context: 'stockAlerts.detectWaste' });
     return [];
   }
 }
@@ -506,7 +507,7 @@ export async function detectWaste(userId) {
  */
 export async function groupPurchaseOpportunity(userId) {
   if (!supabase) {
-    console.warn('[StockAlerts] Supabase not available');
+    if (import.meta.env.DEV) console.warn('[StockAlerts] Supabase not available');
     return [];
   }
 
@@ -587,7 +588,7 @@ export async function groupPurchaseOpportunity(userId) {
 
     return opportunities;
   } catch (error) {
-    console.error('[StockAlerts] Error finding group purchase opportunities:', error);
+    captureException(error, { context: 'stockAlerts.groupPurchaseOpportunity' });
     return [];
   }
 }
@@ -701,7 +702,7 @@ export function getPriorityColor(priority) {
  * @returns {Promise<Object>} Check results
  */
 export async function dailyStockCheck(userId) {
-  console.log(`[StockAlerts] Running daily check for user ${userId}`);
+  if (import.meta.env.DEV) console.log(`[StockAlerts] Running daily check for user ${userId}`);
 
   const summary = await getStockSummary(userId);
 
@@ -728,7 +729,7 @@ export async function dailyStockCheck(userId) {
           },
         ]);
       } catch (err) {
-        console.error('[StockAlerts] Error creating suggestion:', err);
+        captureException(err, { context: 'stockAlerts.dailyStockCheck.createSuggestion' });
       }
     }
   }

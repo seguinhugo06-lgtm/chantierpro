@@ -1,5 +1,6 @@
 import { Component, useState } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { captureException } from '../../lib/sentry';
 
 /**
  * ErrorBoundary - Catches JavaScript errors in child components
@@ -27,28 +28,16 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
 
-    // Log to console in development
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-
-    // Enhanced diagnostic for error #310 (Objects are not valid as a React child)
-    if (error?.message?.includes('Objects are not valid as a React child') ||
-        error?.message?.includes('object') && error?.message?.includes('child')) {
-      console.error(
-        '=== ERROR #310 DIAGNOSTIC ===\n' +
-        'Error: Objects are not valid as a React child\n' +
-        'Component stack:', errorInfo?.componentStack,
-        '\nThis error occurs when a JavaScript object (not a string/number/React element) is placed directly in JSX.',
-        '\nCheck the component stack above to find which component renders the object.'
-      );
-    }
+    // Report to Sentry (prod) or console (dev)
+    captureException(error, {
+      context: 'ErrorBoundary',
+      extra: { componentStack: errorInfo?.componentStack },
+    });
 
     // Call onError callback if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-
-    // In production, you could send to error tracking service here
-    // e.g., Sentry.captureException(error);
   }
 
   handleReset = () => {

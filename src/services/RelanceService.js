@@ -181,6 +181,8 @@ export function generateRelanceContent(template, facture, client, entreprise, op
     '{entreprise_email}': entreprise?.email || '',
     '{entreprise_siret}': entreprise?.siret || '',
     '{entreprise_adresse}': entreprise?.adresse || '',
+    '{num_devis}': facture.devis_numero || facture.numero_devis || '',
+    '{objet}': facture.objet || facture.titre || '',
     '{lien_paiement}': lienPaiement ? `\nReglez en ligne : ${lienPaiement}\n` : '',
     '{sms_lien_paiement}': lienPaiement ? ` Payez: ${lienPaiement}` : ''
   };

@@ -71,6 +71,10 @@ import {
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
+  // V2 Widgets
+  ConversionFunnelWidget,
+  TopClientsWidget,
+  ProfitabilityWidget,
 } from './dashboard/index';
 
 // UI Components
@@ -1265,6 +1269,22 @@ export default function Dashboard({
                 isDark={isDark}
               />
             )}
+
+            {/* V2 Widgets */}
+            <ConversionFunnelWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
+
+            <TopClientsWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
+
+            <ProfitabilityWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
           </div>
         </section>
       </div>

@@ -516,6 +516,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         isOpen={showQuickModal}
         onClose={() => setShowQuickModal(false)}
         onSubmit={handleQuickSubmit}
+        clients={clients}
         isDark={isDark}
         couleur={couleur}
       />

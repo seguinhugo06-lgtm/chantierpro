@@ -3,6 +3,8 @@ import { DEVIS_STATUS, CHANTIER_STATUS } from '../lib/constants';
 import { calculateChantierMargin } from '../lib/business/margin-calculator';
 import { loadAllData, saveItem, deleteItem } from '../hooks/useSupabaseSync';
 import { isDemo, auth } from '../supabaseClient';
+import { logActivity } from '../services/activityLogService';
+import { captureException } from '../lib/sentry';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -29,14 +31,9 @@ function loadDemoData() {
     const stored = localStorage.getItem(DEMO_STORAGE_KEY);
     if (stored) {
       cachedDemoData = JSON.parse(stored);
-      console.log('📥 Loaded demo data from localStorage:', {
-        clients: cachedDemoData?.clients?.length || 0,
-        devis: cachedDemoData?.devis?.length || 0,
-        chantiers: cachedDemoData?.chantiers?.length || 0,
-      });
     }
   } catch (error) {
-    console.warn('Failed to load demo data from localStorage:', error);
+    captureException(error, { context: 'DataContext.loadDemoData' });
     cachedDemoData = null;
   }
 
@@ -53,7 +50,7 @@ function saveDemoData(data) {
     // Update cache
     cachedDemoData = data;
   } catch (error) {
-    console.warn('Failed to save demo data to localStorage:', error);
+    captureException(error, { context: 'DataContext.saveDemoData' });
   }
 }
 
@@ -171,7 +168,6 @@ export function DataProvider({ children, initialData = {} }) {
         paiements,
         echanges,
       });
-      console.log('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
@@ -185,7 +181,7 @@ export function DataProvider({ children, initialData = {} }) {
     const getCurrentUser = async () => {
       const user = await auth.getCurrentUser();
       if (user?.id) {
-        console.log('📱 User authenticated:', user.id);
+        if (import.meta.env.DEV) console.log('User authenticated:', user.id);
         setUserId(user.id);
       }
     };
@@ -194,11 +190,11 @@ export function DataProvider({ children, initialData = {} }) {
     // Subscribe to auth changes
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('🔑 User signed in:', session.user.id);
+        if (import.meta.env.DEV) console.log('User signed in:', session.user.id);
         setUserId(session.user.id);
         setDataLoaded(false); // Reset to trigger data reload
       } else if (event === 'SIGNED_OUT') {
-        console.log('🚪 User signed out');
+        if (import.meta.env.DEV) console.log('User signed out');
         setUserId(null);
         // Clear data on sign out
         setClients([]);
@@ -222,26 +218,20 @@ export function DataProvider({ children, initialData = {} }) {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        console.log('Loading data from Supabase...');
+        if (import.meta.env.DEV) console.log('Loading data from Supabase...');
         const data = await loadAllData(userId);
         if (data) {
           // --- DIAGNOSTIC: Validate data shapes to catch #310 ---
           const validateDataArray = (arr, name, stringFields) => {
             if (!Array.isArray(arr)) {
-              console.error(`[DIAGNOSTIC #310] ${name} is NOT an array!`, typeof arr, arr);
+              captureException(new Error(`[DIAGNOSTIC #310] ${name} is NOT an array: ${typeof arr}`), { context: 'DataContext.validateDataArray' });
               return [];
             }
             arr.forEach((item, i) => {
               if (item && typeof item === 'object') {
                 stringFields.forEach(field => {
                   if (item[field] != null && typeof item[field] === 'object') {
-                    console.error(
-                      `[DIAGNOSTIC #310] ${name}[${i}].${field} is an OBJECT!`,
-                      `Type: ${typeof item[field]}`,
-                      `IsArray: ${Array.isArray(item[field])}`,
-                      `Value:`, item[field],
-                      `Full item keys:`, Object.keys(item)
-                    );
+                    captureException(new Error(`[DIAGNOSTIC #310] ${name}[${i}].${field} is an OBJECT (${typeof item[field]})`), { context: 'DataContext.validateDataArray' });
                   }
                 });
               }
@@ -257,14 +247,14 @@ export function DataProvider({ children, initialData = {} }) {
           setPointages(validateDataArray(data.pointages, 'pointages', ['date', 'description']));
           setCatalogue(validateDataArray(data.catalogue, 'catalogue', ['nom', 'description', 'categorie', 'unite']));
           setDataLoaded(true);
-          console.log('Data loaded from Supabase:', {
+          if (import.meta.env.DEV) console.log('Data loaded from Supabase:', {
             clients: data.clients.length,
             chantiers: data.chantiers.length,
             devis: data.devis.length,
           });
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        captureException(error, { context: 'DataContext.loadData' });
       } finally {
         setDataLoading(false);
       }
@@ -292,13 +282,14 @@ export function DataProvider({ children, initialData = {} }) {
         if (saved) {
           // Update with the saved version (has correct timestamps, etc.)
           setClients(prev => prev.map(c => c.id === newClient.id ? saved : c));
+          logActivity({ entityType: 'client', entityId: saved.id, action: 'create', description: data.nom || data.entreprise || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving client to Supabase:', error);
-        // Don't remove the client from local state - keep it for offline use
-        console.warn('Client kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addClient' });
       }
+    } else {
+      logActivity({ entityType: 'client', entityId: newClient.id, action: 'create', description: data.nom || data.entreprise || '', userId });
     }
 
     return newClient;
@@ -317,15 +308,18 @@ export function DataProvider({ children, initialData = {} }) {
         await saveItem('clients', { ...current, ...data }, userId);
       }
     }
+    logActivity({ entityType: 'client', entityId: id, action: 'update', description: data.nom || data.entreprise || '', userId });
   }, [userId, clients]);
 
   const deleteClient = useCallback(async (id) => {
+    const removed = clients.find(c => c.id === id);
     setClients(prev => prev.filter(c => c.id !== id));
 
     if (!isDemo && userId) {
       await deleteItem('clients', id, userId);
     }
-  }, [userId]);
+    logActivity({ entityType: 'client', entityId: id, action: 'delete', description: removed?.nom || removed?.entreprise || '', userId });
+  }, [userId, clients]);
 
   const getClient = useCallback((id) => {
     return clients.find(c => c.id === id);
@@ -348,39 +342,42 @@ export function DataProvider({ children, initialData = {} }) {
         const saved = await saveItem('devis', newDevis, userId);
         if (saved) {
           setDevis(prev => prev.map(d => d.id === newDevis.id ? saved : d));
+          logActivity({ entityType: data.type === 'facture' ? 'facture' : 'devis', entityId: saved.id, action: 'create', description: data.numero || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving devis to Supabase:', error);
-        // Don't remove the devis from local state - keep it for offline use
-        // The user can still work with it locally
-        console.warn('Devis kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addDevis' });
       }
+    } else {
+      logActivity({ entityType: data.type === 'facture' ? 'facture' : 'devis', entityId: newDevis.id, action: 'create', description: data.numero || '', userId });
     }
 
     return newDevis;
   }, [userId]);
 
   const updateDevis = useCallback(async (id, data) => {
+    const current = devis.find(d => d.id === id);
     setDevis(prev => prev.map(d =>
       d.id === id ? { ...d, ...data, updatedAt: new Date().toISOString() } : d
     ));
 
     if (!isDemo && userId) {
-      const current = devis.find(d => d.id === id);
       if (current) {
         await saveItem('devis', { ...current, ...data }, userId);
       }
     }
+    logActivity({ entityType: current?.type === 'facture' ? 'facture' : 'devis', entityId: id, action: 'update', description: current?.numero || data.numero || '', userId });
   }, [userId, devis]);
 
   const deleteDevis = useCallback(async (id) => {
+    const removed = devis.find(d => d.id === id);
     setDevis(prev => prev.filter(d => d.id !== id));
 
     if (!isDemo && userId) {
       await deleteItem('devis', id, userId);
     }
-  }, [userId]);
+    logActivity({ entityType: removed?.type === 'facture' ? 'facture' : 'devis', entityId: id, action: 'delete', description: removed?.numero || '', userId });
+  }, [userId, devis]);
 
   const getDevis = useCallback((id) => {
     return devis.find(d => d.id === id);
@@ -413,13 +410,14 @@ export function DataProvider({ children, initialData = {} }) {
         const saved = await saveItem('chantiers', newChantier, userId);
         if (saved) {
           setChantiers(prev => prev.map(c => c.id === newChantier.id ? saved : c));
+          logActivity({ entityType: 'chantier', entityId: saved.id, action: 'create', description: data.nom || data.titre || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving chantier to Supabase:', error);
-        // Don't remove the chantier from local state - keep it for offline use
-        console.warn('Chantier kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addChantier' });
       }
+    } else {
+      logActivity({ entityType: 'chantier', entityId: newChantier.id, action: 'create', description: data.nom || data.titre || '', userId });
     }
 
     return newChantier;
@@ -436,15 +434,18 @@ export function DataProvider({ children, initialData = {} }) {
         await saveItem('chantiers', { ...current, ...data }, userId);
       }
     }
+    logActivity({ entityType: 'chantier', entityId: id, action: 'update', description: data.nom || data.titre || '', userId });
   }, [userId, chantiers]);
 
   const deleteChantier = useCallback(async (id) => {
+    const removed = chantiers.find(c => c.id === id);
     setChantiers(prev => prev.filter(c => c.id !== id));
 
     if (!isDemo && userId) {
       await deleteItem('chantiers', id, userId);
     }
-  }, [userId]);
+    logActivity({ entityType: 'chantier', entityId: id, action: 'delete', description: removed?.nom || removed?.titre || '', userId });
+  }, [userId, chantiers]);
 
   const getChantier = useCallback((id) => {
     return chantiers.find(c => c.id === id);
@@ -465,13 +466,14 @@ export function DataProvider({ children, initialData = {} }) {
         const saved = await saveItem('depenses', newDepense, userId);
         if (saved) {
           setDepenses(prev => prev.map(d => d.id === newDepense.id ? saved : d));
+          logActivity({ entityType: 'depense', entityId: saved.id, action: 'create', description: data.libelle || data.description || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving depense to Supabase:', error);
-        // Don't remove the depense from local state - keep it for offline use
-        console.warn('Depense kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addDepense' });
       }
+    } else {
+      logActivity({ entityType: 'depense', entityId: newDepense.id, action: 'create', description: data.libelle || data.description || '', userId });
     }
 
     return newDepense;
@@ -496,6 +498,7 @@ export function DataProvider({ children, initialData = {} }) {
     if (!isDemo && userId) {
       await deleteItem('depenses', id, userId);
     }
+    logActivity({ entityType: 'depense', entityId: id, action: 'delete', userId });
   }, [userId]);
 
   const getDepensesByChantier = useCallback((chantierId) => {
@@ -521,9 +524,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving pointage to Supabase:', error);
-        // Don't remove the pointage from local state - keep it for offline use
-        console.warn('Pointage kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addPointage' });
       }
     }
 
@@ -589,13 +590,14 @@ export function DataProvider({ children, initialData = {} }) {
         const saved = await saveItem('equipe', newEmployee, userId);
         if (saved) {
           setEquipe(prev => prev.map(e => e.id === newEmployee.id ? saved : e));
+          logActivity({ entityType: 'equipe', entityId: saved.id, action: 'create', description: data.nom || data.prenom || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving employee to Supabase:', error);
-        // Don't remove the employee from local state - keep it for offline use
-        console.warn('Employee kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addEmployee' });
       }
+    } else {
+      logActivity({ entityType: 'equipe', entityId: newEmployee.id, action: 'create', description: data.nom || data.prenom || '', userId });
     }
 
     return newEmployee;
@@ -620,6 +622,7 @@ export function DataProvider({ children, initialData = {} }) {
     if (!isDemo && userId) {
       await deleteItem('equipe', id, userId);
     }
+    logActivity({ entityType: 'equipe', entityId: id, action: 'delete', userId });
   }, [userId]);
 
   // ============ CATALOGUE OPERATIONS ============
@@ -639,13 +642,14 @@ export function DataProvider({ children, initialData = {} }) {
         const saved = await saveItem('catalogue', newItem, userId);
         if (saved) {
           setCatalogue(prev => prev.map(c => c.id === newItem.id ? saved : c));
+          logActivity({ entityType: 'catalogue', entityId: saved.id, action: 'create', description: data.nom || data.designation || '', userId });
           return saved;
         }
       } catch (error) {
-        console.error('Error saving catalogue item to Supabase:', error);
-        // Don't remove the catalogue item from local state - keep it for offline use
-        console.warn('Catalogue item kept locally despite Supabase error');
+        captureException(error, { context: 'DataContext.addCatalogueItem' });
       }
+    } else {
+      logActivity({ entityType: 'catalogue', entityId: newItem.id, action: 'create', description: data.nom || data.designation || '', userId });
     }
 
     return newItem;
@@ -670,6 +674,7 @@ export function DataProvider({ children, initialData = {} }) {
     if (!isDemo && userId) {
       await deleteItem('catalogue', id, userId);
     }
+    logActivity({ entityType: 'catalogue', entityId: id, action: 'delete', userId });
   }, [userId]);
 
   const deductStock = useCallback((id, quantity) => {

@@ -11,6 +11,7 @@
 
 import { supabase } from '../supabaseClient';
 import CommunicationsService from '../services/CommunicationsService';
+import { captureException } from './sentry';
 
 // ============================================================================
 // CONFIGURATION
@@ -77,7 +78,7 @@ const CONFIG = {
 async function logEvent(eventType, entityType, entityId, success, metadata = {}) {
   try {
     if (!supabase) {
-      console.log(`[DEMO] Event logged: ${eventType} for ${entityType}:${entityId}`);
+      if (import.meta.env.DEV) console.log(`[DEMO] Event logged: ${eventType} for ${entityType}:${entityId}`);
       return 'demo-log-id';
     }
 
@@ -98,7 +99,7 @@ async function logEvent(eventType, entityType, entityId, success, metadata = {})
     if (error) throw error;
     return data?.id || null;
   } catch (error) {
-    console.error('Failed to log event:', error);
+    captureException(error, { context: 'eventTriggers.logEvent' });
     return null;
   }
 }
@@ -117,7 +118,7 @@ export async function onDevisCreated(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  console.log(`[EVENT] Devis created: ${record.id}, status: ${record.statut}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Devis created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Only notify if already sent
@@ -135,7 +136,7 @@ export async function onDevisCreated(record) {
     return { success: true, data: { notified: false } };
 
   } catch (error) {
-    console.error('Error in onDevisCreated:', error);
+    captureException(error, { context: 'eventTriggers.onDevisCreated' });
     await logEvent('devis_created', 'devis', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -155,7 +156,7 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
   const oldStatus = oldRecord?.statut;
   const newStatus = newRecord.statut;
 
-  console.log(`[EVENT] Devis status changed: ${newRecord.id}, ${oldStatus} → ${newStatus}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Devis status changed: ${newRecord.id}, ${oldStatus} -> ${newStatus}`);
 
   try {
     const results = {};
@@ -192,7 +193,7 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
     return { success: true, data: results };
 
   } catch (error) {
-    console.error('Error in onDevisStatusChanged:', error);
+    captureException(error, { context: 'eventTriggers.onDevisStatusChanged' });
     await logEvent('devis_status_changed', 'devis', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -214,7 +215,7 @@ export async function onChantierStarted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_started' } };
   }
 
-  console.log(`[EVENT] Chantier started: ${newRecord.id}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Chantier started: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyChantierDemarre(newRecord.id);
@@ -227,7 +228,7 @@ export async function onChantierStarted(oldRecord, newRecord) {
     return { success: true, data: result };
 
   } catch (error) {
-    console.error('Error in onChantierStarted:', error);
+    captureException(error, { context: 'eventTriggers.onChantierStarted' });
     await logEvent('chantier_started', 'chantier', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -249,7 +250,7 @@ export async function onChantierCompleted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_completed' } };
   }
 
-  console.log(`[EVENT] Chantier completed: ${newRecord.id}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Chantier completed: ${newRecord.id}`);
 
   try {
     const results = {};
@@ -275,7 +276,7 @@ export async function onChantierCompleted(oldRecord, newRecord) {
     return { success: true, data: results };
 
   } catch (error) {
-    console.error('Error in onChantierCompleted:', error);
+    captureException(error, { context: 'eventTriggers.onChantierCompleted' });
     await logEvent('chantier_completed', 'chantier', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -296,7 +297,7 @@ export async function onFactureCreated(record) {
     return { success: true, data: { skipped: true, reason: 'not_facture' } };
   }
 
-  console.log(`[EVENT] Facture created: ${record.id}, status: ${record.statut}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Facture created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Notify if sent
@@ -314,7 +315,7 @@ export async function onFactureCreated(record) {
     return { success: true, data: { notified: false } };
 
   } catch (error) {
-    console.error('Error in onFactureCreated:', error);
+    captureException(error, { context: 'eventTriggers.onFactureCreated' });
     await logEvent('facture_created', 'facture', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -336,7 +337,7 @@ export async function onPaymentReceived(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_paid' } };
   }
 
-  console.log(`[EVENT] Payment received: ${newRecord.id}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Payment received: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyPaiementRecu(newRecord.id);
@@ -349,7 +350,7 @@ export async function onPaymentReceived(oldRecord, newRecord) {
     return { success: true, data: result };
 
   } catch (error) {
-    console.error('Error in onPaymentReceived:', error);
+    captureException(error, { context: 'eventTriggers.onPaymentReceived' });
     await logEvent('payment_received', 'facture', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -365,7 +366,7 @@ export async function onPhotoUploaded(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  console.log(`[EVENT] Photo uploaded: ${record.id} for chantier ${record.chantier_id}`);
+  if (import.meta.env.DEV) console.log(`[EVENT] Photo uploaded: ${record.id} for chantier ${record.chantier_id}`);
 
   try {
     const results = {};
@@ -424,7 +425,7 @@ export async function onPhotoUploaded(record) {
     return { success: true, data: results };
 
   } catch (error) {
-    console.error('Error in onPhotoUploaded:', error);
+    captureException(error, { context: 'eventTriggers.onPhotoUploaded' });
     await logEvent('photo_uploaded', 'chantier_photo', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -446,7 +447,7 @@ export async function onPhotoUploaded(record) {
 export async function handleWebhook(payload) {
   const { type, table, record, old_record } = payload;
 
-  console.log(`[WEBHOOK] ${type} on ${table}`, record?.id);
+  if (import.meta.env.DEV) console.log(`[WEBHOOK] ${type} on ${table}`, record?.id);
 
   try {
     switch (table) {
@@ -487,13 +488,13 @@ export async function handleWebhook(payload) {
         break;
 
       default:
-        console.log(`[WEBHOOK] Unhandled table: ${table}`);
+        if (import.meta.env.DEV) console.log(`[WEBHOOK] Unhandled table: ${table}`);
     }
 
     return { success: true, data: { handled: false } };
 
   } catch (error) {
-    console.error('[WEBHOOK] Error handling webhook:', error);
+    captureException(error, { context: 'eventTriggers.handleWebhook' });
     return { success: false, error: error.message };
   }
 }
@@ -510,11 +511,11 @@ let lastPollTime = new Date().toISOString();
  */
 export function startPolling() {
   if (pollingInterval) {
-    console.log('[POLLING] Already running');
+    if (import.meta.env.DEV) console.log('[POLLING] Already running');
     return;
   }
 
-  console.log('[POLLING] Starting polling system...');
+  if (import.meta.env.DEV) console.log('[POLLING] Starting polling system...');
 
   pollingInterval = setInterval(async () => {
     await pollForChanges();
@@ -531,7 +532,7 @@ export function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
-    console.log('[POLLING] Stopped');
+    if (import.meta.env.DEV) console.log('[POLLING] Stopped');
   }
 }
 
@@ -540,12 +541,12 @@ export function stopPolling() {
  */
 async function pollForChanges() {
   if (!supabase) {
-    console.log('[POLLING] Demo mode - skipping');
+    if (import.meta.env.DEV) console.log('[POLLING] Demo mode - skipping');
     return;
   }
 
   const now = new Date().toISOString();
-  console.log(`[POLLING] Checking for changes since ${lastPollTime}`);
+  if (import.meta.env.DEV) console.log(`[POLLING] Checking for changes since ${lastPollTime}`);
 
   try {
     // Check for devis changes
@@ -588,7 +589,7 @@ async function pollForChanges() {
     lastPollTime = now;
 
   } catch (error) {
-    console.error('[POLLING] Error:', error);
+    captureException(error, { context: 'eventTriggers.pollForChanges' });
   }
 }
 
@@ -603,11 +604,11 @@ let subscriptions = [];
  */
 export function setupRealtimeSubscriptions() {
   if (!supabase) {
-    console.log('[REALTIME] Demo mode - skipping');
+    if (import.meta.env.DEV) console.log('[REALTIME] Demo mode - skipping');
     return;
   }
 
-  console.log('[REALTIME] Setting up subscriptions...');
+  if (import.meta.env.DEV) console.log('[REALTIME] Setting up subscriptions...');
 
   // Devis changes
   const devisSubscription = supabase
@@ -661,7 +662,7 @@ export function setupRealtimeSubscriptions() {
 
   subscriptions = [devisSubscription, chantiersSubscription, photosSubscription];
 
-  console.log('[REALTIME] Subscriptions active');
+  if (import.meta.env.DEV) console.log('[REALTIME] Subscriptions active');
 }
 
 /**
@@ -672,7 +673,7 @@ export function cleanupRealtimeSubscriptions() {
     supabase?.removeChannel(sub);
   });
   subscriptions = [];
-  console.log('[REALTIME] Subscriptions cleaned up');
+  if (import.meta.env.DEV) console.log('[REALTIME] Subscriptions cleaned up');
 }
 
 // ============================================================================

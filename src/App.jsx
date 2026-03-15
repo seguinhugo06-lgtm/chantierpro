@@ -1,5 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { auth, isDemo } from './supabaseClient';
+import supabase from './supabaseClient';
+import { captureException, setUser as setSentryUser } from './lib/sentry';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -20,6 +22,9 @@ const QuickClientModal = lazy(() => import('./components/QuickClientModal'));
 const QuickChantierModal = lazy(() => import('./components/QuickChantierModal'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
 const DesignSystemDemo = lazy(() => import('./components/DesignSystemDemo'));
+const DevisIA = lazy(() => import('./components/DevisIA'));
+const UserProfile = lazy(() => import('./components/UserProfile'));
+const LandingPage = lazy(() => import('./components/landing/LandingPage'));
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -29,6 +34,9 @@ import ModalContainer from './components/ui/ModalContainer';
 import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 import { safeString, validateRenderableFields } from './lib/formatters';
+import { useSubscriptionStore } from './stores/subscriptionStore';
+import FeatureGuard from './components/subscription/FeatureGuard';
+import TrialBanner from './components/subscription/TrialBanner';
 
 // Theme classes helper
 const getThemeClasses = (isDark) => ({
@@ -69,6 +77,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSignUp, setShowSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [authForm, setAuthForm] = useState({ email: '', password: '', nom: '' });
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,6 +105,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(() => !isDemo && !localStorage.getItem('batigesti_onboarding_complete'));
+  const [showAuthForm, setShowAuthForm] = useState(false);
 
   // Settings state
   const [theme, setTheme] = useState('light');
@@ -151,10 +161,10 @@ export default function App() {
           const result = await checkConnection(ref);
           if (result.status === 'linked') {
             // Show success notification
-            console.log('[BANK] Connection successful:', result.details);
+            if (import.meta.env.DEV) console.log('[BANK] Connection successful:', result.details);
           }
         } catch (e) {
-          console.error('[BANK] Callback error:', e);
+          captureException(e, { context: 'App.bankCallback' });
         }
       });
     }
@@ -166,19 +176,13 @@ export default function App() {
     const now = new Date();
 
     // --- DIAGNOSTIC: Validate data types before rendering ---
-    if (process.env.NODE_ENV === 'development' || true) {
+    if (import.meta.env.DEV) {
       // Check if any devis fields are objects when they should be strings
       devis.forEach((d, i) => {
         const stringFields = ['numero', 'type', 'statut', 'date', 'objet', 'titre', 'conditions'];
         stringFields.forEach(field => {
           if (d[field] != null && typeof d[field] === 'object') {
-            console.error(
-              `[DIAGNOSTIC #310] devis[${i}].${field} is an OBJECT!`,
-              `Type: ${typeof d[field]}`,
-              `IsArray: ${Array.isArray(d[field])}`,
-              `Value:`, d[field],
-              `Full devis:`, d
-            );
+            captureException(new Error(`[DIAGNOSTIC #310] devis[${i}].${field} is an OBJECT (${typeof d[field]}, isArray: ${Array.isArray(d[field])})`), { context: 'App.diagnosticValidation' });
           }
         });
       });
@@ -186,11 +190,7 @@ export default function App() {
       const entFields = ['nom', 'adresse', 'siret', 'tel', 'email', 'rcProValidite', 'decennaleValidite', 'couleur'];
       entFields.forEach(field => {
         if (entreprise[field] != null && typeof entreprise[field] === 'object') {
-          console.error(
-            `[DIAGNOSTIC #310] entreprise.${field} is an OBJECT!`,
-            `Type: ${typeof entreprise[field]}`,
-            `Value:`, entreprise[field]
-          );
+          captureException(new Error(`[DIAGNOSTIC #310] entreprise.${field} is an OBJECT (${typeof entreprise[field]})`), { context: 'App.diagnosticValidation' });
         }
       });
     }
@@ -272,14 +272,37 @@ export default function App() {
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
+        setSentryUser({ id: session.user.id, email: session.user.email });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setSentryUser(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         setUser(session.user);
       }
     });
 
     return () => subscription?.unsubscribe();
+  }, []);
+
+  // Hydrate subscription store when user changes
+  const hydrateSubscription = useSubscriptionStore((s) => s.hydrate);
+  useEffect(() => {
+    hydrateSubscription(supabase, user?.id, isDemo);
+  }, [user?.id, hydrateSubscription]);
+
+  // Handle post-Stripe-checkout return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === 'true') {
+      // Re-hydrate subscription to pick up the new plan
+      hydrateSubscription(supabase, user?.id, isDemo);
+      showToast('Abonnement mis à jour avec succès !', 'success');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('upgrade_cancelled') === 'true') {
+      showToast('Mise à niveau annulée', 'info');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const stats = { 
@@ -317,6 +340,25 @@ export default function App() {
     }
   };
   
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!authForm.email) { setAuthError('Entrez votre email pour recevoir le lien de réinitialisation.'); return; }
+    setAuthError('');
+    setIsSubmitting(true);
+    try {
+      const { error } = await auth.resetPassword(authForm.email);
+      if (error) { setAuthError(error.message); }
+      else {
+        showToast('Email de réinitialisation envoyé ! Vérifiez votre boîte mail.', 'success');
+        setShowForgotPassword(false);
+      }
+    } catch (e) {
+      setAuthError('Erreur lors de l\'envoi du mail.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSignOut = async () => {
     try { await auth.signOut(); } catch (e) { console.warn('Sign out error:', e.message); }
     setUser(null);
@@ -420,131 +462,195 @@ export default function App() {
   const isDark = theme === 'dark';
   const tc = getThemeClasses(isDark);
 
-  // Login Page
-  if (!user) return (
-    <div className="min-h-screen bg-slate-900 flex">
-      {/* Left - Hero */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600" />
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-32 right-20 w-96 h-96 bg-amber-300 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
-        </div>
-        <div className="relative z-10 flex flex-col justify-center p-16">
-          <div className="max-w-lg">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
-              <Building2 size={32} className="text-white" />
-            </div>
-            <h1 className="text-5xl font-bold text-white mb-4">BatiGesti</h1>
-            <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
-            <div className="space-y-6">
-              {[
-                { icon: BarChart3, text: 'Marge temps réel' },
-                { icon: Users, text: 'Gestion équipe' },
-                { icon: FileText, text: 'Devis & Factures' },
-                { icon: Calendar, text: 'Planning' }
-              ].map((f, i) => (
-                <div key={i} className="flex items-center gap-4 text-white/90">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <f.icon size={20} />
-                  </div>
-                  <span>{f.text}</span>
-                </div>
-              ))}
-            </div>
+  // Landing Page / Auth Page
+  if (!user) {
+    // Show auth form (login/signup)
+    if (showAuthForm) return (
+      <div className="min-h-screen bg-slate-900 flex">
+        {/* Left - Hero */}
+        <div className="hidden lg:flex flex-1 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600" />
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-32 right-20 w-96 h-96 bg-amber-300 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}} />
           </div>
-        </div>
-      </div>
-      
-      {/* Right - Form */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
-              <Building2 size={24} className="text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">BatiGesti</span>
-          </div>
-          
-          <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-slate-400 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
-          
-          <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
-            {showSignUp && (
-              <input
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-                placeholder="Nom entreprise"
-                value={authForm.nom}
-                onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
-                aria-label="Nom de l'entreprise"
-                autoComplete="organization"
-              />
-            )}
-            <input
-              type="email"
-              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-              placeholder="Email"
-              value={authForm.email}
-              onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
-              required
-              aria-label="Adresse email"
-              autoComplete="email"
-            />
-            <div>
-              <input
-                type="password"
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
-                placeholder="Mot de passe"
-                value={authForm.password}
-                onChange={e => setAuthForm(p => ({...p, password: e.target.value}))}
-                required
-                aria-label="Mot de passe"
-                autoComplete={showSignUp ? "new-password" : "current-password"}
-              />
-              {!showSignUp && (
-                <button
-                  type="button"
-                  onClick={() => showToast('Contactez support@batigesti.fr', 'info')}
-                  className="text-sm text-slate-400 hover:text-orange-400 mt-2 transition-colors self-end"
-                >
-                  Mot de passe oublié ?
-                </button>
-              )}
-            </div>
-            {authError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
-                {authError}
+          <div className="relative z-10 flex flex-col justify-center p-16">
+            <div className="max-w-lg">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-8">
+                <Building2 size={32} className="text-white" />
               </div>
+              <h1 className="text-5xl font-bold text-white mb-4">BatiGesti</h1>
+              <p className="text-2xl text-white/90 mb-8">Pilotez votre rentabilité</p>
+              <div className="space-y-6">
+                {[
+                  { icon: BarChart3, text: 'Marge temps réel' },
+                  { icon: Users, text: 'Gestion équipe' },
+                  { icon: FileText, text: 'Devis & Factures' },
+                  { icon: Calendar, text: 'Planning' }
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-4 text-white/90">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <f.icon size={20} />
+                    </div>
+                    <span>{f.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right - Form */}
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-md">
+            <div className="flex items-center justify-between mb-8">
+              <div className="lg:hidden flex items-center gap-3">
+                <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                  <Building2 size={24} className="text-white" />
+                </div>
+                <span className="text-2xl font-bold text-white">BatiGesti</span>
+              </div>
+              <button onClick={() => setShowAuthForm(false)} className="text-slate-400 hover:text-white text-sm">
+                ← Retour
+              </button>
+            </div>
+
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {showForgotPassword ? 'Mot de passe oublié' : showSignUp ? 'Créer un compte' : 'Connexion'}
+            </h2>
+            <p className="text-slate-400 mb-8">
+              {showForgotPassword ? 'Entrez votre email pour recevoir un lien de réinitialisation' : showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}
+            </p>
+
+            {showForgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <input
+                  type="email"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                  placeholder="Email"
+                  value={authForm.email}
+                  onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
+                  required
+                  aria-label="Adresse email"
+                  autoComplete="email"
+                />
+                {authError && (
+                  <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
+                    {authError}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Envoi...</span>
+                    </>
+                  ) : 'Envoyer le lien'}
+                </button>
+                <p className="text-center text-slate-400 mt-4">
+                  <button onClick={() => { setShowForgotPassword(false); setAuthError(''); }} className="text-orange-500 hover:text-orange-400 font-medium">
+                    ← Retour à la connexion
+                  </button>
+                </p>
+              </form>
+            ) : (
+              <>
+                <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
+                  {showSignUp && (
+                    <input
+                      className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                      placeholder="Nom entreprise"
+                      value={authForm.nom}
+                      onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
+                      aria-label="Nom de l'entreprise"
+                      autoComplete="organization"
+                    />
+                  )}
+                  <input
+                    type="email"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                    placeholder="Email"
+                    value={authForm.email}
+                    onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
+                    required
+                    aria-label="Adresse email"
+                    autoComplete="email"
+                  />
+                  <div>
+                    <input
+                      type="password"
+                      className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                      placeholder="Mot de passe"
+                      value={authForm.password}
+                      onChange={e => setAuthForm(p => ({...p, password: e.target.value}))}
+                      required
+                      aria-label="Mot de passe"
+                      autoComplete={showSignUp ? "new-password" : "current-password"}
+                    />
+                    {!showSignUp && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowForgotPassword(true); setAuthError(''); }}
+                        className="text-sm text-slate-400 hover:text-orange-400 mt-2 transition-colors"
+                      >
+                        Mot de passe oublié ?
+                      </button>
+                    )}
+                  </div>
+                  {authError && (
+                    <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
+                      {authError}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>{showSignUp ? 'Création...' : 'Connexion...'}</span>
+                      </>
+                    ) : (
+                      showSignUp ? 'Créer mon compte' : 'Se connecter'
+                    )}
+                  </button>
+                </form>
+
+                <p className="text-center text-slate-400 mt-6">
+                  {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
+                  <button onClick={() => { setShowSignUp(!showSignUp); setAuthError(''); }} className="text-orange-500 hover:text-orange-400 font-medium">
+                    {showSignUp ? 'Se connecter' : "S'inscrire"}
+                  </button>
+                </p>
+              </>
             )}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-orange-500/25 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>{showSignUp ? 'Création...' : 'Connexion...'}</span>
-                </>
-              ) : (
-                showSignUp ? 'Créer mon compte' : 'Se connecter'
-              )}
-            </button>
-          </form>
-          
-          <p className="text-center text-slate-400 mt-6">
-            {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
-            <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 hover:text-orange-400 font-medium">
-              {showSignUp ? 'Se connecter' : "S'inscrire"}
-            </button>
-          </p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+
+    // Show landing page
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
+        <LandingPage
+          onLogin={() => { setShowAuthForm(true); setShowSignUp(false); }}
+          onSignup={() => { setShowAuthForm(true); setShowSignUp(true); }}
+        />
+      </Suspense>
+    );
+  }
 
   // Calculate stats for badges
   const facturesImpayees = devis.filter(d => d.type === 'facture' && !['payee', 'brouillon'].includes(d.statut)).length;
@@ -601,6 +707,9 @@ export default function App() {
       >
         Aller au contenu principal
       </a>
+
+      {/* Trial/upgrade banner */}
+      <TrialBanner isDark={isDark} couleur={couleur} />
 
       {/* Mobile overlay */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
@@ -919,11 +1028,11 @@ export default function App() {
 
           {/* User avatar */}
           <button
-            onClick={() => setPage('settings')}
+            onClick={() => setPage('profile')}
             className={`ml-1 w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg`}
             style={{background: couleur}}
-            title={user?.email || 'Mon compte'}
-            aria-label="Mon compte"
+            title={user?.email || 'Mon profil'}
+            aria-label="Mon profil"
           >
             {user?.email?.charAt(0).toUpperCase() || 'U'}
           </button>
@@ -939,9 +1048,11 @@ export default function App() {
               {page === 'planning' && <Planning events={events} setEvents={setEvents} addEvent={addEvent} chantiers={chantiers} equipe={equipe} setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} couleur={couleur} isDark={isDark} />}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} />}
               {page === 'catalogue' && <Catalogue catalogue={catalogue} setCatalogue={setCatalogue} couleur={couleur} isDark={isDark} />}
-              {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} depenses={depenses} couleur={couleur} isDark={isDark} />}
+              {page === 'equipe' && <FeatureGuard feature="equipe" isDark={isDark} couleur={couleur}><Equipe equipe={equipe} setEquipe={setEquipe} pointages={pointages} setPointages={setPointages} chantiers={chantiers} depenses={depenses} couleur={couleur} isDark={isDark} /></FeatureGuard>}
               {page === 'admin' && <AdminHelp chantiers={chantiers} clients={clients} devis={devis} factures={devis.filter(d => d.type === 'facture')} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} couleur={couleur} />}
+              {page === 'devis-ia' && <FeatureGuard feature="devis_ia" isDark={isDark} couleur={couleur}><DevisIA isDark={isDark} couleur={couleur} showToast={showToast} user={user} isDemo={isDemo} clients={clients} catalogue={catalogue} addClient={addClient} addDevis={addDevis} entreprise={entreprise} setPage={setPage} supabase={supabase} /></FeatureGuard>}
+              {page === 'profile' && <UserProfile isDark={isDark} couleur={couleur} showToast={showToast} user={user} setPage={setPage} onLogout={handleSignOut} />}
               {page === 'design-system' && <DesignSystemDemo />}
             </Suspense>
           </ErrorBoundary>
@@ -1003,6 +1114,7 @@ export default function App() {
               setShowFABQuickClient(false);
               showToast('Client ajouté !', 'success');
             }}
+            clients={clients}
             isDark={isDark}
             couleur={couleur}
           />
