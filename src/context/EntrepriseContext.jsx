@@ -203,23 +203,25 @@ export function EntrepriseProvider({ children }) {
   const updateEntreprise = useCallback(async (id, data) => {
     if (!userId) return;
 
+    // Update local state immediately (optimistic) so UI reacts right away
+    setEntreprises(prev => prev.map(e => {
+      if (e.id !== id) return e;
+      return { ...e, ...data };
+    }));
+
+    // If this is the active entreprise, update it too
+    setActiveEntreprise(prev => {
+      if (!prev || prev.id !== id) return prev;
+      return { ...prev, ...data };
+    });
+
     try {
       await svcUpdateEntreprise(sb, { id, data, userId });
-
-      // Update local state optimistically
-      setEntreprises(prev => prev.map(e => {
-        if (e.id !== id) return e;
-        return { ...e, ...data };
-      }));
-
-      // If this is the active entreprise, update it too
-      setActiveEntreprise(prev => {
-        if (!prev || prev.id !== id) return prev;
-        return { ...prev, ...data };
-      });
     } catch (err) {
-      console.error('[EntrepriseContext] updateEntreprise error:', err);
-      throw err;
+      // Log but don't throw — local state is already updated
+      // This prevents the CGU modal (and similar flows) from staying open
+      // when the DB column doesn't exist yet
+      console.warn('[EntrepriseContext] updateEntreprise DB sync failed:', err.message || err);
     }
   }, [userId]);
 

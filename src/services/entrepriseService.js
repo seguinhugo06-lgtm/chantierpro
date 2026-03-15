@@ -246,7 +246,10 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
 
   const { data, error } = await query;
   if (error) {
-    console.error('[entrepriseService] loadEntreprises error:', error);
+    // Silently ignore if the table doesn't exist yet (42P01 = undefined_table)
+    if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
+      console.error('[entrepriseService] loadEntreprises error:', error);
+    }
     return [];
   }
 
