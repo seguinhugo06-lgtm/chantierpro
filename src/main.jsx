@@ -106,15 +106,18 @@ const paymentToken = getPaymentToken()
 const useDemoData = isDemo && shouldUseDemoData()
 const initialData = useDemoData ? DEMO_DATA : EMPTY_DATA
 
-// Log mode for debugging
-if (isDemo) {
-  console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
-  // Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
-  if (useDemoData) {
-    seedSecondaryDemoData()
+// Log mode for debugging (dev only)
+if (import.meta.env.DEV) {
+  if (isDemo) {
+    console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
+  } else {
+    console.log('🔐 Production mode - data from Supabase')
   }
-} else {
-  console.log('🔐 Production mode - data from Supabase')
+}
+
+// Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
+if (isDemo && useDemoData) {
+  seedSecondaryDemoData()
 }
 
 // Public page loading spinner

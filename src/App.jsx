@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from 'react';
 import supabase, { auth, isDemo } from './supabaseClient';
+import { captureException, setUser as setSentryUser } from './lib/sentry';
 
 // Eager load critical components
 import Dashboard from './components/Dashboard';
@@ -690,8 +691,10 @@ export default function App() {
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user);
+        setSentryUser({ id: session.user.id, email: session.user.email });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setSentryUser(null);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         setUser(session.user);
       }

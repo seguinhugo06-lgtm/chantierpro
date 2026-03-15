@@ -8,6 +8,7 @@ import { useEntreprise } from './EntrepriseContext';
 import { logAction, computeChanges } from '../lib/auditService';
 import { createSnapshot } from '../lib/snapshotService';
 import { logger } from '../lib/logger';
+import { captureException } from '../lib/sentry';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
 
@@ -26,10 +27,10 @@ const CHANTIER_TRACKED_FIELDS = ['nom', 'statut', 'adresse', 'description', 'ava
 
 // Fire-and-forget audit helper (never blocks the main action)
 const _audit = (sb, params) => {
-  logAction(sb, params).catch(err => console.error('[audit]', err));
+  logAction(sb, params).catch(err => captureException(err, { context: 'DataContext.audit' }));
 };
 const _snapshot = (sb, params) => {
-  createSnapshot(sb, params).catch(err => console.error('[snapshot]', err));
+  createSnapshot(sb, params).catch(err => captureException(err, { context: 'DataContext.snapshot' }));
 };
 
 /** Validate that a string looks like a UUID (v4 format) */
@@ -344,7 +345,7 @@ export function DataProvider({ children, initialData = {} }) {
         await saveItem(table, item, userId, orgId);
         logger.debug(`✅ Pending save flushed: ${table}/${item.id}`);
       } catch (error) {
-        console.error(`❌ Failed to flush pending save for ${table}:`, error);
+        captureException(error, { context: `DataContext.flushPendingSave.${table}` });
         await queueOffline('create', table, item);
       }
     });
@@ -404,7 +405,7 @@ export function DataProvider({ children, initialData = {} }) {
           });
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        captureException(error, { context: 'DataContext.loadData' });
       } finally {
         setDataLoading(false);
       }
@@ -440,7 +441,7 @@ export function DataProvider({ children, initialData = {} }) {
             return saved;
           }
         } catch (error) {
-          console.error('❌ addClient: Supabase save failed:', error.message);
+          captureException(error, { context: 'DataContext.addClient' });
           toast.error('Erreur de sauvegarde', error.message);
           await queueOffline('create', 'clients', newClient);
         }
@@ -475,7 +476,7 @@ export function DataProvider({ children, initialData = {} }) {
             await saveItem('clients', { ...current, ...data }, userId, orgId);
           }
         } catch (error) {
-          console.error('Error updating client in Supabase:', error);
+          captureException(error, { context: 'DataContext.updateClient' });
           await queueOffline('update', 'clients', { id, ...data });
         }
       } else {
@@ -497,7 +498,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('clients', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting client from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteClient' });
         await queueOffline('delete', 'clients', { id });
       }
     }
@@ -516,7 +517,7 @@ export function DataProvider({ children, initialData = {} }) {
     }
     // Validate client_id is a proper UUID to prevent ghost data (demo IDs like 'c1')
     if (!isDemo && data.client_id && !isValidUUID(data.client_id)) {
-      console.error('addDevis: invalid client_id (non-UUID):', data.client_id);
+      captureException(new Error(`addDevis: invalid client_id (non-UUID): ${data.client_id}`), { context: 'DataContext.addDevis.validation' });
       return null;
     }
     // Auto-generate numero if missing (Devis Express, AI, etc.)
@@ -555,7 +556,7 @@ export function DataProvider({ children, initialData = {} }) {
             return saved;
           }
         } catch (error) {
-          console.error('❌ addDevis: Supabase save failed:', error.message);
+          captureException(error, { context: 'DataContext.addDevis' });
           const msg = error.message || '';
           if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
             toast.error('Erreur de statut', `Le statut "${newDevis.statut}" n'est pas valide.`);
@@ -619,7 +620,7 @@ export function DataProvider({ children, initialData = {} }) {
             logger.debug('✅ updateDevis: saved successfully');
           }
         } catch (error) {
-          console.error('❌ updateDevis: Supabase save failed:', error.message);
+          captureException(error, { context: 'DataContext.updateDevis' });
           const msg = error.message || '';
           // Constraint violation = data issue, not network — don't queue offline
           if (msg.includes('check constraint') || msg.includes('statut_check') || msg.includes('Valeur invalide')) {
@@ -654,7 +655,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('devis', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting devis from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteDevis' });
         await queueOffline('delete', 'devis', { id });
       }
     }
@@ -700,7 +701,7 @@ export function DataProvider({ children, initialData = {} }) {
             return saved;
           }
         } catch (error) {
-          console.error('Error saving chantier to Supabase:', error);
+          captureException(error, { context: 'DataContext.addChantier' });
           await queueOffline('create', 'chantiers', newChantier);
         }
       } else {
@@ -736,7 +737,7 @@ export function DataProvider({ children, initialData = {} }) {
             logger.debug('✅ updateChantier: saved successfully');
           }
         } catch (error) {
-          console.error('❌ updateChantier: Supabase save failed:', error.message);
+          captureException(error, { context: 'DataContext.updateChantier' });
           toast.error('Erreur sauvegarde chantier', error.message);
           await queueOffline('update', 'chantiers', { id, ...data });
         }
@@ -759,7 +760,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('chantiers', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting chantier from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteChantier' });
         await queueOffline('delete', 'chantiers', { id });
       }
     }
@@ -787,7 +788,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving depense to Supabase:', error);
+        captureException(error, { context: 'DataContext.addDepense' });
         await queueOffline('create', 'depenses', newDepense);
       }
     }
@@ -807,7 +808,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('depenses', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating depense in Supabase:', error);
+        captureException(error, { context: 'DataContext.updateDepense' });
         await queueOffline('update', 'depenses', { id, ...data });
       }
     }
@@ -820,7 +821,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('depenses', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting depense from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteDepense' });
         await queueOffline('delete', 'depenses', { id });
       }
     }
@@ -849,7 +850,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving pointage to Supabase:', error);
+        captureException(error, { context: 'DataContext.addPointage' });
         await queueOffline('create', 'pointages', newPointage);
       }
     }
@@ -869,7 +870,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('pointages', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating pointage in Supabase:', error);
+        captureException(error, { context: 'DataContext.updatePointage' });
         await queueOffline('update', 'pointages', { id, ...data });
       }
     }
@@ -882,7 +883,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('pointages', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting pointage from Supabase:', error);
+        captureException(error, { context: 'DataContext.deletePointage' });
         await queueOffline('delete', 'pointages', { id });
       }
     }
@@ -909,7 +910,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving ajustement to Supabase:', error);
+        captureException(error, { context: 'DataContext.addAjustement' });
         await queueOffline('create', 'ajustements', newAjustement);
       }
     }
@@ -923,7 +924,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('ajustements', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting ajustement from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteAjustement' });
         await queueOffline('delete', 'ajustements', { id });
       }
     }
@@ -951,7 +952,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving employee to Supabase:', error);
+        captureException(error, { context: 'DataContext.addEmployee' });
         await queueOffline('create', 'equipe', newEmployee);
       }
     }
@@ -971,7 +972,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('equipe', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating employee in Supabase:', error);
+        captureException(error, { context: 'DataContext.updateEmployee' });
         await queueOffline('update', 'equipe', { id, ...data });
       }
     }
@@ -984,7 +985,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('equipe', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting employee from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteEmployee' });
         await queueOffline('delete', 'equipe', { id });
       }
     }
@@ -1010,7 +1011,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving catalogue item to Supabase:', error);
+        captureException(error, { context: 'DataContext.addCatalogueItem' });
         await queueOffline('create', 'catalogue', newItem);
       }
     }
@@ -1030,7 +1031,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('catalogue', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating catalogue item in Supabase:', error);
+        captureException(error, { context: 'DataContext.updateCatalogueItem' });
         await queueOffline('update', 'catalogue', { id, ...data });
       }
     }
@@ -1043,7 +1044,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('catalogue', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting catalogue item from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteCatalogueItem' });
         await queueOffline('delete', 'catalogue', { id });
       }
     }
@@ -1072,7 +1073,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving paiement to Supabase:', error);
+        captureException(error, { context: 'DataContext.addPaiement' });
         await queueOffline('create', 'paiements', newPaiement);
       }
     }
@@ -1100,7 +1101,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving echange to Supabase:', error);
+        captureException(error, { context: 'DataContext.addEchange' });
         await queueOffline('create', 'echanges', newEchange);
       }
     }
@@ -1120,7 +1121,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await saveItem('events', newEvent, userId, orgId);
       } catch (error) {
-        console.error('Error saving planning event to Supabase:', error);
+        captureException(error, { context: 'DataContext.addPlanningEvent' });
         await queueOffline('create', 'events', newEvent);
       }
     }
@@ -1135,7 +1136,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await saveItem('events', updated, userId, orgId);
       } catch (error) {
-        console.error('Error updating planning event:', error);
+        captureException(error, { context: 'DataContext.updatePlanningEvent' });
         await queueOffline('update', 'events', updated);
       }
     }
@@ -1148,7 +1149,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('events', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting planning event:', error);
+        captureException(error, { context: 'DataContext.deletePlanningEvent' });
         await queueOffline('delete', 'events', { id });
       }
     }
@@ -1171,7 +1172,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving ouvrage to Supabase:', error);
+        captureException(error, { context: 'DataContext.addOuvrage' });
         await queueOffline('create', 'ouvrages', newOuvrage);
       }
     }
@@ -1190,7 +1191,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('ouvrages', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating ouvrage in Supabase:', error);
+        captureException(error, { context: 'DataContext.updateOuvrage' });
         await queueOffline('update', 'ouvrages', { id, ...data });
       }
     }
@@ -1203,7 +1204,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('ouvrages', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting ouvrage from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteOuvrage' });
         await queueOffline('delete', 'ouvrages', { id });
       }
     }
@@ -1241,7 +1242,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving memo to Supabase:', error);
+        captureException(error, { context: 'DataContext.addMemo' });
         await queueOffline('create', 'memos', newMemo);
       }
     }
@@ -1260,7 +1261,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('memos', { ...current, ...updates }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating memo in Supabase:', error);
+        captureException(error, { context: 'DataContext.updateMemo' });
         await queueOffline('update', 'memos', { id, ...updates });
       }
     }
@@ -1273,7 +1274,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('memos', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting memo from Supabase:', error);
+        captureException(error, { context: 'DataContext.deleteMemo' });
         await queueOffline('delete', 'memos', { id });
       }
     }
@@ -1297,7 +1298,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await saveItem('memos', { ...memo, ...updates }, userId, orgId);
       } catch (error) {
-        console.error('Error toggling memo in Supabase:', error);
+        captureException(error, { context: 'DataContext.toggleMemo' });
         await queueOffline('update', 'memos', { id, ...updates });
       }
     }
@@ -1324,7 +1325,7 @@ export function DataProvider({ children, initialData = {} }) {
           return saved;
         }
       } catch (error) {
-        console.error('Error saving template:', error);
+        captureException(error, { context: 'DataContext.addTemplate' });
         await queueOffline('create', 'devis_templates', newTemplate);
       }
     }
@@ -1349,7 +1350,7 @@ export function DataProvider({ children, initialData = {} }) {
           await saveItem('devis_templates', { ...current, ...data }, userId, orgId);
         }
       } catch (error) {
-        console.error('Error updating template:', error);
+        captureException(error, { context: 'DataContext.updateTemplate' });
         await queueOffline('update', 'devis_templates', { id, ...data });
       }
     }
@@ -1362,7 +1363,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await deleteItem('devis_templates', id, userId, orgId);
       } catch (error) {
-        console.error('Error deleting template:', error);
+        captureException(error, { context: 'DataContext.deleteTemplate' });
         await queueOffline('delete', 'devis_templates', { id });
       }
     }
@@ -1403,7 +1404,7 @@ export function DataProvider({ children, initialData = {} }) {
       try {
         await saveItem('template_usages', usage, userId, orgId);
       } catch (error) {
-        console.error('Error tracking template usage:', error);
+        captureException(error, { context: 'DataContext.trackTemplateUsage' });
       }
     }
   }, [userId, orgId, customTemplates, updateTemplate]);
