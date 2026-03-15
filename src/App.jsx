@@ -1234,11 +1234,14 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted
-  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt;
+  const [cguJustAccepted, setCguJustAccepted] = useState(false);
+  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt && !cguJustAccepted;
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
+    // Immediately dismiss modal (optimistic)
+    setCguJustAccepted(true);
     // Update via context (persists to entreprises table)
     setEntreprise(prev => ({ ...prev, ...cguData }));
     // Also sync to legacy entreprise table for backward compat
