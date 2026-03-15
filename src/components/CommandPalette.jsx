@@ -7,7 +7,7 @@ import {
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
   Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
   UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
-  RotateCcw, CreditCard
+  RotateCcw, CreditCard, Bell
 } from 'lucide-react';
 
 /**
