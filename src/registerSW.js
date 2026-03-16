@@ -32,7 +32,7 @@ export function initServiceWorker(options = {}) {
   let needRefresh = false;
 
   if (!isSupported) {
-    console.log('Service Worker not supported');
+    if (import.meta.env.DEV) console.log('Service Worker not supported');
     return { updateSW: () => Promise.resolve(), offlineReady: false, needRefresh: false };
   }
 
@@ -42,21 +42,30 @@ export function initServiceWorker(options = {}) {
       onNeedRefresh() {
         needRefresh = true;
         onNeedRefresh(true);
-        console.log('[SW] New content available, refresh needed');
+        if (import.meta.env.DEV) console.log('[SW] New content available, refresh needed');
       },
       onOfflineReady() {
         offlineReady = true;
         onOfflineReady();
-        console.log('[SW] App ready to work offline');
+        if (import.meta.env.DEV) console.log('[SW] App ready to work offline');
       },
       onRegistered(registration) {
-        console.log('[SW] Registered:', registration?.scope);
+        if (import.meta.env.DEV) {
+          console.log('[SW] Registered:', registration?.scope);
+        }
 
-        // Check for updates every hour
         if (registration) {
+          // Check for updates every 15 minutes
           setInterval(() => {
             registration.update();
-          }, 60 * 60 * 1000);
+          }, 15 * 60 * 1000);
+
+          // Also check for updates when user returns to the app
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+              registration.update();
+            }
+          });
         }
       },
       onRegisterError(error) {

@@ -1658,6 +1658,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           </div>
         </div>
       )}
+
+      {/* Version info */}
+      <div className={`mt-8 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} text-center`}>
+        <p className={`text-xs ${textMuted}`}>
+          BatiGesti v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}
+        </p>
+      </div>
     </div>
   );
 }

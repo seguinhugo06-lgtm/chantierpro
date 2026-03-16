@@ -4,6 +4,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')),
+    __BUILD_TIME__: JSON.stringify(Date.now()),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -63,7 +67,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/offline.html',
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/auth/],
         runtimeCaching: [
           {

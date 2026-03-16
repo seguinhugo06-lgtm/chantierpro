@@ -48,7 +48,9 @@ export function usePWA(syncHandlers = {}) {
     const sw = initServiceWorker({
       onNeedRefresh: (needs) => setNeedsRefresh(needs),
       onOfflineReady: () => setOfflineReady(true),
-      onRegisterError: (error) => console.error('SW Error:', error),
+      onRegisterError: (error) => {
+        if (import.meta.env.DEV) console.error('SW Error:', error);
+      },
     });
 
     updateSWRef.current = sw.updateSW;
@@ -66,8 +68,22 @@ export function usePWA(syncHandlers = {}) {
     };
     window.addEventListener('appinstalled', handleInstalled);
 
+    // Auto-reload when a new service worker takes control (skipWaiting + clientsClaim)
+    let refreshing = false;
+    const handleControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    }
+
     return () => {
       window.removeEventListener('appinstalled', handleInstalled);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
     };
   }, []);
 
