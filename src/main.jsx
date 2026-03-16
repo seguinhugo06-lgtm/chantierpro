@@ -21,6 +21,8 @@ const CGV = lazy(() => import('./components/legal/CGV'))
 const MentionsLegales = lazy(() => import('./components/legal/MentionsLegales'))
 const PolitiqueConfidentialite = lazy(() => import('./components/legal/PolitiqueConfidentialite'))
 const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage'))
+const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
+const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
 
 // Check if this is a portal URL
 function getPortalToken() {
@@ -61,6 +63,17 @@ function isResetPasswordPage() {
   return window.location.pathname === '/reset-password'
 }
 
+// Check if this is a marketing page
+const MARKETING_PAGES = {
+  '/fonctionnalites': 'fonctionnalites',
+  '/ressources': 'ressources',
+}
+
+function getMarketingPage() {
+  const path = window.location.pathname.toLowerCase()
+  return MARKETING_PAGES[path] || null
+}
+
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
 function shouldUseDemoData() {
   const params = new URLSearchParams(window.location.search)
@@ -71,6 +84,7 @@ const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
 const paymentToken = getPaymentToken()
 const legalPage = getLegalPage()
+const marketingPage = getMarketingPage()
 const isResetPw = isResetPasswordPage()
 
 // Determine initial data:
@@ -125,6 +139,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : legalPage ? (
       <Suspense fallback={<LoadingSpinner />}>
         <LegalPageRenderer page={legalPage} />
+      </Suspense>
+    ) : marketingPage === 'fonctionnalites' ? (
+      <Suspense fallback={<LoadingSpinner />}>
+        <FeaturesDetailPage />
+      </Suspense>
+    ) : marketingPage === 'ressources' ? (
+      <Suspense fallback={<LoadingSpinner />}>
+        <ResourcesPage />
       </Suspense>
     ) : isResetPw ? (
       <Suspense fallback={<LoadingSpinner />}>

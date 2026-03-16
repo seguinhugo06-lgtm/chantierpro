@@ -217,7 +217,7 @@ export default function useSmartClocking({
 
       return coords;
     } catch (error) {
-      console.error('Failed to get position:', error);
+      if (import.meta.env.DEV) console.error('Failed to get position:', error);
       return null;
     }
   }, [chantiers]);

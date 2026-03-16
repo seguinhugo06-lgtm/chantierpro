@@ -336,7 +336,7 @@ export async function suggestReorder(productId, userId) {
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     const { data: movements, error: movementsError } = await supabase
-      .from('stock_movements')
+      .from('stock_mouvements')
       .select('quantite, type, created_at')
       .eq('catalogue_id', productId)
       .eq('type', 'sortie')
@@ -344,7 +344,7 @@ export async function suggestReorder(productId, userId) {
 
     if (movementsError) {
       // Table might not exist, estimate from devis
-      if (import.meta.env.DEV) console.warn('[StockAlerts] stock_movements table not found, estimating from devis');
+      if (import.meta.env.DEV) console.warn('[StockAlerts] stock_mouvements table not found, estimating from devis');
     }
 
     // Calculate average monthly consumption

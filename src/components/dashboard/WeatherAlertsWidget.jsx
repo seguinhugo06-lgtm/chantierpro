@@ -246,7 +246,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       );
       setAlerts(filteredAlerts);
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error fetching alerts:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error fetching alerts:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -282,7 +282,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
         onRefreshCalendar();
       }
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error rescheduling:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error rescheduling:', err);
       setError(`Erreur lors du report: ${err.message}`);
     } finally {
       setActionLoading(false);
@@ -309,7 +309,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       // Remove from list
       setAlerts((prev) => prev.filter((a) => a.chantier.id !== alert.chantier.id));
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error notifying:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error notifying:', err);
     } finally {
       setActionLoading(false);
     }
@@ -462,7 +462,7 @@ export function WeatherAlertsBadge({ userId, onClick }) {
         setCount(significant.length);
         setCriticalCount(alerts.filter((a) => a.impact?.level === 'critical').length);
       } catch (err) {
-        console.error('WeatherAlertsBadge: Error:', err);
+        if (import.meta.env.DEV) console.error('WeatherAlertsBadge: Error:', err);
       }
     };
 

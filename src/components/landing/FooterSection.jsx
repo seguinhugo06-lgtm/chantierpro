@@ -1,70 +1,112 @@
+/**
+ * FooterSection — Expanded 4-column footer with product, resources, legal, and contact links.
+ */
+
 import React from 'react';
 import { Building2 } from 'lucide-react';
 
-const LEGAL_LINKS = [
-  { label: 'Mentions légales', href: '/mentions-legales' },
-  { label: 'CGU', href: '/cgu' },
-  { label: 'CGV', href: '/cgv' },
-  { label: 'Confidentialité', href: '/confidentialite' },
+const COLUMNS = [
+  {
+    title: 'Produit',
+    links: [
+      { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites' },
+      { label: 'Tarifs', href: '#pricing' },
+      { label: 'Devis IA', href: '#features' },
+      { label: 'Conformit\u00e9 2026', href: '#features' },
+    ],
+  },
+  {
+    title: 'Ressources',
+    links: [
+      { label: 'Ressources', href: '/ressources' },
+      { label: 'T\u00e9moignages', href: '#testimonials' },
+      { label: 'FAQ', href: '#faq' },
+      { label: 'Blog', href: '#', disabled: true },
+    ],
+  },
+  {
+    title: 'L\u00e9gal',
+    links: [
+      { label: 'Mentions l\u00e9gales', href: '/mentions-legales' },
+      { label: 'CGU', href: '/cgu' },
+      { label: 'CGV', href: '/cgv' },
+      { label: 'Confidentialit\u00e9', href: '/confidentialite' },
+    ],
+  },
 ];
 
 export default function FooterSection() {
   const year = new Date().getFullYear();
 
+  const handleNavClick = (e, href) => {
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const el = document.querySelector(href);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
-    <footer className="bg-slate-900 text-slate-400 py-12 sm:py-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-8">
-          {/* Logo & tagline */}
-          <div className="text-center sm:text-left">
-            <div className="flex items-center gap-2 justify-center sm:justify-start mb-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <Building2 size={14} className="text-white" />
+    <footer className="bg-slate-900 text-slate-400">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-12">
+          {/* Brand */}
+          <div className="col-span-2 sm:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                <Building2 size={16} className="text-white" />
               </div>
-              <span className="text-white font-bold">BatiGesti</span>
+              <span className="text-white font-bold text-lg">BatiGesti</span>
             </div>
-            <p className="text-sm max-w-xs">
-              L'outil de gestion tout-en-un pour les artisans et entreprises du bâtiment.
+            <p className="text-sm leading-relaxed mb-4 max-w-xs">
+              L'outil de gestion tout-en-un pour les artisans et entreprises du b&acirc;timent.
             </p>
+            <a
+              href="mailto:contact@batigesti.fr"
+              className="text-sm text-orange-400 hover:text-orange-300 transition-colors"
+            >
+              contact@batigesti.fr
+            </a>
           </div>
 
-          {/* Legal links */}
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 text-center sm:text-left">
-              Légal
-            </p>
-            <ul className="space-y-2 text-center sm:text-left">
-              {LEGAL_LINKS.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className="text-sm hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div className="text-center sm:text-left">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Contact
-            </p>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a href="mailto:contact@batigesti.fr" className="hover:text-white transition-colors">
-                  contact@batigesti.fr
-                </a>
-              </li>
-            </ul>
-          </div>
+          {/* Link columns */}
+          {COLUMNS.map((col) => (
+            <div key={col.title}>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
+                {col.title}
+              </p>
+              <ul className="space-y-2.5">
+                {col.links.map((link) => (
+                  <li key={link.label}>
+                    {link.disabled ? (
+                      <span className="text-sm text-slate-600 cursor-default">
+                        {link.label}
+                        <span className="ml-1 text-[10px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded">Bient&ocirc;t</span>
+                      </span>
+                    ) : (
+                      <a
+                        href={link.href}
+                        onClick={(e) => handleNavClick(e, link.href)}
+                        className="text-sm hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         {/* Bottom */}
-        <div className="mt-10 pt-6 border-t border-slate-800 text-center text-xs">
-          <p>&copy; {year} BatiGesti. Tous droits réservés. Fait avec soin en France.</p>
+        <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-center sm:text-left">
+            &copy; {year} BatiGesti. Tous droits r&eacute;serv&eacute;s.
+          </p>
+          <p className="text-xs text-slate-600">
+            Fait avec soin en France
+          </p>
         </div>
       </div>
     </footer>

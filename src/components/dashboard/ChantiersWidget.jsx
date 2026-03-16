@@ -253,7 +253,7 @@ async function fetchWeatherForCity(city, date) {
     }
     return weather;
   } catch (error) {
-    console.warn('Weather fetch failed:', error);
+    if (import.meta.env.DEV) console.warn('Weather fetch failed:', error);
     return null;
   }
 }

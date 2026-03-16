@@ -119,7 +119,7 @@ export async function compressImage(file, options = {}) {
  */
 export async function getGeolocation(timeout = 10000) {
   if (!navigator.geolocation) {
-    console.warn('Geolocation not supported');
+    if (import.meta.env.DEV) console.warn('Geolocation not supported');
     return null;
   }
 
@@ -132,7 +132,7 @@ export async function getGeolocation(timeout = 10000) {
         });
       },
       (error) => {
-        console.warn('Geolocation error:', error.message);
+        if (import.meta.env.DEV) console.warn('Geolocation error:', error.message);
         resolve(null);
       },
       {

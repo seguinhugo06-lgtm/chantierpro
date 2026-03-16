@@ -572,13 +572,13 @@ export async function generateSuggestions(userId, data = {}) {
   try {
     allSuggestions.push(...ruleWeatherAlert(data));
   } catch (e) {
-    console.warn('Rule weather_alert failed:', e);
+    if (import.meta.env.DEV) console.warn('Rule weather_alert failed:', e);
   }
 
   try {
     allSuggestions.push(...rulePaymentLate(data));
   } catch (e) {
-    console.warn('Rule payment_late failed:', e);
+    if (import.meta.env.DEV) console.warn('Rule payment_late failed:', e);
   }
 
   // Sort by priority (high > medium > low) then by creation date

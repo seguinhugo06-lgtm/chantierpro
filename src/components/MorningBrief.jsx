@@ -55,7 +55,7 @@ export default function MorningBrief({
           setWeatherLoading(false);
         }
       } catch (error) {
-        console.error('Weather fetch error:', error);
+        if (import.meta.env.DEV) console.error('Weather fetch error:', error);
         if (isMounted) {
           setWeatherError('Impossible de charger la meteo');
           setWeatherLoading(false);
