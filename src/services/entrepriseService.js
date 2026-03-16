@@ -240,7 +240,7 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
   }
 
   let query = supabase
-    .from('entreprises')
+    .from('entreprise')
     .select('*')
     .is('archived_at', null)
     .order('ordre', { ascending: true })
@@ -273,7 +273,7 @@ export async function getActiveEntreprise(supabase, { userId, orgId } = {}) {
   }
 
   let query = supabase
-    .from('entreprises')
+    .from('entreprise')
     .select('*')
     .eq('is_active', true)
     .is('archived_at', null);
@@ -349,7 +349,7 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
   };
 
   const { data: created, error } = await supabase
-    .from('entreprises')
+    .from('entreprise')
     .insert(row)
     .select()
     .single();
@@ -387,7 +387,7 @@ export async function updateEntreprise(supabase, { id, data, userId } = {}) {
   }
 
   const { error } = await supabase
-    .from('entreprises')
+    .from('entreprise')
     .update(dbUpdates)
     .eq('id', id)
     .eq('user_id', userId);
@@ -437,7 +437,7 @@ export async function archiveEntreprise(supabase, { id, userId, orgId } = {}) {
   const target = existing.find(e => e.id === id);
 
   const { error } = await supabase
-    .from('entreprises')
+    .from('entreprise')
     .update({ archived_at: new Date().toISOString(), is_active: false })
     .eq('id', id)
     .eq('user_id', userId);
@@ -471,7 +471,7 @@ export async function setActiveEntreprise(supabase, { id, userId, orgId } = {}) 
 
   // Deactivate all for this user/org
   let deactivateQuery = supabase
-    .from('entreprises')
+    .from('entreprise')
     .update({ is_active: false });
 
   if (orgId && orgId !== 'demo-org-id') {
@@ -484,7 +484,7 @@ export async function setActiveEntreprise(supabase, { id, userId, orgId } = {}) 
 
   // Activate the selected one
   const { error } = await supabase
-    .from('entreprises')
+    .from('entreprise')
     .update({ is_active: true })
     .eq('id', id)
     .eq('user_id', userId);
@@ -709,7 +709,7 @@ async function _initCountersFromExisting(supabase, entrepriseId, userId) {
 
     if (maxDevis > 0 || maxFacture > 0 || maxAvoir > 0) {
       await supabase
-        .from('entreprises')
+        .from('entreprise')
         .update({
           compteur_devis: maxDevis,
           compteur_facture: maxFacture,
