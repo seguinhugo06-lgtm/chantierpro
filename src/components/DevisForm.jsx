@@ -213,8 +213,8 @@ const DevisForm = memo(({
       </div>
 
       {devisForm.lignes.length > 0 && (
-        <div>
-          <table style={styles.table}>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <table style={{ ...styles.table, minWidth: '480px' }}>
             <thead style={styles.tableHead}>
               <tr>
                 <th style={styles.th}>Description</th>

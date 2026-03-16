@@ -18,9 +18,9 @@ const variantStyles = {
 };
 
 const sizeStyles = {
-  sm: 'h-8 px-3 text-sm gap-1.5 rounded-md',
-  md: 'h-10 px-4 text-sm gap-2 rounded-lg',
-  lg: 'h-12 px-6 text-base gap-2.5 rounded-lg',
+  sm: 'min-h-[36px] sm:min-h-[32px] px-3 text-sm gap-1.5 rounded-md',
+  md: 'min-h-[44px] sm:min-h-[40px] px-4 text-sm gap-2 rounded-lg',
+  lg: 'min-h-[48px] sm:min-h-[48px] px-6 text-base gap-2.5 rounded-lg',
 };
 
 const iconSizes = {
@@ -82,9 +82,9 @@ Button.displayName = 'Button';
 
 // ============ ICON BUTTON ============
 const iconButtonSizes = {
-  sm: 'h-8 w-8',
-  md: 'h-10 w-10',
-  lg: 'h-12 w-12',
+  sm: 'min-h-[36px] min-w-[36px] sm:min-h-[32px] sm:min-w-[32px]',
+  md: 'min-h-[44px] min-w-[44px] sm:min-h-[40px] sm:min-w-[40px]',
+  lg: 'min-h-[48px] min-w-[48px]',
 };
 
 export const IconButton = React.forwardRef(

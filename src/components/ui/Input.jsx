@@ -144,9 +144,9 @@ const Input = forwardRef(({
 
   // Style classes
   const baseClasses = cn(
-    'w-full h-10 px-3',
+    'w-full min-h-[44px] sm:min-h-[40px] px-3',
     'border rounded-lg',
-    'text-sm',
+    'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',
@@ -397,9 +397,9 @@ export const Textarea = forwardRef(({
   const describedBy = describedByParts.length > 0 ? describedByParts.join(' ') : undefined;
 
   const baseClasses = cn(
-    'w-full px-3 py-2.5',
+    'w-full px-3 py-3 sm:py-2.5',
     'border rounded-lg',
-    'text-sm',
+    'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',
@@ -540,9 +540,9 @@ export const Select = forwardRef(({
   const describedBy = describedByParts.length > 0 ? describedByParts.join(' ') : undefined;
 
   const baseClasses = cn(
-    'w-full h-10 px-3 pr-10',
+    'w-full min-h-[44px] sm:min-h-[40px] px-3 pr-10',
     'border rounded-lg',
-    'text-sm',
+    'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',

@@ -127,8 +127,8 @@ export default function Header({
     <header
       className={cn(
         'sticky top-0 z-sticky',
-        'h-16 px-4 md:px-6',
-        'flex items-center justify-between gap-4',
+        'h-14 sm:h-16 px-3 sm:px-4 md:px-6',
+        'flex items-center justify-between gap-2 sm:gap-4',
         'border-b shadow-sm',
         isDark
           ? 'bg-slate-900 border-slate-700'
@@ -141,7 +141,7 @@ export default function Header({
         <button
           onClick={onToggleSidebar}
           className={cn(
-            'lg:hidden p-2 rounded-lg transition-colors',
+            'lg:hidden p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
             isDark ? 'hover:bg-slate-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
           )}
           aria-label="Ouvrir le menu"
@@ -207,7 +207,7 @@ export default function Header({
       <button
         onClick={handleSearchClick}
         className={cn(
-          'md:hidden p-2.5 rounded-lg transition-colors',
+          'md:hidden p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
           isDark ? 'hover:bg-slate-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
         )}
         aria-label="Rechercher"
@@ -221,7 +221,7 @@ export default function Header({
         <button
           onClick={onToggleTheme}
           className={cn(
-            'hidden sm:flex p-2.5 rounded-lg transition-colors',
+            'hidden sm:flex p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] items-center justify-center',
             isDark ? 'hover:bg-slate-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
           )}
           aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
@@ -234,7 +234,7 @@ export default function Header({
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className={cn(
-              'relative p-2.5 rounded-lg transition-colors',
+              'relative p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
               isDark ? 'hover:bg-slate-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600',
               showNotifications && (isDark ? 'bg-slate-800' : 'bg-gray-100')
             )}

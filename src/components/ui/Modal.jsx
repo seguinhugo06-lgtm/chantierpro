@@ -230,12 +230,19 @@ function Modal({
           cardBg,
           'rounded-2xl shadow-2xl',
           'flex flex-col',
-          'max-h-[90vh]',
+          'max-h-[85vh] sm:max-h-[90vh]',
           'modal-enter',
-          bottomSheet && 'rounded-t-3xl sm:rounded-2xl',
+          bottomSheet && 'rounded-t-3xl sm:rounded-2xl max-h-[92vh] sm:max-h-[90vh]',
           className
         )}
       >
+        {/* Bottom-sheet drag handle on mobile */}
+        {bottomSheet && (
+          <div className="sm:hidden flex justify-center pt-2 pb-1">
+            <div className={cn('w-10 h-1 rounded-full', isDark ? 'bg-slate-600' : 'bg-gray-300')} />
+          </div>
+        )}
+
         <ModalContext.Provider value={{ titleId, descId, onClose, isDark, showClose }}>
           {isLegacyMode ? (
             // Legacy mode: render with title/footer props
@@ -300,6 +307,16 @@ function Modal({
             transform: translateY(0) scale(1);
           }
         }
+        @keyframes modal-slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
         @keyframes modal-exit {
           from {
             opacity: 1;
@@ -315,6 +332,11 @@ function Modal({
         }
         .modal-enter {
           animation: modal-enter 0.2s ease-out forwards;
+        }
+        @media (max-width: 639px) {
+          .modal-enter {
+            animation: modal-slide-up 0.3s ease-out forwards;
+          }
         }
         .modal-exit {
           animation: modal-exit 0.15s ease-in forwards;

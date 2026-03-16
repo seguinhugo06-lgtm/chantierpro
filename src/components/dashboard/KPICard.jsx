@@ -61,7 +61,7 @@ function CardPeriodSelector({ value, onChange, isDark }) {
               onChange(period.key);
             }}
             className={cn(
-              'px-2 py-1 rounded-md text-[10px] font-semibold transition-all duration-200',
+              'px-2.5 py-1.5 sm:px-2 sm:py-1 rounded-md text-xs sm:text-[10px] font-semibold transition-all duration-200',
               isSelected
                 ? isDark
                   ? 'bg-slate-600 text-white shadow-sm'

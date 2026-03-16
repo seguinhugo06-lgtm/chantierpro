@@ -1537,7 +1537,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[480px]">
                     <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
                       <tr>
                         <th className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>

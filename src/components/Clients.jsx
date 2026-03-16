@@ -217,7 +217,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
         </div>
 
         {/* Onglets Historique */}
-        <div className={`flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className={`flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto scrollbar-none ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
             ['chantiers', <Home size={14} />, 'Chantiers'],
             ['documents', <FileText size={14} />, 'Documents'],
@@ -554,7 +554,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
               <button
                 key={opt.key}
                 onClick={() => setSortBy(opt.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`px-3 py-2 sm:py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors min-h-[36px] ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                 style={sortBy === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}
@@ -677,10 +677,10 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                       <Smartphone size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
                       <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
+                        <button onClick={() => callPhone(c.telephone)} className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
                           <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
                           <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
@@ -696,7 +696,7 @@ export default function Clients({ clients, setClients, updateClient, devis, chan
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <MapPin size={14} className={textMuted} />
                       <span className={`text-sm ${textSecondary} flex-1 truncate`}>{c.adresse}</span>
-                      <button onClick={() => openGPS(c.adresse)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
+                      <button onClick={() => openGPS(c.adresse)} className={`w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
                         <ExternalLink size={16} className="text-purple-500" />
                       </button>
                     </div>

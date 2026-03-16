@@ -1564,27 +1564,41 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 {client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}
               </div>
 
-              {/* Line items */}
-              <table className="w-full mb-6 text-sm">
-                <thead>
-                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                    <th className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
-                    <th className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
-                    <th className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
-                    <th className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(selected.lignes || []).filter(l => l.description || l.quantite || l.prixUnitaire).map((l, i) => (
-                    <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                      <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
-                      <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
-                      <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
-                      <td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+              {/* Line items — desktop table */}
+              <div className="hidden sm:block mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                      <th className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
+                      <th className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
+                      <th className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                      <th className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(selected.lignes || []).filter(l => l.description || l.quantite || l.prixUnitaire).map((l, i) => (
+                      <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                        <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
+                        <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                        <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
+                        <td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Line items — mobile card view */}
+              <div className="sm:hidden mb-6 space-y-3">
+                {(selected.lignes || []).filter(l => l.description || l.quantite || l.prixUnitaire).map((l, i) => (
+                  <div key={i} className={`p-3 rounded-xl border ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50'}`}>
+                    <p className={`font-medium text-sm mb-2 ${textPrimary}`}>{l.description}</p>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className={textSecondary}>{l.quantite} {l.unite} × {(l.prixUnitaire || 0).toFixed(2)}€</span>
+                      <span className={`font-semibold ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Totals */}
               <div className="flex justify-end">
