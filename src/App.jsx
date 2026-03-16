@@ -173,6 +173,7 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
+  const [cguAcceptedLocal, setCguAcceptedLocal] = useState(false); // LEGAL-001: local bypass for CGU modal
   // Multi-entreprise context
   const {
     activeEntreprise,
@@ -1231,7 +1232,6 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted
-  const [cguAcceptedLocal, setCguAcceptedLocal] = useState(false);
   const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt && !cguAcceptedLocal;
 
   const handleCguAccept = async (version) => {
