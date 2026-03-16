@@ -83,6 +83,10 @@ export function fromSupabase(row) {
     compteurAvoir: row.compteur_avoir ?? 0,
     formatNumero: row.format_numero || '{PREFIX}-{YEAR}-{NUMBER:5}',
 
+    // CGU acceptance (LEGAL-001)
+    cguAcceptedAt: row.cgu_accepted_at || null,
+    cguVersion: row.cgu_version || null,
+
     // Status
     isActive: row.is_active ?? false,
     isDefault: row.is_default ?? false,
@@ -165,6 +169,10 @@ export function toSupabase(data) {
   if (data.prefixeFacture !== undefined) result.prefixe_facture = data.prefixeFacture;
   if (data.prefixeAvoir !== undefined) result.prefixe_avoir = data.prefixeAvoir;
   if (data.formatNumero !== undefined) result.format_numero = data.formatNumero;
+
+  // CGU acceptance (LEGAL-001)
+  if (data.cguAcceptedAt !== undefined) result.cgu_accepted_at = data.cguAcceptedAt;
+  if (data.cguVersion !== undefined) result.cgu_version = data.cguVersion;
 
   // Statut
   if (data.isActive !== undefined) result.is_active = data.isActive;

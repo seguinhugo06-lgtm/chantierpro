@@ -1227,24 +1227,16 @@ export default function App() {
   const couleur = entreprise.couleur || '#f97316';
   const unreadNotifs = notifications.filter(n => !n.read);
 
-  // LEGAL-001: CGU acceptance check — block app until accepted
-  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt;
+  // LEGAL-001: CGU acceptance check — block app until accepted or when version changes
+  const needsCguAcceptance = !isDemo && user && (
+    !entreprise.cguAcceptedAt || entreprise.cguVersion !== CGU_VERSION
+  );
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Update via context (persists to entreprises table)
+    // Persist to entreprises table via context (toSupabase maps cguAcceptedAt → cgu_accepted_at)
     setEntreprise(prev => ({ ...prev, ...cguData }));
-    // Also sync to legacy entreprise table for backward compat
-    if (supabase && user?.id) {
-      try {
-        const updated = { ...entreprise, ...cguData };
-        const upsertData = { user_id: user.id, settings_json: updated };
-        if (orgId && orgId !== 'demo-org-id') upsertData.organization_id = orgId;
-        await supabase.from('entreprise')
-          .upsert(upsertData, { onConflict: 'user_id' });
-      } catch (e) { console.warn('CGU acceptance Supabase sync failed:', e.message); }
-    }
   };
 
   return (
