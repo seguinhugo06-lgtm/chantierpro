@@ -41,7 +41,7 @@ export default function FABMenu({
       )}
 
       {/* FAB Container - responsive positioning */}
-      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
+      <div className="fixed bottom-20 right-4 lg:bottom-6 sm:right-6 z-50 flex flex-col-reverse items-end gap-2 sm:gap-3">
         {/* Action buttons */}
         {isOpen && actions.map((action, i) => (
           <button

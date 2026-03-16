@@ -59,6 +59,9 @@ export default {
           900: '#7f1d1d',
         },
       },
+      screens: {
+        'xs': '400px',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'monospace'],

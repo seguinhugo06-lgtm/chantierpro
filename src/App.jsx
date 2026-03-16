@@ -31,7 +31,7 @@ import ErrorBoundary from './components/ui/ErrorBoundary';
 import { ConfirmModal } from './components/ui/Modal';
 import ToastContainer from './components/ui/ToastContainer';
 import ModalContainer from './components/ui/ModalContainer';
-import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette } from 'lucide-react';
+import { Home, FileText, Building2, Calendar, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Sun, Moon, LogOut, Menu, Bell, Plus, ChevronRight, ChevronDown, BarChart3, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Clock, Receipt, Wifi, WifiOff, Palette, Sparkles, ClipboardList, User } from 'lucide-react';
 import { registerNetworkListeners, getPendingCount } from './lib/offline/sync';
 import { safeString, validateRenderableFields } from './lib/formatters';
 import { useSubscriptionStore } from './stores/subscriptionStore';
@@ -658,7 +658,11 @@ export default function App() {
   const todayEvents = events.filter(e => e.date === new Date().toISOString().split('T')[0]).length;
 
   // Navigation items - full sidebar with all sections
-  // Badges now include explicit context for clarity
+  const overdueTasks = events.filter(e => {
+    const d = new Date(e.date);
+    return d < new Date() && !e.done;
+  }).length;
+
   const nav = [
     { id: 'dashboard', icon: Home, label: 'Accueil' },
     {
@@ -669,7 +673,10 @@ export default function App() {
       badgeColor: facturesImpayees > 0 ? '#ef4444' : '#f97316',
       badgeTitle: facturesImpayees > 0
         ? `${facturesImpayees} facture${facturesImpayees > 1 ? 's' : ''} impayée${facturesImpayees > 1 ? 's' : ''}, ${devisEnAttenteCount} devis en attente`
-        : `${devisEnAttenteCount} devis en attente de réponse`
+        : `${devisEnAttenteCount} devis en attente de réponse`,
+      sub: [
+        { id: 'devis-ia', icon: Sparkles, label: 'Devis IA', isNew: true }
+      ]
     },
     {
       id: 'chantiers',
@@ -716,15 +723,21 @@ export default function App() {
       
       {/* Sidebar - Optimized mobile layout */}
       <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 transform transition-transform lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} lg:shadow-none`}>
-        {/* Header with close button on mobile */}
+        {/* Header — clickable to access profile */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: couleur}}>
-            <Building2 size={18} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-white font-semibold text-sm truncate">{safeString(entreprise.nom, 'BatiGesti', 'sidebar.entreprise.nom')}</span>
-            <p className="text-slate-500 text-xs truncate">{safeString(user?.email, '', 'sidebar.user.email')}</p>
-          </div>
+          <button
+            onClick={() => { setPage('profile'); setSidebarOpen(false); }}
+            className="flex items-center gap-3 flex-1 min-w-0 group"
+            title="Mon profil"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform" style={{background: couleur}}>
+              <Building2 size={18} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <span className="text-white font-semibold text-sm truncate block group-hover:text-orange-300 transition-colors">{safeString(entreprise.nom, 'BatiGesti', 'sidebar.entreprise.nom')}</span>
+              <p className="text-slate-500 text-xs truncate">{safeString(user?.email, '', 'sidebar.user.email')}</p>
+            </div>
+          </button>
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
@@ -740,25 +753,43 @@ export default function App() {
           {/* Main navigation */}
           <nav className="space-y-0.5" aria-label="Navigation principale">
             {nav.slice(0, 4).map(n => (
-              <button
-                key={n.id}
-                onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-colors ${page === n.id ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                style={page === n.id ? {background: couleur} : {}}
-                aria-current={page === n.id ? 'page' : undefined}
-              >
-                <n.icon size={18} aria-hidden="true" />
-                <span className="flex-1 text-left truncate">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
-                    style={{ background: n.badgeColor || '#ef4444' }}
-                    title={n.badgeTitle}
+              <React.Fragment key={n.id}>
+                <button
+                  onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 min-h-[44px] rounded-xl text-sm font-medium transition-colors ${page === n.id || (n.sub && n.sub.some(s => page === s.id)) ? 'text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                  style={page === n.id ? {background: couleur} : {}}
+                  aria-current={page === n.id ? 'page' : undefined}
+                >
+                  <n.icon size={18} aria-hidden="true" />
+                  <span className="flex-1 text-left truncate">{n.label}</span>
+                  {n.badge > 0 && (
+                    <span
+                      className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center"
+                      style={{ background: n.badgeColor || '#ef4444' }}
+                      title={n.badgeTitle}
+                    >
+                      {n.badge > 99 ? '99+' : n.badge}
+                    </span>
+                  )}
+                </button>
+                {/* Sub-items */}
+                {n.sub && n.sub.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => { setPage(s.id); setSidebarOpen(false); }}
+                    className={`w-full flex items-center gap-3 pl-10 pr-3 py-2 min-h-[40px] rounded-xl text-sm transition-colors ${page === s.id ? 'text-white font-medium' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+                    style={page === s.id ? {background: `${couleur}cc`} : {}}
                   >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
-                )}
-              </button>
+                    <s.icon size={16} aria-hidden="true" />
+                    <span className="flex-1 text-left truncate">{s.label}</span>
+                    {s.isNew && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-full text-white" style={{background: '#8b5cf6'}}>
+                        NEW
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </React.Fragment>
             ))}
           </nav>
 
@@ -894,10 +925,10 @@ export default function App() {
             <HelpCircle size={18} />
           </button>
 
-          {/* Mode discret toggle - combined indicator and button */}
+          {/* Mode discret toggle - hidden on very small screens */}
           <button
             onClick={() => setModeDiscret(!modeDiscret)}
-            className={`p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
+            className={`hidden xs:flex p-2 rounded-xl min-w-[40px] min-h-[40px] sm:min-w-[44px] sm:min-h-[44px] items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
             style={modeDiscret ? {background: couleur} : {}}
             title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
           >
@@ -1026,10 +1057,10 @@ export default function App() {
             )}
           </div>
 
-          {/* User avatar */}
+          {/* User avatar - hidden on smallest mobile, accessible via sidebar */}
           <button
             onClick={() => setPage('profile')}
-            className={`ml-1 w-9 h-9 rounded-xl flex items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg`}
+            className={`hidden xs:flex ml-1 w-9 h-9 rounded-xl items-center justify-center text-white font-semibold text-sm transition-all hover:scale-105 hover:shadow-lg`}
             style={{background: couleur}}
             title={user?.email || 'Mon profil'}
             aria-label="Mon profil"
@@ -1148,6 +1179,32 @@ export default function App() {
         </Suspense>
       )}
 
+      {/* Mobile bottom navigation — quick access to main sections */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden" aria-label="Navigation rapide">
+        <div className={`flex items-center justify-around px-1 py-1 border-t ${isDark ? 'bg-slate-900/95 border-slate-700 backdrop-blur' : 'bg-white/95 border-slate-200 backdrop-blur'}`}>
+          {[
+            { id: 'dashboard', icon: Home, label: 'Accueil' },
+            { id: 'devis', icon: FileText, label: 'Devis' },
+            { id: 'chantiers', icon: Building2, label: 'Chantiers' },
+            { id: 'planning', icon: Calendar, label: 'Planning' },
+          ].map(item => {
+            const isActive = page === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setPage(item.id); setSelectedChantier(null); }}
+                className={`flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 min-h-[48px] min-w-[56px] rounded-xl transition-colors ${isActive ? 'text-white' : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                style={isActive ? {background: couleur} : {}}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <item.icon size={20} />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {/* Global Help Modal */}
       {showHelp && <HelpModal showHelp={showHelp} setShowHelp={setShowHelp} isDark={isDark} couleur={couleur} tc={tc} />}
 
@@ -1178,7 +1235,7 @@ export default function App() {
 
       {/* Toast Notifications */}
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-16 lg:bottom-4 right-4 z-50">
           <div
             className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg animate-slide-up ${
               toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
