@@ -35,7 +35,7 @@ const FEATURES = [
       'Duplication, versioning et historique complet',
       'Calcul automatique TVA, remises et acomptes',
     ],
-    screenshotSrc: '/screenshots/devis-editor.webp',
+    screenshotSrc: '/screenshots/devis-editor.svg',
   },
   {
     icon: Mic,
@@ -51,7 +51,7 @@ const FEATURES = [
       'Int\u00e9gration avec votre catalogue de prestations',
       'Modification et ajustement en temps r\u00e9el',
     ],
-    screenshotSrc: '/screenshots/devis-ia.webp',
+    screenshotSrc: '/screenshots/devis-ia.svg',
   },
   {
     icon: Building2,
@@ -68,7 +68,7 @@ const FEATURES = [
       'Suivi des t\u00e2ches et check-lists',
       'Historique d\u2019activit\u00e9 et journal de bord',
     ],
-    screenshotSrc: '/screenshots/chantier-detail.webp',
+    screenshotSrc: '/screenshots/chantier-detail.svg',
   },
   {
     icon: Calendar,
@@ -84,7 +84,7 @@ const FEATURES = [
       'Code couleur par statut et type d\u2019\u00e9v\u00e9nement',
       'Rappels et notifications',
     ],
-    screenshotSrc: '/screenshots/planning.webp',
+    screenshotSrc: '/screenshots/planning.svg',
   },
   {
     icon: Users,
@@ -100,7 +100,7 @@ const FEATURES = [
       'Recherche rapide et filtres avanc\u00e9s',
       'Export des contacts',
     ],
-    screenshotSrc: '/screenshots/clients.webp',
+    screenshotSrc: '/screenshots/clients.svg',
   },
   {
     icon: TrendingUp,
@@ -116,7 +116,7 @@ const FEATURES = [
       'Rapprochement bancaire simplifi\u00e9',
       'Tableau de bord financier en temps r\u00e9el',
     ],
-    screenshotSrc: '/screenshots/tresorerie.webp',
+    screenshotSrc: '/screenshots/tresorerie.svg',
   },
   {
     icon: Bell,
@@ -132,7 +132,7 @@ const FEATURES = [
       'Variables dynamiques (nom client, montant, date...)',
       'Historique des relances par devis',
     ],
-    screenshotSrc: '/screenshots/relances.webp',
+    screenshotSrc: '/screenshots/relances.svg',
   },
   {
     icon: UserCog,
@@ -148,7 +148,7 @@ const FEATURES = [
       'Gestion des cong\u00e9s et absences',
       'Affectation aux chantiers',
     ],
-    screenshotSrc: '/screenshots/equipe.webp',
+    screenshotSrc: '/screenshots/equipe.svg',
   },
 ];
 

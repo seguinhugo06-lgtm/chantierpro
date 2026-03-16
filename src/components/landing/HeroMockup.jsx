@@ -33,7 +33,7 @@ export default function HeroMockup({ className = '' }) {
           style={{ transformStyle: 'preserve-3d' }}
         >
           <BrowserFrame
-            src="/screenshots/dashboard.webp"
+            src="/screenshots/dashboard.svg"
             alt="Dashboard BatiGesti — vue d'ensemble de votre activité"
             url="app.batigesti.fr/dashboard"
           />

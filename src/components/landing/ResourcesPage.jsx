@@ -29,14 +29,14 @@ import BrowserFrame from './BrowserFrame';
 import { ScrollReveal, StaggerReveal, fadeInUp } from './animations';
 
 const SCREENSHOTS = [
-  { id: 'dashboard', label: 'Dashboard', icon: Monitor, src: '/screenshots/dashboard.webp', description: 'Vue d\'ensemble de votre activit\u00e9 avec 14+ widgets personnalisables.' },
-  { id: 'devis', label: 'Devis', icon: FileText, src: '/screenshots/devis-editor.webp', description: '\u00c9diteur de devis intuitif avec calcul automatique et g\u00e9n\u00e9ration PDF.' },
-  { id: 'devis-ia', label: 'Devis IA', icon: Mic, src: '/screenshots/devis-ia.webp', description: 'Dictez vos travaux et l\'IA g\u00e9n\u00e8re le devis chiffr\u00e9 automatiquement.' },
-  { id: 'chantier', label: 'Chantier', icon: Building2, src: '/screenshots/chantier-detail.webp', description: 'Suivi complet de chantier : avancement, marge, photos, documents.' },
-  { id: 'planning', label: 'Planning', icon: Calendar, src: '/screenshots/planning.webp', description: 'Calendrier interactif avec drag-and-drop et vue par \u00e9quipe.' },
-  { id: 'clients', label: 'Clients', icon: Users, src: '/screenshots/clients.webp', description: 'CRM int\u00e9gr\u00e9 avec historique des projets et d\u00e9tection de doublons.' },
-  { id: 'tresorerie', label: 'Tr\u00e9sorerie', icon: TrendingUp, src: '/screenshots/tresorerie.webp', description: 'Projections de tr\u00e9sorerie \u00e0 30/60/90 jours et suivi des impay\u00e9s.' },
-  { id: 'relances', label: 'Relances', icon: Bell, src: '/screenshots/relances.webp', description: 'Relances automatiques par email avec templates personnalis\u00e9s.' },
+  { id: 'dashboard', label: 'Dashboard', icon: Monitor, src: '/screenshots/dashboard.svg', description: 'Vue d\'ensemble de votre activit\u00e9 avec 14+ widgets personnalisables.' },
+  { id: 'devis', label: 'Devis', icon: FileText, src: '/screenshots/devis-editor.svg', description: '\u00c9diteur de devis intuitif avec calcul automatique et g\u00e9n\u00e9ration PDF.' },
+  { id: 'devis-ia', label: 'Devis IA', icon: Mic, src: '/screenshots/devis-ia.svg', description: 'Dictez vos travaux et l\'IA g\u00e9n\u00e8re le devis chiffr\u00e9 automatiquement.' },
+  { id: 'chantier', label: 'Chantier', icon: Building2, src: '/screenshots/chantier-detail.svg', description: 'Suivi complet de chantier : avancement, marge, photos, documents.' },
+  { id: 'planning', label: 'Planning', icon: Calendar, src: '/screenshots/planning.svg', description: 'Calendrier interactif avec drag-and-drop et vue par \u00e9quipe.' },
+  { id: 'clients', label: 'Clients', icon: Users, src: '/screenshots/clients.svg', description: 'CRM int\u00e9gr\u00e9 avec historique des projets et d\u00e9tection de doublons.' },
+  { id: 'tresorerie', label: 'Tr\u00e9sorerie', icon: TrendingUp, src: '/screenshots/tresorerie.svg', description: 'Projections de tr\u00e9sorerie \u00e0 30/60/90 jours et suivi des impay\u00e9s.' },
+  { id: 'relances', label: 'Relances', icon: Bell, src: '/screenshots/relances.svg', description: 'Relances automatiques par email avec templates personnalis\u00e9s.' },
 ];
 
 const HOW_IT_WORKS = [

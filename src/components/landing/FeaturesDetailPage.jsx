@@ -44,7 +44,7 @@ const FEATURES = [
     title: 'Cr\u00e9ation de devis & factures',
     description: 'Cr\u00e9ez des devis et factures professionnels en quelques clics. Ajoutez des lignes depuis votre catalogue, appliquez des remises, calculez automatiquement la TVA et g\u00e9n\u00e9rez un PDF conforme.',
     benefits: ['G\u00e9n\u00e9ration PDF conforme', 'Calcul automatique TVA', 'Templates personnalisables', 'Num\u00e9rotation automatique'],
-    screenshot: '/screenshots/devis-editor.webp',
+    screenshot: '/screenshots/devis-editor.svg',
   },
   {
     category: 'devis',
@@ -54,7 +54,7 @@ const FEATURES = [
     title: 'Devis IA par reconnaissance vocale',
     description: 'Dictez vos travaux directement sur le chantier. L\'intelligence artificielle analyse, structure et chiffre automatiquement votre devis avec mat\u00e9riaux et main d\'\u0153uvre.',
     benefits: ['Reconnaissance vocale', 'Chiffrage automatique IA', 'Int\u00e9gration catalogue', 'Chat IA pour ajustements'],
-    screenshot: '/screenshots/devis-ia.webp',
+    screenshot: '/screenshots/devis-ia.svg',
   },
   {
     category: 'devis',
@@ -64,7 +64,7 @@ const FEATURES = [
     title: 'Signature \u00e9lectronique',
     description: 'Envoyez vos devis pour signature \u00e9lectronique. Vos clients signent en ligne depuis un lien s\u00e9curis\u00e9, sans cr\u00e9er de compte.',
     benefits: ['Valeur l\u00e9gale', 'Lien s\u00e9curis\u00e9 unique', 'Notification de signature', 'Archivage automatique'],
-    screenshot: '/screenshots/devis-editor.webp',
+    screenshot: '/screenshots/devis-editor.svg',
   },
   {
     category: 'chantiers',
@@ -74,7 +74,7 @@ const FEATURES = [
     title: 'Suivi de chantier complet',
     description: 'Suivez chaque chantier de A \u00e0 Z : avancement, rentabilit\u00e9, d\u00e9penses, t\u00e2ches. Centralisez toutes les informations dans un tableau de bord par chantier.',
     benefits: ['Marge en temps r\u00e9el', 'Journal d\'activit\u00e9', 'Check-lists et t\u00e2ches', 'Statuts personnalis\u00e9s'],
-    screenshot: '/screenshots/chantier-detail.webp',
+    screenshot: '/screenshots/chantier-detail.svg',
   },
   {
     category: 'chantiers',
@@ -84,7 +84,7 @@ const FEATURES = [
     title: 'Planning interactif',
     description: 'Planifiez vos chantiers et rendez-vous dans un calendrier interactif avec drag-and-drop, vue par \u00e9quipe et code couleur.',
     benefits: ['Vue jour/semaine/mois', 'Drag-and-drop', 'Vue par \u00e9quipe', 'Rappels automatiques'],
-    screenshot: '/screenshots/planning.webp',
+    screenshot: '/screenshots/planning.svg',
   },
   {
     category: 'gestion',
@@ -94,7 +94,7 @@ const FEATURES = [
     title: 'Gestion clients & CRM',
     description: 'Centralisez tous vos contacts, suivez l\'historique des projets par client, d\u00e9tectez les doublons et g\u00e9rez vos prospects.',
     benefits: ['Fiche client compl\u00e8te', 'D\u00e9tection doublons', 'Historique projets', 'Recherche rapide'],
-    screenshot: '/screenshots/clients.webp',
+    screenshot: '/screenshots/clients.svg',
   },
   {
     category: 'gestion',
@@ -104,7 +104,7 @@ const FEATURES = [
     title: '\u00c9quipe & sous-traitants',
     description: 'G\u00e9rez votre \u00e9quipe et vos sous-traitants : r\u00f4les, permissions, pointage, cong\u00e9s. Affectez les membres aux chantiers.',
     benefits: ['R\u00f4les & permissions', 'Pointage des heures', 'Gestion des cong\u00e9s', 'Affectation chantiers'],
-    screenshot: '/screenshots/equipe.webp',
+    screenshot: '/screenshots/equipe.svg',
   },
   {
     category: 'gestion',
@@ -114,7 +114,7 @@ const FEATURES = [
     title: 'Catalogue de prestations',
     description: 'Cr\u00e9ez une biblioth\u00e8que de prestations r\u00e9utilisables avec prix, cat\u00e9gories et descriptions. Construisez vos devis comme un jeu de LEGO.',
     benefits: ['Prestations r\u00e9utilisables', 'Cat\u00e9gories personnalis\u00e9es', 'Import/export', 'Prix et unit\u00e9s'],
-    screenshot: '/screenshots/dashboard.webp',
+    screenshot: '/screenshots/dashboard.svg',
   },
   {
     category: 'finance',
@@ -124,7 +124,7 @@ const FEATURES = [
     title: 'Tr\u00e9sorerie & projections',
     description: 'Anticipez vos flux de tr\u00e9sorerie avec des projections \u00e0 30, 60 et 90 jours. D\u00e9tectez les impay\u00e9s et ma\u00eetrisez votre BFR.',
     benefits: ['Projections automatiques', 'Suivi des impay\u00e9s', 'Tableau de bord financier', 'Rapprochement bancaire'],
-    screenshot: '/screenshots/tresorerie.webp',
+    screenshot: '/screenshots/tresorerie.svg',
   },
   {
     category: 'finance',
@@ -134,7 +134,7 @@ const FEATURES = [
     title: 'Relances automatiques',
     description: 'Programmez des relances automatiques par email avec des templates personnalis\u00e9s et des variables dynamiques.',
     benefits: ['Templates personnalisables', 'Planification intelligente', 'Variables dynamiques', 'Historique complet'],
-    screenshot: '/screenshots/relances.webp',
+    screenshot: '/screenshots/relances.svg',
   },
   {
     category: 'tech',
@@ -144,7 +144,7 @@ const FEATURES = [
     title: 'Conformit\u00e9 Facture 2026',
     description: 'Soyez conforme \u00e0 la facturation \u00e9lectronique 2026 sans effort : Factur-X, archivage 10 ans, piste d\'audit, SHA-256.',
     benefits: ['Factur-X EN 16931', 'Archivage 10 ans', 'SHA-256', 'Piste d\'audit compl\u00e8te'],
-    screenshot: '/screenshots/dashboard.webp',
+    screenshot: '/screenshots/dashboard.svg',
   },
   {
     category: 'tech',
@@ -154,7 +154,7 @@ const FEATURES = [
     title: 'PWA & mobile',
     description: 'Installez BatiGesti sur votre t\u00e9l\u00e9phone comme une application native. Fonctionne m\u00eame hors-ligne pour consulter vos donn\u00e9es sur le chantier.',
     benefits: ['Installation en 1 clic', 'Fonctionne hors-ligne', 'Multi-appareils', 'Notifications push'],
-    screenshot: '/screenshots/mobile.webp',
+    screenshot: '/screenshots/mobile.svg',
   },
 ];
 

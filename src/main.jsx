@@ -60,6 +60,18 @@ const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignat
 const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation'))
 const FacturePaymentPage = lazy(() => import('./components/payment/FacturePaymentPage'))
 
+// Marketing sub-pages (lazy loaded, light-mode only)
+const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
+const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
+
+// Check if this is a marketing sub-page
+function getMarketingPage() {
+  const path = window.location.pathname
+  if (path === '/fonctionnalites') return 'features'
+  if (path === '/ressources') return 'resources'
+  return null
+}
+
 // Check if this is a portal URL
 function getPortalToken() {
   const path = window.location.pathname
@@ -98,6 +110,7 @@ const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
 const invitationToken = getInvitationToken()
 const paymentToken = getPaymentToken()
+const marketingPage = getMarketingPage()
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -128,7 +141,15 @@ const PublicFallback = () => (
 // Public routes (/portal/:token, /devis/signer/:token) bypass AuthGuard & DataProvider
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {paymentToken ? (
+    {marketingPage === 'features' ? (
+      <Suspense fallback={<PublicFallback />}>
+        <FeaturesDetailPage />
+      </Suspense>
+    ) : marketingPage === 'resources' ? (
+      <Suspense fallback={<PublicFallback />}>
+        <ResourcesPage />
+      </Suspense>
+    ) : paymentToken ? (
       <Suspense fallback={<PublicFallback />}>
         <FacturePaymentPage paymentToken={paymentToken} />
       </Suspense>
