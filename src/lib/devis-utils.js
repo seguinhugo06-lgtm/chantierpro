@@ -13,69 +13,21 @@ export function roundEuro(value) {
 }
 
 /**
- * In-memory high-water mark per prefix-year to prevent race conditions
- * when multiple documents are created rapidly.
- */
-const _localCursor = {};
-
-/**
  * Generate unique document number
- * @param {string} type - 'devis', 'facture', or 'avoir'
+ * @param {string} type - 'devis' or 'facture'
  * @param {Array} existingDocuments - Existing devis/factures to check for uniqueness
- * @returns {string} Generated numero (e.g., 'DEV-2026-00001')
+ * @returns {string} Generated numero (e.g., 'DEV-2024-00001')
  */
 export function generateNumero(type, existingDocuments = []) {
-  const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
+  const prefix = type === 'facture' ? 'FAC' : 'DEV';
   const year = new Date().getFullYear();
-  const cursorKey = `${prefix}-${year}`;
-  const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
 
-  const maxSeq = existingDocuments
-    .filter(d => type === 'avoir'
-      ? d.facture_type === 'avoir'
-      : (d.type || 'devis') === type && d.facture_type !== 'avoir')
-    .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
-    .reduce((max, n) => Math.max(max, n), 0);
+  const existingNumbers = existingDocuments
+    .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
+    .map(d => parseInt(d.numero.split('-')[2]) || 0);
 
-  const cursorMax = _localCursor[cursorKey] || 0;
-  const nextSeq = Math.max(maxSeq, cursorMax) + 1;
-  _localCursor[cursorKey] = nextSeq;
-
-  return `${prefix}-${year}-${String(nextSeq).padStart(5, '0')}`;
-}
-
-/**
- * Normalize a devis/facture numero to the standard format: PREFIX-YYYY-NNNNN
- * Handles:
- * - Timestamp-based numeros: DEV-1768204783439 → DEV-2026-NNNNN (re-assigned on next save)
- * - Short padding: DEV-2026-001 → DEV-2026-00001
- * - Already correct: DEV-2026-00001 → unchanged
- * - Non-standard: returned as-is (e.g. imported numeros)
- *
- * @param {string} numero
- * @returns {string} Normalized numero
- */
-export function normalizeNumero(numero) {
-  if (!numero) return numero;
-
-  // Case 1: Standard format with wrong padding — DEV-2026-001 or DEV-2026-1
-  const shortMatch = numero.match(/^(DEV|FAC|AV)-(\d{4})-(\d{1,4})$/);
-  if (shortMatch) {
-    return `${shortMatch[1]}-${shortMatch[2]}-${String(parseInt(shortMatch[3], 10)).padStart(5, '0')}`;
-  }
-
-  // Case 2: Timestamp-based — DEV-1768204783439 (no year separator, >10 digits)
-  const tsMatch = numero.match(/^(DEV|FAC|AV)-(\d{10,})$/);
-  if (tsMatch) {
-    // Extract last 5 digits of timestamp as sequence to keep some uniqueness
-    const seq = parseInt(tsMatch[2].slice(-5), 10);
-    const year = new Date().getFullYear();
-    return `${tsMatch[1]}-${year}-${String(seq).padStart(5, '0')}`;
-  }
-
-  // Case 3: Already correct (5+ digits) — no change
-  // Case 4: Non-standard format — return as-is
-  return numero;
+  const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+  return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
 }
 
 /**
@@ -155,16 +107,6 @@ export function calculateDevisTotals(form, isMicro = false) {
  */
 export function formatMoney(amount) {
   return (amount || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
-}
-
-/**
- * Validate document numero format
- * @param {string} numero - The document number to validate
- * @returns {boolean} True if valid format (DEV-YYYY-NNNNN or FAC-YYYY-NNNNN)
- */
-export function isValidNumero(numero) {
-  if (!numero) return false;
-  return /^(DEV|FAC)-\d{4}-\d{5}$/.test(numero);
 }
 
 /**

@@ -153,7 +153,7 @@ export default function Header({
         <button
           onClick={onNavigateHome}
           className="flex items-center gap-2 group"
-          aria-label="Retour à l'accueil"
+          aria-label="Retour a l'accueil"
         >
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
@@ -399,7 +399,7 @@ function NotificationDropdown({
   return (
     <div
       className={cn(
-        'fixed inset-x-2 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96',
+        'absolute right-0 top-full mt-2 w-80 sm:w-96',
         'rounded-xl shadow-lg border',
         'overflow-hidden z-dropdown',
         isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'

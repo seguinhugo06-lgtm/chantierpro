@@ -8,7 +8,7 @@
  * - Delete individual memos
  * - Auto-cleanup of done memos after 24 hours
  * - Max 10 memos displayed
- * - Persisted in localStorage (key: chantierPro_memos)
+ * - Persisted in localStorage (key: batiGesti_memos)
  *
  * @module MemosWidget
  */
@@ -17,7 +17,7 @@ import React, { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { StickyNote, Plus, Trash2, Check } from 'lucide-react';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
 
-const STORAGE_KEY = 'chantierPro_memos';
+const STORAGE_KEY = 'batiGesti_memos';
 const MAX_MEMOS = 10;
 const DONE_CLEANUP_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -137,7 +137,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
   return (
     <Widget isDark={isDark}>
       <WidgetHeader
-        title="Tâches du jour"
+        title="Mémos du jour"
         icon={<StickyNote />}
         isDark={isDark}
         badge={displayedMemos.length > 0 ? displayedMemos.filter((m) => !m.done).length : undefined}
@@ -152,7 +152,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ajouter une tâche..."
+            placeholder="Ajouter un mémo..."
             maxLength={140}
             disabled={memos.length >= MAX_MEMOS}
             className={`
@@ -176,7 +176,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
               hover:opacity-90 active:scale-95
             `}
             style={{ background: accentColor }}
-            aria-label="Ajouter tâche"
+            aria-label="Ajouter mémo"
           >
             <Plus size={18} />
           </button>
@@ -254,7 +254,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
                       : 'text-gray-300 hover:text-red-500 hover:bg-red-50'
                     }
                   `}
-                  aria-label="Supprimer tâche"
+                  aria-label="Supprimer mémo"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -272,7 +272,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
               <StickyNote size={20} className={isDark ? 'text-slate-500' : 'text-gray-300'} />
             </div>
             <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-              Aucune tâche
+              Aucun mémo
             </p>
             <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
               Ajoutez vos notes rapides ici
@@ -283,7 +283,7 @@ const MemosWidget = memo(function MemosWidget({ isDark, couleur }) {
         {/* Capacity hint */}
         {memos.length >= MAX_MEMOS && (
           <p className={`text-xs text-center mt-3 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-            Limite de {MAX_MEMOS} tâches atteinte
+            Limite de {MAX_MEMOS} mémos atteinte
           </p>
         )}
       </WidgetContent>

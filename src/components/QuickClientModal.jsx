@@ -1,23 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
-import FormError from './ui/FormError';
-import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
+import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertCircle, AlertTriangle } from 'lucide-react';
+import { findDuplicates } from '../lib/dedup';
 
 /**
  * QuickClientModal - Fast client creation with minimal friction
  * 2 required fields (nom, telephone) + expandable details
- * With real-time duplicate detection
  */
 export default function QuickClientModal({
   isOpen,
   onClose,
   onSubmit,
+  clients = [],
   isDark = false,
-  couleur = '#f97316',
-  existingClients = [],
-  onViewClient,
+  couleur = '#f97316'
 }) {
   const [form, setForm] = useState({
     nom: '',
@@ -25,33 +22,19 @@ export default function QuickClientModal({
     telephone: '',
     email: '',
     entreprise: '',
-    adresse: '',
-    categorie: 'Particulier'
+    adresse: ''
   });
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [duplicates, setDuplicates] = useState([]);
-  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const [dupDismissed, setDupDismissed] = useState(false);
   const inputRef = useRef(null);
-  const dupeTimeoutRef = useRef(null);
-
-  // Centralized duplicate check for email
-  const { emailDuplicates, checkField: checkDupeField, clearAll: clearDupeChecks } = useDuplicateCheck(existingClients, null, 300);
 
   // Validation helpers
-  const TEST_EMAIL_DOMAINS = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
   const validateEmail = (email) => {
     if (!email) return true; // Optional field
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
-    const domain = email.split('@')[1]?.toLowerCase();
-    if (domain && TEST_EMAIL_DOMAINS.includes(domain)) return false;
-    return true;
-  };
-  const isTestDomain = (email) => {
-    if (!email) return false;
-    const domain = email.split('@')[1]?.toLowerCase();
-    return domain && TEST_EMAIL_DOMAINS.includes(domain);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   const validatePhone = (phone) => {
@@ -61,41 +44,6 @@ export default function QuickClientModal({
     return /^(0[1-9])\d{8}$/.test(cleaned);
   };
 
-  // Duplicate detection
-  const checkDuplicates = (field, value) => {
-    if (!value || !existingClients.length) { setDuplicates([]); return; }
-    const found = [];
-    const normalizePhone = (p) => (p || '').replace(/[\s.\-+]/g, '');
-
-    if (field === 'telephone') {
-      const cleanVal = normalizePhone(value);
-      if (cleanVal.length >= 6) {
-        existingClients.forEach(c => {
-          if (normalizePhone(c.telephone) === cleanVal) {
-            found.push({ ...c, reason: 'Même téléphone' });
-          }
-        });
-      }
-    }
-
-    if (field === 'nom') {
-      const q = value.toLowerCase().trim();
-      if (q.length >= 3) {
-        existingClients.forEach(c => {
-          const fullName = `${c.nom || ''} ${c.prenom || ''}`.toLowerCase().trim();
-          const reverseName = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().trim();
-          if (fullName.includes(q) || reverseName.includes(q) || q.includes((c.nom || '').toLowerCase())) {
-            if (!found.some(f => f.id === c.id)) {
-              found.push({ ...c, reason: 'Nom similaire' });
-            }
-          }
-        });
-      }
-    }
-
-    setDuplicates(found.slice(0, 3));
-  };
-
   // Theme classes
   const cardBg = isDark ? 'bg-slate-800' : 'bg-white';
   const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400';
@@ -103,55 +51,24 @@ export default function QuickClientModal({
   const textSecondary = isDark ? 'text-slate-300' : 'text-slate-600';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
 
-  // Auto-focus on open (robust: retry if animation blocks focus)
+  // Auto-focus on open
   useEffect(() => {
-    if (isOpen) {
-      const tryFocus = (attempt = 0) => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          // Verify focus was acquired, retry if not (animation may block)
-          if (document.activeElement !== inputRef.current && attempt < 3) {
-            setTimeout(() => tryFocus(attempt + 1), 150);
-          }
-        } else if (attempt < 5) {
-          setTimeout(() => tryFocus(attempt + 1), 100);
-        }
-      };
-      setTimeout(() => tryFocus(), 100);
+    if (isOpen && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
   // Reset form on close
   useEffect(() => {
     if (!isOpen) {
-      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier' });
+      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '' });
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
       setDuplicates([]);
-      setShowDupeConfirm(false);
-      clearDupeChecks();
+      setDupDismissed(false);
     }
   }, [isOpen]);
-
-  const doFinalSubmit = async () => {
-    setErrors({});
-    setIsSubmitting(true);
-
-    await new Promise(r => setTimeout(r, 300));
-
-    onSubmit({
-      nom: form.nom.trim(),
-      prenom: form.prenom.trim(),
-      telephone: form.telephone.trim(),
-      email: form.email.trim(),
-      entreprise: form.entreprise.trim(),
-      adresse: form.adresse.trim(),
-      categorie: form.categorie || ''
-    });
-
-    onClose();
-  };
 
   const handleSubmit = async () => {
     // Validate all fields
@@ -161,37 +78,50 @@ export default function QuickClientModal({
       newErrors.nom = 'Le nom est requis';
     }
 
-    // Require at least phone OR email
-    if (!form.telephone.trim() && !form.email.trim()) {
-      newErrors.telephone = 'Téléphone ou email requis';
-    }
-
     if (form.email && !validateEmail(form.email)) {
-      newErrors.email = isTestDomain(form.email)
-        ? 'Domaine email non autorisé (@test.com, @example.com…)'
-        : 'Format email invalide (ex: nom@email.fr)';
+      newErrors.email = 'Format email invalide (ex: nom@email.fr)';
     }
 
     if (form.telephone && !validatePhone(form.telephone)) {
       newErrors.telephone = 'Format téléphone invalide (ex: 06 12 34 56 78)';
     }
 
+    // If errors, show them and focus first error field
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      // Focus on first error field
       if (newErrors.nom) {
         inputRef.current?.focus();
       }
       return;
     }
 
-    // Check for strong duplicates (phone or email) before submitting
-    const hasStrongDupes = duplicates.some(d => d.reason === 'Même téléphone') || emailDuplicates.length > 0;
-    if (hasStrongDupes) {
-      setShowDupeConfirm(true);
-      return;
+    setErrors({});
+
+    // Check for duplicates before saving
+    if (!dupDismissed) {
+      const dups = findDuplicates(form, clients);
+      if (dups.length > 0) {
+        setDuplicates(dups);
+        return;
+      }
     }
 
-    await doFinalSubmit();
+    setIsSubmitting(true);
+
+    // Simulate quick save animation
+    await new Promise(r => setTimeout(r, 300));
+
+    onSubmit({
+      nom: form.nom.trim(),
+      prenom: form.prenom.trim(),
+      telephone: form.telephone.trim(),
+      email: form.email.trim(),
+      entreprise: form.entreprise.trim(),
+      adresse: form.adresse.trim()
+    });
+
+    onClose();
   };
 
   const handleKeyDown = (e) => {
@@ -264,170 +194,69 @@ export default function QuickClientModal({
           <div className="space-y-3">
             {/* Nom field - required */}
             <div>
-              <label htmlFor="qc-nom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <User size={14} style={{ color: couleur }} />
                 Nom *
               </label>
               <input
-                id="qc-nom"
                 ref={inputRef}
                 type="text"
                 value={form.nom}
                 onChange={e => {
-                  const val = e.target.value;
-                  setForm(p => ({ ...p, nom: val }));
+                  setForm(p => ({ ...p, nom: e.target.value }));
                   if (errors.nom) setErrors(p => ({ ...p, nom: null }));
-                  clearTimeout(dupeTimeoutRef.current);
-                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('nom', val), 500);
                 }}
-                onBlur={() => {
-                  if (form.nom.trim() && form.nom.trim().length < 2) {
-                    setErrors(p => ({ ...p, nom: 'Le nom doit contenir au moins 2 caractères' }));
-                  }
-                }}
-                placeholder="ex. Dupont"
-                aria-required="true"
-                aria-invalid={!!errors.nom}
-                aria-describedby={errors.nom ? 'qc-nom-error' : undefined}
+                placeholder="Dupont"
                 className={`w-full px-4 py-3 border rounded-xl text-base transition-all focus:ring-2 focus:ring-offset-1 ${inputBg} ${errors.nom ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
                 style={{ '--tw-ring-color': errors.nom ? '#ef4444' : couleur }}
               />
-              <FormError id="qc-nom-error" message={errors.nom} />
+              {errors.nom && (
+                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {errors.nom}
+                </p>
+              )}
             </div>
 
             {/* Prenom field */}
             <div>
-              <label htmlFor="qc-prenom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <User size={14} className={textMuted} />
-                Prénom
+                Prenom
               </label>
               <input
-                id="qc-prenom"
                 type="text"
                 value={form.prenom}
                 onChange={e => setForm(p => ({ ...p, prenom: e.target.value }))}
-                placeholder="ex. Jean"
+                placeholder="Marie"
                 className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg}`}
               />
             </div>
 
             {/* Telephone field */}
             <div>
-              <label htmlFor="qc-telephone" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+              <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                 <Phone size={14} style={{ color: couleur }} />
                 Téléphone
               </label>
               <input
-                id="qc-telephone"
                 type="tel"
                 value={form.telephone}
                 onChange={e => {
-                  const val = e.target.value;
-                  setForm(p => ({ ...p, telephone: val }));
+                  setForm(p => ({ ...p, telephone: e.target.value }));
                   if (errors.telephone) setErrors(p => ({ ...p, telephone: null }));
-                  clearTimeout(dupeTimeoutRef.current);
-                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('telephone', val), 500);
-                }}
-                onBlur={() => {
-                  if (form.telephone && !validatePhone(form.telephone)) {
-                    setErrors(p => ({ ...p, telephone: 'Format invalide (ex: 06 12 34 56 78)' }));
-                  }
                 }}
                 placeholder="06 12 34 56 78"
-                aria-invalid={!!errors.telephone}
-                aria-describedby={errors.telephone ? 'qc-telephone-error' : undefined}
                 className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.telephone ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
               />
-              <FormError id="qc-telephone-error" message={errors.telephone} />
-            </div>
-          </div>
-
-          {/* Type toggle — Particulier / Professionnel */}
-          <div className="flex gap-2">
-            {['Particulier', 'Professionnel'].map(type => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setForm(p => ({ ...p, categorie: type }))}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.categorie === type
-                  ? 'text-white border-transparent shadow-sm'
-                  : isDark ? 'border-slate-600 text-slate-400 hover:border-slate-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                }`}
-                style={form.categorie === type ? { background: couleur } : {}}
-              >
-                {type === 'Particulier' ? '👤' : '🏢'} {type}
-              </button>
-            ))}
-          </div>
-
-          {/* Email field — promoted out of accordion */}
-          <div>
-            <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-              <Mail size={14} style={{ color: couleur }} />
-              Email
-            </label>
-            <input
-              id="qc-email"
-              type="email"
-              value={form.email}
-              onChange={e => {
-                setForm(p => ({ ...p, email: e.target.value }));
-                if (errors.email) setErrors(p => ({ ...p, email: null }));
-                checkDupeField('email', e.target.value);
-              }}
-              onBlur={() => {
-                if (form.email && !validateEmail(form.email)) {
-                  setErrors(p => ({ ...p, email: isTestDomain(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' }));
-                }
-              }}
-              placeholder="ex. nom@email.fr"
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'qc-email-error' : undefined}
-              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''} ${emailDuplicates.length > 0 && !errors.email ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`}
-            />
-            <FormError id="qc-email-error" message={errors.email} />
-            {emailDuplicates.length > 0 && (
-              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
-                <span>
-                  Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
-                  {onViewClient && (
-                    <button type="button" onClick={() => { onClose(); setTimeout(() => onViewClient(emailDuplicates[0].id), 100); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
-                  )}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Duplicate detection warning (name/phone) */}
-          {duplicates.length > 0 && (
-            <div className={`rounded-xl p-3 ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle size={14} className="text-amber-500" />
-                <p className={`text-xs font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                  Client(s) similaire(s) détecté(s)
+              {errors.telephone && (
+                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {errors.telephone}
                 </p>
-              </div>
-              {duplicates.map(dup => (
-                <div key={dup.id} className={`flex items-center gap-2 py-1.5 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
-                  <span className="text-xs flex-1">
-                    <span className="font-medium">{dup.nom} {dup.prenom}</span>
-                    {dup.telephone && <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>· {dup.telephone}</span>}
-                    <span className={`ml-1 text-[10px] ${isDark ? 'text-amber-500' : 'text-amber-500'}`}>({dup.reason})</span>
-                  </span>
-                  {onViewClient && (
-                    <button
-                      onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                      className="text-[10px] font-medium flex items-center gap-0.5 px-2 py-1 rounded-md transition-colors hover:bg-amber-500/20"
-                      style={{ color: couleur }}
-                    >
-                      Voir <ExternalLink size={10} />
-                    </button>
-                  )}
-                </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
 
           {/* Expandable details section */}
           <div className={`border rounded-xl overflow-hidden transition-all ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
@@ -437,7 +266,7 @@ export default function QuickClientModal({
               className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
             >
               <span className={`text-sm font-medium ${textSecondary}`}>
-                {form.categorie === 'Professionnel' ? 'Entreprise, adresse…' : 'Adresse, entreprise…'}
+                Ajouter plus de details
               </span>
               <motion.div
                 animate={{ rotate: showDetails ? 180 : 0 }}
@@ -458,27 +287,48 @@ export default function QuickClientModal({
                 >
                   <div className="px-4 pb-4 pt-3 space-y-3">
                     <div>
-                      <label htmlFor="qc-entreprise" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                        <Building2 size={14} className={textMuted} />
-                        {form.categorie === 'Professionnel' ? 'Raison sociale' : 'Entreprise'}
+                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                        <Mail size={14} className={textMuted} />
+                        Email
                       </label>
                       <input
-                        id="qc-entreprise"
+                        type="email"
+                        value={form.email}
+                        onChange={e => {
+                          setForm(p => ({ ...p, email: e.target.value }));
+                          if (errors.email) setErrors(p => ({ ...p, email: null }));
+                        }}
+                        placeholder="marie.dupont@email.fr"
+                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
+                      />
+                      {errors.email && (
+                        <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+                          <AlertCircle size={14} />
+                          {errors.email}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                        <Building2 size={14} className={textMuted} />
+                        Entreprise
+                      </label>
+                      <input
                         type="text"
                         value={form.entreprise}
                         onChange={e => setForm(p => ({ ...p, entreprise: e.target.value }))}
-                        placeholder={form.categorie === 'Professionnel' ? 'ex. SCI Martin' : 'Optionnel'}
+                        placeholder="SCI Martin (optionnel)"
                         className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="qc-adresse" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
+                      <label className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
                         <MapPin size={14} className={textMuted} />
                         Adresse
                       </label>
                       <textarea
-                        id="qc-adresse"
                         value={form.adresse}
                         onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))}
                         placeholder="12 rue des Lilas, 75011 Paris"
@@ -492,18 +342,50 @@ export default function QuickClientModal({
             </AnimatePresence>
           </div>
 
-          {/* Action buttons - stack on mobile */}
-          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
+          {/* Duplicate warning */}
+          {duplicates.length > 0 && !dupDismissed && (
+            <div className={`p-3 rounded-xl border ${isDark ? 'bg-amber-900/20 border-amber-700/40' : 'bg-amber-50 border-amber-200'}`}>
+              <div className="flex items-start gap-2 mb-2">
+                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${textPrimary}`}>Doublon potentiel détecté</p>
+                  {duplicates.slice(0, 2).map((dup, i) => (
+                    <p key={i} className={`text-xs mt-1 ${textMuted}`}>
+                      {dup.client.nom} {dup.client.prenom || ''} — {dup.reasons.join(', ')}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 ml-6">
+                <button
+                  onClick={() => { setDuplicates([]); setDupDismissed(false); }}
+                  className={`text-xs px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-white border border-slate-200'} ${textMuted}`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => { setDupDismissed(true); setDuplicates([]); }}
+                  className="text-xs px-3 py-1.5 rounded-lg text-white"
+                  style={{ background: couleur }}
+                >
+                  Créer quand même
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
             <button
               onClick={onClose}
-              className={`w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+              className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
             >
               Annuler
             </button>
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
-              className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
+              className="flex-1 px-4 py-3 rounded-xl font-medium text-white transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98]"
               style={{ backgroundColor: couleur }}
             >
               {isSubmitting ? (
@@ -522,7 +404,7 @@ export default function QuickClientModal({
 
           {/* Hint */}
           <p className={`text-center text-xs ${textMuted}`}>
-            Appuyez sur Entrée pour ajouter rapidement
+            Appuyez sur Entree pour ajouter rapidement
           </p>
         </div>
         </motion.div>
@@ -531,72 +413,5 @@ export default function QuickClientModal({
     </AnimatePresence>
   );
 
-  // Combine all strong duplicates for confirmation
-  const allStrongDupes = (() => {
-    const seen = new Set();
-    const combined = [];
-    [...duplicates.filter(d => d.reason === 'Même téléphone'), ...emailDuplicates].forEach(d => {
-      if (!seen.has(d.id)) { seen.add(d.id); combined.push(d); }
-    });
-    return combined;
-  })();
-
-  const dupeConfirmModal = showDupeConfirm && allStrongDupes.length > 0 ? (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDupeConfirm(false)} />
-      <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-        <div className="p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
-              <AlertTriangle size={20} className="text-amber-500" />
-            </div>
-            <h3 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Doublon potentiel</h3>
-          </div>
-          <p className={`text-sm mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            Ce client semble être un doublon de :
-          </p>
-          <div className="space-y-2 mb-4">
-            {allStrongDupes.map(dup => (
-              <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                <div>
-                  <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{dup.nom} {dup.prenom || ''}</p>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {dup.matchReason || dup.reason}
-                    {dup.telephone && ` · ${dup.telephone}`}
-                    {dup.email && ` · ${dup.email}`}
-                  </p>
-                </div>
-                {onViewClient && (
-                  <button
-                    onClick={() => { setShowDupeConfirm(false); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                    className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
-                    style={{ color: couleur, backgroundColor: `${couleur}15` }}
-                  >
-                    Voir
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowDupeConfirm(false)}
-              className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={async () => { setShowDupeConfirm(false); await doFinalSubmit(); }}
-              className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-              style={{ backgroundColor: couleur }}
-            >
-              Créer quand même
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  return createPortal(<>{modalContent}{dupeConfirmModal}</>, document.body);
+  return createPortal(modalContent, document.body);
 }

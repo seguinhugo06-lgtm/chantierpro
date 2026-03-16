@@ -13,7 +13,6 @@ import {
   setupOnlineSync,
   processSyncQueue,
 } from '../registerSW';
-import { checkConnectivity } from '../lib/offline/sync';
 
 /**
  * @typedef {Object} UsePWAReturn
@@ -38,7 +37,7 @@ export function usePWA(syncHandlers = {}) {
   const [canInstall, setCanInstall] = React.useState(false);
   const [needsRefresh, setNeedsRefresh] = React.useState(false);
   const [offlineReady, setOfflineReady] = React.useState(false);
-  const [isOffline, setIsOffline] = React.useState(false); // Optimistic: assume online, verify via ping
+  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
   const [pendingSyncCount, setPendingSyncCount] = React.useState(getSyncQueue().length);
 
   const updateSWRef = React.useRef(null);
@@ -72,53 +71,26 @@ export function usePWA(syncHandlers = {}) {
     };
   }, []);
 
-  // Handle online/offline status with real connectivity check
+  // Handle online/offline status
   React.useEffect(() => {
-    let timer = null;
-    let lastState = true; // optimistic: match initial state
-
-    const verifyAndSet = (browserSaysOnline) => {
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        const reallyOnline = await checkConnectivity();
-        if (reallyOnline && !lastState) {
-          lastState = true;
-          setIsOffline(false);
-        } else if (!reallyOnline && !browserSaysOnline && lastState) {
-          lastState = false;
-          setIsOffline(true);
-        }
-      }, 500);
-    };
-
-    const handleOnline = () => verifyAndSet(true);
-    const handleOffline = () => verifyAndSet(false);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initial verify if browser says offline
-    if (!navigator.onLine) verifyAndSet(false);
-
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Keep syncHandlers in a ref to avoid re-running the effect on every render
-  const syncHandlersRef = React.useRef(syncHandlers);
+  // Setup online sync
   React.useEffect(() => {
-    syncHandlersRef.current = syncHandlers;
-  }, [syncHandlers]);
-
-  // Setup online sync (runs once, uses ref for latest handlers)
-  React.useEffect(() => {
-    const cleanup = setupOnlineSync(syncHandlersRef.current);
+    const cleanup = setupOnlineSync(syncHandlers);
 
     // Listen for sync complete events
-    const handleSyncComplete = () => {
+    const handleSyncComplete = (e) => {
       setPendingSyncCount(getSyncQueue().length);
     };
     window.addEventListener('sync-complete', handleSyncComplete);
@@ -127,7 +99,7 @@ export function usePWA(syncHandlers = {}) {
       cleanup();
       window.removeEventListener('sync-complete', handleSyncComplete);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [syncHandlers]);
 
   // Update pending sync count periodically
   React.useEffect(() => {

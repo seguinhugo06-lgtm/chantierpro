@@ -1,21 +1,25 @@
 /**
  * PlanLimitsWidget
- * Dashboard widget showing current usage vs plan limits.
+ * Dashboard widget showing current usage vs free plan limits.
  *
- * Reads limits from the subscription store (PLANS) instead of hardcoded values.
- * Displays progress bars for clients, devis, chantiers, photos counts.
- * Progress bars turn red when usage exceeds 80% of the limit.
- * Shows "Illimité" for Pro plan resources (-1 limit).
- * During trial, shows trial days remaining badge.
+ * Displays progress bars for clients, devis, and chantiers counts
+ * against hardcoded free-tier limits. Progress bars turn red
+ * when usage exceeds 80% of the limit.
  *
  * @module PlanLimitsWidget
  */
 
 import React, { memo, useMemo } from 'react';
-import { Gauge, Users, FileText, Hammer, Camera, Crown, Sparkles } from 'lucide-react';
+import { Gauge, Users, FileText, Hammer } from 'lucide-react';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
 import { useClients, useDevis, useChantiers } from '../../context/DataContext';
-import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
+
+/** Free plan limits (hardcoded for now) */
+const FREE_LIMITS = {
+  clients: 5,
+  devis: 10,
+  chantiers: 3,
+};
 
 /** Threshold (0-1) above which the bar turns red */
 const DANGER_THRESHOLD = 0.8;
@@ -24,10 +28,9 @@ const DANGER_THRESHOLD = 0.8;
  * Single usage row with label, count, limit, and progress bar
  */
 function UsageRow({ icon: Icon, label, count, limit, isDark, accentColor }) {
-  const isUnlimited = limit === -1;
-  const ratio = isUnlimited ? 0 : (limit > 0 ? Math.min(count / limit, 1) : 0);
+  const ratio = limit > 0 ? Math.min(count / limit, 1) : 0;
   const percentage = Math.round(ratio * 100);
-  const isDanger = !isUnlimited && ratio >= DANGER_THRESHOLD;
+  const isDanger = ratio >= DANGER_THRESHOLD;
 
   const barColor = isDanger ? '#ef4444' : accentColor;
   const trackColor = isDark ? 'bg-slate-700' : 'bg-gray-100';
@@ -48,29 +51,21 @@ function UsageRow({ icon: Icon, label, count, limit, isDark, accentColor }) {
           </div>
           <span className={`text-sm font-medium ${labelColor}`}>{label}</span>
         </div>
-        {isUnlimited ? (
-          <span className={`text-sm font-semibold ${mutedColor}`}>
-            {count} · <span className="text-green-500">∞</span>
-          </span>
-        ) : (
-          <span className={`text-sm font-semibold tabular-nums ${isDanger ? 'text-red-500' : mutedColor}`}>
-            {count} / {limit}
-          </span>
-        )}
+        <span className={`text-sm font-semibold tabular-nums ${isDanger ? 'text-red-500' : mutedColor}`}>
+          {count} / {limit}
+        </span>
       </div>
 
       {/* Progress bar */}
-      {!isUnlimited && (
-        <div className={`w-full h-2 rounded-full overflow-hidden ${trackColor}`}>
-          <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{
-              width: `${percentage}%`,
-              background: barColor,
-            }}
-          />
-        </div>
-      )}
+      <div className={`w-full h-2 rounded-full overflow-hidden ${trackColor}`}>
+        <div
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${percentage}%`,
+            background: barColor,
+          }}
+        />
+      </div>
 
       {/* Warning text when near limit */}
       {isDanger && (
@@ -89,19 +84,7 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
   const { devis } = useDevis();
   const { chantiers } = useChantiers();
 
-  const planId = useSubscriptionStore((s) => s.planId);
-  const isTrial = useSubscriptionStore((s) => s.isTrial());
-  const daysLeft = useSubscriptionStore((s) => s.trialDaysLeft());
-  const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
-
-  const plan = PLANS[planId] || PLANS.gratuit;
-  const limits = plan.limits;
   const accentColor = couleur || '#3b82f6';
-  const isPaid = planId !== 'gratuit';
-
-  const iaAnalysesCount = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem('cp_ia_analyses') || '[]').length; } catch { return 0; }
-  }, []);
 
   const counts = useMemo(
     () => ({
@@ -113,48 +96,26 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
   );
 
   const usageItems = [
-    { key: 'clients', icon: Users, label: 'Clients', count: counts.clients, limit: limits.clients },
-    { key: 'devis', icon: FileText, label: 'Devis', count: counts.devis, limit: limits.devis },
-    { key: 'chantiers', icon: Hammer, label: 'Chantiers', count: counts.chantiers, limit: limits.chantiers },
-    { key: 'ia', icon: Sparkles, label: 'Analyses IA', count: iaAnalysesCount, limit: limits.ia_analyses },
+    { key: 'clients', icon: Users, label: 'Clients', count: counts.clients, limit: FREE_LIMITS.clients },
+    { key: 'devis', icon: FileText, label: 'Devis', count: counts.devis, limit: FREE_LIMITS.devis },
+    { key: 'chantiers', icon: Hammer, label: 'Chantiers', count: counts.chantiers, limit: FREE_LIMITS.chantiers },
   ];
 
-  // Overall usage ratio for the header badge (only for limited plans)
-  const limitedItems = usageItems.filter(i => i.limit > 0);
-  const totalUsed = limitedItems.reduce((s, i) => s + i.count, 0);
-  const totalLimit = limitedItems.reduce((s, i) => s + i.limit, 0);
+  // Overall usage ratio for the header badge
+  const totalUsed = counts.clients + counts.devis + counts.chantiers;
+  const totalLimit = FREE_LIMITS.clients + FREE_LIMITS.devis + FREE_LIMITS.chantiers;
   const overallPct = totalLimit > 0 ? Math.round((totalUsed / totalLimit) * 100) : 0;
-
-  const headerBadge = isTrial
-    ? `J-${daysLeft}`
-    : isPaid ? plan.name : `${overallPct}%`;
 
   return (
     <Widget isDark={isDark}>
       <WidgetHeader
-        title={isTrial ? 'Essai Pro' : 'Limites du plan'}
-        icon={isTrial || isPaid ? <Crown /> : <Gauge />}
+        title="Limites du plan"
+        icon={<Gauge />}
         isDark={isDark}
-        badge={headerBadge}
+        badge={`${overallPct}%`}
       />
 
       <WidgetContent>
-        {/* Trial banner inside widget */}
-        {isTrial && (
-          <div className={`mb-4 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
-            daysLeft <= 3
-              ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-              : 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300'
-          }`}>
-            <Sparkles size={14} />
-            <span>
-              {daysLeft <= 3
-                ? `Plus que ${daysLeft} jour${daysLeft > 1 ? 's' : ''} d'essai Pro`
-                : `Essai Pro · ${daysLeft} jours restants`}
-            </span>
-          </div>
-        )}
-
         <div className="space-y-5">
           {usageItems.map((item) => (
             <UsageRow
@@ -176,21 +137,9 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
             ${isDark ? 'border-slate-700' : 'border-gray-100'}
           `}
         >
-          {isPaid && !isTrial ? (
-            <div className="flex items-center justify-center gap-1.5">
-              <Crown size={12} className="text-orange-500" />
-              <p className={`text-xs font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                Plan {plan.name}
-              </p>
-            </div>
-          ) : (
-            <button
-              onClick={() => openUpgradeModal('generic')}
-              className={`text-xs font-medium transition-colors ${isDark ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'}`}
-            >
-              {isTrial ? 'Garder le Pro →' : 'Passer au Pro →'}
-            </button>
-          )}
+          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+            Plan gratuit
+          </p>
         </div>
       </WidgetContent>
     </Widget>

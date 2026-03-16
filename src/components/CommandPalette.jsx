@@ -5,9 +5,7 @@ import Fuse from 'fuse.js';
 import {
   Search, X, FileText, Building2, Users, Plus, Calendar, Package,
   Home, Settings, HardHat, ChevronRight, Command, ArrowUp, ArrowDown,
-  Zap, Receipt, Clock, BarChart3, History, Star, Wallet, Library,
-  UserCheck, ShoppingCart, Camera, ClipboardList, PenTool, Download, Sparkles,
-  RotateCcw, CreditCard, Bell
+  Zap, Receipt, Clock, BarChart3, History, Star, CreditCard, Wallet
 } from 'lucide-react';
 
 /**
@@ -78,7 +76,6 @@ export default function CommandPalette({
   clients = [],
   chantiers = [],
   devis = [],
-  memos = [],
   // Actions
   onNewDevis,
   onNewClient,
@@ -110,34 +107,25 @@ export default function CommandPalette({
 
   // Quick actions (always available)
   const quickActions = useMemo(() => [
-    { id: 'devis-ia', label: 'Devis IA — Dictez votre devis', keywords: 'ia intelligence artificielle vocal dictée devis ia micro', icon: Sparkles, action: () => { setPage('ia-devis'); onClose(); }, color: '#f59e0b' },
-    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
-    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
-    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
-    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
-    { id: 'new-memo', label: 'Nouveau mémo', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('memos'); onClose(); }, color: '#f59e0b' },
-    { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: () => { setPage('devis'); onClose(); }, color: '#f59e0b' },
-    { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
-    { id: 'filter-factures-impayees', label: 'Factures impayées', keywords: 'factures impayées retard paiement encaissement', icon: Wallet, action: () => { setPage('devis'); onClose(); }, color: '#ef4444' },
-    { id: 'filter-avoirs', label: 'Voir les avoirs', keywords: 'avoirs notes crédit remboursement annulation avoir', icon: RotateCcw, action: () => { setPage('devis'); onClose(); }, color: '#dc2626' },
-    { id: 'filter-situations', label: 'Factures de situation', keywords: 'situations avancement travaux progressif facturation situation', icon: BarChart3, action: () => { setPage('devis'); onClose(); }, color: '#f97316' },
-    { id: 'action-planning', label: 'Planifier une intervention', keywords: 'planifier rdv rendez-vous intervention agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); }, color: '#6366f1' },
-    { id: 'action-pointage', label: 'Saisir un pointage', keywords: 'pointage heures temps travail equipe', icon: Clock, action: () => { setPage('dashboard'); onClose(); }, color: '#14b8a6' },
-  ], [onNewDevis, onNewClient, onNewChantier, onClose, setPage]);
+    { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); }, color: '#f97316' },
+    { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer', icon: Receipt, shortcut: '⌘F', action: () => { onNewDevis?.('facture'); onClose(); }, color: '#8b5cf6' },
+    { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter', icon: Users, shortcut: '⌘C', action: () => { onNewClient?.(); onClose(); }, color: '#3b82f6' },
+    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); }, color: '#22c55e' },
+  ], [onNewDevis, onNewClient, onNewChantier, onClose]);
 
   // Navigation items
   const navigationItems = useMemo(() => [
-    { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord résumé', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
-    { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents devis factures liste', icon: FileText, action: () => { setPage('devis'); onClose(); } },
-    { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux chantier oeuvre', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
-    { id: 'nav-clients', label: 'Clients', keywords: 'contacts clients annuaire sous-traitants', icon: Users, action: () => { setPage('clients'); onClose(); } },
-    { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda planning semaine mois jour', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
-    { id: 'nav-memos', label: 'Mémos', keywords: 'mémos notes rappels tâches todo inbox', icon: ClipboardList, action: () => { setPage('memos'); onClose(); } },
-    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles fournitures matériaux stock ouvrages bibliothèque', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
-    { id: 'nav-finances', label: 'Finances', keywords: 'trésorerie cash flow finances tréso banque export comptabilité fec csv statistiques analytique', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
-    { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'paiements stripe gocardless sepa carte bancaire prélèvement lien paiement', icon: CreditCard, action: () => { setPage('finances'); onClose(); }, color: '#8b5cf6' },
-    { id: 'nav-rapports', label: 'Rapports PDF', keywords: 'rapport pdf export activite financier synthese bilan chantier', icon: FileText, action: () => { setPage('finances'); onClose(); }, color: '#f97316' },
-    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration réglages paramètres entreprise profil admin', icon: Settings, action: () => { setPage('settings'); onClose(); } },
+    { id: 'nav-dashboard', label: 'Dashboard', keywords: 'accueil tableau de bord', icon: Home, action: () => { setPage('dashboard'); onClose(); } },
+    { id: 'nav-devis', label: 'Devis & Factures', keywords: 'documents', icon: FileText, action: () => { setPage('devis'); onClose(); } },
+    { id: 'nav-chantiers', label: 'Chantiers', keywords: 'projets travaux', icon: Building2, action: () => { setPage('chantiers'); onClose(); } },
+    { id: 'nav-clients', label: 'Clients', keywords: 'contacts', icon: Users, action: () => { setPage('clients'); onClose(); } },
+    { id: 'nav-planning', label: 'Planning', keywords: 'calendrier agenda', icon: Calendar, action: () => { setPage('planning'); onClose(); } },
+    { id: 'nav-catalogue', label: 'Catalogue', keywords: 'produits articles', icon: Package, action: () => { setPage('catalogue'); onClose(); } },
+    { id: 'nav-equipe', label: 'Équipe', keywords: 'collaborateurs employés', icon: HardHat, action: () => { setPage('equipe'); onClose(); } },
+    { id: 'nav-finances', label: 'Finances', keywords: 'tresorerie banque paiements', icon: Wallet, action: () => { setPage('finances'); onClose(); } },
+    { id: 'nav-paiements', label: 'Paiements en ligne', keywords: 'stripe gocardless sepa carte transactions', icon: CreditCard, action: () => { setPage('finances'); onClose(); } },
+    { id: 'nav-rentabilite', label: 'Rentabilité', keywords: 'statistiques analyse', icon: BarChart3, action: () => { setPage('rentabilite'); onClose(); } },
+    { id: 'nav-settings', label: 'Paramètres', keywords: 'configuration reglages', icon: Settings, action: () => { setPage('settings'); onClose(); } },
   ], [setPage, onClose]);
 
   // Create Fuse instances for fuzzy search
@@ -161,12 +149,6 @@ export default function CommandPalette({
     threshold: 0.4,
     includeScore: true,
   }), [devis, clients]);
-
-  const fuseMemos = useMemo(() => new Fuse(memos, {
-    keys: ['text', 'notes', 'category'],
-    threshold: 0.4,
-    includeScore: true,
-  }), [memos]);
 
   const fuseActions = useMemo(() => new Fuse([...quickActions, ...navigationItems], {
     keys: ['label', 'keywords'],
@@ -193,22 +175,20 @@ export default function CommandPalette({
 
   // Search results with fuzzy matching
   const searchResults = useMemo(() => {
-    if (debouncedQuery.length < 2) return { actions: [], clients: [], chantiers: [], devis: [], memos: [] };
+    if (debouncedQuery.length < 2) return { actions: [], clients: [], chantiers: [], devis: [] };
 
     const actionResults = fuseActions.search(debouncedQuery).slice(0, 5);
     const clientResults = fuseClients.search(debouncedQuery).slice(0, 5);
     const chantierResults = fuseChantiers.search(debouncedQuery).slice(0, 5);
     const devisResults = fuseDevis.search(debouncedQuery).slice(0, 5);
-    const memoResults = fuseMemos.search(debouncedQuery).slice(0, 5);
 
     return {
       actions: actionResults.map(r => r.item),
       clients: clientResults.map(r => r.item),
       chantiers: chantierResults.map(r => r.item),
       devis: devisResults.map(r => r.item),
-      memos: memoResults.map(r => r.item),
     };
-  }, [debouncedQuery, fuseActions, fuseClients, fuseChantiers, fuseDevis, fuseMemos]);
+  }, [debouncedQuery, fuseActions, fuseClients, fuseChantiers, fuseDevis]);
 
   // Build flat list of all items
   const allItems = useMemo(() => {
@@ -305,26 +285,11 @@ export default function CommandPalette({
             entityId: d.id,
             label: d.numero || `#${d.id?.slice(-6)}`,
             sublabel: `${client?.nom || ''} • ${(d.total_ttc || 0).toLocaleString('fr-FR')} €`,
-            icon: d.facture_type === 'avoir' ? RotateCcw : d.facture_type === 'situation' ? BarChart3 : d.type === 'facture' ? Receipt : FileText,
-            color: d.facture_type === 'avoir' ? '#dc2626' : d.facture_type === 'situation' ? '#f97316' : d.type === 'facture' ? '#8b5cf6' : '#f97316',
+            icon: d.type === 'facture' ? Receipt : FileText,
+            color: d.type === 'facture' ? '#8b5cf6' : '#f97316',
             action: () => { setPage('devis'); setSelectedDevis?.(d); onClose(); }
           });
         });
-      }
-
-      if (searchResults.memos.length > 0) {
-        items.push({ type: 'header', label: 'Mémos' });
-        searchResults.memos.forEach(m => items.push({
-          type: 'result',
-          id: `memo-${m.id}`,
-          entityType: 'memo',
-          entityId: m.id,
-          label: m.text?.substring(0, 60) || 'Mémo sans texte',
-          sublabel: m.category || (m.due_date ? `📅 ${new Date(m.due_date).toLocaleDateString('fr-FR')}` : ''),
-          icon: ClipboardList,
-          color: '#f59e0b',
-          action: () => { setPage('memos'); onClose(); }
-        }));
       }
 
       // No results message handled separately
@@ -358,6 +323,28 @@ export default function CommandPalette({
       selectedEl?.scrollIntoView({ block: 'nearest' });
     }
   }, [selectedIndex, selectableItems]);
+
+  // Focus trap — keep focus inside the palette
+  const paletteRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleFocusTrap = (e) => {
+      if (e.key !== 'Tab' || !paletteRef.current) return;
+      const focusable = paletteRef.current.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleFocusTrap);
+    return () => document.removeEventListener('keydown', handleFocusTrap);
+  }, [isOpen]);
 
   // Keyboard navigation
   const handleKeyDown = (e) => {
@@ -399,24 +386,25 @@ export default function CommandPalette({
     <AnimatePresence mode="wait">
       {isOpen && (
         <motion.div
-          className="fixed inset-0 flex items-start justify-center z-[100] pt-0 sm:pt-20 px-0 sm:px-4"
+          className="fixed inset-0 flex items-start justify-center z-[100] pt-16 sm:pt-20 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
         >
-          {/* Backdrop — fixed to ensure full viewport coverage on all devices */}
+          {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Palette — full-screen on mobile, centered card on sm+ */}
+          {/* Palette */}
           <motion.div
-            className={`relative w-full max-w-2xl ${cardBg} rounded-none sm:rounded-2xl shadow-2xl sm:border ${borderColor} overflow-hidden max-h-[100dvh] sm:max-h-[80vh]`}
+            ref={paletteRef}
+            className={`relative w-full max-w-2xl ${cardBg} rounded-2xl shadow-2xl border ${borderColor} overflow-hidden`}
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
@@ -428,13 +416,13 @@ export default function CommandPalette({
             aria-label="Palette de commandes"
           >
             {/* Search input */}
-            <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 border-b ${borderColor}`}>
-              <Search size={20} className={textMuted} />
+            <div className={`flex items-center gap-3 px-5 py-4 border-b ${borderColor}`}>
+              <Search size={22} className={textMuted} />
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Rechercher..."
-                className={`flex-1 bg-transparent outline-none text-base sm:text-lg ${textPrimary} placeholder:${textMuted}`}
+                placeholder="Rechercher ou taper une commande..."
+                className={`flex-1 bg-transparent outline-none text-lg ${textPrimary} placeholder:${textMuted}`}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 aria-label="Rechercher"
@@ -442,7 +430,7 @@ export default function CommandPalette({
               {query && (
                 <button
                   onClick={() => setQuery('')}
-                  className={`p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 ${textMuted}`}
+                  className={`p-1 rounded-md ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} ${textMuted}`}
                 >
                   <X size={18} />
                 </button>
@@ -460,13 +448,11 @@ export default function CommandPalette({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-5 py-2 ${textMuted}`}
                       >
-                        {idx > 0 && <div className={`mx-4 my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />}
-                        <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-5 py-2 ${textMuted}`}>
-                          {item.label === 'Récents' && <History size={12} />}
-                          {item.label === 'Actions rapides' && <Zap size={12} />}
-                          {item.label}
-                        </div>
+                        {item.label === 'Récents' && <History size={12} />}
+                        {item.label === 'Actions rapides' && <Zap size={12} />}
+                        {item.label}
                       </motion.div>
                     );
                   }
@@ -485,8 +471,8 @@ export default function CommandPalette({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.1, delay: Math.min(currentIndex * 0.02, 0.1) }}
-                      className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2.5 mx-1 rounded-xl transition-colors ${
-                        isSelected ? selectedBg : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 mx-1 rounded-xl transition-colors ${
+                        isSelected ? selectedBg : (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50')
                       }`}
                       style={isSelected ? { backgroundColor: isDark ? '#334155' : '#f1f5f9' } : {}}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}
@@ -570,10 +556,6 @@ export default function CommandPalette({
                 <span className={`flex items-center gap-1 ${textMuted}`}>
                   <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>esc</kbd>
                   <span className="ml-1">fermer</span>
-                </span>
-                <span className={`flex items-center gap-1 ${textMuted}`}>
-                  <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-white border'}`}>?</kbd>
-                  <span className="ml-1">raccourcis</span>
                 </span>
               </div>
               <div className="flex items-center gap-1.5">

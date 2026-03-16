@@ -405,7 +405,7 @@ const generateExampleRow = (importType) => {
     case 'EQUIPE':
       return ['Martin', 'Jean', 'Chef de chantier', 'jean.martin@email.com', '0698765432', '35', 'Maçonnerie, Carrelage'];
     case 'DEVIS':
-      return ['Dupont SA', '15000', 'DEV-2024-00001', '10/01/2024', 'Rénovation complète cuisine', 'brouillon', '30'];
+      return ['Dupont SA', '15000', 'DEV-2024-001', '10/01/2024', 'Rénovation complète cuisine', 'brouillon', '30'];
     default:
       return [];
   }

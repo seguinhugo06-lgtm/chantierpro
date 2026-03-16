@@ -550,7 +550,7 @@ export default function GanttView({
                   onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                   className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                   rows={2}
-                  placeholder="Notes supplémentaires..."
+                  placeholder="Notes supplementaires..."
                 />
               </div>
             </div>

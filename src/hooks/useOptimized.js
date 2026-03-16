@@ -255,9 +255,7 @@ export function useChantierStats(chantierId, { devis, depenses, pointages, equip
     const revenuTotal = revenuDevis + ajustementsRevenu;
     const depensesTotal = totalDepenses + coutMainOeuvre + ajustementsDepense;
     const marge = revenuTotal - depensesTotal;
-    const hasDepenses = depensesTotal > 0;
-    // Marge non calculable si aucune dépense (évite 100% trompeur)
-    const tauxMarge = revenuTotal > 0 && hasDepenses ? (marge / revenuTotal) * 100 : 0;
+    const tauxMarge = revenuTotal > 0 ? (marge / revenuTotal) * 100 : 0;
 
     return {
       revenuDevis,
@@ -270,7 +268,6 @@ export function useChantierStats(chantierId, { devis, depenses, pointages, equip
       depensesTotal,
       marge,
       tauxMarge,
-      hasDepenses,
       devisCount: chantierDevis.length,
       depensesCount: chantierDepenses.length,
       pointagesCount: chantierPointages.length
@@ -291,7 +288,7 @@ export function useDashboardStats({ chantiers, devis, depenses, clients }) {
     // Devis stats
     const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon').length;
     const devisEnvoyes = devis.filter(d => d.type === 'devis' && d.statut === 'envoye').length;
-    const devisAcceptes = devis.filter(d => d.type === 'devis' && d.statut === 'accepte').length;
+    const devisAcceptes = devis.filter(d => d.type === 'devis' && ['accepte', 'signe'].includes(d.statut)).length;
 
     // Revenue this month
     const now = new Date();

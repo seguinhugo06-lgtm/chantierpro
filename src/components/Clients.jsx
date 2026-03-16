@@ -1,87 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, ChevronDown, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap, Tag, History, Receipt, ClipboardList, CheckCircle2, Upload, LayoutGrid, List, AlertTriangle, Info, Clock, Mic, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, ArrowLeft, Phone, MessageCircle, MapPin, Mail, Building2, User, Edit3, Trash2, ChevronRight, Search, X, Check, Briefcase, FileText, Camera, Home, Users, Euro, Calendar, ExternalLink, Smartphone, ArrowUpDown, Send, MessageSquare, Zap } from 'lucide-react';
 import QuickClientModal from './QuickClientModal';
-import { useConfirm, useToast } from '../context/AppContext';
+import { useConfirm } from '../context/AppContext';
 import { useDebounce } from '../hooks/useDebounce';
-import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
-import { useFormValidation, clientSchema } from '../lib/validation';
-import FormError from './ui/FormError';
-import AuditTimeline from './audit/AuditTimeline';
-import { getEntityHistory, getEntitiesHistory } from '../lib/auditService';
-import supabase, { isDemo } from '../supabaseClient';
-import { CLIENT_TYPE_COLORS, CLIENT_STATUS_LABELS, CLIENT_STATUS_COLORS, CLIENT_TYPES, DEVIS_EN_ATTENTE } from '../lib/constants';
-import { formatClientName } from '../lib/formatters';
-import { usePermissions } from '../hooks/usePermissions';
-import { ReadOnlyBanner } from './ui/PermissionGate';
 
-// Skeleton loader for client cards
-function ClientSkeleton({ isDark, count = 6 }) {
-  const bg = isDark ? 'bg-slate-700' : 'bg-slate-200';
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden animate-pulse`}>
-          <div className="p-4">
-            <div className="flex gap-3">
-              <div className={`w-12 h-12 rounded-full ${bg}`} />
-              <div className="flex-1 space-y-2 pt-1">
-                <div className={`h-4 ${bg} rounded w-3/4`} />
-                <div className={`h-3 ${bg} rounded w-1/2`} />
-                <div className="flex gap-1.5">
-                  <div className={`h-5 ${bg} rounded-full w-14`} />
-                  <div className={`h-5 ${bg} rounded-full w-16`} />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-            <div className={`h-4 ${bg} rounded w-2/3`} />
-          </div>
-          <div className={`px-4 py-2.5 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-            <div className="flex justify-between">
-              <div className="flex gap-3">
-                <div className={`h-4 ${bg} rounded w-8`} />
-                <div className={`h-4 ${bg} rounded w-8`} />
-              </div>
-              <div className={`h-4 ${bg} rounded w-16`} />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// P2.2: Highlight matching search terms
-function HighlightText({ text, query, className = '' }) {
-  if (!text || !query || query.length < 2) return <span className={className}>{text}</span>;
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
-  return (
-    <span className={className}>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.toLowerCase()
-          ? <mark key={i} className="bg-amber-400/80 text-white rounded px-0.5">{part}</mark>
-          : part
-      )}
-    </span>
-  );
-}
-
-export default function Clients({ clients, setClients, updateClient, deleteClient: deleteClientProp, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode, modeDiscret, memos = [], addMemo, updateMemo, deleteMemo, toggleMemo, onImportClients }) {
+export default function Clients({ clients, setClients, updateClient, devis, chantiers, echanges = [], onSubmit, couleur, setPage, setSelectedChantier, setSelectedDevis, isDark, createMode, setCreateMode }) {
   const { confirm } = useConfirm();
-  const { showToast } = useToast();
-  const { errors, validate, validateAll, clearErrors, clearFieldError } = useFormValidation(clientSchema);
-  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
-  const [pendingSubmit, setPendingSubmit] = useState(null);
-
-  // RBAC permissions
-  const { canPerform, canEditData } = usePermissions();
-  const isViewOnly = !canEditData;
-
-  // Format money with modeDiscret support
-  const formatMoney = (n) => modeDiscret ? '·····' : (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 0 }) + ' €';
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -90,381 +14,69 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const textSecondary = isDark ? "text-slate-300" : "text-slate-600";
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
-  // Channel config for échanges multi-canal
-  const CHANNEL_CONFIG = useMemo(() => ({
-    email: { label: 'Email', icon: Mail, color: '#3b82f6', bg: isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600', btnBg: isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
-    sms: { label: 'SMS', icon: MessageCircle, color: '#22c55e', bg: isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600', btnBg: isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100' },
-    whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: '#25d366', bg: isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600', btnBg: isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' },
-    appel: { label: 'Appel', icon: Phone, color: '#8b5cf6', bg: isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-600', btnBg: isDark ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
-    visite: { label: 'Visite', icon: MapPin, color: '#f97316', bg: isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-600', btnBg: isDark ? 'bg-orange-900/30 text-orange-400 hover:bg-orange-900/50' : 'bg-orange-50 text-orange-600 hover:bg-orange-100' },
-  }), [isDark]);
-
-  // Type icons for categories
-  const TYPE_ICONS = { 'Particulier': '👤', 'Professionnel': '🏢', 'Architecte': '🏗️', 'Promoteur': '🏘️', 'Syndic': '🏛️' };
-
   const [show, setShow] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewId, setViewId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
-  const [activeTab, setActiveTab] = useState('historique');
-  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
-  const [sortBy, setSortBy] = useState('recent'); // recent, name, ca, activite
-  const [sortDir, setSortDir] = useState('desc'); // 'asc' | 'desc'
-  const [filterCategorie, setFilterCategorie] = useState('');
-  const [filterStatus, setFilterStatus] = useState(''); // '' | 'actif' | 'en_devis' | 'prospect' | 'inactif'
-  const [kpiFilter, setKpiFilter] = useState(null); // null | 'actifs' | 'ca' | 'devis_attente'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
-  const [selectedEchange, setSelectedEchange] = useState(null); // P1.1: échange detail drawer
-  const [showTypePicker, setShowTypePicker] = useState(false); // P1.2: custom type picker (filter)
-  const [showFormTypePicker, setShowFormTypePicker] = useState(false); // P1.2: custom type picker (form)
-  const [duplicateDismissed, setDuplicateDismissed] = useState(() => localStorage.getItem('clientDuplicateDismissed') === 'true');
-
-  // Duplicate detection for form fields (telephone, email, nom)
-  const { phoneDuplicates, emailDuplicates, strongDuplicates, checkField: checkDupeField, clearAll: clearDupes } = useDuplicateCheck(clients, editId, 300);
+  const [activeTab, setActiveTab] = useState('chantiers');
+  const [form, setForm] = useState({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+  const [sortBy, setSortBy] = useState('recent'); // recent, name, ca
 
   useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
 
-  // Escape key to close modals/views
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        if (selectedEchange) { setSelectedEchange(null); }
-        else if (showTypePicker) { setShowTypePicker(false); }
-        else if (showFormTypePicker) { setShowFormTypePicker(false); }
-        else if (show) { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); clearErrors(); clearDupes(); }
-        else if (viewId) { setViewId(null); }
-        else if (showQuickModal) { setShowQuickModal(false); }
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [show, viewId, showQuickModal, selectedEchange, showTypePicker, showFormTypePicker]);
-
-  // Client stats map — MUST be defined before filtered/getClientStatus/getClientStats
-  const clientStatsMap = useMemo(() => {
-    const map = new Map();
-    const empty = { devis: 0, factures: 0, ca: 0, caEnCours: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
-    (devis || []).forEach(d => {
-      const cid = d.client_id;
-      if (!cid) return;
-      if (!map.has(cid)) map.set(cid, { ...empty });
-      const s = map.get(cid);
-      if (d.type === 'devis') s.devis++;
-      if (d.type === 'facture') s.factures++;
-      // D2 fix: CA encaissé = only paid factures
-      if (d.type === 'facture' && d.statut === 'payee') {
-        s.ca += d.total_ttc || d.montant_ttc || (d.total_ht ? d.total_ht * 1.2 : 0);
-      }
-      // CA en cours = factures envoyées + devis acceptés (pipeline)
-      if ((d.type === 'facture' && d.statut !== 'payee') || (d.type === 'devis' && d.statut === 'accepte')) {
-        s.caEnCours += d.total_ttc || d.montant_ttc || 0;
-      }
-      if (d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)) s.devisActifs++;
-    });
-    (chantiers || []).forEach(ch => {
-      const cid = ch.client_id || ch.clientId;
-      if (!cid) return;
-      if (!map.has(cid)) map.set(cid, { ...empty });
-      const s = map.get(cid);
-      s.chantiers++;
-      if (ch.statut === 'en_cours') s.chantiersEnCours++;
-      if (ch.statut !== 'archive' && ch.statut !== 'abandonne' && ch.statut !== 'termine') s.chantiersActifs++;
-    });
-    return map;
-  }, [devis, chantiers]);
-
-  const getClientStats = (id) => {
-    return clientStatsMap.get(id) || { devis: 0, factures: 0, ca: 0, chantiers: 0, chantiersEnCours: 0, chantiersActifs: 0, devisActifs: 0 };
-  };
-
-  const getClientStatus = (clientId) => {
-    const s = getClientStats(clientId);
-    if (s.chantiersEnCours > 0) return 'actif';
-    if (s.devisActifs > 0) return 'en_devis';
-    const client = clients.find(c => c.id === clientId);
-    if (client?.created_at) {
-      const daysSinceCreation = (Date.now() - new Date(client.created_at).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceCreation < 90 && s.chantiers === 0 && s.devis === 0) return 'prospect';
-    }
-    if (s.chantiersActifs > 0 || s.devisActifs > 0) return 'actif';
-    return 'inactif';
-  };
-
-  // Duplicate detection: same telephone OR same email
-  const duplicateMap = useMemo(() => {
-    const map = new Map(); // clientId → [duplicate client ids]
-    const byPhone = new Map(); // normalized phone → [client ids]
-    const byEmail = new Map(); // normalized email → [client ids]
-
-    clients.forEach(c => {
-      const phone = c.telephone?.replace(/[\s.\-()]/g, '');
-      if (phone && phone.length >= 6) {
-        if (!byPhone.has(phone)) byPhone.set(phone, []);
-        byPhone.get(phone).push(c.id);
-      }
-      const email = c.email?.toLowerCase().trim();
-      if (email && email.includes('@')) {
-        if (!byEmail.has(email)) byEmail.set(email, []);
-        byEmail.get(email).push(c.id);
-      }
-    });
-
-    // Build duplicate sets
-    const processed = new Set();
-    const addDuplicates = (ids) => {
-      if (ids.length < 2) return;
-      ids.forEach(id => {
-        if (!map.has(id)) map.set(id, new Set());
-        ids.forEach(otherId => {
-          if (otherId !== id) map.get(id).add(otherId);
-        });
-      });
-    };
-
-    byPhone.forEach((ids) => addDuplicates(ids));
-    byEmail.forEach((ids) => addDuplicates(ids));
-
-    // Convert sets to arrays
-    const result = new Map();
-    map.forEach((dupes, id) => {
-      if (dupes.size > 0) result.set(id, [...dupes]);
-    });
-    return result;
-  }, [clients]);
-
-  const getDuplicateOf = (clientId) => {
-    const dupeIds = duplicateMap.get(clientId);
-    if (!dupeIds || dupeIds.length === 0) return null;
-    return dupeIds.map(id => clients.find(c => c.id === id)).filter(Boolean);
-  };
-
-  // Merge duplicate: keep target, transfer data from source, delete source
-  const mergeClients = async (targetId, sourceId) => {
-    const target = clients.find(c => c.id === targetId);
-    const source = clients.find(c => c.id === sourceId);
-    if (!target || !source) return;
-
-    const confirmed = await confirm({
-      title: 'Fusionner les clients',
-      message: `Fusionner "${source.nom} ${source.prenom || ''}" dans "${target.nom} ${target.prenom || ''}" ?\n\nLes informations manquantes seront complétées et les documents transférés. Le doublon sera supprimé.`
-    });
-    if (!confirmed) return;
-
-    // Merge: fill in blanks from source
-    const merged = {};
-    ['prenom', 'entreprise', 'email', 'telephone', 'adresse', 'notes', 'categorie'].forEach(field => {
-      if (!target[field] && source[field]) {
-        merged[field] = source[field];
-      }
-    });
-    // Combine notes if both have them
-    if (target.notes && source.notes && target.notes !== source.notes) {
-      merged.notes = `${target.notes}\n---\n${source.notes}`;
-    }
-
-    // Update target with merged data
-    if (Object.keys(merged).length > 0) {
-      if (updateClient) await updateClient(targetId, merged);
-    }
-
-    // Transfer devis/chantiers from source to target
-    const sourceDevis = devis?.filter(d => d.client_id === sourceId) || [];
-    const sourceChantiers = chantiers?.filter(ch => ch.client_id === sourceId) || [];
-
-    // Note: We update client_id in state — Supabase sync will handle the rest
-    if (sourceDevis.length > 0 || sourceChantiers.length > 0) {
-      // These would need onUpdate callbacks from parent — for now we just delete the source
-      // The user can reassign documents manually if needed
-    }
-
-    // Delete the source client
-    if (deleteClientProp) {
-      await deleteClientProp(sourceId);
-    } else {
-      setClients(clients.filter(c => c.id !== sourceId));
-    }
-
-    showToast(`Client fusionné avec succès`, 'success');
-    setViewId(targetId);
-  };
-
-  // Avatar initials — handles professionals with entreprise
-  const getInitials = (c) => {
-    if (c.prenom) return `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase();
-    if (c.entreprise && c.categorie === 'Professionnel') {
-      // For professionals: first 2 letters of entreprise
-      return c.entreprise.replace(/[^a-zA-ZÀ-ÿ]/g, '').slice(0, 2).toUpperCase() || c.nom?.[0]?.toUpperCase() || '?';
-    }
-    // Fallback: split nom by spaces
-    return c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-  };
-
-  // Status tooltip explanation
-  const STATUS_TOOLTIPS = {
-    actif: 'A des chantiers ou devis en cours',
-    en_devis: 'A des devis actifs, pas de chantier en cours',
-    prospect: 'Créé il y a moins de 90 jours, sans documents',
-    inactif: 'Aucun chantier ni devis en cours'
-  };
-
-  // P3.1: Test data detection — hide in prod, badge in dev
-  const isTestClient = (c) => {
-    if (c.isTestData) return true;
-    const nom = (c.nom || '').toLowerCase();
-    const entreprise = (c.entreprise || '').toLowerCase();
-    return /^(clientpersist|test_|testclient)/i.test(c.nom || '') ||
-           /^(clientpersist|test_|testclient)/i.test(c.entreprise || '') ||
-           nom.includes('test') || entreprise.includes('test');
-  };
-
-  // In production, filter out test clients from the main list
-  const isProduction = typeof __DEV__ !== 'undefined' ? !__DEV__ : (import.meta.env?.PROD ?? true);
-  const displayClients = useMemo(() => {
-    if (isProduction) return clients.filter(c => !isTestClient(c));
-    return clients;
-  }, [clients, isProduction]);
-
-  // P1.3: show TYPE column only if >= 20% of clients have a category
-  const showTypeColumn = useMemo(() => {
-    if (displayClients.length === 0) return false;
-    const withType = displayClients.filter(c => c.categorie && c.categorie.trim()).length;
-    return (withType / displayClients.length) >= 0.2;
-  }, [displayClients]);
-
-  const filtered = displayClients.filter(c => {
-    const q = debouncedSearch?.toLowerCase() || '';
-    const matchSearch = !q ||
-      c.nom?.toLowerCase().includes(q) ||
-      c.prenom?.toLowerCase().includes(q) ||
-      c.entreprise?.toLowerCase().includes(q) ||
-      c.telephone?.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
-      c.email?.toLowerCase().includes(q) ||
-      c.adresse?.toLowerCase().includes(q);
-    const matchCat = !filterCategorie || c.categorie === filterCategorie;
-    const matchStatus = !filterStatus || getClientStatus(c.id) === filterStatus;
-    // KPI filter
-    let matchKpi = true;
-    if (kpiFilter === 'actifs') {
-      matchKpi = getClientStatus(c.id) === 'actif';
-    } else if (kpiFilter === 'ca') {
-      matchKpi = getClientStats(c.id).ca > 0;
-    } else if (kpiFilter === 'devis_attente') {
-      matchKpi = getClientStats(c.id).devisActifs > 0;
-    }
-    return matchSearch && matchCat && matchStatus && matchKpi;
-  });
-
-  // Get last activity date for a client (for sorting and display)
-  const getLastActivity = (clientId) => {
-    let latest = 0;
-    const checkDate = (dateStr) => {
-      if (!dateStr) return;
-      const t = new Date(dateStr).getTime();
-      if (t > latest && !isNaN(t)) latest = t;
-    };
-    (devis || []).forEach(d => {
-      if (d.client_id === clientId) {
-        checkDate(d.created_at);
-        checkDate(d.updated_at);
-        checkDate(d.date);
-      }
-    });
-    (chantiers || []).forEach(ch => {
-      if ((ch.client_id || ch.clientId) === clientId) {
-        checkDate(ch.created_at);
-        checkDate(ch.updated_at);
-        checkDate(ch.date_debut);
-      }
-    });
-    // Also check client's own updated_at
-    const client = clients.find(c => c.id === clientId);
-    if (client) {
-      checkDate(client.updated_at);
-    }
-    return latest;
-  };
-
-  const handleSortChange = (key) => {
-    if (sortBy === key) {
-      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
-    } else {
-      setSortBy(key);
-      // Default directions: name → asc, others → desc
-      setSortDir(key === 'name' ? 'asc' : 'desc');
-    }
-  };
+  const filtered = clients.filter(c => !debouncedSearch || c.nom?.toLowerCase().includes(debouncedSearch.toLowerCase()) || c.entreprise?.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
   const getSortedClients = () => {
     const sorted = [...filtered];
-    const mult = sortDir === 'asc' ? 1 : -1;
     switch (sortBy) {
       case 'name':
-        return sorted.sort((a, b) => mult * (a.nom || '').localeCompare(b.nom || ''));
+        return sorted.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
       case 'ca':
-        return sorted.sort((a, b) => mult * (getClientStats(a.id).ca - getClientStats(b.id).ca));
-      case 'activite':
-        return sorted.sort((a, b) => mult * (getLastActivity(a.id) - getLastActivity(b.id)));
+        return sorted.sort((a, b) => getClientStats(b.id).ca - getClientStats(a.id).ca);
       case 'recent':
       default:
-        return sorted.sort((a, b) => mult * (parseInt(a.id) - parseInt(b.id)));
+        return sorted.sort((a, b) => parseInt(b.id) - parseInt(a.id));
     }
   };
 
-  const doSubmit = async (trimmedForm) => {
+  const getClientStats = (id) => {
+    const cd = devis?.filter(d => d.client_id === id) || [];
+    const cc = chantiers?.filter(c => c.client_id === id) || [];
+    return { devis: cd.filter(d => d.type === 'devis').length, factures: cd.filter(d => d.type === 'facture').length, ca: cd.filter(d => d.statut === 'payee').reduce((s, d) => s + (d.total_ttc || 0), 0), chantiers: cc.length, chantiersEnCours: cc.filter(c => c.statut === 'en_cours').length };
+  };
+
+  const submit = async () => {
+    if (!form.nom) return;
     const wasEditing = editId;
     try {
       if (editId) {
+        // Use updateClient which syncs to Supabase
         if (updateClient) {
-          await updateClient(editId, trimmedForm);
+          await updateClient(editId, form);
         } else {
-          setClients(clients.map(c => c.id === editId ? { ...c, ...trimmedForm } : c));
+          // Fallback to direct state update if updateClient not provided
+          setClients(clients.map(c => c.id === editId ? { ...c, ...form } : c));
         }
       } else {
-        onSubmit(trimmedForm);
+        onSubmit(form);
       }
     } catch (error) {
       console.error('Error saving client:', error);
-      showToast('Erreur lors de la sauvegarde du client', 'error');
-      return;
+      // Still close the form but show error was handled
     }
     setShow(false);
-    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' });
-    clearErrors();
-    clearDupes();
-    showToast(wasEditing ? 'Client modifié avec succès' : 'Client créé avec succès', 'success');
+    setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' });
+    // Return to detail view if we were editing
     if (wasEditing) {
       setViewId(wasEditing);
     }
     setEditId(null);
   };
 
-  const submit = async () => {
-    // Trim all string fields before validation and save
-    const trimmedForm = Object.fromEntries(
-      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
-    );
-    setForm(trimmedForm);
-
-    if (!validateAll(trimmedForm)) {
-      showToast('Veuillez corriger les erreurs du formulaire', 'error');
-      return;
-    }
-
-    // Check for strong duplicates (phone/email) — only on creation, not edit
-    if (!editId && strongDuplicates.length > 0) {
-      setPendingSubmit(trimmedForm);
-      setShowDupeConfirm(true);
-      return;
-    }
-
-    await doSubmit(trimmedForm);
-  };
-
   const startEdit = (client) => {
-    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '', categorie: client.categorie || '' });
-    clearErrors();
+    setForm({ nom: client.nom || '', prenom: client.prenom || '', entreprise: client.entreprise || '', email: client.email || '', telephone: client.telephone || '', adresse: client.adresse || '', notes: client.notes || '' });
     setEditId(client.id);
     setViewId(null); // Close detail view to show edit form
     setShow(true);
@@ -472,35 +84,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const openGPS = (adresse) => { if (!adresse) return; window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`, '_blank'); };
   const callPhone = (tel) => { if (!tel) return; window.location.href = `tel:${tel.replace(/\s/g, '')}`; };
   const sendWhatsApp = (tel, nom) => { if (!tel) return; const phone = tel.replace(/\s/g, '').replace(/^0/, '33'); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour ${nom || ''},`)}`, '_blank'); };
-  const handleDeleteClient = async (id) => {
-    const client = clients.find(c => c.id === id);
-    const stats = getClientStats(id);
-    const hasData = stats.chantiers > 0 || stats.devis > 0 || stats.factures > 0;
-    const message = hasData
-      ? `Supprimer ${client?.nom || 'ce client'} ? Ce client a ${stats.chantiers} chantier(s) et ${stats.devis + stats.factures} document(s) associés. Cette action est irréversible.`
-      : `Supprimer ${client?.nom || 'ce client'} ? Cette action est irréversible.`;
-    const confirmed = await confirm({ title: 'Supprimer le client', message });
-    if (confirmed) {
-      if (deleteClientProp) {
-        await deleteClientProp(id);
-      } else {
-        setClients(clients.filter(c => c.id !== id));
-      }
-      setViewId(null);
-      showToast('Client supprimé', 'success');
-    }
+  const deleteClient = async (id) => {
+    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce client ?' });
+    if (confirmed) setClients(clients.filter(c => c.id !== id));
   };
 
-  // D6: Quick client creation handler
-  const handleQuickSubmit = async (data) => {
-    const newClient = await onSubmit(data);
+  // Quick client creation handler
+  const handleQuickSubmit = (data) => {
+    onSubmit(data);
     setShowQuickModal(false);
-    const clientName = `${data.prenom || ''} ${data.nom}`.trim();
-    showToast(`✅ ${clientName} ajouté`, 'success');
-    // Auto-open client fiche after creation
-    if (newClient?.id) {
-      setViewId(newClient.id);
-    }
   };
 
   // Ouvrir un document (devis/facture)
@@ -519,374 +111,124 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     const clientDevis = devis?.filter(d => d.client_id === client.id) || [];
     const clientChantiers = chantiers?.filter(c => c.client_id === client.id) || [];
 
-    const clientStatus = getClientStatus(client.id);
-    const clientStatusColor = CLIENT_STATUS_COLORS[clientStatus];
-    const clientTypeColor = CLIENT_TYPE_COLORS[client.categorie];
-
     return (
-      <div className="space-y-4">
-        {/* Sticky Header */}
-        <div className={`sticky top-0 z-20 -mx-4 px-4 py-3 backdrop-blur-md ${isDark ? 'bg-slate-900/80' : 'bg-white/80'} border-b ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={() => setViewId(null)} className={`p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-              <ArrowLeft size={20} className={textPrimary} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} leading-tight`}>{formatClientName(client)}</h2>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                {client.entreprise && <span className={`${textMuted} flex items-center gap-1 text-xs`}><Building2 size={12} />{client.entreprise}</span>}
-                {/* Status badge */}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientStatusColor.darkBg + ' ' + clientStatusColor.darkText : clientStatusColor.bg + ' ' + clientStatusColor.text}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${clientStatusColor.dot}`} />
-                  {CLIENT_STATUS_LABELS[clientStatus]}
-                </span>
-                {/* Type badge */}
-                {client.categorie && clientTypeColor && (
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? clientTypeColor.darkBg + ' ' + clientTypeColor.darkText : clientTypeColor.bg + ' ' + clientTypeColor.text}`}>
-                    {client.categorie}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => startEdit(client)} className="px-3 py-2 text-sm rounded-xl min-h-[40px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{ background: `${couleur}15`, color: couleur }}>
-                <Edit3 size={14} /><span className="hidden sm:inline">Modifier</span>
-              </button>
-              <button onClick={() => handleDeleteClient(client.id)} className={`p-2 rounded-xl min-h-[40px] min-w-[40px] flex items-center justify-center transition-all ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer">
-                <Trash2 size={14} />
-              </button>
-            </div>
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button onClick={() => setViewId(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <ArrowLeft size={20} className={textPrimary} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>{client.nom} {client.prenom}</h1>
+            {client.entreprise && <p className={`${textMuted} flex items-center gap-1`}><Building2 size={14} />{client.entreprise}</p>}
           </div>
+          <button onClick={() => startEdit(client)} className="px-3 sm:px-4 py-2 text-sm rounded-xl min-h-[44px] flex items-center justify-center gap-1.5 hover:shadow-md transition-all" style={{background: `${couleur}20`, color: couleur}}>
+            <Edit3 size={14} /><span>Modifier</span>
+          </button>
         </div>
 
-        {/* Zone Contact — above the fold */}
-        <div className={`${cardBg} rounded-xl border p-4`}>
-          {/* 3 action buttons */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-            {/* GPS first on mobile via order */}
-            <button
-              onClick={() => client.adresse ? openGPS(client.adresse) : startEdit(client)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all shadow-md hover:shadow-lg order-first sm:order-last ${client.adresse ? 'text-white' : ''}`}
-              style={client.adresse
-                ? { background: 'linear-gradient(135deg, #f97316, #ea580c)' }
-                : { background: isDark ? '#1e293b' : '#f1f5f9', border: '1px dashed', borderColor: isDark ? '#475569' : '#cbd5e1' }
-              }
-            >
-              {client.adresse ? (
+        {/* Actions rapides */}
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
+          {/* Boutons d'action - affichés uniquement si téléphone ou adresse */}
+          {(client.telephone || client.adresse) && (
+            <div className="flex gap-2 sm:gap-3 flex-wrap mb-4">
+              {client.telephone && (
                 <>
-                  <MapPin size={20} />
-                  <span className="text-xs font-medium">Itinéraire</span>
-                </>
-              ) : (
-                <>
-                  <Plus size={18} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                  <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ajouter adresse</span>
+                  <button onClick={() => callPhone(client.telephone)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                    <Phone size={16} /><span>Appeler</span>
+                  </button>
+                  <button onClick={() => sendWhatsApp(client.telephone, client.prenom)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                    <MessageCircle size={16} /><span>WhatsApp</span>
+                  </button>
                 </>
               )}
-            </button>
-            <button
-              onClick={() => client.telephone ? callPhone(client.telephone) : null}
-              disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
-              style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
-              title={!client.telephone ? 'Aucun numéro renseigné' : 'Appeler'}
-            >
-              <Phone size={20} />
-              <span className="text-xs font-medium">Appeler</span>
-            </button>
-            <button
-              onClick={() => client.telephone ? sendWhatsApp(client.telephone, client.prenom) : null}
-              disabled={!client.telephone}
-              className={`flex flex-col items-center justify-center gap-1.5 py-3 sm:py-4 rounded-xl min-h-[44px] transition-all text-white shadow-md ${client.telephone ? 'hover:shadow-lg cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
-              style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
-              title={!client.telephone ? 'Aucun numéro renseigné' : 'WhatsApp'}
-            >
-              <MessageCircle size={20} />
-              <span className="text-xs font-medium">WhatsApp</span>
-            </button>
-          </div>
+              {client.adresse && (
+                <button onClick={() => openGPS(client.adresse)} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-xs sm:text-sm min-h-[44px] transition-colors shadow-md hover:shadow-lg">
+                  <MapPin size={16} /><span>Itinéraire</span>
+                </button>
+              )}
+            </div>
+          )}
 
-          {/* Contact info */}
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2.5">
-              <Phone size={14} className={textMuted} />
+          {/* Informations client avec placeholders */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Phone size={14} /> Téléphone</p>
               {client.telephone ? (
-                <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`text-sm font-medium ${textPrimary} hover:underline`}>{client.telephone}</a>
+                <p className={`font-medium ${textPrimary}`}>{client.telephone}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter un téléphone</button>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter un téléphone
+                </button>
               )}
             </div>
-            <div className="flex items-center gap-2.5">
-              <Mail size={14} className={textMuted} />
+            <div>
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><Mail size={14} /> Email</p>
               {client.email ? (
-                <a href={`mailto:${client.email}`} className={`text-sm font-medium ${textPrimary} hover:underline truncate`}>{client.email}</a>
+                <p className={`font-medium ${textPrimary}`}>{client.email}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter un email</button>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter un email
+                </button>
               )}
             </div>
-            <div className="flex items-center gap-2.5">
-              <MapPin size={14} className={textMuted} />
+            <div className="col-span-2">
+              <p className={`${textMuted} flex items-center gap-1.5 mb-1`}><MapPin size={14} /> Adresse</p>
               {client.adresse ? (
-                <p className={`text-sm ${textPrimary} flex-1`}>{client.adresse}</p>
+                <p className={`font-medium ${textPrimary}`}>{client.adresse}</p>
               ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>+ Ajouter une adresse</button>
+                <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                  + Ajouter une adresse
+                </button>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Contextual Alert Banner */}
-        {(() => {
-          // Priority-based contextual alert
-          const pendingDevis = clientDevis.filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu'));
-          const oldestPending = pendingDevis.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
-          const daysSinceSent = oldestPending ? Math.floor((Date.now() - new Date(oldestPending.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
-          const acceptedNotInvoiced = clientDevis.filter(d => d.type === 'devis' && d.statut === 'accepte');
-          const terminatedNoInvoice = clientChantiers.filter(ch => ch.statut === 'termine' && !clientDevis.some(d => d.type === 'facture' && d.chantier_id === ch.id));
-          const activityDates = [
-            ...clientDevis.map(d => new Date(d.created_at || 0).getTime()).filter(t => t > 0),
-            ...clientChantiers.map(ch => new Date(ch.created_at || 0).getTime()).filter(t => t > 0),
-          ];
-          const lastActivityDate = activityDates.length > 0 ? Math.max(...activityDates) : 0;
-          const monthsSinceActivity = lastActivityDate > 0 ? Math.floor((Date.now() - lastActivityDate) / (1000 * 60 * 60 * 24 * 30)) : -1;
-
-          let alert = null;
-          if (oldestPending && daysSinceSent > 7) {
-            alert = { icon: Clock, color: '#f59e0b', bgLight: 'bg-amber-50', bgDark: 'bg-amber-900/20', textLight: 'text-amber-800', textDark: 'text-amber-200', message: `Devis en attente depuis ${daysSinceSent} jours`, action: 'Relancer', onAction: () => { if (setPage) { setSelectedDevis?.(oldestPending); setPage('devis'); } } };
-          } else if (acceptedNotInvoiced.length > 0) {
-            alert = { icon: Zap, color: '#10b981', bgLight: 'bg-emerald-50', bgDark: 'bg-emerald-900/20', textLight: 'text-emerald-800', textDark: 'text-emerald-200', message: `${acceptedNotInvoiced.length} devis accepté(s) à facturer`, action: 'Facturer', onAction: () => { if (setPage) { setSelectedDevis?.(acceptedNotInvoiced[0]); setPage('devis'); } } };
-          } else if (terminatedNoInvoice.length > 0) {
-            alert = { icon: AlertTriangle, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: `Chantier terminé, facture en attente`, action: 'Voir', onAction: () => { if (setPage && setSelectedChantier) { setSelectedChantier(terminatedNoInvoice[0].id); setPage('chantiers'); } } };
-          } else if (monthsSinceActivity < 0 && stats.chantiers === 0 && stats.devis === 0) {
-            alert = { icon: Zap, color: couleur, bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: 'Nouveau client — Créez votre premier devis !', action: 'Créer un devis', onAction: () => { if (setPage) { setPage('devis', { client_id: c.id }); setCreateMode?.(true); } } };
-          } else if (monthsSinceActivity > 6 && stats.chantiers > 0) {
-            alert = { icon: Info, color: '#6b7280', bgLight: 'bg-slate-50', bgDark: 'bg-slate-700/50', textLight: 'text-slate-700', textDark: 'text-slate-300', message: `Aucune activité depuis ${monthsSinceActivity} mois`, action: 'Nouveau devis', onAction: () => { if (setPage) { setPage('devis'); setCreateMode?.(true); } } };
-          }
-
-          if (!alert) return null;
-          const AlertIcon = alert.icon;
-          return (
-            <div className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? alert.bgDark : alert.bgLight}`}>
-              <AlertIcon size={18} style={{ color: alert.color }} className="flex-shrink-0" />
-              <p className={`text-sm flex-1 ${isDark ? alert.textDark : alert.textLight}`}>{alert.message}</p>
-              <button
-                onClick={alert.onAction}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-all hover:shadow-md min-h-[32px]"
-                style={{ background: alert.color }}
-              >
-                {alert.action}
+          {/* Notes */}
+          <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+            <p className={`text-sm ${textMuted} mb-2`}>Notes internes</p>
+            {client.notes ? (
+              <p className={`text-sm p-3 rounded-xl ${isDark ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>{client.notes}</p>
+            ) : (
+              <button onClick={() => startEdit(client)} className={`text-sm italic ${isDark ? 'text-slate-500 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'} hover:underline`}>
+                + Ajouter des notes
               </button>
-            </div>
-          );
-        })()}
-
-        {/* Duplicate Client Alert */}
-        {(() => {
-          const dupes = getDuplicateOf(client.id);
-          if (!dupes || dupes.length === 0) return null;
-          return (
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-800'}`}>
-                    Client potentiellement en double
-                  </p>
-                  <div className="mt-2 space-y-1.5">
-                    {dupes.map(dupe => {
-                      const matchPhone = client.telephone && dupe.telephone && client.telephone.replace(/[\s.\-()]/g, '') === dupe.telephone.replace(/[\s.\-()]/g, '');
-                      const matchEmail = client.email && dupe.email && client.email.toLowerCase().trim() === dupe.email.toLowerCase().trim();
-                      return (
-                        <div key={dupe.id} className={`flex items-center gap-2 p-2 rounded-lg ${isDark ? 'bg-slate-800/80' : 'bg-white'}`}>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${textPrimary}`}>{dupe.nom} {dupe.prenom || ''}</p>
-                            <p className={`text-xs ${textMuted}`}>
-                              {matchPhone && <span>Même tél: {dupe.telephone}</span>}
-                              {matchPhone && matchEmail && <span> · </span>}
-                              {matchEmail && <span>Même email: {dupe.email}</span>}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setViewId(dupe.id)}
-                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                          >
-                            Voir
-                          </button>
-                          <button
-                            onClick={() => mergeClients(client.id, dupe.id)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-medium text-white transition-all hover:shadow-md"
-                            style={{ background: '#ef4444' }}
-                          >
-                            Fusionner
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Quick Actions */}
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => { if (setPage) { setPage('devis'); setCreateMode?.(true); } }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white min-h-[40px] hover:shadow-md transition-all"
-            style={{ background: couleur }}
-          >
-            <FileText size={14} /> Nouveau devis
-          </button>
-          <button
-            onClick={() => { if (setPage) { setPage('chantiers'); setCreateMode?.(true); } }}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium min-h-[40px] border transition-all hover:shadow-sm ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}`}
-          >
-            <Home size={14} /> Nouveau chantier
-          </button>
+            )}
+          </div>
         </div>
 
-        {/* KPI Row — Clickable */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.chantiers === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={stats.chantiers > 0 ? {color: couleur} : {}}>{stats.chantiers}</p>
+            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Home size={12} /> Chantiers</p>
+          </div>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.devis === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-blue-500'}`}>{stats.devis}</p>
+            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Devis</p>
+          </div>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.factures === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-purple-500'}`}>{stats.factures}</p>
+            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><FileText size={12} /> Factures</p>
+          </div>
+          <div className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 text-center shadow-sm`}>
+            <p className={`text-lg sm:text-2xl font-bold ${stats.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : 'text-emerald-500'}`}>{stats.ca.toLocaleString('fr-FR')}€</p>
+            <p className={`text-xs ${textMuted} flex items-center justify-center gap-1`}><Euro size={12} /> CA Total</p>
+          </div>
+        </div>
+
+        {/* Onglets Historique */}
+        <div className={`flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {[
-            { key: 'chantiers', icon: Home, color: couleur, value: stats.chantiers, label: 'Chantiers', sub: stats.chantiersEnCours > 0 ? `${stats.chantiersEnCours} en cours` : null, tab: 'chantiers' },
-            { key: 'devis', icon: FileText, color: '#3b82f6', value: stats.devis, label: 'Devis', sub: stats.devisActifs > 0 ? `${stats.devisActifs} en attente` : null, tab: 'documents' },
-            { key: 'factures', icon: Receipt, color: '#8b5cf6', value: stats.factures, label: 'Factures', sub: null, tab: 'documents' },
-            { key: 'ca', icon: Euro, color: '#10b981', value: formatMoney(stats.ca), label: 'CA Total', sub: null, tab: 'documents' },
-          ].map(kpi => {
-            const Icon = kpi.icon;
-            const isActive = activeTab === kpi.tab;
-            return (
-              <button
-                key={kpi.key}
-                onClick={() => setActiveTab(kpi.tab)}
-                className={`${cardBg} rounded-xl border p-3 text-center transition-all hover:shadow-sm ${isActive ? 'ring-1' : ''}`}
-                style={isActive ? { borderColor: kpi.color, '--tw-ring-color': kpi.color } : {}}
-              >
-                <div className="flex items-center justify-center gap-1.5 mb-1">
-                  <Icon size={14} style={{ color: kpi.color }} />
-                </div>
-                <p className={`text-lg font-bold ${kpi.value === 0 || kpi.value === '0 €' ? textMuted : ''}`} style={kpi.value !== 0 && kpi.value !== '0 €' ? { color: kpi.color } : {}}>{kpi.value}</p>
-                <p className={`text-[10px] ${textMuted}`}>{kpi.label}</p>
-                {kpi.sub && <p className={`text-[10px] font-medium mt-0.5`} style={{ color: kpi.color }}>{kpi.sub}</p>}
-              </button>
-            );
-          })}
+            ['chantiers', <Home size={14} />, 'Chantiers'],
+            ['documents', <FileText size={14} />, 'Documents'],
+            ['echanges', <MessageSquare size={14} />, 'Échanges'],
+            ['photos', <Camera size={14} />, 'Photos']
+          ].map(([k, icon, label]) => (
+            <button key={k} onClick={() => setActiveTab(k)} className={`px-3 sm:px-4 py-2.5 rounded-t-lg sm:rounded-t-xl text-sm font-medium whitespace-nowrap min-h-[44px] flex items-center gap-1.5 ${activeTab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}>
+              {icon} {label}
+            </button>
+          ))}
         </div>
-
-        {/* Tabs with badges */}
-        <div className={`flex gap-1 border-b pb-2 overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          {(() => {
-            // Compute badge counts
-            const photoCount = clientChantiers.reduce((sum, ch) => sum + (ch.photos?.length || 0), 0);
-            const echangeCount = (echanges || []).filter(e => e.client_id === client.id).length;
-            const memoCount = (memos || []).filter(m => m.client_id === client.id).length;
-
-            const tabs = [
-              { key: 'historique', icon: <History size={14} />, label: 'Historique', badge: 0 },
-              { key: 'chantiers', icon: <Home size={14} />, label: 'Chantiers', badge: stats.chantiers },
-              { key: 'documents', icon: <FileText size={14} />, label: 'Documents', badge: stats.devis + stats.factures },
-              { key: 'echanges', icon: <MessageSquare size={14} />, label: 'Échanges', badge: echangeCount },
-              { key: 'photos', icon: <Camera size={14} />, label: 'Photos', badge: photoCount },
-              { key: 'memos', icon: <ClipboardList size={14} />, label: 'Tâches', badge: memoCount },
-              { key: 'activite', icon: <Clock size={14} />, label: 'Activité', badge: 0 },
-            ];
-
-            return tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-3 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap min-h-[40px] flex items-center gap-1.5 transition-colors ${activeTab === tab.key ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700 text-white' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')}`}
-              >
-                {tab.icon}
-                <span className="hidden sm:inline">{tab.label}</span>
-                {tab.badge > 0 && (
-                  <span className={`ml-0.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ${activeTab === tab.key ? 'text-white' : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`} style={activeTab === tab.key ? { background: couleur } : {}}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ));
-          })()}
-        </div>
-
-        {activeTab === 'historique' && (() => {
-          const timeline = [];
-          // Devis
-          clientDevis.filter(d => d.type === 'devis').forEach(d => timeline.push({
-            id: `d-${d.id}`, date: d.date, type: 'devis', icon: FileText,
-            label: `Devis ${d.numero || '#'}`, statut: d.statut,
-            montant: d.total_ttc || d.total_ht || 0,
-            color: '#f97316', onClick: () => { setSelectedDevis?.(d); setPage?.('devis'); }
-          }));
-          // Factures
-          clientDevis.filter(d => d.type === 'facture').forEach(f => timeline.push({
-            id: `f-${f.id}`, date: f.date, type: 'facture', icon: Receipt,
-            label: `Facture ${f.numero || '#'}`, statut: f.statut,
-            montant: f.total_ttc || f.total_ht || 0,
-            color: '#8b5cf6', onClick: () => { setSelectedDevis?.(f); setPage?.('devis'); }
-          }));
-          // Chantiers
-          clientChantiers.forEach(c => timeline.push({
-            id: `c-${c.id}`, date: c.date_debut || c.created_at, type: 'chantier', icon: Building2,
-            label: c.nom, statut: c.statut,
-            color: '#22c55e', onClick: () => { setSelectedChantier?.(c.id); setPage?.('chantiers'); }
-          }));
-          timeline.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-
-          const statusLabel = (s) => ({
-            brouillon: 'Brouillon', envoye: 'Envoyé', vu: 'Vu', accepte: 'Signé',
-            refuse: 'Refusé', payee: 'Payée', facturee: 'Facturé',
-            acompte_facture: 'Acompte facturé', en_cours: 'En cours',
-            termine: 'Terminé', archive: 'Archivé', prospect: 'Prospect',
-            abandonne: 'Abandonné'
-          }[s] || s || '');
-          const statusColor = (s) => ({
-            accepte: 'text-emerald-500', payee: 'text-emerald-500', termine: 'text-emerald-500',
-            facturee: 'text-purple-500', acompte_facture: 'text-purple-400',
-            refuse: 'text-red-500', abandonne: 'text-red-400',
-            envoye: 'text-blue-500', vu: 'text-blue-400',
-            en_cours: 'text-amber-500', brouillon: textMuted,
-            archive: textMuted
-          }[s] || textMuted);
-
-          return (
-            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-              {timeline.length === 0 ? (
-                <div className="text-center py-10">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                    <History size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                  </div>
-                  <p className={`font-medium ${textPrimary}`}>Aucun historique</p>
-                  <p className={`text-sm ${textMuted}`}>Les devis, factures et chantiers apparaîtront ici</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {timeline.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={item.onClick}
-                      className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                    >
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${item.color}15` }}>
-                        <item.icon size={16} style={{ color: item.color }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${textPrimary}`}>{item.label}</p>
-                        <p className={`text-xs ${textMuted}`}>
-                          {item.date ? new Date(item.date).toLocaleDateString('fr-FR') : '—'}
-                          {item.montant ? ` • ${formatMoney(item.montant)}` : ''}
-                        </p>
-                      </div>
-                      <span className={`text-xs font-medium ${statusColor(item.statut)}`}>{statusLabel(item.statut)}</span>
-                      <ChevronRight size={14} className={textMuted} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {activeTab === 'chantiers' && (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
@@ -990,7 +332,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                           </div>
                           <p className={`text-xs ${textMuted}`}>{new Date(d.date).toLocaleDateString('fr-FR')}</p>
                         </div>
-                        <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
+                        <p className={`font-bold ${(d.total_ttc || 0) === 0 ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{(d.total_ttc || 0).toLocaleString('fr-FR')}€</p>
                         <ChevronRight size={18} className={textMuted} />
                       </div>
                     );
@@ -1005,31 +347,6 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
             {(() => {
               const clientEchanges = echanges.filter(e => e.client_id === client.id).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-              // Quick action buttons for contacting
-              const contactButtons = (
-                <div className="flex gap-2 flex-wrap">
-                  {client.telephone && (
-                    <>
-                      <a href={`tel:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.appel.btnBg}`}>
-                        <Phone size={14} /> Appeler
-                      </a>
-                      <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.sms.btnBg}`}>
-                        <MessageCircle size={14} /> SMS
-                      </a>
-                      <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.whatsapp.btnBg}`}>
-                        <MessageCircle size={14} /> WhatsApp
-                      </a>
-                    </>
-                  )}
-                  {client.email && (
-                    <a href={`mailto:${client.email}`} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${CHANNEL_CONFIG.email.btnBg}`}>
-                      <Mail size={14} /> Email
-                    </a>
-                  )}
-                </div>
-              );
-
               if (clientEchanges.length === 0) return (
                 <div className="text-center py-10">
                   <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -1037,296 +354,64 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   </div>
                   <p className={`font-medium ${textPrimary} mb-1`}>Aucun échange</p>
                   <p className={`text-sm ${textMuted} mb-5`}>Commencez une conversation avec ce client</p>
-                  <div className="flex justify-center">{contactButtons}</div>
-                  {!client.email && !client.telephone && (
-                    <p className={`text-sm ${textMuted} mt-3`}>Ajoutez un email ou téléphone pour contacter ce client</p>
-                  )}
+                  <div className="flex justify-center gap-3 flex-wrap">
+                    {client.email && (
+                      <a href={`mailto:${client.email}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                        <Mail size={16} /> Email
+                      </a>
+                    )}
+                    {client.telephone && (
+                      <>
+                        <a href={`sms:${client.telephone.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                          <MessageCircle size={16} /> SMS
+                        </a>
+                        <a href={`https://wa.me/${client.telephone.replace(/\s/g, '').replace(/^0/, '33')}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}>
+                          <MessageCircle size={16} /> WhatsApp
+                        </a>
+                      </>
+                    )}
+                    {!client.email && !client.telephone && (
+                      <p className={`text-sm ${textMuted}`}>Ajoutez un email ou téléphone pour contacter ce client</p>
+                    )}
+                  </div>
                 </div>
               );
               return (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                    <p className={`text-sm font-medium ${textPrimary}`}>{clientEchanges.length} échange{clientEchanges.length > 1 ? 's' : ''}</p>
-                    {contactButtons}
+                  <div className="flex justify-end gap-2 mb-4">
+                    <a href={`mailto:${client.email || ''}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                      <Mail size={14} /> Email
+                    </a>
+                    <a href={`sms:${client.telephone?.replace(/\s/g, '')}`} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      <MessageCircle size={14} /> SMS
+                    </a>
                   </div>
-                  {clientEchanges.map(e => {
-                    const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
-                    const ChannelIcon = channel.icon;
-                    const dirIn = e.direction === 'in' || e.direction === 'entrant';
-                    const dirOut = e.direction === 'out' || e.direction === 'sortant';
-                    const hasContent = e.contenu || e.body || e.message;
-                    const preview = hasContent ? (hasContent.length > 60 ? hasContent.slice(0, 60) + '…' : hasContent) : null;
-                    return (
-                      <button
-                        key={e.id}
-                        onClick={() => setSelectedEchange(e)}
-                        className={`w-full text-left flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600/80 active:bg-slate-600' : 'bg-slate-50 hover:bg-slate-100 active:bg-slate-200'}`}
-                      >
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${channel.bg}`}>
-                          <ChannelIcon size={18} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className={`font-medium text-sm ${textPrimary}`}>{channel.label}</p>
-                              {(dirIn || dirOut) && (
-                                <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
-                                  {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
-                                </span>
-                              )}
-                              {e.document && <span className={`text-xs ${textMuted} truncate`}>· {e.document}</span>}
-                            </div>
-                            <span className={`text-xs ${textMuted} whitespace-nowrap flex-shrink-0`}>
-                              {new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          {/* Subject or (Sans objet) */}
-                          <p className={`text-sm mt-1 ${e.objet ? textSecondary : `${textMuted} italic`}`}>
-                            {e.objet || '(Sans objet)'}
+                  {clientEchanges.map(e => (
+                    <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        e.type === 'email' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600') :
+                        e.type === 'sms' ? (isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-600') :
+                        e.type === 'whatsapp' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600') :
+                        (isDark ? 'bg-slate-600 text-slate-400' : 'bg-slate-200 text-slate-500')
+                      }`}>
+                        {e.type === 'email' ? <Mail size={18} /> : e.type === 'whatsapp' ? <MessageCircle size={18} /> : <MessageCircle size={18} />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className={`font-medium ${textPrimary}`}>
+                            {e.type === 'email' ? 'Email' : e.type === 'whatsapp' ? 'WhatsApp' : 'SMS'}
+                            {e.document && <span className={`text-sm ${textMuted} ml-2`}>· {e.document}</span>}
                           </p>
-                          {/* Content preview truncated to 60 chars */}
-                          {preview && (
-                            <p className={`text-xs ${textMuted} mt-0.5 truncate`}>{preview}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1">
-                            {e.duree && <span className={`text-xs ${textMuted} flex items-center gap-1`}><Clock size={10} /> {e.duree} min</span>}
-                            {e.montant && <span className="text-xs font-medium" style={{color: couleur}}>{formatMoney(e.montant)}</span>}
-                          </div>
+                          <span className={`text-xs ${textMuted}`}>{new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <ChevronRight size={14} className={`${textMuted} flex-shrink-0 mt-3`} />
-                      </button>
-                    );
-                  })}
+                        {e.objet && <p className={`text-sm ${textSecondary} mt-1`}>{e.objet}</p>}
+                        {e.montant && <p className="text-sm font-medium mt-1" style={{color: couleur}}>{e.montant.toLocaleString('fr-FR')}€</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               );
             })()}
-          </div>
-        )}
-
-        {/* P1.1 — Échange detail drawer/modal */}
-        {selectedEchange && (() => {
-          const e = selectedEchange;
-          const channel = CHANNEL_CONFIG[e.type] || CHANNEL_CONFIG.email;
-          const ChannelIcon = channel.icon;
-          const dirIn = e.direction === 'in' || e.direction === 'entrant';
-          const dirOut = e.direction === 'out' || e.direction === 'sortant';
-          const fullContent = e.contenu || e.body || e.message;
-          return (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedEchange(null)}>
-              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-              <div
-                className={`relative w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-white'} shadow-2xl animate-in slide-in-from-bottom`}
-                onClick={ev => ev.stopPropagation()}
-              >
-                {/* Drawer handle on mobile */}
-                <div className="sm:hidden flex justify-center pt-3 pb-1">
-                  <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-                </div>
-                {/* Header */}
-                <div className={`flex items-center gap-3 p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${channel.bg}`}>
-                    <ChannelIcon size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`font-semibold ${textPrimary}`}>{channel.label}</p>
-                      {(dirIn || dirOut) && (
-                        <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${dirOut ? (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-50 text-blue-600') : (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600')}`}>
-                          {dirOut ? <><ArrowUpRight size={9} /> Envoyé</> : <><ArrowDownLeft size={9} /> Reçu</>}
-                        </span>
-                      )}
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>
-                      {new Date(e.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <button onClick={() => setSelectedEchange(null)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                    <X size={18} className={textMuted} />
-                  </button>
-                </div>
-                {/* Body */}
-                <div className="p-4 space-y-4">
-                  {/* Subject */}
-                  <div>
-                    <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Objet</p>
-                    <p className={`text-sm ${e.objet ? textPrimary : `${textMuted} italic`}`}>
-                      {e.objet || '(Sans objet)'}
-                    </p>
-                  </div>
-                  {/* Document linked */}
-                  {e.document && (
-                    <div>
-                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Document lié</p>
-                      <p className={`text-sm ${textPrimary}`}>{e.document}</p>
-                    </div>
-                  )}
-                  {/* Duration */}
-                  {e.duree && (
-                    <div>
-                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Durée</p>
-                      <p className={`text-sm ${textPrimary} flex items-center gap-1.5`}><Clock size={14} /> {e.duree} minutes</p>
-                    </div>
-                  )}
-                  {/* Amount */}
-                  {e.montant && (
-                    <div>
-                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Montant</p>
-                      <p className="text-sm font-semibold" style={{color: couleur}}>{formatMoney(e.montant)}</p>
-                    </div>
-                  )}
-                  {/* Content */}
-                  {fullContent ? (
-                    <div>
-                      <p className={`text-xs font-medium uppercase tracking-wider mb-1 ${textMuted}`}>Contenu</p>
-                      <div className={`text-sm ${textSecondary} whitespace-pre-line p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                        {fullContent}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={`text-center py-6 ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'} rounded-xl`}>
-                      <p className={`text-sm ${textMuted} italic`}>Aucun contenu enregistré pour cet échange</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {activeTab === 'memos' && (
-          <div className="space-y-4">
-            {/* Notes internes */}
-            <div className={`${cardBg} rounded-xl border p-3 sm:p-4`}>
-              <div className="flex items-center justify-between mb-2">
-                <p className={`text-sm font-medium ${textPrimary}`}>Notes internes</p>
-              </div>
-              {client.notes ? (
-                <p className={`text-sm p-3 rounded-lg ${isDark ? 'bg-amber-900/20 text-amber-200' : 'bg-amber-50 text-amber-800'} whitespace-pre-line`}>{client.notes}</p>
-              ) : (
-                <button onClick={() => startEdit(client)} className={`text-sm italic ${textMuted} hover:underline`}>
-                  + Ajouter des notes
-                </button>
-              )}
-              {/* Quick tags */}
-              <div className="flex gap-1.5 mt-2 flex-wrap">
-                {['À rappeler', 'VIP', 'Problème paiement', 'Recommandé'].map(tag => {
-                  const hasTag = client.notes?.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      onClick={() => {
-                        if (hasTag) return;
-                        const newNotes = client.notes ? `${client.notes}\n[${tag}]` : `[${tag}]`;
-                        updateClient?.(client.id, { notes: newNotes });
-                      }}
-                      className={`px-2 py-1 rounded-full text-[10px] font-medium transition-all ${hasTag ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                      style={hasTag ? { background: couleur } : {}}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Memos list */}
-            <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-3 sm:p-5`}>
-            {(() => {
-              const clientMemos = memos.filter(m => m.client_id === client.id);
-              const activeMemos = clientMemos.filter(m => !m.is_done);
-              const doneMemos = clientMemos.filter(m => m.is_done);
-              return (
-                <div className="space-y-3">
-                  {/* Quick add */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      id={`memo-client-${client.id}`}
-                      placeholder="Nouvelle tâche pour ce client..."
-                      className={`flex-1 px-3 py-2 border rounded-xl text-sm ${inputBg}`}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.target.value.trim()) {
-                          addMemo?.({ text: e.target.value.trim(), client_id: client.id });
-                          e.target.value = '';
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => {
-                        const input = document.getElementById(`memo-client-${client.id}`);
-                        if (input?.value.trim()) {
-                          addMemo?.({ text: input.value.trim(), client_id: client.id });
-                          input.value = '';
-                        }
-                      }}
-                      className="px-3 py-2 rounded-xl text-white text-sm font-medium"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-
-                  {/* Active memos */}
-                  {activeMemos.length > 0 && (
-                    <div className="space-y-1">
-                      {activeMemos.map(m => (
-                        <div key={m.id} className={`flex items-start gap-2.5 px-3 py-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                          <button
-                            onClick={() => toggleMemo?.(m.id)}
-                            className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 ${isDark ? 'border-slate-500' : 'border-slate-300'}`}
-                            aria-label="Marquer comme fait"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${textPrimary}`}>{m.text}</p>
-                            {m.due_date && (
-                              <span className={`text-xs ${m.due_date < new Date().toISOString().split('T')[0] ? 'text-red-500' : textMuted}`}>
-                                {new Date(m.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Done memos */}
-                  {doneMemos.length > 0 && (
-                    <details className={`text-sm ${textMuted}`}>
-                      <summary className="cursor-pointer py-1 font-medium">Terminés ({doneMemos.length})</summary>
-                      <div className="space-y-1 mt-1">
-                        {doneMemos.map(m => (
-                          <div key={m.id} className="flex items-center gap-2.5 px-3 py-1.5 opacity-60">
-                            <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                            <span className="line-through text-sm">{m.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-
-                  {clientMemos.length === 0 && (
-                    <div className="text-center py-8">
-                      <ClipboardList size={28} className={`mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                      <p className={textMuted}>Aucune tâche pour ce client</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-          </div>
-        )}
-
-        {activeTab === 'activite' && (
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border`}>
-            <ClientActivityTab
-              clientId={client.id}
-              clientDevis={clientDevis}
-              clientChantiers={clientChantiers}
-              isDark={isDark}
-              couleur={couleur}
-              modeDiscret={modeDiscret}
-            />
           </div>
         )}
 
@@ -1378,7 +463,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {allPhotos.map(p => (
                       <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
-                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} />
+                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt="" />
                         <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
                       </div>
                     ))}
@@ -1396,95 +481,20 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   if (show) return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 sm:gap-4">
-        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '', categorie: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+        <button onClick={() => { setShow(false); setEditId(null); setForm({ nom: '', prenom: '', entreprise: '', email: '', telephone: '', adresse: '', notes: '' }); }} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <ArrowLeft size={20} className={textPrimary} />
         </button>
-        <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h2>
+        <h1 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouveau'} client</h1>
       </div>
       <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div><label htmlFor="client-nom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input id="client-nom" aria-required="true" aria-invalid={!!errors.nom} aria-describedby={errors.nom ? 'client-nom-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.nom ? 'border-red-500' : ''}`} value={form.nom} onChange={e => { setForm(p => ({...p, nom: e.target.value})); if (errors.nom) clearFieldError('nom'); }} onBlur={() => validate('nom', form.nom, form)} /><FormError id="client-nom-error" message={errors.nom} /></div>
-          <div><label htmlFor="client-prenom" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input id="client-prenom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
-          <div><label htmlFor="client-entreprise" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input id="client-entreprise" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
-          <div>
-            <label htmlFor="client-telephone" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
-            <input id="client-telephone" type="tel" aria-invalid={!!errors.telephone} aria-describedby={errors.telephone ? 'client-telephone-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.telephone ? 'border-red-500' : ''} ${phoneDuplicates.length > 0 ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`} value={form.telephone} onChange={e => { setForm(p => ({...p, telephone: e.target.value})); if (errors.telephone) clearFieldError('telephone'); checkDupeField('telephone', e.target.value); }} onBlur={() => validate('telephone', form.telephone, form)} placeholder="06 12 34 56 78" />
-            <FormError id="client-telephone-error" message={errors.telephone} />
-            {phoneDuplicates.length > 0 && (
-              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
-                <span>
-                  Un client avec ce téléphone existe déjà : <strong>{phoneDuplicates[0].nom} {phoneDuplicates[0].prenom || ''}</strong>
-                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(phoneDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
-                </span>
-              </div>
-            )}
-          </div>
-          <div>
-            <label htmlFor="client-email" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label>
-            <input id="client-email" type="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'client-email-error' : undefined} className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${errors.email ? 'border-red-500' : ''} ${emailDuplicates.length > 0 ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`} value={form.email} onChange={e => { setForm(p => ({...p, email: e.target.value})); if (errors.email) clearFieldError('email'); checkDupeField('email', e.target.value); }} onBlur={() => validate('email', form.email, form)} placeholder="client@email.com" />
-            <FormError id="client-email-error" message={errors.email} />
-            {emailDuplicates.length > 0 && (
-              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
-                <span>
-                  Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
-                  <button type="button" onClick={() => { setShow(false); setEditId(null); setViewId(emailDuplicates[0].id); }} className="ml-1 underline font-medium" style={{ color: couleur }}>Voir la fiche →</button>
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="relative">
-            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
-            <button
-              type="button"
-              onClick={() => setShowFormTypePicker(!showFormTypePicker)}
-              className={`w-full px-4 py-2.5 border rounded-xl text-left flex items-center justify-between ${inputBg}`}
-            >
-              {form.categorie ? (
-                <span className="flex items-center gap-2"><span>{TYPE_ICONS[form.categorie] || '📋'}</span> {form.categorie}</span>
-              ) : (
-                <span className={textMuted}>— Sélectionner —</span>
-              )}
-              <ChevronDown size={16} className={`${textMuted} transition-transform ${showFormTypePicker ? 'rotate-180' : ''}`} />
-            </button>
-            {showFormTypePicker && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowFormTypePicker(false)} />
-                <div className={`absolute top-full left-0 right-0 mt-1 z-40 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <button
-                    type="button"
-                    onClick={() => { setForm(p => ({...p, categorie: ''})); setShowFormTypePicker(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${!form.categorie ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                  >
-                    <span className="w-5 text-center">—</span> Non défini
-                    {!form.categorie && <Check size={14} className="ml-auto" style={{color: couleur}} />}
-                  </button>
-                  {CLIENT_TYPES.map(t => (
-                    <button
-                      type="button"
-                      key={t}
-                      onClick={() => { setForm(p => ({...p, categorie: t})); setShowFormTypePicker(false); }}
-                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2.5 transition-colors ${form.categorie === t ? (isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-900') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-700 hover:bg-slate-50'}`}
-                    >
-                      <span className="w-5 text-center">{TYPE_ICONS[t] || '📋'}</span> {t}
-                      {form.categorie === t && <Check size={14} className="ml-auto" style={{color: couleur}} />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="sm:col-span-2"><label htmlFor="client-adresse" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea id="client-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
-          <div className="sm:col-span-2">
-            <label htmlFor="client-notes" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label>
-            <div className="relative">
-              <textarea id="client-notes" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={3} maxLength={500} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Ex: Code portail A1234, sonnette 2ème gauche, préfère être contacté le matin..." />
-              <span className={`absolute bottom-2 right-3 text-[10px] font-medium ${(form.notes?.length || 0) >= 400 ? 'text-amber-500' : textMuted}`}>
-                {form.notes?.length || 0} / 500
-              </span>
-            </div>
-          </div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.nom} onChange={e => setForm(p => ({...p, nom: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Entreprise</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.entreprise} onChange={e => setForm(p => ({...p, entreprise: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} /></div>
+          <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label><input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} /></div>
+          <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Adresse</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.adresse} onChange={e => setForm(p => ({...p, adresse: e.target.value}))} /></div>
+          <div className="md:col-span-2"><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes internes</label><textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} placeholder="Code portail, infos utiles..." /></div>
         </div>
         <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : ''}`}>
           <button onClick={() => { setShow(false); setEditId(null); }} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
@@ -1500,752 +510,222 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
 
   // Liste
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {/* Quick Client Modal */}
       <QuickClientModal
         isOpen={showQuickModal}
         onClose={() => setShowQuickModal(false)}
         onSubmit={handleQuickSubmit}
+        clients={clients}
         isDark={isDark}
         couleur={couleur}
-        existingClients={clients}
-        onViewClient={(id) => { setShowQuickModal(false); setViewId(id); }}
       />
 
-      {/* Duplicate confirmation modal */}
-      {showDupeConfirm && pendingSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); }} />
-          <div className={`relative w-full max-w-md rounded-2xl shadow-2xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
-                  <AlertTriangle size={20} className="text-amber-500" />
-                </div>
-                <h3 className={`text-lg font-bold ${textPrimary}`}>Doublon potentiel détecté</h3>
-              </div>
-              <p className={`text-sm mb-4 ${textSecondary}`}>
-                Ce client semble être un doublon de :
-              </p>
-              <div className="space-y-2 mb-6">
-                {strongDuplicates.map(dup => (
-                  <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                    <div>
-                      <p className={`font-semibold text-sm ${textPrimary}`}>{dup.nom} {dup.prenom || ''}</p>
-                      <p className={`text-xs ${textMuted}`}>
-                        {dup.matchReason}
-                        {dup.matchField === 'telephone' && dup.telephone && ` · ${dup.telephone}`}
-                        {dup.matchField === 'email' && dup.email && ` · ${dup.email}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); setShow(false); setEditId(null); clearDupes(); setViewId(dup.id); }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                      style={{ color: couleur, backgroundColor: `${couleur}15` }}
-                    >
-                      Voir la fiche
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowDupeConfirm(false); setPendingSubmit(null); }}
-                  className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={async () => { setShowDupeConfirm(false); await doSubmit(pendingSubmit); setPendingSubmit(null); }}
-                  className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Créer quand même
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========== HEADER COMPACT ========== */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{displayClients.length} contact{displayClients.length !== 1 ? 's' : ''}</p>
-          </div>
-        </div>
+      <div className="flex justify-between items-center gap-3">
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Clients ({clients.length})</h1>
         <div className="flex items-center gap-2">
-          {onImportClients && (
-            <button
-              onClick={onImportClients}
-              className={`p-2 rounded-xl transition-all border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-              title="Importer (CSV)"
-            >
-              <Upload size={16} />
-            </button>
-          )}
-          {canPerform('client', 'create') && (
           <button
             onClick={() => setShowQuickModal(true)}
-            className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm font-semibold flex items-center justify-center sm:gap-2 hover:opacity-90 hover:shadow-lg transition-all"
-            style={{ background: couleur }}
+            className="px-3 py-2.5 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all"
+            style={{background: `${couleur}20`, color: couleur}}
+            title="Ajout rapide"
           >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Nouveau client</span>
+            <Zap size={16} /><span className="hidden sm:inline">Ajout rapide</span>
           </button>
-          )}
+          <button onClick={() => setShow(true)} className="px-3 sm:px-4 py-2.5 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} /><span className="hidden sm:inline">Nouveau</span>
+          </button>
         </div>
       </div>
 
-      {/* KPI Cards — compact, clickable */}
-      {displayClients.length > 0 && (() => {
-        const caFacture = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.ca, 0);
-        const caEnAttente = Array.from(clientStatsMap.values()).reduce((s, v) => s + v.caEnCours, 0);
-        const clientsActifs = displayClients.filter(c => getClientStatus(c.id) === 'actif').length;
-        const devisEnAttente = (devis || []).filter(d => d.type === 'devis' && (d.statut === 'envoye' || d.statut === 'vu')).length;
-        let topClient = null;
-        let topCA = 0;
-        clientStatsMap.forEach((v, cid) => {
-          const totalClientCA = v.ca + v.caEnCours;
-          if (totalClientCA > topCA) { topCA = totalClientCA; topClient = clients.find(c => c.id === cid); }
-        });
-
-        const kpiItems = [
-          { key: 'actifs', value: clientsActifs, label: 'Actifs', sub: `/${displayClients.length}`, tooltip: 'Clients avec un chantier en cours ou un devis actif' },
-          { key: 'ca', value: formatMoney(caFacture), label: 'CA encaissé', sub: caEnAttente > 0 && !modeDiscret ? `+${formatMoney(caEnAttente)}` : null, tooltip: 'Factures payées uniquement' },
-          { key: 'top', value: modeDiscret ? '···' : formatClientName(topClient, '—'), label: 'Top client', sub: modeDiscret ? null : formatMoney(topCA), tooltip: 'Client avec le plus gros CA (encaissé + en cours)' },
-          { key: 'devis_attente', value: devisEnAttente, label: 'Devis en att.', sub: devisEnAttente > 0 ? 'à relancer' : null, tooltip: 'Devis envoyés ou vus, en attente de réponse' },
-        ];
-
-        return (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {kpiItems.map(kpi => {
-              const isActive = kpiFilter === kpi.key;
-              return (
-                <button
-                  key={kpi.key}
-                  onClick={() => {
-                    if (kpi.key === 'top' && topClient) setViewId(topClient.id);
-                    else if (kpi.key === 'devis_attente' && !isActive && setPage) setPage('devis');
-                    else setKpiFilter(isActive ? null : kpi.key);
-                  }}
-                  className={`${cardBg} rounded-xl border px-2 py-2 text-center transition-all ${isActive ? 'ring-1 shadow-sm' : 'hover:shadow-sm'}`}
-                  style={isActive ? { borderColor: couleur, '--tw-ring-color': couleur } : {}}
-                  title={kpi.tooltip}
-                >
-                  <p className={`${kpi.key === 'top' ? 'text-xs' : 'text-base'} font-bold truncate leading-tight`} style={{ color: couleur }}>{kpi.value}</p>
-                  <p className={`text-[10px] ${textMuted} leading-tight`}>{kpi.label}</p>
-                  {kpi.sub && <p className={`text-[9px] font-medium`} style={{ color: couleur }}>{kpi.sub}</p>}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })()}
-
-      {/* === DUPLICATE BANNER — compact + dismissable === */}
-      {!duplicateDismissed && duplicateMap.size > 0 && !kpiFilter && (() => {
-        const dupeCount = Math.ceil(duplicateMap.size / 2);
-        // Build list of duplicate pairs for guided resolution
-        const dupePairs = [];
-        const visited = new Set();
-        duplicateMap.forEach((dupes, clientId) => {
-          if (visited.has(clientId)) return;
-          const client = clients.find(c => c.id === clientId);
-          if (!client) return;
-          dupes.forEach(dupeId => {
-            if (visited.has(dupeId)) return;
-            const dupe = clients.find(c => c.id === dupeId);
-            if (!dupe) return;
-            dupePairs.push({ a: client, b: dupe });
-            visited.add(clientId);
-            visited.add(dupeId);
-          });
-        });
-        return (
-          <div className={`rounded-xl border overflow-hidden ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
-            <div className="flex items-center gap-2 px-3 py-2 text-xs">
-              <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-              <span className={`flex-1 ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                {dupeCount} doublon{dupeCount > 1 ? 's' : ''} détecté{dupeCount > 1 ? 's' : ''} — Résolvez-les pour garder votre base propre
-              </span>
-              <button
-                onClick={() => { setDuplicateDismissed(true); localStorage.setItem('clientDuplicateDismissed', 'true'); }}
-                className={`shrink-0 p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-amber-100'}`}
-              >
-                <X size={14} />
-              </button>
-            </div>
-            {/* Guided resolution list */}
-            <div className={`border-t px-3 py-2 space-y-2 max-h-48 overflow-y-auto ${isDark ? 'border-amber-800/30' : 'border-amber-200'}`}>
-              {dupePairs.slice(0, 5).map((pair, idx) => (
-                <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-lg ${isDark ? 'bg-slate-800/60' : 'bg-white'}`}>
-                  <div className="flex-1 min-w-0">
-                    <span className={`font-semibold ${textPrimary}`}>{pair.a.nom} {pair.a.prenom || ''}</span>
-                    <span className={`mx-1.5 ${textMuted}`}>↔</span>
-                    <span className={`font-semibold ${textPrimary}`}>{pair.b.nom} {pair.b.prenom || ''}</span>
-                    {pair.a.telephone && pair.b.telephone && pair.a.telephone.replace(/\s/g, '') === pair.b.telephone.replace(/\s/g, '') && (
-                      <span className={`ml-1.5 text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>📱 même tél</span>
-                    )}
-                    {pair.a.email && pair.b.email && pair.a.email.toLowerCase() === pair.b.email.toLowerCase() && (
-                      <span className={`ml-1.5 text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>✉ même email</span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => mergeClients(pair.a.id, pair.b.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex-shrink-0 hover:opacity-90"
-                    style={{ background: couleur }}
-                  >
-                    Fusionner
-                  </button>
-                  <button
-                    onClick={() => setViewId(pair.a.id)}
-                    className={`px-2 py-1 rounded-lg text-xs font-medium flex-shrink-0 ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}
-                  >
-                    Comparer
-                  </button>
-                </div>
-              ))}
-              {dupePairs.length > 5 && (
-                <p className={`text-[10px] text-center ${textMuted}`}>+{dupePairs.length - 5} autre{dupePairs.length - 5 > 1 ? 's' : ''}</p>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* === SEARCH + FILTERS COMPACT === */}
-      <div className="space-y-2">
-        {/* Row 1: Search + View toggle + Sort */}
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              aria-label="Rechercher un client"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`w-full pl-8 pr-8 py-1.5 border rounded-xl text-sm ${inputBg}`}
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          {/* Grid/List toggle */}
-          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
-              style={viewMode === 'grid' ? { background: couleur } : {}}
-              title="Vue grille"
-            >
-              <LayoutGrid size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 flex items-center justify-center transition-colors ${viewMode === 'list' ? 'text-white' : isDark ? 'text-slate-400' : 'text-slate-500'}`}
-              style={viewMode === 'list' ? { background: couleur } : {}}
-              title="Vue liste"
-            >
-              <List size={14} />
-            </button>
-          </div>
-          {/* Sort */}
-          <select
-            value={`${sortBy}-${sortDir}`}
-            onChange={(e) => { const [s, d] = e.target.value.split('-'); setSortBy(s); setSortDir(d); }}
-            className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-          >
-            <option value="recent-desc">Récent</option>
-            <option value="name-asc">Nom A-Z</option>
-            <option value="name-desc">Nom Z-A</option>
-            <option value="ca-desc">CA ↓</option>
-            <option value="activite-desc">Activité</option>
-          </select>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+          <input type="text" placeholder="Rechercher un client..." value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
         </div>
-        {/* Row 2: Type + Status filters */}
-        {displayClients.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            {/* Type filter dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setShowTypePicker(!showTypePicker)}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterCategorie ? 'text-white' : isDark ? 'border-slate-600 text-slate-300' : 'border-slate-200 text-slate-600'}`}
-                style={filterCategorie ? { background: couleur, borderColor: couleur } : {}}
-              >
-                {filterCategorie ? `${TYPE_ICONS[filterCategorie] || ''} ${filterCategorie}` : 'Type'}
-                <ChevronDown size={12} className={`transition-transform ${showTypePicker ? 'rotate-180' : ''}`} />
-              </button>
-              {showTypePicker && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowTypePicker(false)} />
-                  <div className={`absolute top-full left-0 mt-1 z-40 w-48 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                    <button
-                      onClick={() => { setFilterCategorie(''); setShowTypePicker(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${!filterCategorie ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
-                    >
-                      Tous {!filterCategorie && <Check size={12} className="ml-auto" style={{color: couleur}} />}
-                    </button>
-                    {CLIENT_TYPES.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => { setFilterCategorie(t); setShowTypePicker(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${filterCategorie === t ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textPrimary}`}
-                      >
-                        {TYPE_ICONS[t] || '📋'} {t} {filterCategorie === t && <Check size={12} className="ml-auto" style={{color: couleur}} />}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Status pills */}
+        {clients.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className={`text-sm ${textMuted} flex items-center gap-1 whitespace-nowrap`}><ArrowUpDown size={14} /> Trier:</span>
             {[
-              { key: '', label: 'Tous' },
-              { key: 'actif', label: 'Actifs' },
-              { key: 'prospect', label: 'Prospects' },
-              { key: 'inactif', label: 'Inactifs' },
+              { key: 'recent', label: 'Recent' },
+              { key: 'name', label: 'Nom' },
+              { key: 'ca', label: 'CA' }
             ].map(opt => (
               <button
                 key={opt.key}
-                onClick={() => setFilterStatus(opt.key)}
-                className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
-                style={filterStatus === opt.key ? { background: couleur } : {}}
+                onClick={() => setSortBy(opt.key)}
+                className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${sortBy === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                style={sortBy === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}
               </button>
             ))}
-            {/* Active filters indicator */}
-            {(kpiFilter || filterCategorie || filterStatus) && (
-              <button onClick={() => { setKpiFilter(null); setFilterCategorie(''); setFilterStatus(''); }} className={`text-[10px] underline ${textMuted} ml-1`}>
-                Effacer
-              </button>
-            )}
           </div>
         )}
       </div>
 
-      {/* Skeleton loader while data is loading */}
-      {!clients && <ClientSkeleton isDark={isDark} />}
-
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-          {(() => {
-            // P2.4: Contextual empty states
-            const hasSearch = !!debouncedSearch;
-            const hasKpiFilter = !!kpiFilter;
-            const hasTypeFilter = !!filterCategorie;
-            const hasAnyFilter = hasKpiFilter || hasTypeFilter;
-            const noClientsAtAll = displayClients.length === 0;
+          {/* Header with gradient */}
+          <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'0.3\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")' }} />
 
-            // Case 1: No clients at all
-            if (noClientsAtAll && !hasSearch) return (
-              <>
-                <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-                  <div className="relative">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-                      <Users size={40} className="text-white" />
-                    </div>
-                    <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>Votre premier client ?</h2>
-                    <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>Gérez vos contacts clients, leur historique et facilitez vos échanges.</p>
-                  </div>
-                </div>
-                <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    {[
-                      { icon: Phone, label: 'Contact rapide', sub: 'Appel, SMS, WhatsApp' },
-                      { icon: FileText, label: 'Historique complet', sub: 'Devis, factures, chantiers' },
-                      { icon: MapPin, label: 'Itinéraire GPS', sub: 'Navigation directe' },
-                    ].map(f => (
-                      <div key={f.label} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                          <f.icon size={18} style={{ color: couleur }} />
-                        </div>
-                        <div><p className={`font-medium text-sm ${textPrimary}`}>{f.label}</p><p className={`text-xs ${textMuted}`}>{f.sub}</p></div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button onClick={() => setShow(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
-                      <Plus size={18} /> Ajouter un client
-                    </button>
-                  </div>
-                </div>
-              </>
-            );
+            <div className="relative">
+              {/* Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
+                <Users size={40} className="text-white" />
+              </div>
 
-            // Case 2: Search with no results
-            if (hasSearch) return (
-              <div className="p-8 sm:p-10 text-center">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <Search size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+              <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>
+                {search ? 'Aucun client trouvé' : 'Ajoutez votre premier client'}
+              </h2>
+              <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
+                {search
+                  ? 'Modifiez votre recherche ou ajoutez un nouveau client.'
+                  : 'Gérez vos contacts clients, leur historique et facilitez vos échanges.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Features grid */}
+          {!search && (
+            <div className={`p-6 sm:p-8 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
+              <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Ce que vous pouvez faire</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <Phone size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Contact rapide</p>
+                    <p className={`text-xs ${textMuted}`}>Appel, SMS, WhatsApp</p>
+                  </div>
                 </div>
-                <h2 className={`text-lg font-bold mb-1 ${textPrimary}`}>
-                  Aucun résultat pour « {debouncedSearch} »
-                </h2>
-                <p className={`text-sm ${textMuted} mb-6`}>Vérifiez l'orthographe ou créez un nouveau client.</p>
-                <button
-                  onClick={() => { setForm(p => ({...p, nom: debouncedSearch})); setShow(true); setSearch(''); }}
-                  className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium"
-                  style={{ background: couleur }}
-                >
-                  <Plus size={18} /> Créer « {debouncedSearch} » comme client
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <FileText size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Historique complet</p>
+                    <p className={`text-xs ${textMuted}`}>Devis, factures, chantiers</p>
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
+                    <MapPin size={18} style={{ color: couleur }} />
+                  </div>
+                  <div>
+                    <p className={`font-medium text-sm ${textPrimary}`}>Itinéraire GPS</p>
+                    <p className={`text-xs ${textMuted}`}>Navigation directe</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                  <Zap size={18} />
+                  Ajout rapide
+                </button>
+                <button onClick={() => setShow(true)} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                  <Plus size={18} />
+                  Formulaire complet
                 </button>
               </div>
-            );
+            </div>
+          )}
 
-            // Case 3: Filter with no results
-            if (hasAnyFilter) return (
-              <div className="p-8 sm:p-10 text-center">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <Users size={28} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                </div>
-                <h2 className={`text-lg font-bold mb-1 ${textPrimary}`}>Aucun client ne correspond à ce filtre</h2>
-                <p className={`text-sm ${textMuted} mb-6`}>
-                  {hasKpiFilter && `Filtre : ${kpiFilter === 'actifs' ? 'Clients actifs' : kpiFilter === 'ca' ? 'CA > 0' : 'Devis en attente'}`}
-                  {hasKpiFilter && hasTypeFilter && ' · '}
-                  {hasTypeFilter && `Type : ${filterCategorie}`}
-                </p>
-                <button
-                  onClick={() => { setKpiFilter(null); setFilterCategorie(''); }}
-                  className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  <X size={18} /> Effacer les filtres
-                </button>
-              </div>
-            );
-
-            // Fallback
-            return (
-              <div className="p-8 text-center">
-                <p className={`font-medium ${textPrimary}`}>Aucun client trouvé</p>
-              </div>
-            );
-          })()}
+          {/* Simple CTA for search empty state */}
+          {search && (
+            <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
+              <button onClick={() => setShowQuickModal(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <Zap size={18} />
+                Ajout rapide
+              </button>
+            </div>
+          )}
         </div>
-      ) : viewMode === 'grid' ? (
+      ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {getSortedClients().map(c => {
             const s = getClientStats(c.id);
-            const status = getClientStatus(c.id);
-            const statusColor = CLIENT_STATUS_COLORS[status];
-            const statusLabel = CLIENT_STATUS_LABELS[status];
-            const typeColor = CLIENT_TYPE_COLORS[c.categorie];
-            const avatarBg = typeColor?.color || couleur;
-            const initials = getInitials(c);
-            const hasDuplicates = duplicateMap.has(c.id);
-
             return (
-              <article key={c.id} role="article" aria-label={`Client ${c.nom} ${c.prenom || ''}`.trim()} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group flex flex-col h-full ${hasDuplicates ? isDark ? 'border-amber-800/50' : 'border-amber-200' : ''}`} onClick={() => setViewId(c.id)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewId(c.id); } }}>
-                {/* Header */}
-                <div className="p-4 relative">
-                  <div className="flex gap-3">
-                    {/* Avatar circle */}
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0" style={{ background: `linear-gradient(135deg, ${avatarBg}, ${avatarBg}cc)` }}>
-                      {initials}
+              <div key={c.id} className={`${cardBg} rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 dark:hover:border-orange-700 transition-all duration-200 cursor-pointer group flex flex-col h-full`} onClick={() => setViewId(c.id)}>
+                {/* Header with gradient */}
+                <div className="p-4 sm:p-5 relative" style={{background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)`}}>
+                  <div className="flex gap-3 sm:gap-4">
+                    <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-lg flex-shrink-0" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+                      {c.prenom ? `${c.nom?.[0] || ''}${c.prenom[0]}`.toUpperCase() : (c.nom?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?')}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className={`font-bold text-sm sm:text-base ${textPrimary} leading-tight truncate`} title={`${c.nom || ''} ${c.prenom || ''}`.trim()}><HighlightText text={formatClientName(c)} query={debouncedSearch} /></h3>
-                      </div>
+                      <h3 className={`font-bold text-base sm:text-lg ${textPrimary}`}>{c.nom} {c.prenom}</h3>
                       {c.entreprise && (
-                        <p className={`text-xs ${textMuted} truncate flex items-center gap-1 mt-0.5`}>
-                          <Building2 size={11} /> {c.entreprise}
+                        <p className={`text-sm ${textMuted} truncate flex items-center gap-1`}>
+                          <Building2 size={12} /> {c.entreprise}
                         </p>
                       )}
-                      {/* Badges row — Order: Status → Type → Doublon */}
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status badge (always first) with tooltip */}
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`}
-                          title={STATUS_TOOLTIPS[status] || ''}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
-                          {statusLabel}
-                        </span>
-                        {/* Type badge */}
-                        {c.categorie && typeColor && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                            <span className="text-[9px]">{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
-                          </span>
-                        )}
-                        {/* Duplicate warning badge (last) */}
-                        {hasDuplicates && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
-                            <AlertTriangle size={10} /> Doublon
-                          </span>
-                        )}
-                        {/* Test data badge (dev only) */}
-                        {!isProduction && isTestClient(c) && (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
-                            🧪 Test
-                          </span>
-                        )}
-                      </div>
                     </div>
-                    {/* Edit button */}
-                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier" aria-label="Modifier ce client" className={`p-2 rounded-lg transition-all absolute top-2 right-2 opacity-0 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200' : 'bg-white/90 hover:bg-slate-100 text-slate-500 shadow-sm'}`}>
-                      <Edit3 size={14} />
+                    <button onClick={(e) => { e.stopPropagation(); startEdit(c); }} title="Modifier ce client" className={`p-2.5 rounded-lg transition-all absolute top-2 right-2 min-w-[40px] min-h-[40px] flex items-center justify-center opacity-60 hover:opacity-100 group-hover:opacity-100 ${isDark ? 'bg-slate-700/90 hover:bg-slate-600 text-slate-200 hover:text-white' : 'bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 shadow-sm hover:shadow-md'}`}>
+                      <Edit3 size={18} />
                     </button>
                   </div>
                 </div>
 
-                {/* Contact + Actions */}
-                <div className={`px-4 py-2.5 border-t flex-grow ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-                  {c.telephone ? (
+                {/* Contact info */}
+                <div className={`px-4 sm:px-5 py-3 space-y-2 border-t flex-grow ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                  {c.telephone && (
                     <div className="flex items-center gap-2">
-                      <Smartphone size={13} className={textMuted} />
-                      <HighlightText text={c.telephone} query={debouncedSearch} className={`text-sm ${textSecondary} flex-1`} />
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => callPhone(c.telephone)} aria-label="Appeler" className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
-                          <Phone size={15} className="text-blue-500" />
+                      <Smartphone size={14} className={textMuted} />
+                      <span className={`text-sm ${textSecondary} flex-1`}>{c.telephone}</span>
+                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => callPhone(c.telephone)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100'}`} title="Appeler">
+                          <Phone size={16} className="text-blue-500" />
                         </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} aria-label="WhatsApp" className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
-                          <MessageCircle size={15} className="text-green-500" />
+                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-green-900/50' : 'bg-green-50 hover:bg-green-100'}`} title="WhatsApp">
+                          <MessageCircle size={16} className="text-green-500" />
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <p className={`text-xs ${textMuted} italic`}>Pas de téléphone</p>
                   )}
                   {c.email && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Mail size={13} className={textMuted} />
-                      <HighlightText text={c.email} query={debouncedSearch} className={`text-xs ${textMuted} truncate`} />
+                    <div className="flex items-center gap-2">
+                      <Mail size={14} className={textMuted} />
+                      <span className={`text-sm ${textSecondary} truncate`}>{c.email}</span>
                     </div>
+                  )}
+                  {c.adresse && (
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <MapPin size={14} className={textMuted} />
+                      <span className={`text-sm ${textSecondary} flex-1 truncate`}>{c.adresse}</span>
+                      <button onClick={() => openGPS(c.adresse)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-purple-900/50' : 'bg-purple-50 hover:bg-purple-100'}`} title="Voir sur Google Maps">
+                        <ExternalLink size={16} className="text-purple-500" />
+                      </button>
+                    </div>
+                  )}
+                  {!c.telephone && !c.email && !c.adresse && (
+                    <p className={`text-sm ${textMuted} italic`}>Aucune info de contact</p>
                   )}
                 </div>
 
                 {/* Stats footer */}
-                <div className={`px-4 py-2.5 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                  <div className="flex gap-3">
-                    <span className={`flex items-center gap-1 text-xs ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={12} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
+                <div className={`px-4 sm:px-5 py-3 border-t flex items-center justify-between mt-auto ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
+                  <div className="flex gap-4">
+                    <span className={`flex items-center gap-1.5 text-sm ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
+                      <Home size={14} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> <span className="font-medium">{s.chantiers}</span>
                     </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={12} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
+                    <span className={`flex items-center gap-1.5 text-sm ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
+                      <FileText size={14} className={s.devis > 0 ? 'text-blue-500' : ''} /> <span className="font-medium">{s.devis}</span>
                     </span>
-                    <span className={`flex items-center gap-1 text-xs ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
-                      <Receipt size={12} className={s.factures > 0 ? 'text-purple-500' : ''} /> {s.factures}
-                    </span>
-                  </div>
-                  <span className={`font-bold text-xs ${s.ca === 0 ? textMuted : ''}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      ) : (
-        /* Vue Liste compacte */
-        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-          {/* Header row - desktop only */}
-          <div className={`hidden sm:grid grid-cols-[40px_1fr_100px_100px_140px_80px_80px_70px] gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider ${isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-            <span></span>
-            <span>Client</span>
-            <span>{showTypeColumn ? 'Type' : 'Activité'}</span>
-            <span>Téléphone</span>
-            <span>Email</span>
-            <span className="text-right">CA</span>
-            <span className="text-center">Stats</span>
-            <span></span>
-          </div>
-          {getSortedClients().map((c, idx) => {
-            const s = getClientStats(c.id);
-            const status = getClientStatus(c.id);
-            const statusColor = CLIENT_STATUS_COLORS[status];
-            const typeColor = CLIENT_TYPE_COLORS[c.categorie];
-            const avatarBg = typeColor?.color || couleur;
-            const initials = getInitials(c);
-            const hasDuplicates = duplicateMap.has(c.id);
-
-            return (
-              <div
-                key={c.id}
-                className={`group cursor-pointer transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} ${idx > 0 ? `border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100'}` : ''}`}
-                onClick={() => setViewId(c.id)}
-              >
-                {/* Desktop row */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_100px_100px_140px_80px_80px_70px] gap-3 px-4 py-2.5 items-center">
-                  {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg }}>
-                    {initials}
-                  </div>
-                  {/* Name + company + status */}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? statusColor.darkBg + ' ' + statusColor.darkText : statusColor.bg + ' ' + statusColor.text}`} title={STATUS_TOOLTIPS[status] || ''}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusColor.dot}`} />
-                        {CLIENT_STATUS_LABELS[status]}
-                      </span>
-                      {hasDuplicates && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
-                          <AlertTriangle size={9} /> Doublon
-                        </span>
-                      )}
-                      {!isProduction && isTestClient(c) && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${isDark ? 'bg-yellow-900/30 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
-                          🧪 Test
-                        </span>
-                      )}
-                    </div>
-                    {c.entreprise && <p className={`text-xs ${textMuted} truncate`}>{c.entreprise}</p>}
-                  </div>
-                  {/* Type or Last Activity */}
-                  <div>
-                    {showTypeColumn ? (
-                      c.categorie && typeColor ? (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${isDark ? typeColor.darkBg + ' ' + typeColor.darkText : typeColor.bg + ' ' + typeColor.text}`}>
-                          <span>{TYPE_ICONS[c.categorie] || ''}</span> {c.categorie}
-                        </span>
-                      ) : (
-                        <span className={`text-xs ${textMuted}`}>—</span>
-                      )
-                    ) : (
-                      (() => {
-                        const lastAct = getLastActivity(c.id);
-                        if (!lastAct) return <span className={`text-xs ${textMuted}`}>—</span>;
-                        const days = Math.max(0, Math.floor((Date.now() - lastAct) / (1000 * 60 * 60 * 24)));
-                        const label = days === 0 ? "Aujourd'hui" : days === 1 ? 'Hier' : days < 30 ? `il y a ${days}j` : days < 365 ? `il y a ${Math.floor(days / 30)}m` : `il y a ${Math.floor(days / 365)}a`;
-                        const colorCls = days < 30 ? 'text-emerald-500' : days < 90 ? textSecondary : days < 180 ? 'text-amber-500' : 'text-red-400';
-                        return <span className={`text-xs font-medium ${colorCls}`} title={new Date(lastAct).toLocaleDateString('fr-FR')}>{label}</span>;
-                      })()
-                    )}
-                  </div>
-                  {/* Phone */}
-                  {c.telephone ? <HighlightText text={c.telephone} query={debouncedSearch} className={`text-xs ${textSecondary} truncate`} /> : <span className={`text-xs ${textMuted}`}>—</span>}
-                  {/* Email */}
-                  {c.email ? <HighlightText text={c.email} query={debouncedSearch} className={`text-xs ${textMuted} truncate`} /> : <span className={`text-xs ${textMuted}`}>—</span>}
-                  {/* CA */}
-                  <span className={`text-xs font-bold text-right ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
-                  {/* Stats */}
-                  <div className="flex items-center justify-center gap-2">
-                    <span className={`flex items-center gap-0.5 text-[10px] ${s.chantiers > 0 ? textSecondary : textMuted}`} title="Chantiers">
-                      <Home size={10} className={s.chantiers > 0 ? 'text-emerald-500' : ''} /> {s.chantiers}
-                    </span>
-                    <span className={`flex items-center gap-0.5 text-[10px] ${s.devis > 0 ? textSecondary : textMuted}`} title="Devis">
-                      <FileText size={10} className={s.devis > 0 ? 'text-blue-500' : ''} /> {s.devis}
+                    <span className={`flex items-center gap-1.5 text-sm ${s.factures > 0 ? textSecondary : textMuted}`} title="Factures">
+                      <FileText size={14} className={s.factures > 0 ? 'text-purple-500' : ''} /> <span className="font-medium">{s.factures}</span>
                     </span>
                   </div>
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
-                    {c.telephone && (
-                      <>
-                        <button onClick={() => callPhone(c.telephone)} className={`w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`} title="Appeler">
-                          <Phone size={13} className="text-blue-500" />
-                        </button>
-                        <button onClick={() => sendWhatsApp(c.telephone, c.prenom)} className={`w-7 h-7 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${isDark ? 'hover:bg-green-900/40' : 'hover:bg-green-50'}`} title="WhatsApp">
-                          <MessageCircle size={13} className="text-green-500" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mobile row */}
-                <div className="sm:hidden px-4 py-3 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: avatarBg }}>
-                    {initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <HighlightText text={formatClientName(c)} query={debouncedSearch} className={`font-medium text-sm ${textPrimary} truncate`} />
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor.dot}`} />
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {c.entreprise && <span className={`text-xs ${textMuted} truncate`}>{c.entreprise}</span>}
-                      <span className={`text-xs font-medium ${s.ca > 0 ? '' : textMuted}`} style={s.ca > 0 ? { color: couleur } : {}}>{formatMoney(s.ca)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                    {c.telephone && (
-                      <button onClick={() => callPhone(c.telephone)} className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40' : 'hover:bg-blue-50'}`}>
-                        <Phone size={16} className="text-blue-500" />
-                      </button>
-                    )}
-                  </div>
-                  <ChevronRight size={16} className={textMuted} />
+                  <span className={`font-bold text-sm ${s.ca === 0 ? (isDark ? 'text-slate-400' : 'text-slate-400') : ''}`} style={s.ca > 0 ? {color: couleur} : {}} title={s.ca > 0 ? `CA total: ${s.ca.toLocaleString('fr-FR')} €` : 'Aucun CA pour ce client'}>{s.ca > 0 ? `${s.ca.toLocaleString('fr-FR')}€` : '—'}</span>
                 </div>
               </div>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Client Activity Tab (sub-component) ──
-function ClientActivityTab({ clientId, clientDevis, clientChantiers, isDark, couleur, modeDiscret }) {
-  const [entries, setEntries] = React.useState([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    if (!clientId) return;
-    let cancelled = false;
-    setIsLoading(true);
-
-    const sb = isDemo ? null : supabase;
-
-    const load = async () => {
-      const results = [];
-
-      // Get client audit entries
-      const clientEntries = await getEntityHistory(sb, 'client', clientId, { limit: 50 });
-      results.push(...clientEntries);
-
-      // Get linked devis/factures audit entries
-      const devisIds = (clientDevis || []).map(d => d.id);
-      if (devisIds.length > 0) {
-        const devisEntries = await getEntitiesHistory(sb, 'devis', devisIds, { limit: 50 });
-        results.push(...devisEntries);
-      }
-
-      // Get linked chantiers audit entries
-      const chantierIds = (clientChantiers || []).map(c => c.id);
-      if (chantierIds.length > 0) {
-        const chantierEntries = await getEntitiesHistory(sb, 'chantier', chantierIds, { limit: 50 });
-        results.push(...chantierEntries);
-      }
-
-      // Sort by date DESC
-      results.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-      if (!cancelled) {
-        setEntries(results.slice(0, 100));
-        setIsLoading(false);
-      }
-    };
-
-    load().catch(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
-  }, [clientId, clientDevis, clientChantiers]);
-
-  return (
-    <div className="p-4">
-      <AuditTimeline
-        entries={entries}
-        isDark={isDark}
-        couleur={couleur}
-        modeDiscret={modeDiscret}
-        isLoading={isLoading}
-        emptyMessage="Aucune activité enregistrée pour ce client"
-        showEntityBadge={true}
-      />
     </div>
   );
 }

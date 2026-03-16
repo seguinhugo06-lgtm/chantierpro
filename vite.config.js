@@ -13,12 +13,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'offline.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-512-maskable.png'],
+      includeAssets: ['icon.svg', 'offline.html'],
       manifest: {
         name: 'BatiGesti',
         short_name: 'BatiGesti',
         description: 'Gestion devis et facturation pour artisans BTP',
-        lang: 'fr',
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',
@@ -33,20 +32,14 @@ export default defineConfig({
             purpose: 'any'
           },
           {
-            src: '/icons/icon-192.png',
+            src: '/icon.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: '/icons/icon-512.png',
+            src: '/icon.svg',
             sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: '/icons/icon-512-maskable.png',
-            sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'maskable'
           }
         ],
@@ -69,24 +62,10 @@ export default defineConfig({
         ]
       },
       workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
-        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api/, /^\/auth/],
-        // Offline fallback for when navigateFallback (index.html) can't be served
-        offlineGoogleAnalytics: false,
         runtimeCaching: [
-          {
-            // SPA navigation: Network first, fallback to cached index.html
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'pages-cache',
-              networkTimeoutSeconds: 3,
-            }
-          },
           {
             // Cache Supabase API calls with Network First strategy
             urlPattern: /^https:\/\/.*supabase.*\/rest\/v1\/.*/i,
@@ -151,19 +130,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
-            return 'vendor-react';
-          }
-          if (id.includes('node_modules/@supabase')) {
-            return 'vendor-supabase';
-          }
-          if (id.includes('node_modules/lucide-react')) {
-            return 'vendor-icons';
-          }
-          if (id.includes('lib/data/bibliotheque')) {
-            return 'bibliotheque-data';
-          }
+        manualChunks: {
+          // Split vendor libraries into separate chunks
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-recharts': ['recharts'],
+          'vendor-framer': ['framer-motion'],
+          'vendor-dndkit': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'vendor-fuse': ['fuse.js'],
         }
       }
     }

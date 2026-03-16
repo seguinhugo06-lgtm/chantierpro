@@ -12,17 +12,14 @@
  * @param {number} [decimals=0] - Nombre de décimales
  * @returns {string} Montant formaté (ex: "57 060 €")
  */
-export function formatMoney(amount, decimals) {
+export function formatMoney(amount, decimals = 0) {
   if (amount == null || isNaN(amount)) return '0 €';
-
-  // Auto-detect: show centimes only if the amount has non-zero decimals
-  const d = decimals !== undefined ? decimals : (Math.round(amount * 100) % 100 !== 0 ? 2 : 0);
 
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: d,
-    maximumFractionDigits: d
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   }).format(amount);
 }
 
@@ -87,23 +84,6 @@ export function getTrendBgColor(value, inverted = false) {
   return isPositive
     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
     : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-}
-
-// ============ CLIENT NAME FORMATTING ============
-
-/**
- * Formate un nom de client de façon uniforme : "Prénom Nom" avec capitalisation
- * @param {Object} client - Objet client avec .prenom et .nom
- * @param {string} [fallback='Client'] - Texte de secours si pas de nom
- * @returns {string} Nom formaté (ex: "Jean Dupont")
- */
-export function formatClientName(client, fallback = 'Client') {
-  if (!client) return fallback;
-  const capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
-  const prenom = capitalize((client.prenom || '').trim());
-  const nom = capitalize((client.nom || '').trim());
-  const full = `${prenom} ${nom}`.trim();
-  return full || client.entreprise || fallback;
 }
 
 // ============ NUMBER FORMATTING ============
@@ -264,7 +244,7 @@ export function getGreeting() {
 
   if (hour >= 5 && hour < 12) return 'Bonjour';
   if (hour >= 12 && hour < 18) return 'Bon après-midi';
-  if (hour >= 18 && hour < 22) return 'Bonsoir';
+  if (hour >= 18 && hour < 23) return 'Bonsoir';
   return 'Bonne nuit';
 }
 
@@ -364,55 +344,93 @@ export function getStatusColor(status) {
   return STATUS_COLORS[status] || 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
 }
 
-// ============ DOCUMENT NUMBER FORMATTING ============
+// ============ SAFE STRING CONVERSION ============
 
 /**
- * Normalise une référence de devis/facture au format standard
- * @param {string} numero - Numéro brut du document
- * @param {string} [type='devis'] - Type: 'devis' ou 'facture'
- * @param {string} [fallbackId] - ID de fallback si numero manquant
- * @returns {string} Référence normalisée (ex: "DEV-2026-00015")
+ * Safely converts any value to a renderable string.
+ * Prevents React error #310 ("Objects are not valid as a React child")
+ * by catching objects/arrays/dates and converting them to strings.
+ *
+ * @param {*} value - Any value that might be rendered in JSX
+ * @param {string} [fallback=''] - Fallback string if value is null/undefined
+ * @param {string} [context=''] - Optional context label for diagnostic logging
+ * @returns {string} A safe string for rendering
  */
-export function normalizeDevisRef(numero, type = 'devis', fallbackId = '') {
-  const prefix = type === 'facture' ? 'FAC' : 'DEV';
-  if (!numero && !fallbackId) return `${prefix}-???`;
+export function safeString(value, fallback = '', context = '') {
+  // Null/undefined
+  if (value == null) return fallback;
 
-  const raw = numero || fallbackId.slice(-6);
+  // Already a string or number - safe to render
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return String(value);
 
-  // Already in correct format DEV-2026-XXXXX or FAC-2026-XXXXX
-  if (/^(DEV|FAC)-\d{4}-\d{4,}$/.test(raw)) return raw;
-
-  // Has prefix but wrong format (e.g., DEV-783439) — normalize
-  const prefixed = raw.replace(/^(DEV|FAC)-?/i, '');
-
-  // Pure digits — format as XXXXX with year
-  const year = new Date().getFullYear();
-  const digits = prefixed.replace(/\D/g, '');
-  if (digits.length >= 5) {
-    return `${prefix}-${year}-${digits.slice(-5).padStart(5, '0')}`;
-  }
-  if (digits.length > 0) {
-    return `${prefix}-${year}-${digits.padStart(5, '0')}`;
+  // Date objects
+  if (value instanceof Date) {
+    if (context) {
+      console.warn(`[safeString] Date object rendered as string (context: ${context})`, value);
+    }
+    return isNaN(value.getTime()) ? fallback : value.toLocaleDateString('fr-FR');
   }
 
-  return `${prefix}-${raw}`;
+  // Arrays and objects - this is the #310 error case
+  if (typeof value === 'object') {
+    console.error(
+      `[safeString] Object/Array passed where string expected!`,
+      `Context: ${context || 'unknown'}`,
+      `Type: ${Array.isArray(value) ? 'Array' : 'Object'}`,
+      `Value:`, value,
+      `Keys: ${Object.keys(value).join(', ')}`
+    );
+    // Try to extract a meaningful string
+    if (value.message) return String(value.message); // Error objects
+    if (value.nom) return String(value.nom); // Named entities
+    if (value.name) return String(value.name);
+    if (value.label) return String(value.label);
+    if (value.title) return String(value.title);
+    if (Array.isArray(value)) return value.map(v => safeString(v)).join(', ');
+    // Last resort - JSON stringify (truncated)
+    try {
+      const json = JSON.stringify(value);
+      return json.length > 100 ? json.slice(0, 100) + '...' : json;
+    } catch {
+      return '[Object]';
+    }
+  }
+
+  // Functions and symbols
+  if (typeof value === 'function') {
+    console.error(`[safeString] Function passed where string expected (context: ${context})`);
+    return fallback;
+  }
+
+  return String(value);
 }
 
 /**
- * Formate le numéro d'un devis/facture pour affichage, à partir de l'objet complet.
- * Centralise la logique — à utiliser partout au lieu de d.numero brut.
- * @param {Object} doc - Document (devis ou facture) avec { numero, type, id }
- * @param {Object} [options]
- * @param {boolean} [options.short=false] - Si true, retourne la forme courte (#00006)
- * @returns {string} ex: "DEV-2026-00006" ou "#00006" (short)
+ * Validates that all string-expected fields in a data object are actually strings.
+ * Logs warnings for any fields that are objects when they should be strings.
+ *
+ * @param {Object} data - The data object to validate
+ * @param {string[]} stringFields - Array of field names expected to be strings
+ * @param {string} context - Label for diagnostic logging (e.g., 'devis', 'notification')
+ * @returns {Object} The data object with object fields converted to strings
  */
-export function formatDevisNumber(doc, { short = false } = {}) {
-  if (!doc) return '???';
-  const full = normalizeDevisRef(doc.numero, doc.type || 'devis', doc.id || '');
-  if (!short) return full;
-  // Short form: extract last segment (5-digit number)
-  const match = full.match(/-(\d{4,})$/);
-  return match ? `#${match[1]}` : full;
+export function validateRenderableFields(data, stringFields, context = '') {
+  if (!data || typeof data !== 'object') return data;
+
+  const cleaned = { ...data };
+  for (const field of stringFields) {
+    if (field in cleaned && cleaned[field] != null && typeof cleaned[field] === 'object') {
+      console.error(
+        `[validateRenderableFields] Field "${field}" is an object but should be a string!`,
+        `Context: ${context}`,
+        `Value:`, cleaned[field]
+      );
+      cleaned[field] = safeString(cleaned[field], '', `${context}.${field}`);
+    }
+  }
+  return cleaned;
 }
 
 // ============ PHONE FORMATTING ============
@@ -439,26 +457,4 @@ export function formatPhone(phone) {
   }
 
   return phone;
-}
-
-// ============ DEVIS LINE FILTERING ============
-
-/**
- * Filtre les lignes d'un devis pour exclure les entrées invalides.
- * Supprime : null/undefined, section markers (_isSection), lignes sans description,
- * et lignes dont la description est littéralement "undefined".
- *
- * @param {Array} lignes - Tableau de lignes du devis
- * @returns {Array} Lignes valides uniquement
- */
-export function filterValidLignes(lignes) {
-  if (!Array.isArray(lignes)) return [];
-  return lignes.filter(l => {
-    if (!l) return false;
-    // Section markers from toSupabase flattening — not real line items
-    if (l._isSection) return false;
-    // No description at all, or literal string "undefined"
-    if (!l.description || l.description === 'undefined') return false;
-    return true;
-  });
 }

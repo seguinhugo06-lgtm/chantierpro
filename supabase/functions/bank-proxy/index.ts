@@ -1,13 +1,10 @@
 /**
  * Edge Function: bank-proxy
- * Bank connection proxy using Salt Edge Account Information API v5
- *
- * Salt Edge API: https://docs.saltedge.com/account_information/v5/
- * Auth: App-Id + Secret headers (no OAuth token flow needed)
- *
+ * Provider-agnostic bank connection proxy (currently GoCardless)
+ * 
  * POST /functions/v1/bank-proxy
  * Body: { action: string, ...params }
- *
+ * 
  * Deploy: supabase functions deploy bank-proxy
  */
 
@@ -16,27 +13,77 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { getSupabaseClient } from '../_shared/communications.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SE_BASE = 'https://www.saltedge.com/api/v5';
+const GC_BASE = 'https://bankaccountdata.gocardless.com/api/v2';
+
+// Token cache (in-memory, per isolate)
+const tokenCache: Record<string, { access: string; expires_at: number; refresh: string }> = {};
 
 // ============================================================================
-// Salt Edge API helper
+// GoCardless API helpers
 // ============================================================================
 
-async function seFetch(appId: string, secret: string, path: string, options: RequestInit = {}): Promise<any> {
-  const res = await fetch(`${SE_BASE}${path}`, {
+async function getAccessToken(userId: string, secretId: string, secretKey: string): Promise<string> {
+  const cached = tokenCache[userId];
+  if (cached && cached.expires_at > Date.now() + 60000) {
+    return cached.access;
+  }
+
+  // Try refresh first
+  if (cached?.refresh) {
+    try {
+      const res = await fetch(`${GC_BASE}/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: cached.refresh }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        tokenCache[userId] = {
+          access: data.access,
+          expires_at: Date.now() + (data.access_expires - 60) * 1000,
+          refresh: cached.refresh,
+        };
+        return data.access;
+      }
+    } catch {
+      // Refresh failed, get new token
+    }
+  }
+
+  // Get new token
+  const res = await fetch(`${GC_BASE}/token/new/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret_id: secretId, secret_key: secretKey }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || err.summary || `Token error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  tokenCache[userId] = {
+    access: data.access,
+    expires_at: Date.now() + (data.access_expires - 60) * 1000,
+    refresh: data.refresh,
+  };
+  return data.access;
+}
+
+async function gcFetch(token: string, path: string, options: RequestInit = {}): Promise<any> {
+  const res = await fetch(`${GC_BASE}${path}`, {
     ...options,
     headers: {
-      'App-id': appId,
-      'Secret': secret,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
       ...options.headers,
     },
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error_message: `HTTP ${res.status}` }));
-    throw new Error(err.error_message || err.error || `Salt Edge API error: ${res.status}`);
+    const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+    throw new Error(err.detail || err.summary || `GoCardless API error: ${res.status}`);
   }
 
   return res.json();
@@ -46,196 +93,115 @@ async function seFetch(appId: string, secret: string, path: string, options: Req
 // Action handlers
 // ============================================================================
 
-async function handleListProviders(appId: string, secret: string, country: string = 'FR') {
-  const data = await seFetch(appId, secret, `/providers?country_code=${country}`);
-  return (data.data || []).map((provider: any) => ({
-    id: provider.code,
-    name: provider.name,
-    logo: provider.logo_url,
-    countries: [provider.country_code],
-    transaction_total_days: 90,
+async function handleListInstitutions(token: string, country: string = 'FR') {
+  const data = await gcFetch(token, `/institutions/?country=${country}`);
+  return data.map((inst: any) => ({
+    id: inst.id,
+    name: inst.name,
+    logo: inst.logo,
+    countries: inst.countries,
+    transaction_total_days: inst.transaction_total_days,
   }));
 }
 
-async function handleCreateConnectSession(
-  appId: string,
-  secret: string,
+async function handleCreateRequisition(
+  token: string,
   supabase: any,
   userId: string,
-  customerId: string | null,
   institutionId: string,
   institutionName: string,
   institutionLogo: string,
   redirectUrl: string
 ) {
-  // Step 1: Ensure customer exists
-  let customerIdToUse = customerId;
-
-  if (!customerIdToUse) {
-    const customerData = await seFetch(appId, secret, '/customers', {
-      method: 'POST',
-      body: JSON.stringify({
-        data: {
-          identifier: `batigesti_${userId}_${Date.now()}`,
-        },
-      }),
-    });
-
-    customerIdToUse = customerData.data.id;
-
-    // Save customer_id back via config update (store in saltedge_config)
-    await supabase.rpc('set_saltedge_customer_id', {
-      p_user_id: userId,
-      p_customer_id: String(customerIdToUse),
-    });
-  }
-
-  // Step 2: Create connect session
-  const sessionData = await seFetch(appId, secret, '/connect_sessions/create', {
+  // Create requisition at GoCardless
+  const data = await gcFetch(token, '/requisitions/', {
     method: 'POST',
     body: JSON.stringify({
-      data: {
-        customer_id: String(customerIdToUse),
-        consent: {
-          scopes: ['account_details', 'transactions_details'],
-          from_date: '2024-01-01',
-        },
-        attempt: {
-          return_to: redirectUrl,
-        },
-        allowed_countries: ['FR'],
-        provider_code: institutionId,
-      },
+      institution_id: institutionId,
+      redirect: redirectUrl,
+      user_language: 'FR',
     }),
   });
 
-  const connectUrl = sessionData.data.connect_url;
-
-  // Step 3: Generate a local reference ID for tracking
-  const requisitionRef = `se_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-
-  // Step 4: Save pending connection in DB
+  // Save connection in DB
   const { error } = await supabase.from('bank_connections').insert({
     user_id: userId,
     institution_id: institutionId,
     institution_name: institutionName,
     institution_logo: institutionLogo,
-    requisition_id: requisitionRef,
+    requisition_id: data.id,
     requisition_status: 'pending',
     expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   });
 
   if (error) throw error;
 
-  return { requisition_id: requisitionRef, link: connectUrl };
+  return { requisition_id: data.id, link: data.link };
 }
 
-async function handleCheckConnection(
-  appId: string,
-  secret: string,
+async function handleCheckRequisition(
+  token: string,
   supabase: any,
   userId: string,
-  customerId: string,
   requisitionId: string
 ) {
-  // Step 1: Get all connections for this customer
-  const connectionsData = await seFetch(appId, secret, `/connections?customer_id=${customerId}`);
-  const connections = connectionsData.data || [];
+  const data = await gcFetch(token, `/requisitions/${requisitionId}/`);
 
-  // Step 2: Find the latest active connection (most recently created)
-  // Since we can't directly map requisitionRef to a Salt Edge connection,
-  // we pick the latest connection that isn't already tracked in another DB row
-  const { data: existingConns } = await supabase
-    .from('bank_connections')
-    .select('account_id')
-    .eq('user_id', userId)
-    .eq('requisition_status', 'linked')
-    .not('account_id', 'is', null);
+  // Map GoCardless status to our status
+  const statusMap: Record<string, string> = {
+    CR: 'pending',
+    GC: 'pending',
+    UA: 'pending',
+    GA: 'pending',
+    SA: 'pending',
+    LN: 'linked',
+    EX: 'expired',
+    RJ: 'rejected',
+    SU: 'suspended',
+  };
 
-  const trackedConnectionIds = new Set(
-    (existingConns || []).map((c: any) => c.account_id)
-  );
-
-  // Find the newest connection that is not already tracked
-  let matchedConnection = connections
-    .filter((c: any) => !trackedConnectionIds.has(String(c.id)))
-    .sort((a: any, b: any) => {
-      const dateA = new Date(a.created_at || 0).getTime();
-      const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA;
-    })[0];
-
-  // If no untracked connection, fall back to latest overall
-  if (!matchedConnection && connections.length > 0) {
-    matchedConnection = connections.sort((a: any, b: any) => {
-      const dateA = new Date(a.created_at || 0).getTime();
-      const dateB = new Date(b.created_at || 0).getTime();
-      return dateB - dateA;
-    })[0];
-  }
-
-  if (!matchedConnection) {
-    // No connection found yet — still pending
-    return { status: 'pending', accounts: [], details: null };
-  }
-
-  // Step 3: Map Salt Edge status to our status
-  const seStatus = matchedConnection.status;
-  let status: string;
-  switch (seStatus) {
-    case 'active':
-      status = 'linked';
-      break;
-    case 'inactive':
-    case 'disabled':
-      status = 'expired';
-      break;
-    default:
-      status = 'pending';
-  }
-
+  const status = statusMap[data.status] || 'pending';
   let accountDetails = null;
-  const accountIds: string[] = [];
 
-  if (status === 'linked') {
-    // Step 4: Fetch accounts for this connection
+  if (status === 'linked' && data.accounts?.length > 0) {
+    // Fetch first account details
+    const accountId = data.accounts[0];
     try {
-      const accountsData = await seFetch(appId, secret, `/accounts?connection_id=${matchedConnection.id}`);
-      const accounts = accountsData.data || [];
+      const details = await gcFetch(token, `/accounts/${accountId}/details/`);
+      const balances = await gcFetch(token, `/accounts/${accountId}/balances/`);
+      
+      const balance = balances.balances?.find((b: any) => 
+        b.balanceType === 'interimAvailable' || b.balanceType === 'expected'
+      ) || balances.balances?.[0];
 
-      if (accounts.length > 0) {
-        const firstAccount = accounts[0];
-        accountIds.push(...accounts.map((a: any) => String(a.id)));
+      accountDetails = {
+        account_id: accountId,
+        iban: details.account?.iban,
+        owner_name: details.account?.ownerName,
+        currency: details.account?.currency || 'EUR',
+        balance: balance?.balanceAmount?.amount ? parseFloat(balance.balanceAmount.amount) : null,
+      };
 
-        accountDetails = {
-          account_id: String(firstAccount.id),
-          iban: firstAccount.extra?.iban || null,
-          owner_name: firstAccount.extra?.holder_name || null,
-          currency: firstAccount.currency_code || 'EUR',
-          balance: firstAccount.balance != null ? parseFloat(firstAccount.balance) : null,
-        };
-
-        // Step 5: Update connection in DB
-        await supabase
-          .from('bank_connections')
-          .update({
-            requisition_status: 'linked',
-            account_id: String(matchedConnection.id),
-            iban: accountDetails.iban,
-            owner_name: accountDetails.owner_name,
-            currency: accountDetails.currency,
-            last_balance: accountDetails.balance,
-            last_balance_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('requisition_id', requisitionId)
-          .eq('user_id', userId);
-      }
+      // Update connection in DB
+      await supabase
+        .from('bank_connections')
+        .update({
+          requisition_status: 'linked',
+          account_id: accountId,
+          iban: accountDetails.iban,
+          owner_name: accountDetails.owner_name,
+          currency: accountDetails.currency,
+          last_balance: accountDetails.balance,
+          last_balance_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('requisition_id', requisitionId)
+        .eq('user_id', userId);
     } catch (e) {
       console.error('Error fetching account details:', e);
     }
   } else {
-    // Update status only
+    // Update status
     await supabase
       .from('bank_connections')
       .update({
@@ -246,17 +212,16 @@ async function handleCheckConnection(
       .eq('user_id', userId);
   }
 
-  return { status, accounts: accountIds, details: accountDetails };
+  return { status, accounts: data.accounts, details: accountDetails };
 }
 
 async function handleSyncTransactions(
-  appId: string,
-  secret: string,
+  token: string,
   supabase: any,
   userId: string,
   connectionId: string
 ) {
-  // Get connection from DB
+  // Get connection
   const { data: conn, error: connErr } = await supabase
     .from('bank_connections')
     .select('*')
@@ -266,44 +231,26 @@ async function handleSyncTransactions(
 
   if (connErr || !conn?.account_id) throw new Error('Connection non trouvée');
 
-  const seConnectionId = conn.account_id; // This stores the Salt Edge connection ID
-
-  // Optionally refresh connection data first
-  try {
-    await seFetch(appId, secret, `/connections/${seConnectionId}/refresh`, {
-      method: 'PUT',
-      body: JSON.stringify({ data: { attempt: { fetch_scopes: ['transactions'] } } }),
-    });
-  } catch (e) {
-    console.warn('Refresh request (non-blocking):', e.message);
-  }
-
-  // Fetch accounts to get the first account_id for transaction query
-  const accountsData = await seFetch(appId, secret, `/accounts?connection_id=${seConnectionId}`);
-  const accounts = accountsData.data || [];
-
-  if (accounts.length === 0) throw new Error('Aucun compte trouvé pour cette connexion');
-
-  const seAccountId = accounts[0].id;
-
   // Fetch transactions
-  const txData = await seFetch(appId, secret, `/transactions?connection_id=${seConnectionId}&account_id=${seAccountId}`);
-  const rawTransactions = txData.data || [];
+  const data = await gcFetch(token, `/accounts/${conn.account_id}/transactions/`);
+  const booked = data.transactions?.booked || [];
 
   // Upsert transactions
-  const transactions = rawTransactions.map((tx: any) => ({
+  const transactions = booked.map((tx: any) => ({
     user_id: userId,
     bank_connection_id: connectionId,
-    transaction_id: String(tx.id),
-    booking_date: tx.made_on,
-    value_date: tx.made_on,
-    amount: parseFloat(tx.amount || '0'),
-    currency: tx.currency_code || conn.currency || 'EUR',
-    creditor_name: tx.amount >= 0 ? (tx.extra?.payee || null) : null,
-    debtor_name: tx.amount < 0 ? (tx.extra?.payer || null) : null,
-    remittance_info: tx.description || tx.extra?.additional || null,
-    bank_reference: tx.extra?.id || null,
-    transaction_type: parseFloat(tx.amount || '0') >= 0 ? 'credit' : 'debit',
+    transaction_id: tx.transactionId || tx.internalTransactionId || `${tx.bookingDate}_${tx.transactionAmount?.amount}`,
+    booking_date: tx.bookingDate,
+    value_date: tx.valueDate || tx.bookingDate,
+    amount: parseFloat(tx.transactionAmount?.amount || '0'),
+    currency: tx.transactionAmount?.currency || conn.currency || 'EUR',
+    creditor_name: tx.creditorName || null,
+    debtor_name: tx.debtorName || null,
+    remittance_info: tx.remittanceInformationUnstructured || 
+                     tx.remittanceInformationUnstructuredArray?.join(' ') || 
+                     tx.additionalInformation || null,
+    bank_reference: tx.bankTransactionCode || null,
+    transaction_type: parseFloat(tx.transactionAmount?.amount || '0') >= 0 ? 'credit' : 'debit',
     raw_data: tx,
   }));
 
@@ -328,12 +275,11 @@ async function handleSyncTransactions(
     .eq('id', connectionId)
     .eq('user_id', userId);
 
-  return { synced: transactions.length, total_booked: rawTransactions.length };
+  return { synced: transactions.length, total_booked: booked.length };
 }
 
 async function handleSyncBalances(
-  appId: string,
-  secret: string,
+  token: string,
   supabase: any,
   userId: string,
   connectionId: string
@@ -347,17 +293,12 @@ async function handleSyncBalances(
 
   if (connErr || !conn?.account_id) throw new Error('Connection non trouvée');
 
-  const seConnectionId = conn.account_id;
+  const data = await gcFetch(token, `/accounts/${conn.account_id}/balances/`);
+  const balance = data.balances?.find((b: any) =>
+    b.balanceType === 'interimAvailable' || b.balanceType === 'expected'
+  ) || data.balances?.[0];
 
-  // Fetch accounts (balance is a field on the account object in Salt Edge)
-  const accountsData = await seFetch(appId, secret, `/accounts?connection_id=${seConnectionId}`);
-  const accounts = accountsData.data || [];
-
-  if (accounts.length === 0) throw new Error('Aucun compte trouvé');
-
-  const firstAccount = accounts[0];
-  const amount = firstAccount.balance != null ? parseFloat(firstAccount.balance) : null;
-  const currency = firstAccount.currency_code || 'EUR';
+  const amount = balance?.balanceAmount?.amount ? parseFloat(balance.balanceAmount.amount) : null;
 
   await supabase
     .from('bank_connections')
@@ -369,35 +310,14 @@ async function handleSyncBalances(
     .eq('id', connectionId)
     .eq('user_id', userId);
 
-  return { balance: amount, currency };
+  return { balance: amount, currency: balance?.balanceAmount?.currency || 'EUR' };
 }
 
 async function handleDisconnect(
-  appId: string,
-  secret: string,
   supabase: any,
   userId: string,
   connectionId: string
 ) {
-  // Get connection to find Salt Edge connection ID
-  const { data: conn } = await supabase
-    .from('bank_connections')
-    .select('account_id')
-    .eq('id', connectionId)
-    .eq('user_id', userId)
-    .single();
-
-  // Attempt to delete from Salt Edge
-  if (conn?.account_id) {
-    try {
-      await seFetch(appId, secret, `/connections/${conn.account_id}`, {
-        method: 'DELETE',
-      });
-    } catch (e) {
-      console.warn('Salt Edge disconnect (non-blocking):', e.message);
-    }
-  }
-
   // Delete transactions first (cascade should handle it but be explicit)
   await supabase
     .from('bank_transactions')
@@ -405,7 +325,7 @@ async function handleDisconnect(
     .eq('bank_connection_id', connectionId)
     .eq('user_id', userId);
 
-  // Delete connection from DB
+  // Delete connection
   const { error } = await supabase
     .from('bank_connections')
     .delete()
@@ -464,69 +384,58 @@ serve(async (req) => {
     // Service role client for DB operations
     const supabase = getSupabaseClient();
 
-    // Get Salt Edge config (needed for all actions including disconnect)
-    const { data: config, error: configErr } = await supabase.rpc('get_saltedge_config', {
-      p_user_id: userId,
-    });
-
-    if (configErr || !config?.enabled) {
-      return new Response(
-        JSON.stringify({ error: 'Salt Edge non configuré. Ajoutez vos clés API dans les paramètres.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { app_id: appId, secret, customer_id: customerId } = config;
-
     let result: any;
 
-    switch (action) {
-      case 'list_institutions':
-      case 'list_providers':
-        result = await handleListProviders(appId, secret, params.country || 'FR');
-        break;
+    if (action === 'disconnect') {
+      result = await handleDisconnect(supabase, userId, params.connection_id);
+    } else {
+      // All other actions need GoCardless credentials
+      const { data: config, error: configErr } = await supabase.rpc('get_gocardless_config', {
+        p_user_id: userId,
+      });
 
-      case 'create_requisition':
-      case 'create_connect_session':
-        result = await handleCreateConnectSession(
-          appId, secret, supabase, userId, customerId,
-          params.institution_id,
-          params.institution_name,
-          params.institution_logo,
-          params.redirect_url
-        );
-        break;
-
-      case 'check_requisition':
-      case 'check_connection':
-        if (!customerId) {
-          return new Response(
-            JSON.stringify({ error: 'Aucun customer Salt Edge trouvé. Créez une connexion d\'abord.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        result = await handleCheckConnection(
-          appId, secret, supabase, userId, customerId, params.requisition_id
-        );
-        break;
-
-      case 'sync_transactions':
-        result = await handleSyncTransactions(appId, secret, supabase, userId, params.connection_id);
-        break;
-
-      case 'sync_balances':
-        result = await handleSyncBalances(appId, secret, supabase, userId, params.connection_id);
-        break;
-
-      case 'disconnect':
-        result = await handleDisconnect(appId, secret, supabase, userId, params.connection_id);
-        break;
-
-      default:
+      if (configErr || !config?.enabled) {
         return new Response(
-          JSON.stringify({ error: `Action inconnue: ${action}` }),
+          JSON.stringify({ error: 'GoCardless non configuré. Ajoutez vos clés API dans les paramètres.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      const token = await getAccessToken(userId, config.secret_id, config.secret_key);
+
+      switch (action) {
+        case 'list_institutions':
+          result = await handleListInstitutions(token, params.country || 'FR');
+          break;
+
+        case 'create_requisition':
+          result = await handleCreateRequisition(
+            token, supabase, userId,
+            params.institution_id,
+            params.institution_name,
+            params.institution_logo,
+            params.redirect_url
+          );
+          break;
+
+        case 'check_requisition':
+          result = await handleCheckRequisition(token, supabase, userId, params.requisition_id);
+          break;
+
+        case 'sync_transactions':
+          result = await handleSyncTransactions(token, supabase, userId, params.connection_id);
+          break;
+
+        case 'sync_balances':
+          result = await handleSyncBalances(token, supabase, userId, params.connection_id);
+          break;
+
+        default:
+          return new Response(
+            JSON.stringify({ error: `Action inconnue: ${action}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+      }
     }
 
     return new Response(

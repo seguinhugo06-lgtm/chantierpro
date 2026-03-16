@@ -92,30 +92,6 @@ const statusConfig = {
     label: 'En retard',
     icon: AlertCircle,
   },
-  abandonne: {
-    color: 'bg-red-400',
-    borderColor: 'border-l-red-400',
-    textColor: 'text-red-500 dark:text-red-400',
-    bgColor: 'bg-red-50/30 dark:bg-red-900/10',
-    label: 'Abandonné',
-    icon: AlertTriangle,
-  },
-  archive: {
-    color: 'bg-slate-400',
-    borderColor: 'border-l-slate-400',
-    textColor: 'text-slate-500 dark:text-slate-400',
-    bgColor: 'bg-slate-50/50 dark:bg-slate-800/30',
-    label: 'Archivé',
-    icon: CheckCircle2,
-  },
-  brouillon: {
-    color: 'bg-slate-300',
-    borderColor: 'border-l-slate-300',
-    textColor: 'text-slate-500 dark:text-slate-400',
-    bgColor: 'bg-slate-50/50 dark:bg-slate-800/20',
-    label: 'Brouillon',
-    icon: Clock,
-  },
 };
 
 // Weather icon mapping with emojis
@@ -189,7 +165,7 @@ function isChantierLate(chantier) {
  */
 function getEffectiveStatus(chantier) {
   if (isChantierLate(chantier)) return 'en_retard';
-  return chantier.statut || 'prospect';
+  return chantier.statut || 'en_cours';
 }
 
 /**
@@ -226,16 +202,26 @@ async function fetchWeatherForCity(city, date) {
     }
   }
 
-  // For demo mode, return fixed mock weather (not random)
+  // For demo mode, return mock weather
   if (isDemo) {
+    const conditions = ['clear', 'clouds', 'rain'];
+    const descriptions = ['Ensoleillé', 'Nuageux', 'Pluie légère'];
+    const idx = Math.floor(Math.random() * 3);
+
     const mockWeather = {
-      temp: 15,
-      condition: 'clouds',
-      description: 'Nuageux',
-      wind: 12,
-      humidity: 65,
-      rainProbability: 20,
+      temp: Math.round(8 + Math.random() * 15),
+      condition: conditions[idx],
+      description: descriptions[idx],
+      wind: Math.round(5 + Math.random() * 40),
+      humidity: Math.round(40 + Math.random() * 50),
+      rainProbability: idx === 2 ? Math.round(60 + Math.random() * 40) : Math.round(Math.random() * 30),
     };
+
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ data: mockWeather, timestamp: Date.now() }));
+    } catch (e) {
+      // localStorage full, ignore
+    }
     return mockWeather;
   }
 
@@ -267,7 +253,7 @@ async function fetchWeatherForCity(city, date) {
     }
     return weather;
   } catch (error) {
-    console.warn('Weather fetch failed:', error);
+    if (import.meta.env.DEV) console.warn('Weather fetch failed:', error);
     return null;
   }
 }
@@ -320,7 +306,7 @@ function WeatherDisplay({ weather, showAlert = true, isDark = false }) {
         <span className="capitalize">{weather.description}</span>
         {showWind && (
           <>
-            <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>•</span>
+            <span className={isDark ? 'text-gray-500' : 'text-gray-400'}>•</span>
             <Wind className="w-3.5 h-3.5" />
             <span>{weather.wind} km/h</span>
           </>
@@ -454,7 +440,7 @@ function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDa
             </span>
             <span className={cn('flex-shrink-0', isDark ? 'text-gray-600' : 'text-gray-300')}>•</span>
             <span
-              className={cn('text-xs flex items-center gap-1 min-w-0', isDark ? 'text-gray-500' : 'text-gray-500')}
+              className={cn('text-xs flex items-center gap-1 min-w-0', isDark ? 'text-gray-500' : 'text-gray-400')}
               title={locationDisplay}
             >
               <MapPin className="w-3 h-3 flex-shrink-0" />

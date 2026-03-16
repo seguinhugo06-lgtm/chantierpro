@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Check, ChevronDown, ChevronUp, Building2, MapPin, User, Calendar, Euro, FileText, Zap, Clock, Package } from 'lucide-react';
-import { validateForm, hasErrors, chantierSchema } from '../lib/validation';
-import FormError from './ui/FormError';
+import { X, Check, ChevronDown, ChevronUp, Building2, MapPin, User, Calendar, Euro, FileText, Zap, Clock, Package, AlertCircle } from 'lucide-react';
 
 /**
  * QuickChantierModal - Quick add/edit chantier with minimal fields
@@ -82,9 +80,9 @@ export default function QuickChantierModal({
         codePostal: editChantier.codePostal || '',
         date_debut: editChantier.dateDebut || editChantier.date_debut || '',
         date_fin: editChantier.dateFin || editChantier.date_fin || '',
-        budget_estime: (editChantier.budget_estime || editChantier.budgetPrevu) ? (editChantier.budget_estime || editChantier.budgetPrevu).toString() : '',
-        budget_materiaux: editChantier.budget_materiaux ? editChantier.budget_materiaux.toString() : '',
-        heures_estimees: editChantier.heures_estimees ? editChantier.heures_estimees.toString() : '',
+        budget_estime: editChantier.budget_estime?.toString() || editChantier.budgetPrevu?.toString() || '',
+        budget_materiaux: editChantier.budget_materiaux?.toString() || '',
+        heures_estimees: editChantier.heures_estimees?.toString() || '',
         notes: editChantier.notes || '',
         description: editChantier.description || ''
       });
@@ -127,22 +125,20 @@ export default function QuickChantierModal({
   const selectedClient = clients.find(c => c.id === form.client_id);
 
   // Get devis for selected client (for budget suggestion)
-  const clientDevis = devis.filter(d => d.client_id === form.client_id && d.statut === 'accepte');
+  const clientDevis = devis.filter(d => d.client_id === form.client_id && ['accepte', 'signe'].includes(d.statut));
 
   const handleSubmit = (e) => {
     e?.preventDefault();
 
-    // Trim all string fields
-    const trimmedForm = Object.fromEntries(
-      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v])
-    );
-    setForm(trimmedForm);
+    // Validate required fields
+    const newErrors = {};
 
-    // Validate using shared schema
-    const newErrors = validateForm(trimmedForm, chantierSchema);
+    if (!form.nom.trim()) {
+      newErrors.nom = 'Le nom du chantier est requis';
+    }
 
     // If errors, show them and focus first error field
-    if (hasErrors(newErrors)) {
+    if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       if (newErrors.nom) {
         inputRef.current?.focus();
@@ -152,10 +148,10 @@ export default function QuickChantierModal({
 
     setErrors({});
     const formData = {
-      ...trimmedForm,
-      budget_estime: trimmedForm.budget_estime ? parseFloat(trimmedForm.budget_estime) : 0,
-      budget_materiaux: trimmedForm.budget_materiaux ? parseFloat(trimmedForm.budget_materiaux) : 0,
-      heures_estimees: trimmedForm.heures_estimees ? parseFloat(trimmedForm.heures_estimees) : 0
+      ...form,
+      budget_estime: form.budget_estime ? parseFloat(form.budget_estime) : 0,
+      budget_materiaux: form.budget_materiaux ? parseFloat(form.budget_materiaux) : 0,
+      heures_estimees: form.heures_estimees ? parseFloat(form.heures_estimees) : 0
     };
 
     // Include ID if editing
@@ -177,22 +173,11 @@ export default function QuickChantierModal({
   };
 
   const selectClient = (client) => {
-    setForm(prev => {
-      const update = {
-        ...prev,
-        client_id: client.id,
-        adresse: client.adresse || prev.adresse
-      };
-      // Auto-parse code postal + ville from client address
-      if (client.adresse && !prev.codePostal && !prev.ville) {
-        const cpMatch = client.adresse.match(/(\d{5})\s+(.+)$/);
-        if (cpMatch) {
-          update.codePostal = cpMatch[1];
-          update.ville = cpMatch[2].replace(/,\s*$/, '').trim();
-        }
-      }
-      return update;
-    });
+    setForm(prev => ({
+      ...prev,
+      client_id: client.id,
+      adresse: client.adresse || prev.adresse
+    }));
     addToRecentClients(client.id);
     setClientSearch('');
     setShowClientDropdown(false);
@@ -210,11 +195,11 @@ export default function QuickChantierModal({
 
       {/* Modal */}
       <div
-        className={`relative w-full sm:max-w-md max-h-[92vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl animate-slide-up flex flex-col`}
+        className={`relative w-full sm:max-w-md ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl animate-slide-up`}
         onKeyDown={handleKeyDown}
       >
-        {/* Header — sticky */}
-        <div className={`px-5 pt-5 pb-4 border-b ${borderColor} flex items-center justify-between flex-shrink-0`}>
+        {/* Header */}
+        <div className={`px-5 pt-5 pb-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -236,15 +221,14 @@ export default function QuickChantierModal({
           </button>
         </div>
 
-        {/* Form — scrollable */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Nom du chantier - Required */}
           <div>
-            <label htmlFor="chantier-nom" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
               Nom du chantier <span className="text-red-500">*</span>
             </label>
             <input
-              id="chantier-nom"
               ref={inputRef}
               type="text"
               value={form.nom}
@@ -253,22 +237,23 @@ export default function QuickChantierModal({
                 if (errors.nom) setErrors(p => ({ ...p, nom: null }));
               }}
               placeholder="Ex: Rénovation cuisine, Extension garage..."
-              aria-required="true"
-              aria-invalid={!!errors.nom}
-              aria-describedby={errors.nom ? 'chantier-nom-error' : undefined}
               className={`w-full px-4 py-3 border rounded-xl text-sm ${inputBg} focus:ring-2 focus:ring-offset-0 ${errors.nom ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
               style={{ '--tw-ring-color': errors.nom ? '#ef4444' : `${couleur}40` }}
             />
-            <FormError id="chantier-nom-error" message={errors.nom} />
+            {errors.nom && (
+              <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle size={14} />
+                {errors.nom}
+              </p>
+            )}
           </div>
 
           {/* Client Selection */}
           <div ref={dropdownRef} className="relative">
-            <label htmlFor="chantier-client" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
               Client
             </label>
             <button
-              id="chantier-client"
               type="button"
               onClick={() => setShowClientDropdown(!showClientDropdown)}
               className={`w-full px-4 py-3 border rounded-xl text-sm text-left flex items-center justify-between ${inputBg}`}
@@ -362,19 +347,18 @@ export default function QuickChantierModal({
 
           {/* Budget - Always visible */}
           <div className={`p-4 rounded-xl border-2 ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-emerald-50/50 border-emerald-200'}`}>
-            <label htmlFor="chantier-budget" className={`block text-sm font-bold mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+            <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
               <Euro size={16} className="inline mr-1.5" />
               Budget du chantier (€ HT)
             </label>
             <div className="relative">
               <input
-                id="chantier-budget"
                 type="number"
                 value={form.budget_estime}
                 onChange={e => setForm(p => ({ ...p, budget_estime: e.target.value }))}
                 placeholder="15000"
                 className={`w-full px-4 py-3 border-2 rounded-xl text-lg font-semibold ${inputBg} focus:ring-2`}
-                style={{ borderColor: form.budget_estime && form.budget_estime !== '0' ? couleur : undefined }}
+                style={{ borderColor: form.budget_estime ? couleur : undefined }}
               />
               <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-lg font-medium ${textMuted}`}>€</span>
             </div>
@@ -428,11 +412,10 @@ export default function QuickChantierModal({
             <div className="space-y-4 pt-2 animate-fade-in">
               {/* Description */}
               <div>
-                <label htmlFor="chantier-description" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                   Description
                 </label>
                 <textarea
-                  id="chantier-description"
                   value={form.description}
                   onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                   placeholder="Description du chantier..."
@@ -443,28 +426,15 @@ export default function QuickChantierModal({
 
               {/* Address */}
               <div>
-                <label htmlFor="chantier-adresse" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                   <MapPin size={14} className="inline mr-1" />
                   Adresse du chantier
                 </label>
                 <input
-                  id="chantier-adresse"
                   type="text"
                   value={form.adresse}
-                  onChange={e => {
-                    const addr = e.target.value;
-                    setForm(p => {
-                      const update = { ...p, adresse: addr };
-                      // Auto-parse code postal + ville from address
-                      const cpMatch = addr.match(/(\d{5})\s+(.+)$/);
-                      if (cpMatch && !p.codePostal && !p.ville) {
-                        update.codePostal = cpMatch[1];
-                        update.ville = cpMatch[2].replace(/,\s*$/, '').trim();
-                      }
-                      return update;
-                    });
-                  }}
-                  placeholder="12 rue des Lilas, 75011 Paris"
+                  onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))}
+                  placeholder="12 rue des Lilas"
                   className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
                 />
               </div>
@@ -472,11 +442,10 @@ export default function QuickChantierModal({
               {/* Ville et Code Postal */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="chantier-codepostal" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                     Code postal
                   </label>
                   <input
-                    id="chantier-codepostal"
                     type="text"
                     value={form.codePostal}
                     onChange={e => setForm(p => ({ ...p, codePostal: e.target.value }))}
@@ -485,11 +454,10 @@ export default function QuickChantierModal({
                   />
                 </div>
                 <div>
-                  <label htmlFor="chantier-ville" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                     Ville
                   </label>
                   <input
-                    id="chantier-ville"
                     type="text"
                     value={form.ville}
                     onChange={e => setForm(p => ({ ...p, ville: e.target.value }))}
@@ -502,12 +470,11 @@ export default function QuickChantierModal({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="chantier-date-debut" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                     <Calendar size={14} className="inline mr-1" />
                     Début
                   </label>
                   <input
-                    id="chantier-date-debut"
                     type="date"
                     value={form.date_debut}
                     onChange={e => setForm(p => ({ ...p, date_debut: e.target.value }))}
@@ -515,11 +482,10 @@ export default function QuickChantierModal({
                   />
                 </div>
                 <div>
-                  <label htmlFor="chantier-date-fin" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                     Fin prévue
                   </label>
                   <input
-                    id="chantier-date-fin"
                     type="date"
                     value={form.date_fin}
                     onChange={e => setForm(p => ({ ...p, date_fin: e.target.value }))}
@@ -528,20 +494,19 @@ export default function QuickChantierModal({
                 </div>
               </div>
 
-              {/* Budget Coûts */}
+              {/* Budget Couts */}
               <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
                 <p className={`text-xs font-medium mb-3 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Objectif de coûts (optionnel)
+                  Objectif de couts (optionnel)
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="chantier-budget-materiaux" className={`block text-xs mb-1 ${textMuted}`}>
+                    <label className={`block text-xs mb-1 ${textMuted}`}>
                       <Package size={12} className="inline mr-1" />
-                      Matériaux
+                      Materiaux
                     </label>
                     <div className="relative">
                       <input
-                        id="chantier-budget-materiaux"
                         type="number"
                         value={form.budget_materiaux}
                         onChange={e => setForm(p => ({ ...p, budget_materiaux: e.target.value }))}
@@ -552,13 +517,12 @@ export default function QuickChantierModal({
                     </div>
                   </div>
                   <div>
-                    <label htmlFor="chantier-heures" className={`block text-xs mb-1 ${textMuted}`}>
+                    <label className={`block text-xs mb-1 ${textMuted}`}>
                       <Clock size={12} className="inline mr-1" />
                       Heures prevues
                     </label>
                     <div className="relative">
                       <input
-                        id="chantier-heures"
                         type="number"
                         value={form.heures_estimees}
                         onChange={e => setForm(p => ({ ...p, heures_estimees: e.target.value }))}
@@ -573,11 +537,10 @@ export default function QuickChantierModal({
 
               {/* Notes */}
               <div>
-                <label htmlFor="chantier-notes" className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
+                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
                   Notes
                 </label>
                 <textarea
-                  id="chantier-notes"
                   value={form.notes}
                   onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                   placeholder="Détails importants, contraintes d'accès, matériaux spécifiques..."
@@ -588,13 +551,9 @@ export default function QuickChantierModal({
             </div>
           )}
 
-        </form>
-
-        {/* Footer — sticky at bottom */}
-        <div className={`px-5 py-4 border-t ${borderColor} flex-shrink-0 space-y-2`}>
+          {/* Submit Button */}
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={!form.nom.trim()}
             className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ backgroundColor: couleur }}
@@ -602,10 +561,12 @@ export default function QuickChantierModal({
             {isEditMode ? <Check size={18} /> : <Zap size={18} />}
             {isEditMode ? 'Enregistrer les modifications' : 'Créer le chantier'}
           </button>
+
+          {/* Keyboard hint */}
           <p className={`text-center text-xs ${textMuted}`}>
             Appuyez sur <kbd className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>Entrée</kbd> pour {isEditMode ? 'enregistrer' : 'créer rapidement'}
           </p>
-        </div>
+        </form>
       </div>
 
       {/* Animations */}

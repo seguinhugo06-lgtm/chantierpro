@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { cn } from '../../lib/utils';
-import { formatDevisNumber } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
 import { Button } from '../ui/Button';
 import Widget, {
@@ -117,7 +116,24 @@ function formatCurrency(amount) {
   }).format(amount || 0);
 }
 
-// formatFactureNumber → replaced by centralized formatDevisNumber from formatters.js
+/**
+ * Format document number with correct prefix (FAC- for factures)
+ */
+function formatFactureNumber(facture) {
+  const numero = facture.numero || facture.id?.slice(-6) || '---';
+
+  // If it already has FAC- prefix, use it as-is
+  if (numero.startsWith('FAC-')) {
+    return numero;
+  }
+
+  // If number starts with a digit, add FAC- prefix
+  if (/^\d/.test(numero)) {
+    return `FAC-${numero}`;
+  }
+
+  return numero;
+}
 
 /**
  * Format compact currency
@@ -170,14 +186,14 @@ function AgeGroupCard({ group, amount, count, percent, onClick, isDark }) {
             />
             <span className={cn(
               'text-xs font-medium',
-              isDark ? 'text-gray-400' : 'text-gray-500'
+              isDark ? 'text-gray-500' : 'text-gray-400'
             )}>
               {config.shortLabel}
             </span>
           </div>
           <span className={cn(
             'text-xs',
-            isDark ? 'text-gray-400' : 'text-gray-500'
+            isDark ? 'text-gray-600' : 'text-gray-400'
           )}>
             —
           </span>
@@ -364,7 +380,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
               >
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDevisNumber(facture)}
+                    {formatFactureNumber(facture)}
                     <span className="text-gray-400 mx-1">•</span>
                     <span className="text-gray-600 dark:text-gray-400">
                       {client?.nom || 'Client inconnu'}
@@ -635,13 +651,13 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
                   )}>
                     <p className={cn(
                       'text-xs',
-                      isDark ? 'text-gray-400' : 'text-gray-500'
+                      isDark ? 'text-gray-500' : 'text-gray-400'
                     )}>
                       {unpaidData.totalCount} facture{unpaidData.totalCount > 1 ? 's' : ''}
                     </p>
                     <p className={cn(
                       'text-xs mt-0.5',
-                      isDark ? 'text-gray-400' : 'text-gray-500'
+                      isDark ? 'text-gray-500' : 'text-gray-400'
                     )}>
                       Âge moyen: ~{Math.round(
                         (unpaidData.groups.under30.count * 15 +
@@ -656,7 +672,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
                 {/* Age breakdown label */}
                 <p className={cn(
                   'text-[10px] font-medium uppercase tracking-wide',
-                  isDark ? 'text-gray-400' : 'text-gray-500'
+                  isDark ? 'text-gray-500' : 'text-gray-400'
                 )}>
                   Répartition par ancienneté
                 </p>

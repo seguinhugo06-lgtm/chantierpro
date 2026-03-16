@@ -28,26 +28,13 @@ export { default as ActionsList } from './ActionsList';
 export { default as OverviewWidget, OverviewWidgetSkeleton } from './OverviewWidget';
 export { default as RevenueChartWidget, RevenueChartWidgetSkeleton } from './RevenueChartWidget';
 
-// Health Score Widget
-export { default as ScoreSanteWidget, ScoreSanteWidget as ScoreSanteWidgetNamed } from './ScoreSanteWidget';
-
 // Bank Widget
 export { default as BankWidget, BankWidgetSkeleton } from './BankWidget';
 
-// Relance Widget
-export { default as RelanceWidget } from './RelanceWidget';
-
-// Reports Widget
-export { default as ReportsWidget } from './ReportsWidget';
-
-// Acomptes Widget
-export { default as AcomptesWidget } from './AcomptesWidget';
-
-// Activity Feed Widget (audit-driven)
-export { default as ActivityFeedWidget } from './ActivityFeedWidget';
-
-// Consolidated Widget (multi-entreprise)
-export { default as ConsolidatedWidget } from './ConsolidatedWidget';
-
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';
+
+// V2 Widgets
+export { default as ConversionFunnelWidget } from './ConversionFunnelWidget';
+export { default as TopClientsWidget } from './TopClientsWidget';
+export { default as ProfitabilityWidget } from './ProfitabilityWidget';

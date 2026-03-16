@@ -134,7 +134,7 @@ async function fetchWeatherFromAPI(lat, lon) {
   const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
 
   if (!apiKey) {
-    console.warn('OpenWeatherMap API key not configured (VITE_OPENWEATHERMAP_API_KEY)');
+    if (import.meta.env.DEV) console.warn('OpenWeatherMap API key not configured (VITE_OPENWEATHERMAP_API_KEY)');
     return null;
   }
 
@@ -163,7 +163,7 @@ async function fetchWeatherFromAPI(lat, lon) {
       updatedAt: new Date().toISOString()
     };
   } catch (error) {
-    console.error('Weather fetch error:', error);
+    if (import.meta.env.DEV) console.error('Weather fetch error:', error);
     return null;
   }
 }
@@ -210,7 +210,7 @@ export async function getUserWeather() {
       return weather;
     }
   } catch (error) {
-    console.warn('Could not get user weather:', error);
+    if (import.meta.env.DEV) console.warn('Could not get user weather:', error);
   }
 
   // Return fallback data

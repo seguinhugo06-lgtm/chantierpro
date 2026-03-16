@@ -31,7 +31,6 @@ CREATE INDEX IF NOT EXISTS idx_devis_signature_token
   WHERE signature_token IS NOT NULL;
 
 -- 4. Function: Get devis data for public signature page
--- Returns already_signed flag for signed/converted devis instead of NULL
 CREATE OR REPLACE FUNCTION get_devis_for_signature(p_token UUID)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -39,36 +38,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   result JSON;
-  v_devis RECORD;
 BEGIN
-  -- First, find the devis by token (without status/expiry filter)
-  SELECT d.id, d.statut, d.signature_expires_at, d.signature_data,
-         (d.signature_data IS NOT NULL) as already_signed
-  INTO v_devis
-  FROM devis d
-  WHERE d.signature_token = p_token;
-
-  -- Token not found at all
-  IF v_devis IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  -- Already signed → return minimal data with already_signed flag
-  IF v_devis.already_signed THEN
-    RETURN json_build_object('devis', json_build_object('already_signed', true));
-  END IF;
-
-  -- Token expired
-  IF v_devis.signature_expires_at <= NOW() THEN
-    RETURN NULL;
-  END IF;
-
-  -- Status not signable (converted to facture, etc.)
-  IF v_devis.statut NOT IN ('envoye', 'en_attente', 'accepte') THEN
-    RETURN json_build_object('devis', json_build_object('already_signed', true));
-  END IF;
-
-  -- Valid token → return full data
   SELECT json_build_object(
     'devis', json_build_object(
       'id', d.id,
@@ -88,7 +58,7 @@ BEGIN
       'total_ttc', d.total_ttc,
       'acompte_percent', d.acompte_percent,
       'acompte_montant', d.acompte_montant,
-      'already_signed', false
+      'already_signed', (d.signature_data IS NOT NULL)
     ),
     'client', json_build_object(
       'nom', c.nom,
@@ -96,30 +66,46 @@ BEGIN
       'email', c.email,
       'telephone', c.telephone,
       'adresse', c.adresse,
-      'entreprise', c.entreprise
+      'ville', c.ville,
+      'code_postal', c.code_postal
     ),
     'entreprise', json_build_object(
       'nom', e.nom,
       'siret', e.siret,
+      'code_ape', e.code_ape,
       'tva_intra', e.tva_intra,
       'adresse', e.adresse,
       'ville', e.ville,
       'code_postal', e.code_postal,
-      'telephone', e.telephone,
+      'telephone', e.tel,
       'email', e.email,
       'site_web', e.site_web,
-      'logo', e.logo_url,
-      'couleur', e.couleur_principale,
+      'logo', e.logo,
+      'couleur', e.couleur,
+      'forme_juridique', e.forme_juridique,
+      'capital', e.capital,
+      'rcs_ville', e.rcs_ville,
+      'rcs_numero', e.rcs_numero,
+      'rcs_type', e.rcs_type,
       'iban', e.iban,
       'bic', e.bic,
-      'conditions_paiement', e.conditions_paiement,
-      'mentions_legales', e.mentions_legales
+      'cgv', e.cgv,
+      'rc_pro_assureur', e.rc_pro_assureur,
+      'rc_pro_numero', e.rc_pro_numero,
+      'rc_pro_validite', e.rc_pro_validite,
+      'decennale_assureur', e.decennale_assureur,
+      'decennale_numero', e.decennale_numero,
+      'decennale_validite', e.decennale_validite,
+      'validite_devis', e.validite_devis,
+      'delai_paiement', e.delai_paiement
     )
   ) INTO result
   FROM devis d
   LEFT JOIN clients c ON d.client_id = c.id
   LEFT JOIN entreprise e ON e.user_id = d.user_id
-  WHERE d.id = v_devis.id;
+  WHERE d.signature_token = p_token
+    AND d.signature_expires_at > NOW()
+    AND d.statut IN ('envoye', 'en_attente');
 
   RETURN result;
 END;
@@ -148,7 +134,7 @@ BEGIN
   FROM devis d
   WHERE d.signature_token = p_token
     AND d.signature_expires_at > NOW()
-    AND d.statut IN ('envoye', 'en_attente', 'accepte')
+    AND d.statut IN ('envoye', 'en_attente')
     AND d.signature_data IS NULL;
 
   IF v_devis_id IS NULL THEN

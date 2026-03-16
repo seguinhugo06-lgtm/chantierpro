@@ -16,7 +16,10 @@ const MODAL_REGISTRY = {
   // Utility modals (core - always available)
   'confirm': lazy(() => import('../modals/ConfirmModal')),
   'success': lazy(() => import('../modals/SuccessModal')),
-  'alert': lazy(() => import('../modals/AlertModal'))
+  'alert': lazy(() => import('../modals/AlertModal')),
+
+  // Subscription
+  'upgrade': lazy(() => import('../modals/UpgradeModal')),
 
   // Future modals to be added:
   // 'new-devis': lazy(() => import('../modals/NewDevisModal')),

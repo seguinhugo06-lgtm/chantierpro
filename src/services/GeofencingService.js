@@ -228,7 +228,7 @@ export class GeofenceWatcher {
    * @param {GeolocationPositionError} error
    */
   handleError(error) {
-    console.error('Geolocation error:', error);
+    if (import.meta.env.DEV) console.error('Geolocation error:', error);
     this.onError(error);
   }
 

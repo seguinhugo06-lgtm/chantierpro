@@ -9,8 +9,7 @@ const envDemoMode = import.meta.env.VITE_DEMO_MODE === 'true';
 const hasSupabaseConfig = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // Demo mode: enabled if no Supabase config OR explicitly requested via URL/env
-// ?demo=true works in all environments to allow testing demo data on production builds
-export const isDemo = !hasSupabaseConfig || envDemoMode || urlHasDemoParam;
+export const isDemo = !hasSupabaseConfig || envDemoMode || (isDevelopment && urlHasDemoParam);
 
 
 // Demo user for auto-login in demo mode
@@ -20,12 +19,12 @@ const DEMO_USER = {
   user_metadata: { nom: 'Utilisateur Démo' }
 };
 
-// Log demo mode activation
-if (urlHasDemoParam) {
-  console.log('🎭 Demo mode activated via URL parameter');
+// Log warning in production if someone tries to use demo param
+if (!isDevelopment && urlHasDemoParam && !envDemoMode) {
+  console.warn('Demo mode via URL is disabled in production for security reasons.');
 }
 
-// En mode demo, on utilise des URLs factices pour éviter les erreurs 401
+// En mode demo, on utilise des URLs factices pour eviter les erreurs 401
 const supabaseUrl = isDemo ? 'https://demo.supabase.co' : (import.meta.env.VITE_SUPABASE_URL || '');
 const supabaseAnonKey = isDemo ? 'demo-key' : (import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 
@@ -46,6 +45,13 @@ export const auth = {
   signIn: async (email, password) => {
     if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    return { data, error };
+  },
+  resetPassword: async (email) => {
+    if (isDemo || !supabase) return { data: null, error: { message: 'Mode démo actif' } };
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
     return { data, error };
   },
   signOut: async () => {

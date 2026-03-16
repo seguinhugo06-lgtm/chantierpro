@@ -8,8 +8,6 @@ import PhotoGallery from './PhotoGallery';
 import FactureCard from './FactureCard';
 import { Card, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
-import { toast } from '../../stores/toastStore';
-import ToastContainer from '../ui/ToastContainer';
 
 /**
  * Stat Card component for the summary section
@@ -113,7 +111,7 @@ export default function ClientPortal({ accessToken }) {
       await fetchClientData();
     } catch (err) {
       console.error('Accept devis error:', err);
-      toast.error('Erreur', 'Impossible d\'accepter le devis');
+      alert('Erreur lors de l\'acceptation du devis');
     }
   };
 
@@ -131,7 +129,7 @@ export default function ClientPortal({ accessToken }) {
       await fetchClientData();
     } catch (err) {
       console.error('Refuse devis error:', err);
-      toast.error('Erreur', 'Impossible de refuser le devis');
+      alert('Erreur lors du refus du devis');
     }
   };
 
@@ -142,7 +140,7 @@ export default function ClientPortal({ accessToken }) {
     const doc = allDocs.find(d => d.id === id);
 
     if (!doc) {
-      toast.warning('Document introuvable');
+      alert('Document introuvable');
       return;
     }
 
@@ -219,14 +217,14 @@ export default function ClientPortal({ accessToken }) {
 
   ${doc.description ? `<p style="margin-bottom:15px;color:#475569">${doc.description}</p>` : ''}
 
-  <table aria-label="Détail des prestations">
+  <table>
     <thead>
       <tr>
-        <th scope="col">Description</th>
-        <th scope="col">Qté</th>
-        <th scope="col">Unité</th>
-        <th scope="col">P.U. HT</th>
-        <th scope="col">Total HT</th>
+        <th>Description</th>
+        <th>Qté</th>
+        <th>Unité</th>
+        <th>P.U. HT</th>
+        <th>Total HT</th>
       </tr>
     </thead>
     <tbody>
@@ -258,7 +256,7 @@ export default function ClientPortal({ accessToken }) {
         printWindow.print();
       }, 250);
     } else {
-      toast.warning('Autorisez les pop-ups pour télécharger le PDF');
+      alert('Veuillez autoriser les popups pour télécharger le PDF');
     }
   };
 
@@ -282,7 +280,7 @@ export default function ClientPortal({ accessToken }) {
       }
     } catch (err) {
       console.error('Payment error:', err);
-      toast.error('Erreur', 'Impossible d\'initialiser le paiement');
+      alert('Erreur lors de l\'initialisation du paiement');
     }
   };
 
@@ -316,7 +314,7 @@ export default function ClientPortal({ accessToken }) {
           <p className="text-slate-600 mb-6">{error}</p>
           <Button variant="outline" onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
-            Réessayer
+            Reessayer
           </Button>
         </div>
       </PortalLayout>
@@ -334,7 +332,6 @@ export default function ClientPortal({ accessToken }) {
   const unpaidFactures = facturesList.filter(f => f.statut !== 'payee').length;
 
   return (
-    <>
     <PortalLayout clientName={clientData?.nom}>
       {/* Stats Summary */}
       <section className="mb-8">
@@ -445,7 +442,5 @@ export default function ClientPortal({ accessToken }) {
         chantierName={selectedChantier?.nom || ''}
       />
     </PortalLayout>
-    <ToastContainer position="bottom-right" />
-    </>
   );
 }

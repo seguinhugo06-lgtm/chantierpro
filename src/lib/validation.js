@@ -39,18 +39,10 @@ export const maxLength = (max, message) => (value) => {
 /**
  * Email validation
  */
-const TEST_EMAIL_DOMAINS = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
-
 export const email = (message = 'Email invalide') => (value) => {
   if (!value) return null;
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!regex.test(value)) return message;
-  // Reject test/disposable email domains
-  const domain = value.split('@')[1]?.toLowerCase();
-  if (domain && TEST_EMAIL_DOMAINS.includes(domain)) {
-    return 'Domaine email non autorisé (test/jetable)';
-  }
-  return null;
+  return regex.test(value) ? null : message;
 };
 
 /**
@@ -207,7 +199,7 @@ export const hasErrors = (errors) => {
  * Client validation schema
  */
 export const clientSchema = {
-  nom: [required('Le nom est requis'), minLength(2, 'Le nom doit contenir au moins 2 caractères')],
+  nom: [required('Le nom est requis')],
   telephone: [phone()],
   email: [email()]
 };

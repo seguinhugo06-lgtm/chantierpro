@@ -3,50 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>BatiGesti — Logiciel de gestion de chantier pour artisans BTP</title>
-
-    <!-- SEO Meta -->
-    <meta name="description" content="Créez vos devis et factures BTP en 2 minutes. Gestion de chantier, trésorerie, conformité. Gratuit pour démarrer." />
-    <meta name="keywords" content="devis BTP, facturation artisan, gestion chantier, logiciel BTP, devis en ligne, facture auto-entrepreneur" />
-    <meta name="author" content="BatiGesti" />
-    <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://batigesti.vercel.app/" />
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="BatiGesti — Logiciel de gestion de chantier pour artisans BTP" />
-    <meta property="og:description" content="Créez vos devis et factures BTP en 2 minutes. Gestion de chantier, trésorerie, conformité. Gratuit pour démarrer." />
-    <meta property="og:image" content="https://batigesti.vercel.app/og-image.png" />
-    <meta property="og:url" content="https://batigesti.vercel.app/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="BatiGesti" />
-    <meta property="og:locale" content="fr_FR" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="BatiGesti — Gestion de chantier pour artisans BTP" />
-    <meta name="twitter:description" content="Créez vos devis et factures BTP en 2 minutes. Gratuit pour démarrer." />
-    <meta name="twitter:image" content="https://batigesti.vercel.app/og-image.png" />
+    <title>BatiGesti - Gestion Devis & Facturation BTP</title>
 
     <!-- PWA Meta Tags -->
+    <meta name="description" content="Logiciel de gestion pour artisans du BTP : devis, factures, chantiers, trésorerie. Conforme Facture 2026. Essai gratuit." />
     <meta name="theme-color" content="#f97316" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BatiGesti" />
+    <meta name="keywords" content="devis BTP, facturation artisan, gestion chantier, logiciel batiment, devis en ligne, facture electronique, conformite 2026" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://batigesti.fr/" />
+    <meta property="og:title" content="BatiGesti — Devis, Factures & Chantiers pour artisans BTP" />
+    <meta property="og:description" content="Logiciel tout-en-un pour artisans du BTP. Devis IA, facturation conforme 2026, suivi de chantiers. Essai gratuit." />
+    <meta property="og:image" content="https://batigesti.fr/og-image.png" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="BatiGesti" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BatiGesti — Devis, Factures & Chantiers pour artisans BTP" />
+    <meta name="twitter:description" content="Logiciel tout-en-un pour artisans du BTP. Devis IA, facturation conforme 2026, suivi de chantiers." />
+    <meta name="twitter:image" content="https://batigesti.fr/og-image.png" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://batigesti.fr/" />
 
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
 
     <!-- Preconnect to Supabase -->
     <link rel="preconnect" href="https://pxoaqneghwjryplkfvjt.supabase.co" crossorigin />
 
-    <!-- Leaflet CSS for map views -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-
-    <!-- Plausible Analytics (privacy-first, no cookies, RGPD-compliant) -->
-    <script defer data-domain="batigesti.vercel.app" src="https://plausible.io/js/script.js"></script>
-
-    <!-- Structured Data (JSON-LD) -->
+    <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -54,25 +46,43 @@
       "name": "BatiGesti",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
-      "description": "Logiciel de gestion de chantier, devis et facturation pour artisans et entreprises du BTP.",
-      "url": "https://batigesti.vercel.app",
-      "offers": {
-        "@type": "AggregateOffer",
-        "priceCurrency": "EUR",
-        "lowPrice": "0",
-        "highPrice": "29.90",
-        "offerCount": "3"
-      },
-      "screenshot": "https://batigesti.vercel.app/og-image.png",
-      "featureList": "Devis et factures, Gestion de chantier, Suivi de trésorerie, Planning, Gestion d'équipe, Mode hors ligne",
-      "inLanguage": "fr"
+      "url": "https://batigesti.fr",
+      "description": "Logiciel de gestion pour artisans du BTP : devis, factures, chantiers, tresorerie.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Gratuit",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        {
+          "@type": "Offer",
+          "name": "Artisan",
+          "price": "14.90",
+          "priceCurrency": "EUR",
+          "billingIncrement": "P1M"
+        },
+        {
+          "@type": "Offer",
+          "name": "Equipe",
+          "price": "29.90",
+          "priceCurrency": "EUR",
+          "billingIncrement": "P1M"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150"
+      }
     }
     </script>
-    <script type="module" crossorigin src="/assets/index-CLxeLDvO.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DHH8-g4D.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-supabase-BQbgwcOn.js">
-    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-CeUomLzb.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-C8u41fFI.css">
+    <script type="module" crossorigin src="/assets/index-x8L0PPaz.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-KfUPlHYY.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-framer-BDiRV-UQ.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-icons-BG6y5FfX.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-recharts-DAi7hbI5.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-aOa0YpiG.css">
   <link rel="manifest" href="/manifest.webmanifest"></head>
   <body>
     <div id="root"></div>

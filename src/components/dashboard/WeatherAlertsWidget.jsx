@@ -246,7 +246,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       );
       setAlerts(filteredAlerts);
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error fetching alerts:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error fetching alerts:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -282,7 +282,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
         onRefreshCalendar();
       }
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error rescheduling:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error rescheduling:', err);
       setError(`Erreur lors du report: ${err.message}`);
     } finally {
       setActionLoading(false);
@@ -309,7 +309,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       // Remove from list
       setAlerts((prev) => prev.filter((a) => a.chantier.id !== alert.chantier.id));
     } catch (err) {
-      console.error('WeatherAlertsWidget: Error notifying:', err);
+      if (import.meta.env.DEV) console.error('WeatherAlertsWidget: Error notifying:', err);
     } finally {
       setActionLoading(false);
     }
@@ -350,7 +350,7 @@ export default function WeatherAlertsWidget({ userId, daysAhead = 7, onRefreshCa
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xl">⛈️</span>
-          <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Alertes Météo</h2>
+          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Alertes Météo</h3>
           {alerts.length > 0 && (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
               isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-800'
@@ -462,7 +462,7 @@ export function WeatherAlertsBadge({ userId, onClick }) {
         setCount(significant.length);
         setCriticalCount(alerts.filter((a) => a.impact?.level === 'critical').length);
       } catch (err) {
-        console.error('WeatherAlertsBadge: Error:', err);
+        if (import.meta.env.DEV) console.error('WeatherAlertsBadge: Error:', err);
       }
     };
 

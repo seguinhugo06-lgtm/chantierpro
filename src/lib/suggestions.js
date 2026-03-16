@@ -7,7 +7,6 @@
 
 import supabase, { isDemo } from '../supabaseClient';
 import { DEVIS_STATUS, CHANTIER_STATUS } from './constants';
-import { normalizeDevisRef } from './formatters';
 
 // ============ TYPES ============
 
@@ -183,7 +182,7 @@ function ruleReminderDevis({ devis = [], clients = [] }) {
         type: 'reminder_devis',
         priority: isHighValue ? 'high' : 'medium',
         title: 'Relancer le devis',
-        description: `Le devis ${normalizeDevisRef(d.numero, d.type, d.id)} pour ${client?.nom || 'client'} attend depuis ${age} jours`,
+        description: `Le devis ${d.numero || '#' + d.id?.slice(-6)} pour ${client?.nom || 'client'} attend depuis ${age} jours`,
         value: formatCurrency(montant),
         action: {
           label: 'Relancer',
@@ -503,7 +502,7 @@ function rulePaymentLate({ devis = [], clients = [] }) {
         type: 'payment_late',
         priority: 'high',
         title: 'Facture en retard critique',
-        description: `Facture ${normalizeDevisRef(facture.numero, 'facture', facture.id)} impayée depuis ${daysLate} jours`,
+        description: `Facture ${facture.numero || '#' + facture.id?.slice(-6)} impayée depuis ${daysLate} jours`,
         value: formatCurrency(montant),
         action: {
           label: 'Relancer',
@@ -573,13 +572,13 @@ export async function generateSuggestions(userId, data = {}) {
   try {
     allSuggestions.push(...ruleWeatherAlert(data));
   } catch (e) {
-    console.warn('Rule weather_alert failed:', e);
+    if (import.meta.env.DEV) console.warn('Rule weather_alert failed:', e);
   }
 
   try {
     allSuggestions.push(...rulePaymentLate(data));
   } catch (e) {
-    console.warn('Rule payment_late failed:', e);
+    if (import.meta.env.DEV) console.warn('Rule payment_late failed:', e);
   }
 
   // Sort by priority (high > medium > low) then by creation date

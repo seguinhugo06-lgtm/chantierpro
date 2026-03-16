@@ -2,7 +2,7 @@
  * Modèles de Devis Express - Point d'entrée principal
  *
  * Réexporte tous les modèles depuis le répertoire modeles/
- * Total: ~308 modèles répartis sur 29 catégories métier
+ * Total: ~230 modèles répartis sur 17 catégories métier
  * Prix indicatifs marché 2024-2025 France métropolitaine
  */
 

@@ -17,7 +17,7 @@ const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY') || '';
 const SENDGRID_FROM_EMAIL = Deno.env.get('SENDGRID_FROM_EMAIL') || 'noreply@batigesti.fr';
 const SENDGRID_FROM_NAME = Deno.env.get('SENDGRID_FROM_NAME') || 'BatiGesti';
 
-const APP_URL = Deno.env.get('APP_URL') || 'https://app.batigesti.fr';
+const APP_URL = Deno.env.get('APP_URL') || 'https://batigesti.fr';
 
 // ============================================================================
 // SUPABASE CLIENT

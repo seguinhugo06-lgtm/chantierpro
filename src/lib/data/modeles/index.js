@@ -1,5 +1,5 @@
 /**
- * Index des modèles de devis - Combine tous les métiers (~308 modèles)
+ * Index des modèles de devis - Combine tous les métiers (~230 modèles)
  */
 
 import { PLOMBERIE_MODELES } from './plomberie';
@@ -22,25 +22,10 @@ import {
   PLATRERIE_MODELES,
 } from './autres-metiers';
 
-// ── Nouvelles catégories (12) ────────────────────────────────────────────────
-import { RAMONAGE_MODELES } from './ramonage';
-import { ASSAINISSEMENT_MODELES } from './assainissement';
-import { DOMOTIQUE_MODELES } from './domotique';
-import { SOLS_SOUPLES_MODELES } from './sols-souples';
-import { RAVALEMENT_MODELES } from './ravalement';
-import { PISCINE_MODELES } from './piscine';
-import { METALLERIE_MODELES } from './metallerie';
-import { FERMETURES_MODELES } from './fermetures';
-import { NETTOYAGE_MODELES } from './nettoyage';
-import { CUISINE_MODELES } from './cuisine';
-import { RENOVATION_ENERGETIQUE_MODELES } from './renovation-energetique';
-import { IRVE_SOLAIRE_MODELES } from './irve-solaire';
-
 /**
  * Tous les modèles de devis par métier
  */
 export const MODELES_DEVIS = {
-  // ── Métiers existants (17) ──
   plomberie: PLOMBERIE_MODELES,
   electricite: ELECTRICITE_MODELES,
   maconnerie: MACONNERIE_MODELES,
@@ -58,19 +43,6 @@ export const MODELES_DEVIS = {
   demolition: DEMOLITION_MODELES,
   charpente: CHARPENTE_MODELES,
   platrerie: PLATRERIE_MODELES,
-  // ── Nouveaux métiers (12) ──
-  ramonage: RAMONAGE_MODELES,
-  assainissement: ASSAINISSEMENT_MODELES,
-  domotique: DOMOTIQUE_MODELES,
-  'sols-souples': SOLS_SOUPLES_MODELES,
-  ravalement: RAVALEMENT_MODELES,
-  piscine: PISCINE_MODELES,
-  metallerie: METALLERIE_MODELES,
-  fermetures: FERMETURES_MODELES,
-  nettoyage: NETTOYAGE_MODELES,
-  cuisine: CUISINE_MODELES,
-  'renovation-energetique': RENOVATION_ENERGETIQUE_MODELES,
-  'irve-solaire': IRVE_SOLAIRE_MODELES,
 };
 
 /**

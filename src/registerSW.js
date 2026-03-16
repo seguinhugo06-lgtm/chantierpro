@@ -4,13 +4,9 @@
  */
 
 import { registerSW } from 'virtual:pwa-register';
-import { logger } from './lib/logger';
 
 // Check if we're in a browser environment
 const isSupported = 'serviceWorker' in navigator;
-
-// Build version — changes every build to detect stale bundles
-const BUILD_VERSION = Date.now().toString(36);
 
 /**
  * @typedef {Object} SWRegistrationOptions
@@ -18,23 +14,6 @@ const BUILD_VERSION = Date.now().toString(36);
  * @property {() => void} [onOfflineReady] - Called when app is ready for offline use
  * @property {(error: Error) => void} [onRegisterError] - Called on registration error
  */
-
-/**
- * Auto-reload when a new SW takes control of the page.
- * This prevents stale JS bundles (e.g. old DevisPage chunk referencing
- * an older React bundle where useMemo was tree-shaken differently).
- */
-function setupControllerChangeReload() {
-  if (!isSupported) return;
-
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    logger.debug('[SW] New service worker took control — reloading page');
-    window.location.reload();
-  });
-}
 
 /**
  * Initialize service worker with update handling
@@ -53,12 +32,9 @@ export function initServiceWorker(options = {}) {
   let needRefresh = false;
 
   if (!isSupported) {
-    logger.debug('Service Worker not supported');
+    console.log('Service Worker not supported');
     return { updateSW: () => Promise.resolve(), offlineReady: false, needRefresh: false };
   }
-
-  // Auto-reload when new SW takes control (prevents stale bundle mismatch)
-  setupControllerChangeReload();
 
   try {
     updateSW = registerSW({
@@ -66,28 +42,21 @@ export function initServiceWorker(options = {}) {
       onNeedRefresh() {
         needRefresh = true;
         onNeedRefresh(true);
-        logger.debug('[SW] New content available, refresh needed');
+        console.log('[SW] New content available, refresh needed');
       },
       onOfflineReady() {
         offlineReady = true;
         onOfflineReady();
-        logger.debug('[SW] App ready to work offline');
+        console.log('[SW] App ready to work offline');
       },
       onRegistered(registration) {
-        logger.debug('[SW] Registered:', registration?.scope, 'build:', BUILD_VERSION);
+        console.log('[SW] Registered:', registration?.scope);
 
+        // Check for updates every hour
         if (registration) {
-          // Check for updates every 15 minutes (was 1h — too slow)
           setInterval(() => {
             registration.update();
-          }, 15 * 60 * 1000);
-
-          // Also check for updates when tab becomes visible (user returns to tab)
-          document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-              registration.update();
-            }
-          });
+          }, 60 * 60 * 1000);
         }
       },
       onRegisterError(error) {
@@ -143,7 +112,7 @@ export function addToSyncQueue(type, data) {
   queue.push(operation);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 
-  logger.debug(`[Sync] Added to queue: ${type}`, id);
+  console.log(`[Sync] Added to queue: ${type}`, id);
   return id;
 }
 
@@ -167,7 +136,7 @@ export function getSyncQueue() {
 export function removeFromSyncQueue(id) {
   const queue = getSyncQueue().filter(op => op.id !== id);
   localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
-  logger.debug(`[Sync] Removed from queue: ${id}`);
+  console.log(`[Sync] Removed from queue: ${id}`);
 }
 
 /**
@@ -175,7 +144,7 @@ export function removeFromSyncQueue(id) {
  */
 export function clearSyncQueue() {
   localStorage.removeItem(SYNC_QUEUE_KEY);
-  logger.debug('[Sync] Queue cleared');
+  console.log('[Sync] Queue cleared');
 }
 
 /**
@@ -185,7 +154,7 @@ export function clearSyncQueue() {
  */
 export async function processSyncQueue(handlers = {}) {
   if (!navigator.onLine) {
-    logger.debug('[Sync] Offline, skipping queue processing');
+    console.log('[Sync] Offline, skipping queue processing');
     return { success: 0, failed: 0 };
   }
 
@@ -194,7 +163,7 @@ export async function processSyncQueue(handlers = {}) {
     return { success: 0, failed: 0 };
   }
 
-  logger.debug(`[Sync] Processing ${queue.length} queued operations`);
+  console.log(`[Sync] Processing ${queue.length} queued operations`);
 
   let success = 0;
   let failed = 0;
@@ -211,7 +180,7 @@ export async function processSyncQueue(handlers = {}) {
       await handler(operation.data);
       removeFromSyncQueue(operation.id);
       success++;
-      logger.debug(`[Sync] Success: ${operation.type}`, operation.id);
+      console.log(`[Sync] Success: ${operation.type}`, operation.id);
     } catch (error) {
       console.error(`[Sync] Failed: ${operation.type}`, error);
 
@@ -222,7 +191,7 @@ export async function processSyncQueue(handlers = {}) {
       if (operation.retries >= 3) {
         removeFromSyncQueue(operation.id);
         failed++;
-        logger.debug(`[Sync] Max retries reached, removing: ${operation.id}`);
+        console.log(`[Sync] Max retries reached, removing: ${operation.id}`);
       } else {
         // Update in queue with new retry count
         const updatedQueue = getSyncQueue().map(op =>
@@ -242,7 +211,7 @@ export async function processSyncQueue(handlers = {}) {
  */
 export function setupOnlineSync(handlers = {}) {
   const handleOnline = async () => {
-    logger.debug('[Sync] Back online, processing queue...');
+    console.log('[Sync] Back online, processing queue...');
     const result = await processSyncQueue(handlers);
 
     if (result.success > 0 || result.failed > 0) {

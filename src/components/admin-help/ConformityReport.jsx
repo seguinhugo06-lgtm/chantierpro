@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Shield, AlertTriangle, Check, X, ChevronRight, Download,
   FileText, TrendingUp, ArrowLeft
@@ -54,16 +54,8 @@ const CONFORMITY_CATEGORIES = [
 
 export default function ConformityReport({ isDark = false, couleur = '#f97316' }) {
   const { showToast } = useToast();
-  const [checkedItems, setCheckedItems] = useState(() => {
-    try { const s = localStorage.getItem('cp_conformity_checklist'); return s ? JSON.parse(s) : {}; }
-    catch { return {}; }
-  });
+  const [checkedItems, setCheckedItems] = useState({});
   const [expandedCategory, setExpandedCategory] = useState('assurances');
-
-  // Persist checklist state to localStorage
-  useEffect(() => {
-    try { localStorage.setItem('cp_conformity_checklist', JSON.stringify(checkedItems)); } catch {}
-  }, [checkedItems]);
 
   const textPrimary = isDark ? 'text-white' : 'text-slate-900';
   const textMuted = isDark ? 'text-slate-400' : 'text-slate-600';
@@ -85,11 +77,6 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
     };
   }, [checkedItems]);
 
-  // Broadcast score for Dashboard consumption
-  useEffect(() => {
-    try { localStorage.setItem('cp_conformity_score', String(score)); } catch {}
-  }, [score]);
-
   const getScoreColor = () => {
     if (score >= 80) return '#22c55e';
     if (score >= 50) return '#f59e0b';
@@ -104,7 +91,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
     <div className="space-y-6">
       <div>
         <h2 className={`text-lg font-bold ${textPrimary}`}>Audit Conformité</h2>
-        <p className={`text-sm ${textMuted}`}>Vérifiez votre conformité réglementaire</p>
+        <p className={`text-sm ${textMuted}`}>Vérifie ta conformité réglementaire</p>
       </div>
 
       {/* Score */}
@@ -123,7 +110,7 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
           </div>
         </div>
         {score === 100 && (
-          <p className="text-sm text-emerald-600 mt-3">Bravo, vous êtes en conformité !</p>
+          <p className="text-sm text-emerald-600 mt-3">Bravo, tu es en conformité !</p>
         )}
       </div>
 

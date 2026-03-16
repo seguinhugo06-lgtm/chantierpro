@@ -1,507 +1,293 @@
-import { create } from 'zustand';
-
 /**
- * Subscription & Freemium Store (Zustand)
+ * subscriptionStore — Zustand store for subscription plan management.
  *
- * Manages the active user plan, subscription state, usage tracking,
- * and feature-gate checks. Works in both demo and production modes.
- *
- * Plans: gratuit (free), artisan (14,90€/mois — POPULAIRE), equipe (29,90€/mois — RECOMMANDÉ)
+ * Manages the current user's subscription plan, feature gating,
+ * trial status, and upgrade modal. Supports demo mode via localStorage.
  */
 
-// ─── Plan catalog (static, matches DB seed) ────────────────────────────────
+import { create } from 'zustand';
+import { openModal } from './modalStore';
+
+// ── Plan definitions ─────────────────────────────────────────────
 
 export const PLANS = {
   gratuit: {
-    id: 'gratuit',
     name: 'Gratuit',
-    description: 'Pour découvrir BatiGesti',
-    target: 'Artisans qui démarrent',
-    priceMonthly: 0,
-    priceYearly: 0,
-    limits: {
-      devis: 5,
-      clients: 10,
-      chantiers: 2,
-      catalogue: 30,
-      signatures: 0,
-      ia_analyses: 3,
-      photos: 50,
-      storage_mb: 100,
-      equipe: 1
-    },
+    price: { monthly: 0, yearly: 0 },
+    limits: { devis: 5, clients: 10, chantiers: 3, equipe: 0, catalogue: 50 },
     features: [
-      'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches'
+      'devis_basic',
+      'clients',
+      'chantiers',
+      'catalogue_basic',
+      'planning_basic',
     ],
-    featureLabels: [
-      { name: '5 devis par mois', included: true },
-      { name: '10 clients', included: true },
-      { name: '2 chantiers actifs', included: true },
-      { name: '30 articles catalogue', included: true },
-      { name: 'Planning basique', included: true },
-      { name: '3 analyses IA / mois', included: true },
-      { name: '100 Mo stockage', included: true },
-      { name: 'Signatures électroniques', included: false },
-      { name: 'Export comptable', included: false },
-      { name: 'Analyse de marges', included: false },
-      { name: 'Multi-utilisateurs', included: false },
-      { name: 'Trésorerie & Bilan', included: false },
-      { name: 'Support prioritaire', included: false }
-    ],
-    badge: null,
-    color: '#6B7280',
-    borderColor: '#D1D5DB',
-    bgColor: '#F3F4F6',
-    support: 'communautaire'
   },
   artisan: {
-    id: 'artisan',
     name: 'Artisan',
-    description: 'L\'essentiel pour un artisan autonome',
-    target: 'Artisans indépendants',
-    priceMonthly: 14.90,
-    priceYearly: 149,
-    limits: {
-      devis: -1,
-      clients: -1,
-      chantiers: -1,
-      catalogue: -1,
-      signatures: -1,
-      ia_analyses: 20,
-      photos: -1,
-      storage_mb: 2048,
-      equipe: 1
-    },
+    price: { monthly: 14.90, yearly: 149 },
+    limits: { devis: -1, clients: -1, chantiers: -1, equipe: 0, catalogue: -1 },
     features: [
-      'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
-      'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
-      'carte_chantiers', 'avis_google', 'entretien'
+      'devis_basic',
+      'clients',
+      'chantiers',
+      'catalogue_basic',
+      'planning_basic',
+      'signatures',
+      'relances',
+      'catalogue_complet',
+      'export_pdf',
+      'devis_ia',
+      'conformite_2026',
     ],
-    featureLabels: [
-      { name: 'Devis & factures illimités', included: true },
-      { name: 'Clients illimités', included: true },
-      { name: 'Chantiers illimités', included: true },
-      { name: 'Catalogue illimité', included: true },
-      { name: 'Signatures électroniques', included: true },
-      { name: 'Export comptable', included: true },
-      { name: 'Analyse de marges', included: true },
-      { name: '20 analyses IA / mois', included: true },
-      { name: 'Pipeline commercial', included: true },
-      { name: 'Relances automatiques', included: true },
-      { name: 'Photos GPS & horodatées', included: true },
-      { name: '2 Go stockage', included: true },
-      { name: 'Multi-utilisateurs', included: false },
-      { name: 'Trésorerie & Bilan', included: false },
-      { name: 'Support prioritaire', included: false }
-    ],
-    badge: 'POPULAIRE',
-    color: '#F97316',
-    borderColor: '#FB923C',
-    bgColor: '#FED7AA',
-    support: 'email'
   },
   equipe: {
-    id: 'equipe',
     name: 'Équipe',
-    description: 'Pour les entreprises avec collaborateurs',
-    target: 'PME du bâtiment',
-    priceMonthly: 29.90,
-    priceYearly: 299,
-    limits: {
-      devis: -1,
-      clients: -1,
-      chantiers: -1,
-      catalogue: -1,
-      signatures: -1,
-      ia_analyses: -1,
-      photos: -1,
-      storage_mb: 10240,
-      equipe: 10
-    },
+    price: { monthly: 29.90, yearly: 299 },
+    limits: { devis: -1, clients: -1, chantiers: -1, equipe: 10, catalogue: -1 },
     features: [
-      'devis_basic', 'clients_basic', 'chantiers_basic', 'catalogue',
-      'planning', 'ia_devis', 'taches', 'signatures', 'export_comptable',
-      'rapports_pdf', 'relances', 'marges', 'pipeline', 'photos_gps',
-      'carte_chantiers', 'avis_google', 'entretien',
-      'pointages', 'rbac', 'tresorerie', 'fec_export',
-      'rapprochement_bancaire', 'sous_traitants', 'commandes',
-      'portal_client', 'alertes_stock', 'analytics'
+      'devis_basic',
+      'clients',
+      'chantiers',
+      'catalogue_basic',
+      'planning_basic',
+      'signatures',
+      'relances',
+      'catalogue_complet',
+      'export_pdf',
+      'devis_ia',
+      'conformite_2026',
+      'tresorerie',
+      'equipe',
+      'planning_avance',
+      'pointage',
+      'conges',
+      'sous_traitants',
+      'portail_client',
+      'audit_trail',
     ],
-    featureLabels: [
-      { name: 'Tout le plan Artisan', included: true },
-      { name: 'Jusqu\'à 10 utilisateurs', included: true },
-      { name: 'Pointage & heures équipe', included: true },
-      { name: 'Rôles & permissions (RBAC)', included: true },
-      { name: 'Trésorerie & Bilan', included: true },
-      { name: 'Export FEC comptable', included: true },
-      { name: 'IA illimitée', included: true },
-      { name: 'Sous-traitants & conformité', included: true },
-      { name: 'Commandes fournisseurs', included: true },
-      { name: 'Portail client', included: true },
-      { name: 'Alertes de stock', included: true },
-      { name: 'Statistiques avancées', included: true },
-      { name: '10 Go stockage', included: true },
-      { name: 'Support prioritaire', included: true }
-    ],
-    badge: 'RECOMMANDÉ',
-    color: '#8B5CF6',
-    borderColor: '#A78BFA',
-    bgColor: '#EDE9FE',
-    support: 'prioritaire'
-  }
+  },
 };
 
-// Yearly discount percentage
-export const YEARLY_DISCOUNT = 17;
-
-// Ordered plan tiers for comparison
 export const PLAN_ORDER = ['gratuit', 'artisan', 'equipe'];
 
-// Feature → minimum plan mapping (derived from PLANS for fast lookup)
-const FEATURE_MIN_PLAN = {};
-for (const planId of PLAN_ORDER) {
-  for (const feat of PLANS[planId].features) {
-    if (!(feat in FEATURE_MIN_PLAN)) {
-      FEATURE_MIN_PLAN[feat] = planId;
-    }
+// ── Legacy plan name mapping ─────────────────────────────────────
+
+const LEGACY_MAP = {
+  free: 'gratuit',
+  decouverte: 'gratuit',
+  solo: 'gratuit',
+  pro: 'equipe',
+  entreprise: 'equipe',
+};
+
+/**
+ * Normalize a plan ID from DB (which may use legacy names) to canonical IDs.
+ */
+export function normalizePlanId(raw) {
+  if (!raw) return 'gratuit';
+  const lower = raw.toLowerCase().trim();
+  if (PLANS[lower]) return lower;
+  return LEGACY_MAP[lower] || 'gratuit';
+}
+
+// ── Demo mode helpers ────────────────────────────────────────────
+
+const DEMO_PLAN_KEY = 'cp_demo_plan';
+const DEMO_SUBSCRIPTION = {
+  id: 'demo-sub',
+  plan: 'artisan',
+  status: 'active',
+  trialEnd: null,
+  currentPeriodEnd: null,
+};
+
+function getDemoPlan() {
+  try {
+    return localStorage.getItem(DEMO_PLAN_KEY) || 'artisan';
+  } catch {
+    return 'artisan';
   }
 }
 
-// Page-id → required feature mapping (for sidebar gating)
-export const PAGE_FEATURE_MAP = {
-  signatures: 'signatures',
-  export: 'export_comptable',
-  tresorerie: 'tresorerie',
-  'ia-devis': 'ia_devis',
-  soustraitants: 'sous_traitants',
-  commandes: 'commandes',
-  entretien: 'entretien',
-  pointages: 'pointages',
-  analytics: 'analytics',
-  pipeline: 'pipeline',
-  'avis-google': 'avis_google'
-};
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-/**
- * Compare plan tiers. Returns -1, 0, or 1.
- */
-export function comparePlans(a, b) {
-  return PLAN_ORDER.indexOf(a) - PLAN_ORDER.indexOf(b);
-}
-
-/**
- * Get the minimum plan required for a feature.
- * @param {string} feature
- * @returns {string|null} plan ID or null if unknown
- */
-export function getMinPlanForFeature(feature) {
-  return FEATURE_MIN_PLAN[feature] || null;
-}
-
-/**
- * Get the display name of the minimum required plan for a feature.
- * @param {string} feature
- * @returns {string} plan name (e.g., "Artisan", "Équipe")
- */
-export function getMinPlanNameForFeature(feature) {
-  const planId = FEATURE_MIN_PLAN[feature];
-  if (!planId) return 'supérieur';
-  return PLANS[planId]?.name || planId;
-}
-
-// ─── Store ──────────────────────────────────────────────────────────────────
-
-const DEFAULT_USAGE = {
-  devis: 0,
-  clients: 0,
-  chantiers: 0,
-  catalogue: 0,
-  signatures: 0,
-  ia_analyses: 0,
-  photos: 0,
-  storage_mb: 0,
-  equipe: 0
-};
-
-// ─── Contextual upgrade messages ────────────────────────────────────────────
-
-export const UPGRADE_CONTEXTS = {
-  devis_limit: {
-    title: 'Limite de devis atteinte',
-    subtitle: 'Passez au plan Artisan pour créer des devis illimités',
-    highlight: 'devis',
-    recommendedPlan: 'artisan'
-  },
-  clients_limit: {
-    title: 'Limite de clients atteinte',
-    subtitle: 'Passez au plan Artisan pour gérer des clients illimités',
-    highlight: 'clients',
-    recommendedPlan: 'artisan'
-  },
-  chantiers_limit: {
-    title: 'Limite de chantiers atteinte',
-    subtitle: 'Passez au plan Artisan pour des chantiers illimités',
-    highlight: 'chantiers',
-    recommendedPlan: 'artisan'
-  },
-  signatures: {
-    title: 'Signatures électroniques',
-    subtitle: 'Signez directement vos devis et factures avec vos clients',
-    highlight: 'signatures',
-    recommendedPlan: 'artisan'
-  },
-  ia_devis: {
-    title: 'Limite d\'analyses IA atteinte',
-    subtitle: 'Passez au plan Artisan pour 20 analyses IA par mois',
-    highlight: 'ia_devis',
-    recommendedPlan: 'artisan'
-  },
-  export_comptable: {
-    title: 'Export comptable',
-    subtitle: 'Exportez vos données pour votre expert-comptable',
-    highlight: 'export_comptable',
-    recommendedPlan: 'artisan'
-  },
-  marges: {
-    title: 'Analyse de marges',
-    subtitle: 'Suivez la rentabilité de chaque chantier en temps réel',
-    highlight: 'marges',
-    recommendedPlan: 'artisan'
-  },
-  equipe: {
-    title: 'Gestion d\'équipe avancée',
-    subtitle: 'Invitez jusqu\'à 10 collaborateurs avec des rôles personnalisés',
-    highlight: 'equipe',
-    recommendedPlan: 'equipe'
-  },
-  pointages: {
-    title: 'Pointage & heures équipe',
-    subtitle: 'Suivez les heures de votre équipe par chantier',
-    highlight: 'pointages',
-    recommendedPlan: 'equipe'
-  },
-  tresorerie: {
-    title: 'Trésorerie & Bilan',
-    subtitle: 'Suivez votre trésorerie et vos bilans de chantiers en temps réel',
-    highlight: 'tresorerie',
-    recommendedPlan: 'equipe'
-  },
-  fec_export: {
-    title: 'Export FEC',
-    subtitle: 'Exportez vos données comptables au format FEC pour votre expert-comptable',
-    highlight: 'fec_export',
-    recommendedPlan: 'equipe'
-  },
-  sous_traitants: {
-    title: 'Sous-traitants & conformité',
-    subtitle: 'Gérez vos sous-traitants, contrats et documents de conformité',
-    highlight: 'sous_traitants',
-    recommendedPlan: 'equipe'
-  },
-  commandes: {
-    title: 'Commandes fournisseurs',
-    subtitle: 'Créez et suivez vos bons de commande fournisseurs',
-    highlight: 'commandes',
-    recommendedPlan: 'equipe'
-  },
-  portal_client: {
-    title: 'Portail client',
-    subtitle: 'Offrez un accès dédié à vos clients pour suivre leurs chantiers',
-    highlight: 'portal_client',
-    recommendedPlan: 'equipe'
-  },
-  analytics: {
-    title: 'Statistiques avancées',
-    subtitle: 'Analysez vos performances et prenez de meilleures décisions',
-    highlight: 'analytics',
-    recommendedPlan: 'equipe'
-  },
-  generic: {
-    title: 'Débloquez plus de fonctionnalités',
-    subtitle: 'Choisissez le plan adapté à votre activité',
-    highlight: null,
-    recommendedPlan: 'artisan'
-  }
-};
+// ── Store ────────────────────────────────────────────────────────
 
 export const useSubscriptionStore = create((set, get) => ({
-  // Current plan ID
+  // State
   planId: 'gratuit',
-
-  // Subscription record from DB
   subscription: null,
-
-  // Current period usage
-  usage: { ...DEFAULT_USAGE },
-
-  // Loading states
   loading: true,
-  error: null,
 
-  // Whether the upgrade modal is open
-  upgradeModalOpen: false,
-  upgradeModalFeature: null, // which feature triggered it
-
-  // ─── Computed helpers (called as functions) ─────────────────────────────
+  // ── Derived methods ────────────────────────────────────────
 
   /**
-   * Get the full plan object for current plan
+   * Check if current subscription is in trial period.
    */
-  getPlan: () => PLANS[get().planId] || PLANS.gratuit,
-
-  /**
-   * Get limit value for a resource. -1 = unlimited
-   */
-  getLimit: (resource) => {
-    const plan = PLANS[get().planId] || PLANS.gratuit;
-    return plan.limits[resource] ?? 0;
+  isTrial: () => {
+    const { subscription } = get();
+    if (!subscription) return false;
+    if (subscription.status !== 'trialing') return false;
+    const trialEnd = subscription.trialEnd || subscription.trial_end;
+    if (!trialEnd) return false;
+    return new Date(trialEnd) > new Date();
   },
 
   /**
-   * Check if user has a specific feature
-   */
-  hasFeature: (feature) => {
-    const plan = PLANS[get().planId] || PLANS.gratuit;
-    return plan.features.includes(feature);
-  },
-
-  /**
-   * Check if a resource limit is reached
-   * @returns {{ allowed: boolean, current: number, limit: number, percent: number }}
-   */
-  checkLimit: (resource) => {
-    const { usage, planId } = get();
-    const plan = PLANS[planId] || PLANS.gratuit;
-    const limit = plan.limits[resource] ?? 0;
-    const current = usage[resource] ?? 0;
-
-    if (limit === -1) {
-      return { allowed: true, current, limit: -1, percent: 0 };
-    }
-    return {
-      allowed: current < limit,
-      current,
-      limit,
-      percent: limit > 0 ? Math.round((current / limit) * 100) : 100
-    };
-  },
-
-  /**
-   * Is on free plan?
-   */
-  isFree: () => get().planId === 'gratuit',
-
-  /**
-   * Is trial active?
-   */
-  isTrial: () => get().subscription?.status === 'trialing',
-
-  /**
-   * Days remaining in trial (0 if not trialing)
+   * Get number of trial days remaining.
    */
   trialDaysLeft: () => {
-    const sub = get().subscription;
-    if (!sub?.trial_end) return 0;
-    const diff = new Date(sub.trial_end) - new Date();
+    const { subscription } = get();
+    if (!subscription) return 0;
+    const trialEnd = subscription.trialEnd || subscription.trial_end;
+    if (!trialEnd) return 0;
+    const diff = new Date(trialEnd) - new Date();
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   },
 
   /**
-   * Is the plan at least the given tier?
+   * Check if the current plan includes a given feature.
    */
-  isAtLeast: (planId) => comparePlans(get().planId, planId) >= 0,
-
-  // ─── Actions ──────────────────────────────────────────────────────────────
-
-  /**
-   * Set plan + subscription data (called after API fetch)
-   */
-  setSubscription: (subscription) => {
-    // Map legacy plan names to current: gratuit / artisan / equipe
-    let plan = subscription?.plan || 'gratuit';
-    if (plan === 'free' || plan === 'decouverte' || plan === 'solo') plan = 'gratuit';
-    if (plan === 'pro' || plan === 'entreprise') plan = 'equipe';
-
-    set({
-      subscription,
-      planId: plan,
-      loading: false,
-      error: null
-    });
+  canUse: (feature) => {
+    const { planId } = get();
+    const plan = PLANS[planId];
+    if (!plan) return false;
+    return plan.features.includes(feature);
   },
 
   /**
-   * Set usage data
+   * Check if usage has reached the plan limit for a resource.
+   * Returns true if at or above limit. Limit -1 = unlimited.
    */
-  setUsage: (usage) => {
-    set({ usage: { ...DEFAULT_USAGE, ...usage } });
+  isAtLimit: (resource, currentCount) => {
+    const { planId } = get();
+    const plan = PLANS[planId];
+    if (!plan) return false;
+    const limit = plan.limits[resource];
+    if (limit === -1) return false;
+    return currentCount >= limit;
   },
 
   /**
-   * Increment a usage counter locally (optimistic)
+   * Get the minimum plan required for a feature.
    */
-  incrementUsage: (resource, amount = 1) => {
-    set((state) => ({
-      usage: {
-        ...state.usage,
-        [resource]: (state.usage[resource] || 0) + amount
+  getMinPlan: (feature) => {
+    for (const id of PLAN_ORDER) {
+      if (PLANS[id].features.includes(feature)) return id;
+    }
+    return 'equipe';
+  },
+
+  /**
+   * Open the upgrade modal.
+   */
+  openUpgradeModal: (options = {}) => {
+    openModal('upgrade', {
+      currentPlan: get().planId,
+      ...options,
+    }, { size: 'lg' });
+  },
+
+  // ── Actions ────────────────────────────────────────────────
+
+  /**
+   * Set the plan ID (with normalization).
+   */
+  setPlanId: (raw) => {
+    set({ planId: normalizePlanId(raw) });
+  },
+
+  /**
+   * Set the full subscription object.
+   */
+  setSubscription: (sub) => {
+    const planId = normalizePlanId(sub?.plan || sub?.planId);
+    set({ subscription: sub, planId, loading: false });
+  },
+
+  /**
+   * Hydrate the store from Supabase or demo mode.
+   */
+  hydrate: async (supabase, userId, isDemo) => {
+    if (isDemo || !supabase || !userId) {
+      const demoPlan = getDemoPlan();
+      set({
+        planId: normalizePlanId(demoPlan),
+        subscription: { ...DEMO_SUBSCRIPTION, plan: demoPlan },
+        loading: false,
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('id, plan, status, trial_end, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        // No subscription row → free plan
+        set({ planId: 'gratuit', subscription: null, loading: false });
+        return;
       }
-    }));
+
+      set({
+        planId: normalizePlanId(data.plan),
+        subscription: {
+          id: data.id,
+          plan: data.plan,
+          status: data.status,
+          trialEnd: data.trial_end,
+          currentPeriodEnd: data.current_period_end,
+          cancelAtPeriodEnd: data.cancel_at_period_end,
+          stripeCustomerId: data.stripe_customer_id,
+          stripeSubscriptionId: data.stripe_subscription_id,
+        },
+        loading: false,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[subscriptionStore] Hydrate error:', err);
+      set({ planId: 'gratuit', subscription: null, loading: false });
+    }
   },
 
   /**
-   * Open the upgrade modal, optionally with the feature that triggered it
+   * Start a Stripe Checkout session for upgrading the plan.
+   * @param {string} planId - 'artisan' | 'equipe'
+   * @param {'monthly'|'yearly'} interval
    */
-  openUpgradeModal: (feature = null) => {
-    set({ upgradeModalOpen: true, upgradeModalFeature: feature });
+  startCheckout: async (planId, interval = 'monthly') => {
+    const { createCheckoutSession } = await import('../services/subscriptionService');
+    const result = await createCheckoutSession(planId, interval);
+    if (result.demo) {
+      // Demo mode — plan changed locally
+      set({ planId: normalizePlanId(planId) });
+      return { demo: true };
+    }
+    if (result.url) {
+      window.location.href = result.url;
+    }
+    return result;
   },
 
   /**
-   * Close the upgrade modal
+   * Open Stripe Customer Portal for subscription management.
    */
-  closeUpgradeModal: () => {
-    set({ upgradeModalOpen: false, upgradeModalFeature: null });
+  openBillingPortal: async () => {
+    const { createPortalSession } = await import('../services/subscriptionService');
+    const result = await createPortalSession();
+    if (result.demo) return { demo: true };
+    if (result.url) {
+      window.location.href = result.url;
+    }
+    return result;
   },
 
   /**
-   * Set loading state
+   * Reset the store (on logout).
    */
-  setLoading: (loading) => set({ loading }),
-
-  /**
-   * Set error state
-   */
-  setError: (error) => set({ error, loading: false }),
-
-  /**
-   * Reset to free plan (e.g. on sign-out)
-   */
-  reset: () => {
-    set({
-      planId: 'gratuit',
-      subscription: null,
-      usage: { ...DEFAULT_USAGE },
-      loading: false,
-      error: null,
-      upgradeModalOpen: false,
-      upgradeModalFeature: null
-    });
-  }
+  reset: () => set({ planId: 'gratuit', subscription: null, loading: true }),
 }));
-
-// ─── Convenience accessors (outside React) ──────────────────────────────────
-
-export const subscription = {
-  getPlan: () => useSubscriptionStore.getState().getPlan(),
-  hasFeature: (f) => useSubscriptionStore.getState().hasFeature(f),
-  checkLimit: (r) => useSubscriptionStore.getState().checkLimit(r),
-  isFree: () => useSubscriptionStore.getState().isFree(),
-  isAtLeast: (p) => useSubscriptionStore.getState().isAtLeast(p),
-  openUpgrade: (f) => useSubscriptionStore.getState().openUpgradeModal(f)
-};
 
 export default useSubscriptionStore;

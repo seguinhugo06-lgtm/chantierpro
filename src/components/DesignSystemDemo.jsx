@@ -148,7 +148,7 @@ export default function DesignSystemDemo() {
               />
               <Textarea
                 label="Description"
-                placeholder="Décrivez votre projet..."
+                placeholder="Decrivez votre projet..."
                 rows={3}
               />
             </div>

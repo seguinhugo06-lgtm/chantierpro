@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List } from 'lucide-react';
-import supabase, { isDemo } from '../supabaseClient';
-import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Zap, Link2, Mic, LayoutGrid, List as ListIcon } from 'lucide-react';
+import PipelineKanban from './devis/PipelineKanban';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
 import SignaturePad from './SignaturePad';
@@ -9,145 +8,17 @@ import SmartTemplateWizard from './SmartTemplateWizard';
 import DevisWizard from './DevisWizard';
 import CatalogBrowser from './CatalogBrowser';
 import DevisExpressModal from './DevisExpressModal';
-import AvoirCreationModal from './modals/AvoirCreationModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
-import { mapError } from '../lib/errorMapper';
-import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
-import { normalizeNumero } from '../lib/devis-utils';
-import { calcConversion, formatConversion } from '../lib/statsUtils';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDevisModals } from '../hooks/useDevisModals';
 import { isFacturXCompliant } from '../lib/facturx';
-import { getDocumentEmailStatus } from '../services/CommunicationsService';
-import { usePermissions } from '../hooks/usePermissions';
-import { ReadOnlyBanner } from './ui/PermissionGate';
-import { printSituationFacture as printSitFacture } from '../lib/devisHtmlBuilder';
-import RelanceTimelineWidget from './RelanceTimelineWidget';
-import { useRelances } from '../hooks/useRelances';
-import { printMiseEnDemeure } from '../lib/miseEnDemeureBuilder';
-import { useOrg } from '../context/OrgContext';
-import { useData } from '../context/DataContext';
-import { MODELES_DEVIS } from '../lib/data/modeles-devis';
-import AcompteEcheancierModal from './devis/AcompteEcheancierModal';
-import AcompteSuiviCard from './devis/AcompteSuiviCard';
-import {
-  getNextEtapeAFacturer,
-  computeEtapeMontants,
-  computeSoldeMontants,
-  buildFactureLignesForEtape,
-  isLastEtape,
-  isEcheancierTermine,
-  updateEtape,
-  ETAPE_STATUT,
-} from '../lib/acompteUtils';
-import { cn } from '../lib/utils';
-import AuditTimeline from './audit/AuditTimeline';
-import VersionSelector from './audit/VersionSelector';
-import SnapshotViewer from './audit/SnapshotViewer';
-import DiffViewer from './audit/DiffViewer';
-import LockBanner from './audit/LockBanner';
-import { getEntityHistory } from '../lib/auditService';
-import { getSnapshots } from '../lib/snapshotService';
-import { isProviderSyncReady, createSignatureRequest as createYousignSignature } from '../services/syncService';
+import { supabase } from '../supabaseClient';
 
-// Valid status transitions — enforced on buttons and dropdown
-const VALID_TRANSITIONS = {
-  // Devis transitions
-  brouillon: ['envoye', 'refuse'],
-  envoye: ['vu', 'accepte', 'refuse'],
-  vu: ['accepte', 'refuse'],
-  accepte: ['acompte_facture', 'facture'],
-  signe: ['acompte_facture', 'facture'], // signe = alias for accepte (signed)
-  acompte_facture: ['facture'],
-  facture: [],
-  refuse: ['brouillon'],
-};
-// Facture-specific transitions (keyed by 'facture:status')
-const FACTURE_TRANSITIONS = {
-  brouillon: ['envoye'],
-  envoye: ['payee'],
-  payee: [],
-};
-
-const CONDITIONS_PAIEMENT = {
-  'reception': 'À réception de facture',
-  '30_jours': '30 jours',
-  '30_jours_fdm': '30 jours fin de mois',
-  '45_jours_fdm': '45 jours fin de mois',
-  '60_jours': '60 jours',
-  'acompte_solde': '30% acompte, solde à réception',
-};
-
-// Avoir motifs — conformité française
-export const AVOIR_MOTIFS = {
-  erreur_facturation: 'Erreur de facturation',
-  retour_marchandise: 'Retour de marchandise',
-  remise_commerciale: 'Remise commerciale',
-  annulation_prestation: 'Annulation de prestation',
-  malfacon: 'Malfaçon',
-  litige: 'Litige',
-  geste_commercial: 'Geste commercial',
-  autre: 'Autre',
-};
-
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill }) {
+export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-
-  // RBAC permissions
-  const { canPerform, canViewPrices, canEditData, getPermission } = usePermissions();
-  const devisPermission = getPermission('devis');
-  const isViewOnly = devisPermission === 'view' || devisPermission === 'view_no_prices';
-
-  // Organization context
-  const { orgId } = useOrg();
-
-  // Template operations from DataContext
-  const { customTemplates: ctxTemplates, addTemplate, deleteTemplate: deleteCtxTemplate, templateUsages, trackTemplateUsage } = useData();
-
-  // Enrich template usages with actual template data for "recently used" display
-  const enrichedRecentTemplates = useMemo(() => {
-    return templateUsages.slice(0, 10).map(usage => {
-      // Check custom templates first
-      if (usage.template_id) {
-        const tmpl = ctxTemplates.find(t => t.id === usage.template_id);
-        if (tmpl) return { ...tmpl, used_at: usage.used_at };
-      }
-      // Check builtin templates
-      if (usage.template_builtin_id) {
-        for (const [metierId, metier] of Object.entries(MODELES_DEVIS)) {
-          const modele = metier.modeles?.find(m => m.id === usage.template_builtin_id);
-          if (modele) {
-            return {
-              ...modele,
-              metierId,
-              metierNom: metier.nom,
-              categorie: metier.nom,
-              used_at: usage.used_at,
-            };
-          }
-        }
-      }
-      return null;
-    }).filter(Boolean);
-  }, [templateUsages, ctxTemplates]);
-
-  // Get userId for relances
-  const [relanceUserId, setRelanceUserId] = useState(null);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.id) setRelanceUserId(data.user.id);
-    });
-  }, []);
-
-  // Relances hook
-  const relances = useRelances({
-    devis, clients, entreprise,
-    userId: relanceUserId,
-    orgId,
-  });
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -163,15 +34,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
   const [selected, setSelected] = useState(selectedDevis || null);
   const [filter, setFilter] = useState('all');
-  const [periodFilter, setPeriodFilter] = useState('all'); // B7: all, month, quarter, year
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState('recent'); // recent, status, amount
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
-  const [tableSortBy, setTableSortBy] = useState('date'); // date, numero, client, montant, statut
-  const [tableSortDir, setTableSortDir] = useState('desc'); // 'asc' | 'desc'
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const debouncedCatalogueSearch = useDebounce(catalogueSearch, 300);
   // Centralized modal management - reduces cognitive load
@@ -185,66 +53,20 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     showTemplateSelector, setShowTemplateSelector,
     showSmartWizard, setShowSmartWizard,
     showSignaturePad, setShowSignaturePad,
+    showDevisWizard, setShowDevisWizard,
     showCatalogBrowser, setShowCatalogBrowser,
   } = useDevisModals();
-
-  // DevisWizard uses direct useState (NOT useDevisModals) to avoid centralized modal conflicts
-  const [showDevisWizard, setShowDevisWizard] = useState(false);
-
-  // Échéancier d'acomptes
-  const [showEcheancierModal, setShowEcheancierModal] = useState(false);
-  const [echeancierCache, setEcheancierCache] = useState({}); // { devisId: echeancierData }
 
   const [acomptePct, setAcomptePct] = useState(entreprise?.acompteDefaut || 30);
   const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [signataireName, setSignataireName] = useState('');
-  const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
   const [tooltip, setTooltip] = useState(null); // { text, x, y }
   const [showActionsMenu, setShowActionsMenu] = useState(false);
-  const [showAvoirModal, setShowAvoirModal] = useState(false);
-  const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
-  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
-  const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
-
-  // Versioning state
-  const [devisSnapshots, setDevisSnapshots] = useState([]);
-  const [viewingSnapshot, setViewingSnapshot] = useState(null);
-  const [comparingSnapshots, setComparingSnapshots] = useState(null); // { a, b }
-
-  // Load snapshots when viewing a devis
-  useEffect(() => {
-    if (mode !== 'preview' || !selected?.id || selected.type === 'facture') {
-      setDevisSnapshots([]);
-      return;
-    }
-    let cancelled = false;
-    getSnapshots(isDemo ? null : supabase, 'devis', selected.id)
-      .then(snaps => { if (!cancelled) setDevisSnapshots(snaps); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [selected?.id, mode]);
-  const [showCreateMenu, setShowCreateMenu] = useState(false); // split-button dropdown
-  const [complianceDismissed, setComplianceDismissed] = useState(() => localStorage.getItem('complianceDismissed') === 'true');
-  const [templateName, setTemplateName] = useState('');
-  const [templateCategory, setTemplateCategory] = useState('Mes modèles');
-  const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
-  const [signatureLinkUrl, setSignatureLinkUrl] = useState(null);
-  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
-  const [yousignReady, setYousignReady] = useState(false);
-  const [yousignSending, setYousignSending] = useState(false);
-
-  // Check if Yousign is connected
-  useEffect(() => {
-    isProviderSyncReady('yousign').then(ready => setYousignReady(ready)).catch(() => {});
-  }, []);
-  const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
-  const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
   // Tooltip component
   const Tooltip = ({ text, children, position = 'top' }) => {
@@ -283,31 +105,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (setSelectedDevis) setSelectedDevis(null);
     }
   }, [selectedDevis, setSelectedDevis]);
-
-  // Sync selected with fresh devis data (prevents stale selected after DB updates)
-  useEffect(() => {
-    if (selected?.id && mode === 'preview') {
-      const fresh = devis.find(d => d.id === selected.id);
-      if (fresh && fresh !== selected) {
-        setSelected(fresh);
-      }
-    }
-  }, [devis]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fetch échéancier when selected devis changes (if it has one)
-  useEffect(() => {
-    if (selected?.echeancier_id && !echeancierCache[selected.id]) {
-      fetchEcheancier(selected.id);
-    }
-    // Also fetch échéancier for source devis when viewing acompte/solde facture
-    if (selected?.devis_source_id && (selected.facture_type === 'acompte' || selected.facture_type === 'solde')) {
-      const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
-      if (sourceDevis?.echeancier_id && !echeancierCache[sourceDevis.id]) {
-        fetchEcheancier(sourceDevis.id);
-      }
-    }
-  }, [selected?.id, selected?.echeancier_id]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  
   const [form, setForm] = useState({
     type: 'devis',
     clientId: '',
@@ -318,52 +116,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     tvaDefaut: entreprise?.tvaDefaut || 10,
     remise: 0,
     retenueGarantie: false, // Retenue de garantie 5% (BTP)
-    conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours',
     notes: ''
   });
 
   const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
-  const formatMoney = (n) => fmtMoney(n, 2);
-
-  // Calcul pénalités de retard (Article L441-10 Code de commerce)
-  const calculatePenalites = (doc) => {
-    if (!doc || doc.type !== 'facture' || doc.statut === 'payee' || doc.facture_type === 'avoir') return null;
-    const delai = entreprise?.delaiPaiement || 30;
-    const echeance = doc.date_echeance
-      ? new Date(doc.date_echeance)
-      : new Date(new Date(doc.date).getTime() + delai * 86400000);
-    const joursRetard = Math.max(0, Math.floor((Date.now() - echeance) / 86400000));
-    if (joursRetard <= 0) return null;
-    const taux = entreprise?.tauxPenaliteRetard || 10; // 3x taux BCE (~3.5%)
-    const penalite = (doc.total_ttc || 0) * (taux / 100) * (joursRetard / 365);
-    return { joursRetard, echeance, taux, penalite: Math.round(penalite * 100) / 100, indemnite: 40, total: Math.round((penalite + 40) * 100) / 100 };
-  };
+  const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
 
   useEffect(() => { if (snackbar) { const t = setTimeout(() => setSnackbar(null), 8000); return () => clearTimeout(t); } }, [snackbar]);
   useEffect(() => { if (createMode) { setMode('create'); setCreateMode?.(false); } }, [createMode, setCreateMode]);
-
-  // AI Prefill: populate form with IA-generated data (devis stays local until user confirms)
-  useEffect(() => {
-    if (!aiPrefill) return;
-    const lignes = (aiPrefill.lignes || []).map((l, i) => ({
-      id: `ia_${i}_${Date.now()}`,
-      description: l.designation || l.description || '',
-      quantite: l.quantite || 1,
-      unite: l.unite || 'u',
-      prixUnitaire: l.prixUnitaire || 0,
-    }));
-    setForm(prev => ({
-      ...prev,
-      type: 'devis',
-      clientId: aiPrefill.client_id || '',
-      tvaDefaut: aiPrefill.tvaRate || prev.tvaDefaut,
-      validite: aiPrefill.validite || prev.validite,
-      notes: [aiPrefill.objet || aiPrefill.description || '', aiPrefill.notes || ''].filter(Boolean).join('\n'),
-      sections: [{ id: '1', titre: aiPrefill.objet || aiPrefill.description || '', lignes }],
-    }));
-    setMode('create');
-    setAiPrefill?.(null); // Consume the prefill data
-  }, [aiPrefill, setAiPrefill]);
 
   const statusOrder = { brouillon: 0, envoye: 1, accepte: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: 6 };
 
@@ -379,138 +139,34 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
   };
 
-  // Table sort helper — applied when viewMode === 'table'
-  const getTableSorted = (items) => {
-    const dir = tableSortDir === 'asc' ? 1 : -1;
-    return [...items].sort((a, b) => {
-      switch (tableSortBy) {
-        case 'numero':
-          return dir * (a.numero || '').localeCompare(b.numero || '', 'fr');
-        case 'client': {
-          const ca = cleanClientName(clients.find(c => c.id === a.client_id)) || a.client_nom || '';
-          const cb = cleanClientName(clients.find(c => c.id === b.client_id)) || b.client_nom || '';
-          return dir * ca.localeCompare(cb, 'fr');
-        }
-        case 'montant':
-          return dir * ((getDevisTTC(a) || 0) - (getDevisTTC(b) || 0));
-        case 'statut':
-          return dir * ((statusOrder[a.statut] ?? 99) - (statusOrder[b.statut] ?? 99));
-        case 'date':
-        default:
-          return dir * (new Date(a.date) - new Date(b.date));
-      }
-    });
-  };
-
-  const handleTableSort = (col) => {
-    if (tableSortBy === col) {
-      setTableSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setTableSortBy(col);
-      setTableSortDir(col === 'date' || col === 'montant' ? 'desc' : 'asc');
-    }
-  };
-
-  // B7: Period date boundaries
-  const periodStart = useMemo(() => {
-    const now = new Date();
-    if (periodFilter === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
-    if (periodFilter === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-    if (periodFilter === 'year') return new Date(now.getFullYear(), 0, 1);
-    return null; // 'all'
-  }, [periodFilter]);
-
   const filtered = getSortedDevis(devis.filter(d => {
-    // Filter out ghost devis: no numero AND orphan client (client doesn't exist) AND brouillon
-    if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
-    // Filter out devis where client was deleted and devis was never sent (brouillon only)
-    if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
-    // Filter out test/dev data artefacts (DUP suffixes, malformed numeros)
-    if (d.numero && (/DUP\d*$/.test(d.numero) || /^DEV----/.test(d.numero))) return false;
-    // B7: Period filter
-    if (periodStart && new Date(d.date) < periodStart) return false;
     if (filter === 'devis' && d.type !== 'devis') return false;
-    if (filter === 'factures' && (d.type !== 'facture' || d.facture_type === 'avoir' || d.facture_type === 'situation')) return false;
-    if (filter === 'situations' && d.facture_type !== 'situation') return false;
-    if (filter === 'avoirs' && d.facture_type !== 'avoir') return false;
-    if (filter === 'acomptes' && !(d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id)))) return false;
+    if (filter === 'factures' && d.type !== 'facture') return false;
     if (filter === 'attente' && !['envoye', 'vu'].includes(d.statut)) return false;
-    if (filter === 'a_traiter') {
-      const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-      if (d.statut === 'brouillon' && days > 2) return true;
-      if (['envoye', 'vu'].includes(d.statut) && days > 7) return true;
-      return false;
-    }
-    if (filter === 'factures_impayees' && !(d.type === 'facture' && d.statut !== 'payee')) return false;
-    if (filter === 'en_relance' && !relances.getDocumentPending(d.id)) return false;
-    if (filter === 'conversion' && !(d.type === 'devis' && ['envoye', 'vu', 'refuse'].includes(d.statut))) return false;
-    // Search by numero, client name/entreprise, chantier name, and objet
+    // Search by numero AND client name/entreprise
     if (debouncedSearch) {
       const client = clients.find(c => c.id === d.client_id);
-      const chantier = chantiers.find(ch => ch.id === d.chantier_id);
-      const searchText = `${d.numero || ''} ${client?.nom || ''} ${client?.prenom || ''} ${client?.entreprise || ''} ${chantier?.nom || ''} ${d.objet || ''}`.toLowerCase();
+      const searchText = `${d.numero || ''} ${client?.nom || ''} ${client?.prenom || ''} ${client?.entreprise || ''}`.toLowerCase();
       if (!searchText.includes(debouncedSearch.toLowerCase())) return false;
     }
     return true;
   }));
 
-  // B7: Counts for filter pills (computed from period-filtered list only)
-  const filterCounts = useMemo(() => {
-    const base = devis.filter(d => {
-      if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
-      if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
-      if (d.numero && (/DUP\d*$/.test(d.numero) || /^DEV----/.test(d.numero))) return false;
-      if (periodStart && new Date(d.date) < periodStart) return false;
-      return true;
-    });
-    return {
-      all: base.length,
-      devis: base.filter(d => d.type === 'devis').length,
-      factures: base.filter(d => d.type === 'facture' && d.facture_type !== 'avoir' && d.facture_type !== 'situation').length,
-      situations: base.filter(d => d.facture_type === 'situation').length,
-      avoirs: base.filter(d => d.facture_type === 'avoir').length,
-      acomptes: base.filter(d => d.facture_type === 'acompte' || d.facture_type === 'solde' || (d.type === 'devis' && (d.statut === 'acompte_facture' || d.echeancier_id))).length,
-      attente: base.filter(d => ['envoye', 'vu'].includes(d.statut)).length,
-      a_traiter: base.filter(d => {
-        const days = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-        return (d.statut === 'brouillon' && days > 2) || (['envoye', 'vu'].includes(d.statut) && days > 7);
-      }).length,
-    };
-  }, [devis, clients, periodStart]);
-
-  // Nettoyage affichage numéros — normalise les timestamps et padding court
+  // Nettoyage affichage données test
   const cleanNumero = (numero) => {
     if (!numero) return '—';
-    return normalizeNumero(numero);
+    // Detect timestamp-based numeros (DEV-1768204783439 or similar long numbers)
+    const match = numero.match(/^(DEV|FAC)-(\d{10,})$/);
+    if (match) return `${match[1]}-···${match[2].slice(-4)}`;
+    return numero;
   };
   const cleanClientName = (client) => {
     if (!client) return '';
-    if (/^(ClientPersist|Test_|test_)/i.test(client.nom || '')) return client.prenom || '';
-    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) {
-      return formatClientName(client, '') || '';
-    }
-    return formatClientName(client, '') || '';
-  };
-
-  // Helper: compute line total robustly (handles montant, camelCase, snake_case)
-  const getLineTotal = (l) => {
-    if (l.montant != null && l.montant !== 0) return parseFloat(l.montant);
-    const qty = parseFloat(l.quantite || 0);
-    const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
-    return qty * pu;
-  };
-
-  // Helper: get TTC for a devis, recalculating from lignes if total_ttc is 0/missing
-  const getDevisTTC = (d) => {
-    if (d.total_ttc && d.total_ttc > 0) return d.total_ttc;
-    // Recalculate from lignes
-    const allLignes = d.sections?.length > 0
-      ? d.sections.flatMap(s => s.lignes || [])
-      : (d.lignes || []);
-    if (allLignes.length === 0) return 0;
-    const ht = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
-    const tvaRate = d.tvaRate || 20;
-    return ht * (1 + tvaRate / 100);
+    const nom = client.nom || '';
+    // Mask test data patterns (ClientPersist, Test_, etc.)
+    if (/^(ClientPersist|Test_|test_)/i.test(nom)) return client.prenom ? client.prenom : 'Client';
+    if (/^(ClientPersist|Test_|test_)/i.test(client.entreprise || '')) return nom || 'Client';
+    return nom;
   };
 
   // Calcul des totaux avec multi-taux TVA et marge
@@ -520,7 +176,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
 
     form.sections.forEach(s => s.lignes.forEach(l => {
-      const montant = getLineTotal(l);
+      const montant = l.montant || 0;
       const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
       const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
       totalHT += montant;
@@ -597,125 +253,96 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   const removeLigne = (sectionId, ligneId) => setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s) }));
 
-  const moveLigne = (sectionId, ligneIdx, direction) => {
-    setForm(p => ({
-      ...p,
-      sections: p.sections.map(s => {
-        if (s.id !== sectionId) return s;
-        const arr = [...s.lignes];
-        const target = ligneIdx + direction;
-        if (target < 0 || target >= arr.length) return s;
-        [arr[ligneIdx], arr[target]] = [arr[target], arr[ligneIdx]];
-        return { ...s, lignes: arr };
-      })
-    }));
-  };
-
-  // Génération numéro unique garanti (format: DEV-2026-00001 / FAC-2026-00001)
-  // Version synchrone (fallback local)
-  // In-memory cursor for local fallback to prevent race conditions
-  const numeroCursorRef = useRef({});
-  const generateNumeroLocal = (type) => {
-    const prefix = type === 'facture' ? 'FAC' : type === 'avoir' ? 'AV' : 'DEV';
+  // Génération numéro unique garanti
+  const generateNumero = (type) => {
+    const prefix = type === 'facture' ? 'FAC' : 'DEV';
     const year = new Date().getFullYear();
-    const cursorKey = `${prefix}-${year}`;
-    const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`);
-    const maxSeq = devis
-      .filter(d => type === 'avoir'
-        ? d.facture_type === 'avoir'
-        : (d.type || 'devis') === type && d.facture_type !== 'avoir')
-      .map(d => { const m = (d.numero || '').match(pattern); return m ? parseInt(m[1], 10) : 0; })
-      .reduce((max, n) => Math.max(max, n), 0);
-    const cursorMax = numeroCursorRef.current[cursorKey] || 0;
-    const nextSeq = Math.max(maxSeq, cursorMax) + 1;
-    numeroCursorRef.current[cursorKey] = nextSeq;
-    return `${prefix}-${year}-${String(nextSeq).padStart(5, '0')}`;
-  };
-  // Version async qui vérifie aussi Supabase
-  const generateNumero = async (type) => {
-    if (generateNextNumero) {
-      try { return await generateNextNumero(type); } catch (e) { /* fallback */ }
-    }
-    return generateNumeroLocal(type);
+    // Trouver le dernier numéro pour ce type et cette année
+    const existingNumbers = devis
+      .filter(d => d.type === type && d.numero?.startsWith(`${prefix}-${year}-`))
+      .map(d => parseInt(d.numero.split('-')[2]) || 0);
+    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    return `${prefix}-${year}-${String(maxNumber + 1).padStart(5, '0')}`;
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleCreate = async () => {
-    if (isSubmitting) return; // Guard against double-submit
+  const handleCreate = () => {
     if (!form.clientId) return showToast('Sélectionnez un client', 'error');
     if (form.sections.every(s => s.lignes.length === 0)) return showToast('Ajoutez des lignes', 'error');
 
-    setIsSubmitting(true);
-    try {
-      const client = clients.find(c => c.id === form.clientId);
-      const numero = await generateNumero(form.type);
-      const docType = form.type;
+    const client = clients.find(c => c.id === form.clientId);
+    const numero = generateNumero(form.type);
 
-      const newDevis = await onSubmit({
-        numero,
-        type: form.type,
-        client_id: form.clientId,
-        client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
-        chantier_id: form.chantierId,
-        date: form.date,
-        validite: form.validite,
-        statut: 'brouillon',
-        sections: form.sections,
-        lignes: form.sections.flatMap(s => s.lignes),
-        tvaParTaux: totals.tvaParTaux,
-        tvaDetails: totals.tvaParTaux,
-        tvaRate: form.tvaDefaut,
-        remise: form.remise,
-        total_ht: totals.htApresRemise,
-        tva: totals.totalTVA,
-        total_ttc: totals.ttc,
-        retenueGarantie: form.retenueGarantie,
-        retenue_montant: totals.retenueGarantie,
-        ttc_net: totals.ttcNet,
-        marge: totals.marge,
-        tauxMarge: totals.tauxMarge,
-        conditionsPaiement: form.conditionsPaiement,
-        notes: form.notes
+    const newDevis = onSubmit({
+      numero,
+      type: form.type,
+      client_id: form.clientId,
+      client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
+      chantier_id: form.chantierId,
+      date: form.date,
+      validite: form.validite,
+      statut: 'brouillon',
+      sections: form.sections,
+      lignes: form.sections.flatMap(s => s.lignes),
+      tvaParTaux: totals.tvaParTaux,
+      tvaDetails: totals.tvaParTaux, // Pour affichage PDF
+      tvaRate: form.tvaDefaut, // Taux TVA par défaut pour acompte/facture
+      remise: form.remise,
+      total_ht: totals.htApresRemise,
+      tva: totals.totalTVA,
+      total_ttc: totals.ttc,
+      retenueGarantie: form.retenueGarantie,
+      retenue_montant: totals.retenueGarantie,
+      ttc_net: totals.ttcNet,
+      marge: totals.marge,
+      tauxMarge: totals.tauxMarge,
+      notes: form.notes
+    });
+
+    // Reset form
+    setForm({
+      type: 'devis',
+      clientId: '',
+      chantierId: '',
+      date: new Date().toISOString().split('T')[0],
+      validite: entreprise?.validiteDevis || 30,
+      sections: [{ id: '1', titre: '', lignes: [] }],
+      tvaDefaut: entreprise?.tvaDefaut || 10,
+      remise: 0,
+      retenueGarantie: false,
+      notes: ''
+    });
+
+    // Redirect to detail view of the created devis
+    if (newDevis?.id) {
+      setSelected(newDevis);
+      setMode('preview');
+      setSnackbar({
+        type: 'success',
+        message: `${form.type === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
       });
-
-      // Reset form
-      setForm({
-        type: 'devis',
-        clientId: '',
-        chantierId: '',
-        date: new Date().toISOString().split('T')[0],
-        validite: entreprise?.validiteDevis || 30,
-        sections: [{ id: '1', titre: '', lignes: [] }],
-        tvaDefaut: entreprise?.tvaDefaut || 10,
-        remise: 0,
-        retenueGarantie: false,
-        notes: ''
-      });
-
-      // Redirect to detail view of the created devis
-      if (newDevis?.id) {
-        setSelected(newDevis);
-        setMode('preview');
-        setSnackbar({
-          type: 'success',
-          message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
-        });
-      } else {
-        // Fallback to list if no devis returned
-        setMode('list');
-        setSnackbar({ type: 'success', message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé` });
-      }
-    } catch (err) {
-      console.error('Error creating devis:', err);
-      showToast(mapError(err), 'error');
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+
+    // Fallback to list if no devis returned
+    setMode('list');
+
+    // Show snackbar with action to view the created devis
+    setSnackbar({
+      type: 'success',
+      message: `${form.type === 'facture' ? 'Facture' : 'Devis'} ${numero} cree`,
+      action: newDevis ? {
+        label: 'Voir',
+        onClick: () => {
+          setSelected(newDevis);
+          setMode('preview');
+          setSnackbar(null);
+        }
+      } : null
+    });
   };
 
   // Dupliquer un devis/facture
-  const duplicateDocument = async (doc) => {
+  const duplicateDocument = (doc) => {
     const newLignes = (doc.lignes || []).map(l => ({
       ...l,
       id: generateId()
@@ -731,7 +358,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
     const newDoc = {
       id: generateId(),
-      numero: await generateNumero('devis'),
+      numero: generateNumero('devis'),
       type: 'devis',
       client_id: doc.client_id,
       client_nom: doc.client_nom,
@@ -745,81 +372,22 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       tvaDetails: doc.tvaDetails,
       tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
       remise: doc.remise || 0,
-      retenueGarantie: doc.retenueGarantie || false,
       total_ht: doc.total_ht,
       tva: doc.tva,
       total_ttc: doc.total_ttc,
       notes: doc.notes || ''
     };
 
-    const created = await onSubmit(newDoc);
-    setSelected(created || newDoc);
+    onSubmit(newDoc);
+    setSelected(newDoc);
     setMode('preview');
     setSnackbar({
       type: 'success',
-      message: `Devis ${newDoc.numero} créé (copie)`,
+      message: `Devis ${newDoc.numero} cree (copie)`,
       action: {
         label: 'Voir',
         onClick: () => setSnackbar(null)
       }
-    });
-  };
-
-  // Créer un avenant à partir d'un devis existant
-  const createAvenant = async (doc) => {
-    // Count existing avenants for this source devis
-    const sourceId = doc.avenant_source_id || doc.id;
-    const existingAvenants = devis.filter(d => d.avenant_source_id === sourceId);
-    const avenantNum = existingAvenants.length + 1;
-
-    const newLignes = (doc.lignes || []).map(l => ({
-      ...l,
-      id: generateId()
-    }));
-    const newSections = doc.sections ? doc.sections.map(s => ({
-      ...s,
-      id: generateId(),
-      lignes: s.lignes.map(l => ({
-        ...l,
-        id: generateId()
-      }))
-    })) : [{ id: '1', titre: '', lignes: newLignes }];
-
-    const sourceNumero = doc.avenant_source_numero || doc.numero;
-    const newDoc = {
-      id: generateId(),
-      numero: `${sourceNumero}-AV${avenantNum}`,
-      type: 'devis',
-      client_id: doc.client_id,
-      client_nom: doc.client_nom,
-      chantier_id: doc.chantier_id || '',
-      date: new Date().toISOString().split('T')[0],
-      validite: doc.validite || entreprise?.validiteDevis || 30,
-      statut: 'brouillon',
-      sections: newSections,
-      lignes: newLignes,
-      tvaParTaux: doc.tvaParTaux,
-      tvaDetails: doc.tvaDetails,
-      tvaRate: doc.tvaRate || entreprise?.tvaDefaut || 10,
-      remise: doc.remise || 0,
-      total_ht: doc.total_ht,
-      tva: doc.tva,
-      total_ttc: doc.total_ttc,
-      notes: doc.notes || '',
-      // Avenant metadata
-      is_avenant: true,
-      avenant_numero: avenantNum,
-      avenant_source_id: sourceId,
-      avenant_source_numero: sourceNumero,
-    };
-
-    const created = await onSubmit(newDoc);
-    setSelected(created || newDoc);
-    setMode('edit');
-    setSnackbar({
-      type: 'success',
-      message: `Avenant n°${avenantNum} créé pour ${sourceNumero}`,
-      action: { label: 'Voir', onClick: () => setSnackbar(null) }
     });
   };
 
@@ -829,7 +397,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const draw = (e) => { if (!isDrawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); ctx.stroke(); };
   const endDraw = () => setIsDrawing(false);
   const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
-  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
+  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signatureDate: new Date().toISOString(), statut: 'accepte' }); setMode('list'); setSelected(null); setSnackbar({ type: 'success', message: 'Devis signe et accepte !' }); };
 
   // New signature pad handler (react-signature-canvas)
   const handleSignatureSave = (signatureData) => {
@@ -854,15 +422,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         lignes: templateData.lignes
       }]
     }));
-    // Track template usage
-    if (templateData.template?.id) {
-      trackTemplateUsage(templateData.template.id);
-    }
     setSnackbar({ type: 'success', message: `Modèle "${templateData.template.nom}" appliqué` });
   };
 
   // Smart Template Wizard handler - creates complete devis from wizard
-  const handleSmartDevisCreate = async (devisData) => {
+  const handleSmartDevisCreate = (devisData) => {
     // Validate required data
     if (!devisData || !devisData.clientId || !devisData.sections?.length) {
       setSnackbar({ type: 'error', message: 'Données du devis incomplètes' });
@@ -870,7 +434,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     }
 
     // Generate numero
-    const numero = await generateNumero('devis');
+    const numero = generateNumero('devis');
 
     // Flatten all lines for total calculation and lignes array
     const allLignes = [];
@@ -885,16 +449,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
     });
 
-    // Build tvaParTaux from lignes for multi-rate TVA support
-    const tvaParTaux = {};
-    allLignes.forEach(l => {
-      const rate = l.tva !== undefined ? l.tva : (devisData.tvaDefaut || 20);
-      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
-      if (!tvaParTaux[rate]) tvaParTaux[rate] = { base: 0, montant: 0 };
-      tvaParTaux[rate].base += montant;
-      tvaParTaux[rate].montant += montant * (rate / 100);
-    });
-
     // Create the devis object
     const newDevis = {
       id: generateId(),
@@ -907,13 +461,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       validite: devisData.validite,
       sections: devisData.sections,
       lignes: allLignes,
-      tvaRate: devisData.tvaDefaut || 20,
-      tvaParTaux,
-      tvaDetails: tvaParTaux,
+      tvaRate: devisData.tvaDefaut || 10,
       remise: devisData.remise || 0,
       notes: devisData.notes,
       total_ht: devisData.total_ht,
-      tva: devisData.total_tva,
       total_tva: devisData.total_tva,
       total_ttc: devisData.total_ttc,
       cout_revient: devisData.cout_revient,
@@ -923,11 +474,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     };
 
     // Submit the devis
-    const created = await onSubmit(newDevis);
+    onSubmit(newDevis);
 
     // Close wizard and navigate directly to the new devis
     setShowSmartWizard(false);
-    setSelected(created || newDevis);
+    setSelected(newDevis);
     setMode('preview');
 
     // Show success notification with action to view
@@ -949,379 +500,55 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     if (addPaiement) {
       addPaiement({
         ...paymentData,
-        facture_id: selected?.id,
         documentId: selected?.id,
-        documentNumero: selected?.numero,
-        document: selected?.numero,
+        documentNumero: selected?.numero
       });
-    }
-    // Auto-update facture status to 'payee' if fully paid
-    if (selected?.type === 'facture' && selected.statut !== 'payee') {
-      const existingPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
-      const totalPaye = existingPaiements.reduce((s, p) => s + (p.montant || 0), 0) + (paymentData.amount || 0);
-      if (totalPaye >= (selected.total_ttc || 0)) {
-        // Build update payload — include offline payment metadata if available
-        const updatePayload = { statut: 'payee' };
-        if (paymentData.date_paiement) updatePayload.date_paiement = paymentData.date_paiement;
-        if (paymentData.mode_paiement) updatePayload.mode_paiement = paymentData.mode_paiement;
-        if (paymentData.reference_paiement) updatePayload.reference_paiement = paymentData.reference_paiement;
-
-        onUpdate(selected.id, updatePayload);
-        setSelected(s => s ? { ...s, ...updatePayload } : s);
-
-        // Cancel any pending automatic relances for this document
-        if (relances.isEnabled) {
-          import('../lib/relanceEngine').then(({ cancelDocumentRelances }) => {
-            cancelDocumentRelances(selected.id, relanceUserId, orgId).catch(() => {});
-          });
-        }
-
-        const modeLabel = paymentData.mode_paiement ? ` (${paymentData.mode_paiement})` : '';
-        setSnackbar({ type: 'success', message: `Facture ${selected.numero} marquée comme payée${modeLabel}` });
-
-        // Update échéancier étape to 'paye' if this is an acompte facture
-        if (selected.facture_type === 'acompte' && selected.devis_source_id) {
-          const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
-          const echeancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
-          if (echeancier) {
-            const etape = echeancier.etapes?.find(e => e.facture_id === selected.id);
-            if (etape) {
-              const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
-              const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
-              try {
-                if (isDemo || !supabase) {
-                  const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
-                  stored[sourceDevis.id] = updatedEcheancier;
-                  localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
-                } else {
-                  supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id).then(() => {});
-                }
-                setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
-              } catch (err) {
-                console.error('Error updating echeancier on payment:', err);
-              }
-            }
-          }
-        }
-      }
     }
   };
 
   // Workflow facturation
   const getAcompteFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
-  const getAllAcompteFactures = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'acompte');
   const getSoldeFacture = (devisId) => devis.find(d => d.type === 'facture' && d.devis_source_id === devisId && d.facture_type === 'solde');
   const getFacturesLiees = (devisId) => devis.filter(d => d.type === 'facture' && d.devis_source_id === devisId);
 
-  // Fetch échéancier for a given devis (with cache)
-  const fetchEcheancier = async (devisId) => {
-    if (echeancierCache[devisId]) return echeancierCache[devisId];
-    if (isDemo || !supabase) {
-      const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
-      const data = stored[devisId] || null;
-      if (data) setEcheancierCache(prev => ({ ...prev, [devisId]: data }));
-      return data;
-    }
-    try {
-      const { data } = await supabase.from('acompte_echeanciers').select('*').eq('devis_id', devisId).single();
-      if (data) setEcheancierCache(prev => ({ ...prev, [devisId]: data }));
-      return data;
-    } catch { return null; }
-  };
-
-  // Facturer une étape d'échéancier
-  const facturerEtape = async (echeancier, etape) => {
-    if (!selected || !echeancier) return;
-    const last = isLastEtape(etape, echeancier.etapes);
-
-    let montants, lignes, factureType;
-    if (last) {
-      // Solde: deduct all previous acomptes
-      montants = computeSoldeMontants(selected, echeancier.etapes);
-      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
-      factureType = 'solde';
-    } else {
-      montants = computeEtapeMontants(selected, etape.pourcentage, entreprise?.tvaDefaut || 20);
-      lignes = buildFactureLignesForEtape(selected, etape, echeancier.etapes, entreprise?.tvaDefaut || 20);
-      factureType = 'acompte';
-    }
-
-    const facture = {
-      id: crypto.randomUUID(),
-      numero: await generateNumero('facture'),
-      type: 'facture',
-      facture_type: factureType,
-      devis_source_id: selected.id,
-      client_id: selected.client_id,
-      chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0],
-      statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
-      tvaParTaux: montants.tvaParTaux,
-      tvaDetails: montants.tvaParTaux,
-      lignes,
-      total_ht: montants.montant_ht,
-      tva: montants.tva,
-      total_ttc: montants.montant_ttc,
-      acompte_pct: etape.pourcentage,
-      objet: last
-        ? `Facture de solde — ${selected.objet || selected.numero || ''}`
-        : `Acompte ${etape.pourcentage}% — ${etape.label || ''} — ${selected.objet || selected.numero || ''}`,
-    };
-
-    await onSubmit(facture);
-
-    // Update échéancier étape
-    const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, {
-      statut: ETAPE_STATUT.FACTURE,
-      facture_id: facture.id,
-      date_facture: new Date().toISOString().split('T')[0],
-    });
-
-    const echeancierTermine = isEcheancierTermine(updatedEtapes);
-    const updatedEcheancier = {
-      ...echeancier,
-      etapes: updatedEtapes,
-      statut: echeancierTermine ? 'termine' : 'actif',
-      updated_at: new Date().toISOString(),
-    };
-
-    // Persist échéancier update
-    if (isDemo || !supabase) {
-      const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
-      stored[selected.id] = updatedEcheancier;
-      localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
-    } else {
-      await supabase.from('acompte_echeanciers')
-        .update({ etapes: updatedEtapes, statut: updatedEcheancier.statut, updated_at: updatedEcheancier.updated_at })
-        .eq('id', echeancier.id);
-    }
-
-    // Update cache
-    setEcheancierCache(prev => ({ ...prev, [selected.id]: updatedEcheancier }));
-
-    // Update devis status and acompte tracking fields
-    const newDevisStatut = echeancierTermine ? 'facture' : 'acompte_facture';
-    const totalPctFacture = updatedEtapes
-      .filter(e => e.statut === ETAPE_STATUT.FACTURE || e.statut === ETAPE_STATUT.PAYE)
-      .reduce((s, e) => s + (e.pourcentage || 0), 0);
-    const montantFacture = updatedEtapes
-      .filter(e => e.statut === ETAPE_STATUT.FACTURE || e.statut === ETAPE_STATUT.PAYE)
-      .reduce((s, e) => s + (e.montant_ttc || 0), 0);
-    const existingAcomptes = selected.acomptes_ids || [];
-    const updatedAcomptesIds = factureType === 'acompte'
-      ? [...existingAcomptes, facture.id]
-      : existingAcomptes;
-    const devisUpdate = {
-      statut: newDevisStatut,
-      acompte_pct: totalPctFacture,
-      mode_facturation: 'echeancier',
-      acomptes_ids: updatedAcomptesIds,
-      montant_facture: Math.round(montantFacture * 100) / 100,
-      ...(factureType === 'solde' ? { facture_solde_id: facture.id } : {}),
-    };
-    onUpdate(selected.id, devisUpdate);
-    setSelected({ ...selected, ...devisUpdate });
-
-    setSnackbar({
-      type: 'success',
-      message: `Facture ${last ? 'de solde' : 'd\'acompte'} ${facture.numero} créée`,
-      action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } },
-    });
-  };
-
-  // Handle échéancier creation callback
-  const handleEcheancierCreated = (echeancier) => {
-    if (!selected) return;
-    setEcheancierCache(prev => ({ ...prev, [selected.id]: echeancier }));
-    const updates = { echeancier_id: echeancier.id, mode_facturation: 'echeancier' };
-    onUpdate(selected.id, updates);
-    setSelected({ ...selected, ...updates });
-    setSnackbar({ type: 'success', message: 'Échéancier créé avec succès' });
-  };
-
-  const createAcompte = async () => {
-    if (!selected || (selected.statut !== 'accepte' && selected.statut !== 'signe')) return showToast('Le devis doit être accepté ou signé', 'error');
+  const createAcompte = () => {
+    if (!selected || !['accepte', 'signe'].includes(selected.statut)) return showToast('Le devis doit être accepté ou signé', 'error');
     if (getAcompteFacture(selected.id)) return showToast('Un acompte existe déjà', 'error');
-    const ratio = acomptePct / 100;
-    const montantHT = selected.total_ht * ratio;
-    // Use stored multi-rate TVA proportionally, fallback to single rate
-    const tva = selected.tva ? selected.tva * ratio : montantHT * ((selected.tvaRate || entreprise?.tvaDefaut || 20) / 100);
+    const montantHT = selected.total_ht * (acomptePct / 100);
+    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
+    const tva = montantHT * (tvaRate / 100);
     const ttc = montantHT + tva;
-    // Build proportional tvaParTaux for the acompte
-    const tvaParTaux = {};
-    const srcTva = selected.tvaParTaux || selected.tvaDetails;
-    if (srcTva && typeof srcTva === 'object') {
-      Object.entries(srcTva).forEach(([rate, info]) => {
-        tvaParTaux[rate] = { base: (info.base || 0) * ratio, montant: (info.montant || 0) * ratio };
-      });
-    }
-    const facture = {
-      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: 'acompte',
-      devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0], statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
-      tvaParTaux, tvaDetails: tvaParTaux,
-      lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT, tva: selected.tvaRate || entreprise?.tvaDefaut || 20 }],
-      total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct
-    };
-    await onSubmit(facture);
-    const acompteUpdate = {
-      statut: 'acompte_facture',
-      acompte_pct: acomptePct,
-      mode_facturation: 'acompte',
-      acomptes_ids: [...(selected.acomptes_ids || []), facture.id],
-      montant_facture: Math.round(ttc * 100) / 100,
-    };
-    onUpdate(selected.id, acompteUpdate);
+    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: 'acompte', devis_source_id: selected.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes: [{ id: '1', description: `Acompte ${acomptePct}% sur devis ${selected.numero}`, quantite: 1, unite: 'forfait', prixUnitaire: montantHT, montant: montantHT }], total_ht: montantHT, tva, total_ttc: ttc, acompte_pct: acomptePct };
+    onSubmit(facture);
+    onUpdate(selected.id, { statut: 'acompte_facture', acompte_pct: acomptePct });
     setShowAcompteModal(false);
-    setSelected({ ...selected, ...acompteUpdate });
+    setSelected({ ...selected, statut: 'acompte_facture', acompte_pct: acomptePct });
     setSnackbar({ type: 'success', message: `Facture d'acompte ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
-  const confirmAndCreateSolde = async () => {
+  const createSolde = () => {
     if (!selected) return;
-    const allAcomptes = getAllAcompteFactures(selected.id);
-    const totalAcomptesTTC = allAcomptes.reduce((s, a) => s + (a.total_ttc || 0), 0);
-    const reste = allAcomptes.length > 0 ? selected.total_ttc - totalAcomptesTTC : selected.total_ttc;
-    const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-    const label = allAcomptes.length > 0 ? `Facturer le solde de ${formatMoney(reste)}` : `Créer la facture complète de ${formatMoney(selected.total_ttc)}`;
-    const ok = await confirm({
-      title: allAcomptes.length > 0 ? 'Facturer le solde ?' : 'Créer la facture complète ?',
-      message: `${label} pour ${clientName}. Cette action est irréversible.`
-    });
-    if (!ok) return;
-    await createSolde();
-  };
-
-  const createSolde = async () => {
-    if (!selected) return;
-    // Support multiple acomptes
-    const allAcomptes = getAllAcompteFactures(selected.id);
-    const totalAcompteHT = allAcomptes.reduce((s, a) => s + (a.total_ht || 0), 0);
-    const totalAcompteTVA = allAcomptes.reduce((s, a) => s + (a.tva || 0), 0);
-    const montantSoldeHT = selected.total_ht - totalAcompteHT;
-    const tva = (selected.tva || 0) - totalAcompteTVA;
+    const acompte = getAcompteFacture(selected.id);
+    const montantAcompteHT = acompte ? acompte.total_ht : 0;
+    const montantSoldeHT = selected.total_ht - montantAcompteHT;
+    const tvaRate = selected.tvaRate || entreprise?.tvaDefaut || 10;
+    const tva = montantSoldeHT * (tvaRate / 100);
     const ttc = montantSoldeHT + tva;
-    // Copy lignes with their per-line TVA rates preserved
-    const lignes = (selected.lignes || []).map(l => ({ ...l, tva: l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 20) }));
-    // Add negative line for each acompte already invoiced
-    allAcomptes.forEach(acompte => {
-      lignes.push({ id: `acompte_${acompte.id}`, description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -(acompte.total_ht || 0), montant: -(acompte.total_ht || 0) });
-    });
-    // Build tvaParTaux for the solde
-    const tvaParTaux = {};
-    const srcTva = selected.tvaParTaux || selected.tvaDetails;
-    if (srcTva && typeof srcTva === 'object') {
-      Object.entries(srcTva).forEach(([rate, info]) => {
-        const acompteBase = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.base || 0), 0);
-        const acompteMontant = allAcomptes.reduce((s, a) => s + ((a.tvaParTaux || a.tvaDetails)?.[rate]?.montant || 0), 0);
-        tvaParTaux[rate] = { base: (info.base || 0) - acompteBase, montant: (info.montant || 0) - acompteMontant };
-      });
-    }
-    const hasAcomptes = allAcomptes.length > 0;
-    const facture = {
-      id: crypto.randomUUID(), numero: await generateNumero('facture'), type: 'facture', facture_type: hasAcomptes ? 'solde' : 'totale',
-      devis_source_id: selected.id, acompte_facture_id: allAcomptes[0]?.id || null, client_id: selected.client_id, chantier_id: selected.chantier_id,
-      date: new Date().toISOString().split('T')[0], statut: 'envoye',
-      date_echeance: new Date(Date.now() + (entreprise?.delaiPaiement || 30) * 86400000).toISOString().split('T')[0],
-      tvaRate: selected.tvaRate || entreprise?.tvaDefaut || 20,
-      tvaParTaux, tvaDetails: tvaParTaux,
-      lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc
-    };
-    await onSubmit(facture);
-    const soldeUpdate = {
-      statut: 'facture',
-      facture_solde_id: facture.id,
-      montant_facture: Math.round((selected.total_ttc || 0) * 100) / 100,
-      ...(hasAcomptes ? { mode_facturation: selected.mode_facturation || 'acompte' } : { mode_facturation: 'direct' }),
-    };
-    await onUpdate(selected.id, soldeUpdate);
-    setSelected({ ...selected, ...soldeUpdate });
-    setSnackbar({ type: 'success', message: `Facture ${hasAcomptes ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
-  };
-
-  // Créer un avoir (note de crédit) — via AvoirCreationModal
-  const handleCreateAvoir = async (avoirData) => {
-    const { sourceFacture, type: avoirType, motif, motifDetail, lignes, totalHT, totalTVA, totalTTC } = avoirData;
-
-    const avoir = {
-      id: crypto.randomUUID(),
-      numero: await generateNumero('avoir'),
-      type: 'facture',
-      facture_type: 'avoir',
-      avoir_source_id: sourceFacture.id,
-      avoir_type: avoirType,
-      avoir_motif: motif,
-      avoir_motif_detail: motifDetail || null,
-      devis_source_id: sourceFacture.devis_source_id,
-      client_id: sourceFacture.client_id,
-      client_nom: sourceFacture.client_nom,
-      chantier_id: sourceFacture.chantier_id,
-      date: new Date().toISOString().split('T')[0],
-      statut: 'brouillon',
-      tvaRate: sourceFacture.tvaRate,
-      lignes: lignes.map(l => ({ ...l, id: generateId() })),
-      total_ht: -(Math.abs(totalHT)),
-      tva: -(Math.abs(totalTVA)),
-      total_ttc: -(Math.abs(totalTTC)),
-      notes: `Avoir ${avoirType === 'total' ? 'total' : 'partiel'} sur facture ${sourceFacture.numero}. Motif : ${AVOIR_MOTIFS[motif] || motif}${motifDetail ? '. ' + motifDetail : ''}`,
-      conditionsPaiement: sourceFacture.conditionsPaiement,
-    };
-
-    await onSubmit(avoir);
-    setShowAvoirModal(false);
-    setSnackbar({
-      type: 'success',
-      message: `Avoir ${avoir.numero} créé en brouillon`,
-      action: { label: 'Voir', onClick: () => { setSelected(avoir); setMode('preview'); setSnackbar(null); } }
-    });
+    const lignes = [...(selected.lignes || [])];
+    if (acompte) lignes.push({ id: 'acompte', description: `Acompte déjà facturé (${acompte.numero})`, quantite: 1, unite: 'forfait', prixUnitaire: -montantAcompteHT, montant: -montantAcompteHT });
+    const facture = { id: generateId(), numero: generateNumero('facture'), type: 'facture', facture_type: acompte ? 'solde' : 'totale', devis_source_id: selected.id, acompte_facture_id: acompte?.id, client_id: selected.client_id, chantier_id: selected.chantier_id, date: new Date().toISOString().split('T')[0], statut: 'envoye', tvaRate, lignes, total_ht: montantSoldeHT, tva, total_ttc: ttc };
+    onSubmit(facture);
+    onUpdate(selected.id, { statut: 'facture' });
+    setSelected({ ...selected, statut: 'facture' });
+    setSnackbar({ type: 'success', message: `Facture ${acompte ? 'de solde' : ''} ${facture.numero} créée`, action: { label: 'Voir', onClick: () => { setSelected(facture); setSnackbar(null); } } });
   };
 
   // PDF Generation - CONFORME LÉGISLATION FRANÇAISE
   const downloadPDF = (doc) => {
-    // Situation facture: use dedicated builder from devisHtmlBuilder
-    if (doc.facture_type === 'situation') {
-      const client = clients.find(c => c.id === doc.client_id);
-      const chantier = chantiers.find(c => c.id === doc.chantier_id);
-      const parentDevis = doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
-      // Reconstruct situation data from chantier.situations_data
-      const sitData = chantier?.situations_data;
-      const sit = sitData?.situations?.find(s => s.numero === doc.situation_numero) || null;
-      printSitFacture({
-        situation: {
-          ...(sit || {}),
-          numero: doc.situation_numero || sit?.numero || 1,
-          date: doc.date,
-          lignes: sit?.lignes || doc.lignes?.map(l => ({
-            description: l.description,
-            quantite: 1,
-            prixUnitaire: getLineTotal(l),
-            unite: l.unite || 'ens',
-            tva: l.tva !== undefined ? l.tva : (doc.tvaRate || 10),
-            cumulActuel: 100,
-            cumulPrecedent: 0,
-          })) || [],
-          retenueGarantiePct: sit?.isDGD ? 0 : (sitData?.retenue_garantie_pct || 5),
-        },
-        parentDevis: parentDevis || {},
-        client: client || {},
-        chantier: chantier || {},
-        entreprise: entreprise || {},
-        couleur,
-      });
-      return;
-    }
     const client = clients.find(c => c.id === doc.client_id);
     const chantier = chantiers.find(c => c.id === doc.chantier_id);
     const isFacture = doc.type === 'facture';
-    const isAvoirDoc = doc.facture_type === 'avoir';
-    const sourceFactureDoc = isAvoirDoc && doc.avoir_source_id ? devis.find(d => d.id === doc.avoir_source_id) : null;
     const isMicro = entreprise?.formeJuridique === 'Micro-entreprise';
-    const avoirColor = '#dc2626';
-    const docColor = isAvoirDoc ? avoirColor : couleur;
     const dateValidite = new Date(doc.date);
     dateValidite.setDate(dateValidite.getDate() + (doc.validite || entreprise?.validiteDevis || 30));
     
@@ -1329,26 +556,25 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const calculatedTvaDetails = doc.tvaDetails || (() => {
       const details = {};
       const defaultRate = doc.tvaRate || entreprise?.tvaDefaut || 10;
-      filterValidLignes(doc.lignes).forEach(l => {
+      (doc.lignes || []).forEach(l => {
         const rate = l.tva !== undefined ? l.tva : defaultRate;
         if (!details[rate]) {
           details[rate] = { base: 0, montant: 0 };
         }
-        const lineMontant = getLineTotal(l);
-        details[rate].base += lineMontant;
-        details[rate].montant += lineMontant * (rate / 100);
+        details[rate].base += (l.montant || 0);
+        details[rate].montant += (l.montant || 0) * (rate / 100);
       });
       return details;
     })();
 
-    const lignesHTML = filterValidLignes(doc.lignes).map(l => `
+    const lignesHTML = (doc.lignes || []).map(l => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description || ''}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top">${l.description}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite||'unité'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${(l.prixUnitaire||0).toFixed(2)} €</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : (l.tva !== undefined ? l.tva : (doc.tvaRate||10))+'%'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${l.montant<0?'color:#dc2626;':''}">${(l.montant||0).toFixed(2)} €</td>
       </tr>
     `).join('');
 
@@ -1356,36 +582,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>${doc.facture_type === 'avoir' ? 'Avoir' : isFacture ? 'Facture' : 'Devis'} ${doc.numero}</title>
+  <title>${isFacture?'Facture':'Devis'} ${doc.numero}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; padding: 25px; line-height: 1.4; }
-    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${docColor}; }
+    .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 3px solid ${couleur}; }
     .logo-section { max-width: 55%; }
-    .logo { font-size: 16pt; font-weight: bold; color: ${docColor}; margin-bottom: 8px; }
+    .logo { font-size: 16pt; font-weight: bold; color: ${couleur}; margin-bottom: 8px; }
     .entreprise-info { font-size: 8pt; color: #64748b; line-height: 1.5; }
     .entreprise-legal { font-size: 7pt; color: #94a3b8; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
-    .missing-legal { color: #94a3b8; font-style: italic; font-size: 7pt; }
-    @media print { .missing-legal { display: none; } }
     .doc-type { text-align: right; }
-    .doc-type h1 { font-size: 22pt; color: ${docColor}; margin-bottom: 8px; letter-spacing: 1px; }
+    .doc-type h1 { font-size: 22pt; color: ${couleur}; margin-bottom: 8px; letter-spacing: 1px; }
     .doc-info { font-size: 9pt; color: #64748b; }
     .doc-info strong { color: #1e293b; }
     .client-section { display: flex; gap: 20px; margin-bottom: 20px; }
-    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${docColor}; }
+    .info-block { flex: 1; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid ${couleur}; }
     .info-block h3 { font-size: 8pt; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .info-block .name { font-weight: 600; font-size: 11pt; margin-bottom: 4px; }
     table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 9pt; }
-    thead { background: ${docColor}; color: white; }
-    .avoir-ref { background: #fef2f2; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 9pt; color: #991b1b; }
-    .avoir-ref strong { color: #7f1d1d; }
+    thead { background: ${couleur}; color: white; }
     th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 8pt; text-transform: uppercase; }
     th:not(:first-child) { text-align: center; }
     th:last-child { text-align: right; }
     .totals { margin-left: auto; width: 260px; margin-top: 15px; }
     .totals .row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 10pt; }
     .totals .row.sub { background: #f8fafc; border-radius: 4px; margin-bottom: 2px; }
-    .totals .total { background: ${docColor}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
+    .totals .total { background: ${couleur}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
     .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 7.5pt; line-height: 1.6; }
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .conditions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -1415,17 +637,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <div class="entreprise-legal">
         ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
-        ${getRCSComplet() ? `<br>${getRCSComplet()}` : ''}
+        ${entreprise?.rcs ? `<br>RCS: ${entreprise.rcs}` : ''}
         ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
-      <h1>${doc.facture_type === 'avoir' ? 'AVOIR' : isFacture ? 'FACTURE' : 'DEVIS'}</h1>
+      <h1>${isFacture ? 'FACTURE' : 'DEVIS'}</h1>
       <div class="doc-info">
         <strong>N° ${doc.numero}</strong><br>
         Date: ${new Date(doc.date).toLocaleDateString('fr-FR')}<br>
-        ${isFacture && doc.date_echeance ? `Échéance: ${new Date(doc.date_echeance).toLocaleDateString('fr-FR')}<br>` : ''}
         ${!isFacture ? `<strong>Valable jusqu'au: ${dateValidite.toLocaleDateString('fr-FR')}</strong>` : ''}
       </div>
     </div>
@@ -1435,7 +656,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="client-section">
     <div class="info-block">
       <h3>Client</h3>
-      <div class="name">${client ? `${client.prenom || ''} ${client.nom || ''}` : (doc.client_nom || 'Client supprimé')}</div>
+      <div class="name">${client?.prenom || ''} ${client?.nom || ''}</div>
       ${client?.entreprise ? `<div style="font-size:9pt;color:#64748b">${client.entreprise}</div>` : ''}
       <div style="font-size:9pt">${client?.adresse || ''}</div>
       <div style="font-size:9pt">${client?.code_postal || ''} ${client?.ville || ''}</div>
@@ -1451,24 +672,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     ` : ''}
   </div>
 
-  ${isAvoirDoc ? `
-  <!-- RÉFÉRENCE AVOIR -->
-  <div class="avoir-ref">
-    <strong>AVOIR${doc.avoir_type === 'partiel' ? ' PARTIEL' : ''} relatif à la facture n° ${sourceFactureDoc?.numero || 'N/A'} du ${sourceFactureDoc ? new Date(sourceFactureDoc.date).toLocaleDateString('fr-FR') : 'N/A'}</strong>
-    ${doc.avoir_motif ? `<br>Motif : ${AVOIR_MOTIFS[doc.avoir_motif] || doc.avoir_motif}${doc.avoir_motif_detail ? ` — ${doc.avoir_motif_detail}` : ''}` : ''}
-  </div>
-  ` : ''}
-
   <!-- TABLEAU PRESTATIONS -->
-  <table aria-label="Détail des prestations du ${isAvoirDoc ? 'avoir' : 'devis'}">
+  <table>
     <thead>
       <tr>
-        <th scope="col" style="width:40%">Description</th>
-        <th scope="col" style="width:10%">Qté</th>
-        <th scope="col" style="width:10%">Unité</th>
-        <th scope="col" style="width:15%">PU HT</th>
-        <th scope="col" style="width:10%">TVA</th>
-        <th scope="col" style="width:15%">Total HT</th>
+        <th style="width:40%">Description</th>
+        <th style="width:10%">Qté</th>
+        <th style="width:10%">Unité</th>
+        <th style="width:15%">PU HT</th>
+        <th style="width:10%">TVA</th>
+        <th style="width:15%">Total HT</th>
       </tr>
     </thead>
     <tbody>
@@ -1478,46 +691,46 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   <!-- TOTAUX -->
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${formatMoney(doc.total_ht||0)}</span></div>
-    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${formatMoney((doc.total_ht||0) * doc.remise / 100)}</span></div>` : ''}
+    <div class="row sub"><span>Total HT</span><span>${(doc.total_ht||0).toFixed(2)} €</span></div>
+    ${doc.remise ? `<div class="row sub" style="color:#dc2626"><span>Remise ${doc.remise}%</span><span>-${((doc.total_ht||0) * doc.remise / 100).toFixed(2)} €</span></div>` : ''}
     ${!isMicro ? (Object.keys(calculatedTvaDetails).length > 0
       ? Object.entries(calculatedTvaDetails).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) =>
-        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${formatMoney(data.base)})` : ''}</span><span>${formatMoney(data.montant)}</span></div>`
+        `<div class="row sub"><span>TVA ${taux}%${Object.keys(calculatedTvaDetails).length > 1 ? ` (base: ${data.base.toFixed(2)} €)` : ''}</span><span>${data.montant.toFixed(2)} €</span></div>`
       ).join('')
-      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${formatMoney(doc.tva||0)}</span></div>`
+      : `<div class="row sub"><span>TVA ${doc.tvaRate||10}%</span><span>${(doc.tva||0).toFixed(2)} €</span></div>`
     ) : ''}
-    <div class="row total"><span>Total TTC</span><span>${formatMoney(doc.total_ttc||0)}</span></div>
+    <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc||0).toFixed(2)} €</span></div>
     ${doc.acompte_pct ? `
-    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${formatMoney((doc.total_ttc||0) * doc.acompte_pct / 100)}</span></div>
-    <div class="row sub"><span>Solde à régler</span><span>${formatMoney((doc.total_ttc||0) * (100-doc.acompte_pct) / 100)}</span></div>
+    <div class="row sub" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px"><span>Acompte ${doc.acompte_pct}%</span><span>${((doc.total_ttc||0) * doc.acompte_pct / 100).toFixed(2)} €</span></div>
+    <div class="row sub"><span>Solde à régler</span><span>${((doc.total_ttc||0) * (100-doc.acompte_pct) / 100).toFixed(2)} €</span></div>
     ` : ''}
   </div>
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   <!-- CONDITIONS -->
-  ${!isAvoirDoc ? `<div class="conditions">
+  <div class="conditions">
     <h4>CONDITIONS GÉNÉRALES</h4>
     <div class="conditions-grid">
       <div>
         <strong>Modalités de paiement</strong><br>
         · Virement bancaire<br>
-        · Chèque à l'ordre de ${entreprise?.nom || ''}<br>
+        · Chèque à l'ordre de ${entreprise?.nom || '[Entreprise]'}<br>
         · Espèces (max 1 000 € pour particulier)<br>
         ${entreprise?.iban ? `<br><strong>IBAN:</strong> ${entreprise.iban}` : ''}
         ${entreprise?.bic ? ` · <strong>BIC:</strong> ${entreprise.bic}` : ''}
       </div>
       <div>
         <strong>Délai de paiement</strong><br>
-        ${doc.conditionsPaiement && CONDITIONS_PAIEMENT[doc.conditionsPaiement] ? CONDITIONS_PAIEMENT[doc.conditionsPaiement] : `${entreprise?.delaiPaiement || 30} jours`} à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
+        ${entreprise?.delaiPaiement || 30} jours à compter de la date ${isFacture ? 'de facture' : 'de réception des travaux'}.<br><br>
         <strong>Pénalités de retard</strong><br>
-        Taux annuel: ${entreprise?.tauxPenalites || entreprise?.tauxPenaliteRetard || 10}% (3 fois le taux directeur BCE).<br>
-        Indemnité forfaitaire de recouvrement: 40 € (art. D441-5 C. com.)
+        Taux BCE + 10 points (soit ~13% annuel).<br>
+        Indemnité forfaitaire de recouvrement: 40 €
       </div>
     </div>
-  </div>` : ''}
+  </div>
 
-  ${!isFacture && !isAvoirDoc && (entreprise?.mentionGaranties !== false) ? `
+  ${!isFacture && (entreprise?.mentionGaranties !== false) ? `
   <!-- GARANTIES LÉGALES -->
   <div class="garanties">
     <h4> GARANTIES LÉGALES (Code civil & Code de la construction)</h4>
@@ -1527,27 +740,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture && !isAvoirDoc && (entreprise?.mentionRetractation !== false) ? `
+  ${!isFacture && (entreprise?.mentionRetractation !== false) ? `
   <!-- DROIT DE RÉTRACTATION -->
   <div class="retractation">
     <strong>⚠️ DROIT DE RÉTRACTATION</strong> (Art. L221-18 du Code de la consommation)<br>
     Vous disposez d'un délai de <strong>14 jours</strong> pour exercer votre droit de rétractation sans justification ni pénalité.
     Le délai court à compter de la signature du présent devis.
-    Pour l'exercer, envoyez une lettre recommandée AR à : ${entreprise?.adresse ? entreprise.adresse.replace(/\n/g, ', ') : entreprise?.nom || ''}
+    Pour l'exercer, envoyez une lettre recommandée AR à: ${entreprise?.adresse?.split('\\n')[0] || '[Adresse]'}
   </div>
   ` : ''}
 
-  ${!isAvoirDoc && (entreprise?.mediateur || entreprise?.mediateurContact) ? `
-  <!-- MÉDIATEUR DE LA CONSOMMATION -->
-  <div class="retractation" style="margin-top:10px">
-    <strong>MÉDIATEUR DE LA CONSOMMATION</strong> (Art. L612-1 du Code de la consommation)<br>
-    En cas de litige, vous pouvez recourir gratuitement au service de médiation :
-    ${entreprise.mediateur ? `<strong>${entreprise.mediateur}</strong>` : ''}
-    ${entreprise.mediateurContact ? ` — ${entreprise.mediateurContact}` : ''}
-  </div>
-  ` : ''}
-
-  ${!isAvoirDoc && entreprise?.cgv ? `
+  ${entreprise?.cgv ? `
   <!-- CGV PERSONNALISÉES -->
   <div class="conditions" style="margin-top:10px">
     <h4>CONDITIONS PARTICULIÈRES</h4>
@@ -1555,7 +758,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   </div>
   ` : ''}
 
-  ${!isFacture && !isAvoirDoc ? `
+  ${!isFacture ? `
   <!-- SIGNATURES -->
   <div class="signature-section">
     <div class="signature-box">
@@ -1565,7 +768,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     <div class="signature-box">
       <h4>Le Client</h4>
       <p>Signature précédée de la mention manuscrite:<br><strong>"Bon pour accord"</strong> + Date</p>
-      ${doc.signature ? '<div style="margin-top:15px;color:#16a34a;font-weight:bold">✓ Signé électroniquement'+(doc.signataire ? ' par '+doc.signataire : '')+' le '+new Date(doc.signatureDate).toLocaleDateString('fr-FR')+'</div>' : ''}
+      ${(doc.signature_data || doc.signature) ? `<div style="margin-top:10px">${doc.signature_data ? `<img src="${doc.signature_data}" style="max-height:80px;max-width:200px;border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:white" />` : ''}<div style="font-size:8pt;color:#16a34a;font-weight:bold;margin-top:4px">✓ Signé électroniquement le ${new Date(doc.signature_date || doc.signatureDate).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}${doc.signataire_nom ? ` par ${doc.signataire_nom}` : ''}</div></div>` : ''}
     </div>
   </div>
   ` : ''}
@@ -1574,19 +777,16 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   <div class="footer">
     <strong>${entreprise?.nom || ''}</strong>
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
-    ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
+    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}<br>
     ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
-    ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}
-    ${getRCSComplet() ? ` | ${getRCSComplet()}` : ''}<br>
-    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}` : ''}<br>
+    ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
+    ${getRCSComplet() ? ` · ${getRCSComplet()}` : ''}<br>
+    ${entreprise?.tvaIntra ? `TVA Intracommunautaire: ${entreprise.tvaIntra}<br>` : ''}
     <div class="assurances">
-      ${entreprise?.decennaleAssureur ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.decennaleActivites ? ` — Activités: ${entreprise.decennaleActivites}` : ''}` : ''}
-      ${entreprise?.decennaleAssureur && entreprise?.rcProAssureur ? '<br>' : ''}
-      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide jusqu'au ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${entreprise.rcProMontantGarantie ? ` — Garantie: ${entreprise.rcProMontantGarantie} €` : ''}${entreprise.rcProZone ? ` — Zone: ${entreprise.rcProZone}` : ''}` : ''}
-      ${entreprise?.mentionRGE !== false && Array.isArray(entreprise?.labels) && entreprise.labels.filter(l => l.actif).length > 0 ? '<br>' + entreprise.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${new Date(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur} N°${entreprise.rcProNumero}${entreprise.rcProValidite ? ` (Valide: ${new Date(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${entreprise?.rcProAssureur && entreprise?.decennaleAssureur ? '<br>' : ''}
+      ${entreprise?.decennaleAssureur ? `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${new Date(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
     </div>
-    ${isAvoirDoc ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Avoir émis conformément à l'article 441-3 du Code de Commerce. Ce document annule et remplace partiellement ou totalement la facture de référence.</div>` : !isFacture ? `<div style="margin-top:6px;font-size:6.5pt;color:#666">Devis reçu avant l'exécution des travaux. Conditions de paiement et pénalités de retard conformes aux articles L441-10 et L441-6 du Code de commerce.</div>` : ''}
   </div>
 </body>
 </html>`;
@@ -1606,57 +806,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
   };
 
-  // Print/Download PDF — routes factures through Factur-X PDF/A-3 pipeline
-  const printPDF = async (doc) => {
+  // Print/Download PDF
+  const printPDF = (doc) => {
     const content = downloadPDF(doc);
-
-    // Factures: generate real Factur-X PDF/A-3 with embedded XML
-    if (doc.type === 'facture') {
-      try {
-        setActionLoading('pdf');
-        const { generateAndDownloadFacturX } = await import('../lib/facturx-pdf.js');
-        const client = clients.find(c => c.id === doc.client_id);
-        await generateAndDownloadFacturX(doc, client || {}, entreprise || {}, content);
-        showToast('Facture Factur-X téléchargée ✓', 'success');
-        // Auto-upload to Google Drive if connected
-        triggerDriveUpload(doc);
-      } catch (err) {
-        console.error('Factur-X generation failed, fallback to HTML:', err);
-        showToast('Erreur Factur-X, export HTML de secours', 'warning');
-        fallbackHtmlPrint(content, doc);
-      } finally {
-        setActionLoading(null);
-      }
-      return;
-    }
-
-    // Devis & autres: comportement HTML existant
-    fallbackHtmlPrint(content, doc);
-    // Also try Drive upload for devis
-    triggerDriveUpload(doc);
-  };
-
-  // Google Drive auto-upload (fire-and-forget)
-  const triggerDriveUpload = async (doc) => {
-    try {
-      const driveReady = await isProviderSyncReady('google_drive');
-      if (!driveReady) return;
-      const { triggerAutoSync } = await import('../services/syncService');
-      await triggerAutoSync('google_drive', 'document', 'push');
-      showToast('📁 Document sauvegardé sur Google Drive', 'success');
-    } catch {
-      // Silently fail — Drive upload is non-critical
-    }
-  };
-
-  // Legacy HTML print/download (used for devis and as fallback)
-  const fallbackHtmlPrint = (content, doc) => {
-    const filename = `${doc.facture_type === 'avoir' ? 'Avoir' : doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
+    const filename = `${doc.type === 'facture' ? 'Facture' : 'Devis'}_${doc.numero}.html`;
 
     if (isMobile()) {
+      // Mobile: Download as HTML file that opens in browser for PDF conversion
       const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
 
+      // Try native share first if available
       if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: 'text/html' });
         if (navigator.canShare({ files: [file] })) {
@@ -1664,15 +824,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             files: [file],
             title: `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`,
           }).catch(() => {
+            // Fallback to download
             triggerDownload(url, filename);
           });
           return;
         }
       }
 
+      // Fallback: trigger download
       triggerDownload(url, filename);
       showToast('Fichier téléchargé - Ouvrez-le et utilisez "Imprimer" > "Enregistrer en PDF"', 'info');
     } else {
+      // Desktop: Open and print as before
       const w = window.open('', '_blank');
       if (!w) {
         showToast('Veuillez autoriser les popups pour générer le PDF', 'error');
@@ -1695,274 +858,111 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
-  // Batch export all filtered documents as PDFs
-  const batchExportPDF = (docs) => {
-    if (docs.length === 0) return;
-    if (docs.length > 20) {
-      showToast(`Trop de documents (${docs.length}). Filtrez pour réduire à 20 max.`, 'error');
-      return;
-    }
-    setActionLoading('batch');
-    docs.forEach((doc, i) => {
-      setTimeout(() => {
-        printPDF(doc);
-        if (i === docs.length - 1) {
-          setActionLoading(null);
-          showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''}`, 'success');
-        }
-      }, i * 500);
-    });
-  };
-
-  // B8: Export CSV/Excel
-  const exportCSV = (docs) => {
-    if (docs.length === 0) return;
-    const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
-    const rows = docs.map(d => {
-      const client = clients.find(c => c.id === d.client_id);
-      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
-      const fmtDate = (v) => v ? new Date(v).toLocaleDateString('fr-FR') : '';
-      return [
-        d.numero || '',
-        d.type === 'facture' ? 'Facture' : 'Devis',
-        clientName,
-        fmtDate(d.date),
-        (d.objet || '').replace(/;/g, ','),
-        (d.total_ht || 0).toFixed(2),
-        (d.tva || 0).toFixed(2),
-        (d.total_ttc || d.montant_ttc || 0).toFixed(2),
-        d.statut || '',
-        fmtDate(d.date_envoi),
-        fmtDate(d.date_signature),
-        fmtDate(d.date_paiement),
-      ];
-    });
-    const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `export-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
-  };
-
-  // ============================================================================
-  // Signature link generation
-  // ============================================================================
-  const buildSignatureUrl = (token) => token ? `${window.location.origin}/devis/signer/${token}` : null;
-
-  const getOrGenerateSignatureToken = async (doc) => {
-    // Return existing valid token
+  // Generate or retrieve signature token for a devis
+  const getOrCreateSignatureToken = async (doc) => {
+    // Reuse existing valid token
     if (doc.signature_token && doc.signature_expires_at && new Date(doc.signature_expires_at) > new Date()) {
       return doc.signature_token;
     }
-    // Generate new token via RPC
+    // Generate new token via Supabase RPC
     if (supabase && !supabase._isDemo) {
       try {
-        // Ensure entreprise config is up to date for the public signature page
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && entreprise) {
-            await supabase.from('entreprise_config').upsert({
-              user_id: user.id,
-              nom: entreprise.nom || null,
-              logo: entreprise.logo || null,
-              adresse: entreprise.adresse || null,
-              telephone: entreprise.tel || null,
-              email: entreprise.email || null,
-              siret: entreprise.siret || null,
-              conditions_paiement: entreprise.conditionsPaiement || entreprise.conditions_paiement || null,
-              mentions_legales: entreprise.mentionsLegales || entreprise.mentions_legales || null,
-              couleur_principale: entreprise.couleur || couleur || '#f97316',
-            }, { onConflict: 'user_id' });
-          }
-        } catch (e) { /* non-critical */ }
-
         const { data, error } = await supabase.rpc('generate_signature_token', { p_devis_id: doc.id });
         if (!error && data) {
-          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-          setDevis(prev => prev.map(d => d.id === doc.id ? { ...d, signature_token: data, signature_expires_at: expiresAt } : d));
-          if (selected?.id === doc.id) {
-            setSelectedDevis(prev => prev?.id === doc.id ? { ...prev, signature_token: data, signature_expires_at: expiresAt } : prev);
-          }
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          onUpdate(doc.id, { signature_token: data, signature_expires_at: expiresAt });
+          setSelected(s => s?.id === doc.id ? { ...s, signature_token: data, signature_expires_at: expiresAt } : s);
           return data;
         }
-      } catch (e) { /* fallback to null */ }
+      } catch (err) { console.error('Token generation error:', err); }
     }
     return null;
   };
 
-  // ============ PRE-SEND VALIDATION ============
-  const [sendValidationIssues, setSendValidationIssues] = useState(null); // null or { issues: [], doc }
+  // Build signature URL for a devis
+  const getSignatureUrl = (token) => token ? `${window.location.origin}/devis/signer/${token}` : null;
 
-  /**
-   * validateDevisForSend — checks all prerequisites before allowing send
-   * Returns array of { id, label, action?, actionLabel? } issues, or empty array if valid.
-   */
-  const validateDevisForSend = (doc) => {
-    const issues = [];
+  // Generate or reuse payment token for factures
+  const getOrCreatePaymentToken = async (doc) => {
+    if (doc.payment_token && doc.payment_token_expires_at && new Date(doc.payment_token_expires_at) > new Date()) {
+      return doc.payment_token;
+    }
+    if (supabase && !supabase._isDemo) {
+      try {
+        const { data, error } = await supabase.rpc('generate_payment_token', { p_facture_id: doc.id });
+        if (!error && data) {
+          const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+          onUpdate(doc.id, { payment_token: data, payment_token_expires_at: expiresAt });
+          setSelected(s => s?.id === doc.id ? { ...s, payment_token: data, payment_token_expires_at: expiresAt } : s);
+          return data;
+        }
+      } catch (err) { console.error('Payment token generation error:', err); }
+    }
+    return null;
+  };
+
+  // Build payment URL for a facture
+  const getPaymentUrl = (token) => token ? `${window.location.origin}/pay/${token}` : null;
+
+  const sendWhatsApp = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
-
-    // 1. Client must exist
-    if (!doc.client_id || !client) {
-      issues.push({ id: 'no_client', label: 'Aucun client associé au devis', actionLabel: 'Modifier le devis', action: 'edit' });
+    const phone = (client?.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
+    let message = `Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
+    // Add signature link for devis
+    if (doc.type === 'devis') {
+      const token = await getOrCreateSignatureToken(doc);
+      const signUrl = getSignatureUrl(token);
+      if (signUrl) message += `\n\nSignez en ligne : ${signUrl}`;
     }
-
-    // 2. Must have at least one line
-    const allLignes = doc.sections?.length > 0
-      ? doc.sections.flatMap(s => s.lignes || [])
-      : (doc.lignes || []);
-    if (allLignes.length === 0) {
-      issues.push({ id: 'no_lignes', label: 'Aucune ligne de prestation', actionLabel: 'Ajouter des lignes', action: 'edit' });
+    if (doc.type === 'facture' && doc.statut !== 'payee') {
+      const token = await getOrCreatePaymentToken(doc);
+      const payUrl = getPaymentUrl(token);
+      if (payUrl) message += `\n\nPayez en ligne : ${payUrl}`;
     }
-
-    // 3. Total HT must be > 0
-    const totalHT = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
-    if (totalHT <= 0 && allLignes.length > 0) {
-      issues.push({ id: 'zero_total', label: 'Montant total HT = 0 € — vérifiez les prix unitaires', actionLabel: 'Modifier les lignes', action: 'edit' });
-    }
-
-    // 4. Lines with zero price
-    const zeroLines = allLignes.filter(l => {
-      const pu = parseFloat(l.prixUnitaire || l.prix_unitaire || 0);
-      return pu <= 0;
-    });
-    if (zeroLines.length > 0) {
-      const desc = zeroLines.length === 1
-        ? `1 ligne sans prix : "${(zeroLines[0].description || 'Sans titre').substring(0, 40)}"`
-        : `${zeroLines.length} lignes sans prix unitaire`;
-      issues.push({ id: 'zero_price_lines', label: desc, actionLabel: 'Corriger les prix', action: 'edit' });
-    }
-
-    // 5. Entreprise info — SIRET required for legal compliance (art. R123-237 Code de commerce)
-    if (!entreprise?.siret) {
-      issues.push({ id: 'no_siret', label: 'SIRET non renseigné — mention obligatoire sur les devis et factures (loi française)', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
-    }
-
-    // 6. Entreprise address — required for legal compliance
-    if (!entreprise?.adresse) {
-      issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
-    }
-
-    // 7. Entreprise name
-    if (!entreprise?.nom) {
-      issues.push({ id: 'no_nom', label: 'Nom de l\'entreprise manquant', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'identite', settingsField: 'nom', isLegal: true });
-    }
-
-    // 8. Forme juridique — required for legal compliance
-    if (!entreprise?.formeJuridique) {
-      issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée — mention obligatoire', actionLabel: 'Compléter le profil →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
-    }
-
-    // 9. Assurance décennale — obligatoire pour les artisans BTP
-    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) {
-      issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante — obligatoire pour les artisans BTP', actionLabel: 'Compléter les assurances →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
-    }
-
-    return issues;
-  };
-
-  /**
-   * getLegalIssues — returns only the legal profile issues (SIRET, adresse, etc.)
-   */
-  const getLegalIssues = () => {
-    const issues = [];
-    if (!entreprise?.siret) issues.push({ id: 'no_siret', label: 'SIRET non renseigné', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'siret', isLegal: true });
-    if (!entreprise?.adresse) issues.push({ id: 'no_adresse', label: 'Adresse entreprise manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'identite', settingsField: 'adresse', isLegal: true });
-    if (!entreprise?.formeJuridique) issues.push({ id: 'no_forme_juridique', label: 'Forme juridique non renseignée', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'legal', settingsField: 'formeJuridique', isLegal: true });
-    if (!entreprise?.decennaleAssureur || !entreprise?.decennaleNumero) issues.push({ id: 'no_decennale', label: 'Assurance décennale manquante', actionLabel: 'Compléter →', action: 'settings', settingsTab: 'assurances', settingsField: 'decennaleAssureur', isLegal: true });
-    return issues;
-  };
-
-  /**
-   * tryDownload — checks legal compliance before PDF download
-   * Shows warning modal if profile incomplete, but allows "download anyway"
-   */
-  const tryDownload = (doc, downloadFn) => {
-    const legalIssues = getLegalIssues();
-    if (legalIssues.length > 0) {
-      setSendValidationIssues({ issues: legalIssues, doc, sendFn: downloadFn, isDownload: true });
-      return;
-    }
-    downloadFn(doc);
-  };
-
-  /**
-   * trySend — validates, shows issues if any, or proceeds with send function
-   */
-  const trySend = (doc, sendFn) => {
-    const issues = validateDevisForSend(doc);
-    if (issues.length > 0) {
-      setSendValidationIssues({ issues, doc, sendFn });
-      return;
-    }
-    sendFn(doc);
-  };
-
-  // Send helpers — update status FIRST, then open communication link in setTimeout
-  // to prevent "Detached while handling command" crashes from simultaneous state updates + navigation
-  const sendWhatsApp = (doc) => {
-    const client = clients.find(c => c.id === doc.client_id);
-    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.telephone) { showToast('Aucun telephone client renseigne', 'error'); return; }
-    const wasBrouillon = doc.statut === 'brouillon';
-    if (wasBrouillon) {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
-    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
     if (addEchange) addEchange({ type: 'whatsapp', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const phone = (client.telephone || '').replace(/\s/g, '').replace(/^0/, '33');
-    setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Bonjour, voici votre ${doc.type} ${doc.numero}: ${formatMoney(doc.total_ttc)}`)}`, '_blank');
-    }, 100);
-    // Show post-send confirmation modal
-    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'WhatsApp', doc });
   };
-
-  const sendEmail = (doc) => {
+  const sendEmail = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
-    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
-    if (!client?.email) { showToast('Aucun email client renseigne', 'error'); return; }
-    const wasBrouillon = doc.statut === 'brouillon';
-    if (wasBrouillon) {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    let body = `Bonjour,%0A%0AVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.`;
+    // Add signature link for devis
+    if (doc.type === 'devis') {
+      const token = await getOrCreateSignatureToken(doc);
+      const signUrl = getSignatureUrl(token);
+      if (signUrl) body += `%0A%0ASignez en ligne : ${encodeURIComponent(signUrl)}`;
     }
+    if (doc.type === 'facture' && doc.statut !== 'payee') {
+      const token = await getOrCreatePaymentToken(doc);
+      const payUrl = getPaymentUrl(token);
+      if (payUrl) body += `%0A%0APayez en ligne : ${encodeURIComponent(payUrl)}`;
+    }
+    body += '%0A%0ACordialement';
+    window.location.href = `mailto:${client?.email || ''}?subject=${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}&body=${body}`;
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
     if (addEchange) addEchange({ type: 'email', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `Envoi ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    setTimeout(() => {
-      const subject = encodeURIComponent(`${doc.type === 'facture' ? 'Facture' : 'Devis'} ${doc.numero}`);
-      const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint votre ${doc.type} ${doc.numero} d'un montant de ${formatMoney(doc.total_ttc)}.\n\nCordialement`);
-      window.open(`mailto:${client.email}?subject=${subject}&body=${body}`, '_self');
-    }, 100);
-    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'Email', doc });
   };
 
-  // SMS via native protocol (mobile only)
-  const sendSMS = (doc) => {
+  // SMS via native protocol (opens default SMS app)
+  const sendSMS = async (doc) => {
     const client = clients.find(c => c.id === doc.client_id);
-    if (!client) { showToast('Client introuvable. Veuillez associer un client au devis.', 'error'); return; }
     const phone = (client?.telephone || '').replace(/\s/g, '');
-    if (!phone) { showToast('Aucun telephone client renseigne', 'error'); return; }
-    if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-      showToast('SMS disponible uniquement sur mobile', 'info');
-      return;
+    let message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
+    // Add signature link for devis
+    if (doc.type === 'devis') {
+      const token = await getOrCreateSignatureToken(doc);
+      const signUrl = getSignatureUrl(token);
+      if (signUrl) message += `\nSignez en ligne: ${signUrl}`;
     }
-    if (doc.statut === 'brouillon') {
-      onUpdate(doc.id, { statut: 'envoye' });
-      setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye' } : s);
+    if (doc.type === 'facture' && doc.statut !== 'payee') {
+      const token = await getOrCreatePaymentToken(doc);
+      const payUrl = getPaymentUrl(token);
+      if (payUrl) message += `\nPayez en ligne: ${payUrl}`;
     }
+    // Use sms: protocol - works on mobile and desktop with SMS apps
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
+    if (doc.statut === 'brouillon') onUpdate(doc.id, { statut: 'envoye' });
     if (addEchange) addEchange({ type: 'sms', client_id: doc.client_id, document: doc.numero, montant: doc.total_ttc, objet: `SMS ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}` });
-    const message = `Bonjour, voici votre ${doc.type === 'facture' ? 'facture' : 'devis'} ${doc.numero}: ${formatMoney(doc.total_ttc)}`;
-    setTimeout(() => {
-      window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
-    }, 100);
-    const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
-    setShowSendConfirmation({ clientName, montant: doc.total_ttc, canal: 'SMS', doc });
   };
 
   // Mark document as viewed (for tracking)
@@ -1988,16 +988,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return getDaysSinceSent(doc) >= 7;
   };
 
-  // Devis expiry detection
-  const getExpiryDaysLeft = (doc) => {
-    if (doc.type !== 'devis' || ['accepte', 'refuse', 'facture', 'acompte_facture'].includes(doc.statut)) return null;
-    const expiryDate = new Date(doc.date);
-    expiryDate.setDate(expiryDate.getDate() + (doc.validite || 30));
-    return Math.ceil((expiryDate - Date.now()) / 86400000);
-  };
-  const isExpiringSoon = (doc) => { const d = getExpiryDaysLeft(doc); return d !== null && d <= 7 && d > 0; };
-  const isExpired = (doc) => { const d = getExpiryDaysLeft(doc); return d !== null && d <= 0; };
-
   const Snackbar = () => snackbar && (
     <div className="fixed bottom-6 left-1/2 z-50 animate-snackbar">
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-sm ${snackbar.type === 'success' ? 'bg-emerald-600/95' : snackbar.type === 'error' ? 'bg-red-600/95' : 'bg-slate-800/95'} text-white min-w-[280px] max-w-[90vw]`}>
@@ -2011,61 +1001,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     </div>
   );
 
-  // === DEVIS WIZARD (extracted so it's available in ALL mode returns) ===
-  const devisWizardElement = (
-    <DevisWizard
-      isOpen={showDevisWizard}
-      onClose={() => { setShowDevisWizard(false); setEditingDevis(null); }}
-      initialData={editingDevis}
-      onSubmit={async (devisData) => {
-        const numero = await generateNumero(devisData.type);
-        const newDevis = await onSubmit({ ...devisData, numero });
-        if (!newDevis?.id) {
-          throw new Error('Le devis n\'a pas pu etre cree. Verifiez les donnees et reessayez.');
-        }
-        setSelected(newDevis);
-        setMode('preview');
-        setShowCreationSuccess({ devis: newDevis, numero });
-        return newDevis;
-      }}
-      onUpdate={async (id, devisData) => {
-        await onUpdate(id, devisData);
-        setSelected(prev => prev ? { ...prev, ...devisData } : prev);
-        setDevis(prev => prev.map(d => d.id === id ? { ...d, ...devisData, updatedAt: new Date().toISOString() } : d));
-        setEditingDevis(null);
-        setShowDevisWizard(false);
-        showToast('Document modifié avec succès', 'success');
-      }}
-      clients={clients}
-      addClient={(data) => {
-        const c = { id: generateId(), ...data };
-        setClients(prev => [...prev, c]);
-        return c;
-      }}
-      catalogue={catalogue}
-      chantiers={chantiers}
-      entreprise={entreprise}
-      isDark={isDark}
-      couleur={couleur}
-      onSwitchToAI={() => { setPage('ia-devis'); }}
-      onSwitchToExpress={() => { setShowDevisExpressModal(true); }}
-    />
-  );
-
   // === SIGNATURE VIEW ===
   if (mode === 'sign' && selected) return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h2 className="text-2xl font-bold">Signature Client</h2></div>
+      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h1 className="text-2xl font-bold">Signature Client</h1></div>
       <div className="bg-white rounded-2xl border p-6 text-center">
         <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
         <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
-        <input
-          type="text"
-          value={signataireName}
-          onChange={e => setSignataireName(e.target.value)}
-          placeholder="Nom du signataire"
-          className="w-64 mx-auto px-4 py-2 border rounded-lg text-center mb-4 block"
-        />
         <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
         <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
         <div className="flex justify-center gap-4 mt-4">
@@ -2085,20 +1027,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const soldeFacture = getSoldeFacture(selected.id);
     const resteAFacturer = selected.total_ttc - facturesLiees.reduce((s, f) => s + (f.total_ttc || 0), 0);
     const isDevis = selected.type === 'devis';
-    const isAvoir = selected.facture_type === 'avoir';
-    const currentEcheancier = echeancierCache[selected.id] || null;
-    const hasEcheancier = !!selected.echeancier_id || !!currentEcheancier;
-    const canAcompte = isDevis && (selected.statut === 'accepte' || selected.statut === 'signe') && !acompteFacture && !hasEcheancier;
+    const canAcompte = isDevis && ['accepte', 'signe'].includes(selected.statut) && !acompteFacture;
     const canFacturer = isDevis && ['accepte', 'signe', 'acompte_facture'].includes(selected.statut) && !soldeFacture && resteAFacturer > 0;
     const hasChantier = !!selected.chantier_id;
     const linkedChantier = chantiers.find(c => c.id === selected.chantier_id);
     const canCreateChantier = isDevis && !hasChantier && addChantier;
-
-    // Avoirs liés (pour factures) et facture source (pour avoirs)
-    const avoirsLies = !isAvoir && selected.type === 'facture' ? devis.filter(d => d.facture_type === 'avoir' && d.avoir_source_id === selected.id) : [];
-    const totalAvoirs = avoirsLies.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
-    const restantDu = (selected.total_ttc || 0) - totalAvoirs;
-    const sourceFacture = isAvoir && selected.avoir_source_id ? devis.find(d => d.id === selected.avoir_source_id) : null;
 
     const openChantierModal = () => {
       if (!addChantier) return;
@@ -2142,22 +1075,18 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Status step calculation for progress display
     const statusSteps = isDevis ? [
       { id: 'brouillon', label: 'Brouillon', statuses: ['brouillon'] },
-      { id: 'envoye', label: 'Envoyé', statuses: ['envoye', 'vu'] },
-      { id: 'accepte', label: 'Signé', statuses: ['accepte', 'signe'] },
+      { id: 'envoye', label: 'Envoyé', statuses: ['envoye'] },
+      { id: 'signe', label: 'Signé', statuses: ['accepte', 'signe'] },
       { id: 'facture', label: 'Facturé', statuses: ['acompte_facture', 'facture'] },
-    ] : isAvoir ? [
-      { id: 'brouillon', label: 'Brouillon', statuses: ['brouillon'] },
-      { id: 'emis', label: 'Émis', statuses: ['envoye'] },
-      { id: 'applique', label: 'Appliqué', statuses: ['payee'] },
     ] : [
       { id: 'envoye', label: 'Envoyée', statuses: ['brouillon', 'envoye'] },
       { id: 'payee', label: 'Payée', statuses: ['payee'] },
     ];
 
     const getStepState = (step) => {
-      const order = { brouillon: 0, envoye: 1, vu: 1, accepte: 2, signe: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: -1 };
-      const currentOrder = order[selected.statut] ?? 0;
-      const stepMaxOrder = Math.max(...step.statuses.map(s => order[s] ?? 0));
+      const order = { brouillon: 0, envoye: 1, accepte: 2, signe: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: -1 };
+      const currentOrder = order[selected.statut] || 0;
+      const stepMaxOrder = Math.max(...step.statuses.map(s => order[s] || 0));
       const isActive = step.statuses.includes(selected.statut);
       const isPast = currentOrder > stepMaxOrder;
       return { isActive, isPast };
@@ -2168,14 +1097,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       if (selected.statut === 'refuse') return { text: 'Dupliquer pour relancer', color: 'text-slate-500' };
       if (isDevis) {
         if (selected.statut === 'brouillon') return { text: '→ Envoyer au client', color: 'text-amber-600' };
-        if (selected.statut === 'envoye' || selected.statut === 'vu') return { text: '→ Faire signer', color: 'text-blue-600' };
+        if (selected.statut === 'envoye') return { text: '→ Faire signer', color: 'text-blue-600' };
         if (selected.statut === 'accepte' || selected.statut === 'signe') return { text: '→ Créer facture', color: 'text-emerald-600' };
         if (selected.statut === 'acompte_facture') return { text: `→ Facturer solde (${formatMoney(resteAFacturer)})`, color: 'text-purple-600' };
         if (selected.statut === 'facture') return { text: '✓ Terminé', color: 'text-indigo-600' };
-      } else if (isAvoir) {
-        if (selected.statut === 'brouillon') return { text: '→ Émettre l\'avoir', color: 'text-amber-600' };
-        if (selected.statut === 'envoye') return { text: '→ Appliquer', color: 'text-emerald-600' };
-        if (selected.statut === 'payee') return { text: '✓ Appliqué', color: 'text-emerald-600' };
       } else {
         if (selected.statut === 'brouillon') return { text: '→ Envoyer', color: 'text-amber-600' };
         if (selected.statut === 'envoye') return { text: '→ Encaisser', color: 'text-purple-600' };
@@ -2194,146 +1119,48 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     // Get primary CTA based on status
     const getPrimaryCTA = () => {
       if (isDevis) {
-        if (selected.statut === 'brouillon') {
-          const ttc = selected.total_ttc || 0;
-          if (ttc <= 0) return { label: 'Envoyer', icon: Send, action: () => {}, color: 'bg-amber-500', disabled: true, tooltip: 'Ajoutez un montant avant d\'envoyer' };
-          return { label: 'Envoyer', icon: Send, action: () => trySend(selected, sendEmail), color: 'bg-amber-500 hover:bg-amber-600' };
-        }
-        if (selected.statut === 'envoye' || selected.statut === 'vu') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
-        if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => {
-          if (canAcompte) { setShowAcompteModal(true); return; }
-          confirmAndCreateSolde();
-        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
-        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: confirmAndCreateSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
-      } else if (isAvoir) {
-        if (selected.statut === 'brouillon') return { label: 'Émettre', icon: Send, action: async () => {
-          const ok = await confirm({ title: 'Émettre l\'avoir ?', message: `L'avoir ${selected.numero} sera émis et ne pourra plus être supprimé.` });
-          if (ok) { onUpdate(selected.id, { statut: 'envoye' }); setSelected(s => ({ ...s, statut: 'envoye' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} émis` }); }
-        }, color: 'bg-amber-500 hover:bg-amber-600' };
-        if (selected.statut === 'envoye') return { label: 'Appliquer', icon: Check, action: async () => {
-          const ok = await confirm({ title: 'Appliquer l\'avoir ?', message: `L'avoir sera marqué comme appliqué. L'impact comptable sera enregistré.` });
-          if (ok) { onUpdate(selected.id, { statut: 'payee' }); setSelected(s => ({ ...s, statut: 'payee' })); setSnackbar({ type: 'success', message: `Avoir ${selected.numero} appliqué` }); }
-        }, color: 'bg-emerald-500 hover:bg-emerald-600' };
+        if (selected.statut === 'brouillon') return { label: 'Envoyer', icon: Send, action: () => sendEmail(selected), color: 'bg-amber-500 hover:bg-amber-600' };
+        if (selected.statut === 'envoye') return { label: 'Faire signer', icon: PenTool, action: () => setShowSignaturePad(true), color: `bg-[${couleur}]`, style: { background: couleur } };
+        if (selected.statut === 'accepte' || selected.statut === 'signe') return { label: 'Facturer', icon: Receipt, action: () => canAcompte ? setShowAcompteModal(true) : createSolde(), color: 'bg-emerald-500 hover:bg-emerald-600' };
+        if (selected.statut === 'acompte_facture') return { label: `Facturer solde`, icon: Receipt, action: createSolde, color: 'bg-emerald-500 hover:bg-emerald-600' };
       } else {
-        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: CreditCard, action: () => setShowPaymentModal(true), color: '', style: { background: couleur } };
+        if (selected.statut !== 'payee') return { label: 'Encaisser', icon: QrCode, action: () => setShowPaymentModal(true), color: 'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600' };
       }
       return null;
     };
     const primaryCTA = getPrimaryCTA();
 
     return (
-    <>
       <div className="space-y-4">
-        {/* Lock Banner */}
-        {isDevis && relanceUserId && (
-          <LockBanner
-            entityType="devis"
-            entityId={selected.id}
-            userId={relanceUserId}
-            userName={entreprise?.nom || ''}
-            orgId={orgId}
-            isDark={isDark}
-            couleur={couleur}
-          />
-        )}
-
         {/* ============ ZONE 1: UNIFIED HEADER ============ */}
         <div className={`rounded-xl border p-3 sm:p-4 ${cardBg}`}>
           {/* Top row: back, title, client, actions */}
           <div className="flex items-start gap-3 mb-4">
-            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Retour à la liste" aria-label="Retour à la liste">
+            <button onClick={() => { setMode('list'); setSelected(null); }} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <ArrowLeft size={18} className={textMuted} />
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.facture_type === 'avoir' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') : selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
-                  {selected.facture_type === 'avoir' ? 'Avoir' : selected.type === 'facture' ? 'Facture' : 'Devis'}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${selected.type === 'facture' ? (isDark ? 'bg-purple-900/50 text-purple-400' : 'bg-purple-100 text-purple-700') : (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700')}`}>
+                  {selected.type === 'facture' ? 'Facture' : 'Devis'}
                 </span>
-                {isDevis && devisSnapshots.length > 0 && (
-                  <VersionSelector
-                    snapshots={devisSnapshots}
-                    onSelectVersion={(snap) => setViewingSnapshot(snap)}
-                    onCompareVersions={(a, b) => setComparingSnapshots({ a, b })}
-                    isDark={isDark}
-                    couleur={couleur}
-                  />
-                )}
                 {needsFollowUp(selected) && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
                 )}
-                {(() => {
-                  const legal = getLegalIssues();
-                  if (legal.length === 0) return null;
-                  return (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-help ${isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}
-                      title={`Champs manquants : ${legal.map(i => i.label).join(', ')}`}
-                    >
-                      ⚠ {legal.length} champ{legal.length > 1 ? 's' : ''} léga{legal.length > 1 ? 'ux' : 'l'} manquant{legal.length > 1 ? 's' : ''}
-                    </span>
-                  );
-                })()}
               </div>
-              <h2 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h2>
-              <p className={`text-sm ${textMuted}`}>
-                {cleanClientName(client) || selected.client_nom || ''}
-                {!cleanClientName(client) && !selected.client_nom && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(selected.id); }}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${isDark ? 'bg-amber-900/40 text-amber-400 hover:bg-amber-900/60' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'} transition-colors`}
-                  >
-                    <AlertTriangle size={11} /> Aucun client — Assigner →
-                  </button>
-                )}
-                {(cleanClientName(client) || selected.client_nom) && ` · `}{new Date(selected.date).toLocaleDateString('fr-FR')}
-                {selected.type === 'facture' && selected.date_echeance && (
-                  <span className={`ml-1 ${textMuted}`}> · Échéance: {new Date(selected.date_echeance).toLocaleDateString('fr-FR')}</span>
-                )}
-              </p>
+              <h1 className={`text-lg sm:text-xl font-bold truncate ${textPrimary}`}>{cleanNumero(selected.numero)}</h1>
+              <p className={`text-sm ${textMuted}`}>{cleanClientName(client)} {client?.prenom} · {new Date(selected.date).toLocaleDateString('fr-FR')}</p>
             </div>
 
-            {/* Header actions - with labels for better accessibility */}
+            {/* Header actions */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { console.error(e); } finally { setActionLoading(null); } })}
-                disabled={actionLoading === 'pdf'}
-                className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
-                title="Télécharger le PDF"
-                aria-label="Télécharger le PDF"
-              >
-                {actionLoading === 'pdf' ? <Loader2 size={18} className="animate-spin flex-shrink-0" /> : <Download size={18} className="flex-shrink-0" />}
-                <span className="hidden sm:inline text-sm font-medium">PDF</span>
+              <button onClick={() => previewPDF(selected)} className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Aperçu PDF">
+                <Eye size={18} />
               </button>
-              <button
-                onClick={() => previewPDF(selected)}
-                className={`min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                title="Aperçu du document"
-                aria-label="Voir l'aperçu du document"
-              >
-                <Eye size={18} className="flex-shrink-0" />
-                <span className="hidden sm:inline text-sm font-medium">Aperçu</span>
-              </button>
-              {/* Modifier button - only for editable statuses + edit permission */}
-              {canPerform('devis', 'edit') && ['brouillon', 'envoye', 'vu'].includes(selected.statut) && (
-                <button
-                  onClick={() => {
-                    setEditingDevis(selected);
-                    setShowDevisWizard(true);
-                  }}
-                  className="min-w-[44px] min-h-[44px] sm:px-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-white hover:shadow-lg"
-                  style={{ backgroundColor: couleur }}
-                  title="Modifier ce document"
-                  aria-label="Modifier ce document"
-                >
-                  <Pen size={18} className="flex-shrink-0" />
-                  <span className="hidden sm:inline text-sm font-medium">Modifier</span>
-                </button>
-              )}
               <div className="relative">
                 <button
                   onClick={() => setShowActionsMenu(!showActionsMenu)}
                   className={`p-2.5 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                  aria-label="Plus d'actions"
                 >
                   <MoreVertical size={18} />
                 </button>
@@ -2341,36 +1168,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowActionsMenu(false)} />
                     <div className={`absolute right-0 top-11 z-50 rounded-xl shadow-xl border overflow-hidden min-w-[160px] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                      {canPerform('devis', 'create') && (
-                      <button onClick={async () => { setActionLoading('duplicate'); setShowActionsMenu(false); try { await duplicateDocument(selected); } finally { setActionLoading(null); } }} disabled={actionLoading === 'duplicate'} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                        {actionLoading === 'duplicate' ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} Dupliquer
+                      <button onClick={() => { duplicateDocument(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
+                        <Copy size={16} /> Dupliquer
                       </button>
-                      )}
-                      {canPerform('devis', 'edit') && selected.type === 'devis' && ['accepte', 'envoye', 'facture'].includes(selected.statut) && (
-                        <button onClick={() => { createAvenant(selected); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <Edit3 size={16} /> Créer un avenant
-                        </button>
-                      )}
-                      {canPerform('devis', 'create') && selected.type === 'devis' && ['accepte', 'signe'].includes(selected.statut) && canAcompte && (
-                        <button onClick={() => { setShowEcheancierModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <CreditCard size={16} /> Demander un acompte
-                        </button>
-                      )}
-                      {canPerform('devis', 'create') && selected.type === 'facture' && selected.facture_type !== 'avoir' && (
-                        <button onClick={() => { setShowAvoirModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                          <RotateCcw size={16} /> Créer un avoir
-                        </button>
-                      )}
-                      {canPerform('devis', 'edit') && (
-                      <button onClick={() => { setShowSaveTemplateModal(true); setShowActionsMenu(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                        <Star size={16} /> Sauvegarder comme modèle
-                      </button>
-                      )}
-                      {canPerform('devis', 'delete') && !(isAvoir && selected.statut !== 'brouillon') && (
-                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: isAvoir ? 'Supprimer cet avoir brouillon ?' : 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                      <button onClick={async () => { setShowActionsMenu(false); const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer ce document ?' }); if (confirmed) { onDelete(selected.id); setSelected(null); setMode('list'); } }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                         <Trash2 size={16} /> Supprimer
                       </button>
-                      )}
                     </div>
                   </>
                 )}
@@ -2378,550 +1181,297 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           </div>
 
-          {/* Workflow progress - enhanced stepper */}
-          <div className="mb-4">
-            <div className="flex items-start gap-0">
-              {statusSteps.map((step, idx) => {
-                const { isActive, isPast } = getStepState(step);
-                const isRefused = selected.statut === 'refuse';
-                const isLast = idx === statusSteps.length - 1;
-
-                // Calculate time elapsed for active step
-                const getTimeElapsed = () => {
-                  if (!isActive || !selected.date) return null;
-                  const days = Math.floor((Date.now() - new Date(selected.updated_at || selected.date).getTime()) / 86400000);
-                  if (days === 0) return "aujourd'hui";
-                  if (days === 1) return 'hier';
-                  return `il y a ${days}j`;
-                };
-                const timeElapsed = getTimeElapsed();
-
-                return (
-                  <React.Fragment key={step.id}>
-                    <div className="flex flex-col items-center gap-1 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0 ${
-                          isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
-                          isActive ? 'text-white shadow-md' :
-                          isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
-                          (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
-                        }`}
-                        style={isActive ? { backgroundColor: couleur, boxShadow: `0 2px 8px ${couleur}40` } : {}}
-                      >
-                        {isPast ? '✓' : idx + 1}
-                      </div>
-                      <span className={`text-[11px] font-medium text-center leading-tight ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
-                        {step.label}
-                      </span>
-                      {timeElapsed && (
-                        <span className="text-[10px] font-medium" style={{ color: couleur }}>
-                          {timeElapsed}
-                        </span>
-                      )}
+          {/* Workflow progress - compact inline */}
+          <div className="flex items-center gap-1 mb-4">
+            {statusSteps.map((step, idx) => {
+              const { isActive, isPast } = getStepState(step);
+              const isRefused = selected.statut === 'refuse';
+              const isLast = idx === statusSteps.length - 1;
+              return (
+                <React.Fragment key={step.id}>
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                        isRefused ? (isDark ? 'bg-red-900/70 text-red-400' : 'bg-red-100 text-red-600') :
+                        isActive ? 'text-white' :
+                        isPast ? (isDark ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-500 text-white') :
+                        (isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400')
+                      }`}
+                      style={isActive ? { backgroundColor: couleur } : {}}
+                    >
+                      {isPast ? '✓' : idx + 1}
                     </div>
-                    {!isLast && (
-                      <div className={`flex-1 h-0.5 mt-4 min-w-3 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-            {/* Next action guide banner */}
-            {nextAction && !nextAction.text.startsWith('✓') && (
-              <div className={`mt-3 px-3 py-2 rounded-lg flex items-center gap-2 text-xs font-medium ${isDark ? 'bg-slate-800/80' : 'bg-slate-50'}`}>
-                <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: couleur }} />
-                <span className={textMuted}>Prochaine étape :</span>
-                <span className={nextAction.color}>{nextAction.text.replace('→ ', '')}</span>
-              </div>
-            )}
+                    <span className={`text-xs font-medium hidden sm:inline ${isActive ? textPrimary : isPast ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : textMuted}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                  {!isLast && <div className={`w-4 sm:w-8 h-0.5 ${isPast ? (isDark ? 'bg-emerald-600' : 'bg-emerald-400') : (isDark ? 'bg-slate-700' : 'bg-slate-200')}`} />}
+                </React.Fragment>
+              );
+            })}
           </div>
 
-          {/* Action bar: Primary CTA + secondary actions */}
-          <div className="flex flex-col gap-3">
-            {/* Row 1: Primary CTA + Status badge */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Status dropdown - compact */}
-              {(() => {
-                const statusColors = DEVIS_STATUS_COLORS[selected.statut] || {};
-                const transitions = isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS;
-                const allowedNext = transitions[selected.statut] || [];
-                return (
-                  <select
-                    value={selected.statut}
-                    onChange={e => {
-                      const newStatus = e.target.value;
-                      // Validate before allowing transition to 'envoye'
-                      if (newStatus === 'envoye' && selected.statut === 'brouillon') {
-                        const issues = validateDevisForSend(selected);
-                        if (issues.length > 0) {
-                          setSendValidationIssues({ issues, doc: selected });
-                          e.target.value = selected.statut; // Reset dropdown
-                          return;
-                        }
-                      }
-                      onUpdate(selected.id, { statut: newStatus }); setSelected(s => ({...s, statut: newStatus}));
-                    }}
-                    aria-label="Changer le statut du document"
-                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border outline-none ${isDark ? `${statusColors.darkBg || 'bg-slate-700'} ${statusColors.darkText || 'text-slate-300'} border-slate-600` : `${statusColors.bg || 'bg-slate-100'} ${statusColors.text || 'text-slate-600'} border-slate-200`}`}
-                  >
-                    <option value={selected.statut}>{DEVIS_STATUS_LABELS[selected.statut] || selected.statut}</option>
-                    {allowedNext.map(s => (
-                      <option key={s} value={s}>{DEVIS_STATUS_LABELS[s] || s}</option>
-                    ))}
-                  </select>
-                );
-              })()}
+          {/* Action bar: Status + Primary CTA + Chantier + Communication */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Status dropdown */}
+            <select
+              value={selected.statut}
+              onChange={e => { onUpdate(selected.id, { statut: e.target.value }); setSelected(s => ({...s, statut: e.target.value})); }}
+              className={`px-3 py-2 min-h-[40px] rounded-lg text-sm font-semibold cursor-pointer border-2 outline-none ${
+                selected.statut === 'accepte' || selected.statut === 'signe' ? (isDark ? 'bg-emerald-900/50 text-emerald-400 border-emerald-600' : 'bg-emerald-100 text-emerald-700 border-emerald-300')
+                : selected.statut === 'payee' ? (isDark ? 'bg-purple-900/50 text-purple-400 border-purple-600' : 'bg-purple-100 text-purple-700 border-purple-300')
+                : selected.statut === 'acompte_facture' ? (isDark ? 'bg-blue-900/50 text-blue-400 border-blue-600' : 'bg-blue-100 text-blue-700 border-blue-300')
+                : selected.statut === 'facture' ? (isDark ? 'bg-indigo-900/50 text-indigo-400 border-indigo-600' : 'bg-indigo-100 text-indigo-700 border-indigo-300')
+                : selected.statut === 'refuse' ? (isDark ? 'bg-red-900/50 text-red-400 border-red-600' : 'bg-red-100 text-red-700 border-red-300')
+                : (isDark ? 'bg-amber-900/50 text-amber-400 border-amber-600' : 'bg-amber-100 text-amber-700 border-amber-300')
+              }`}
+            >
+              <option value="brouillon">📝 Brouillon</option>
+              <option value="envoye">📤 Envoyé</option>
+              {isDevis && <option value="signe">✍ Signé</option>}
+              {isDevis && <option value="accepte">✅ Accepté</option>}
+              {isDevis && <option value="refuse">❌ Refusé</option>}
+              {isDevis && selected.statut === 'acompte_facture' && <option value="acompte_facture">💰 Acompte facturé</option>}
+              {isDevis && selected.statut === 'facture' && <option value="facture">🧾 Facturé</option>}
+              {selected.type === 'facture' && <option value="payee">✅ Payée</option>}
+            </select>
 
-              {/* Primary CTA - single orange/green action — gated by send permission */}
-              {isDevis ? (
-                <>
-                  {canPerform('devis', 'send') && selected.statut === 'brouillon' && (
-                    <div className="relative flex items-center">
-                      <button
-                        onClick={() => trySend(selected, sendEmail)}
-                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all shadow-md hover:opacity-90"
-                        style={{ backgroundColor: couleur }}
-                      >
-                        <Send size={16} /> Envoyer
-                      </button>
-                      {/* Channel dropdown */}
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowChannelDropdown(!showChannelDropdown)}
-                          className="ml-1 px-2 py-2.5 min-h-[44px] rounded-xl text-white transition-all hover:opacity-90"
-                          style={{ backgroundColor: couleur }}
-                        >
-                          <ChevronDown size={16} />
-                        </button>
-                        {showChannelDropdown && (
-                          <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowChannelDropdown(false)} />
-                          <div className={`absolute right-0 top-full mt-1 w-48 rounded-xl shadow-xl border z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                            <button onClick={() => { trySend(selected, sendWhatsApp); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
-                              WhatsApp
-                            </button>
-                            <button onClick={() => { trySend(selected, sendSMS); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center"><MessageCircle size={14} /></span>
-                              SMS
-                            </button>
-                            <button onClick={() => { trySend(selected, sendEmail); setShowChannelDropdown(false); }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                              <span className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center"><Mail size={14} /></span>
-                              Email
-                            </button>
-                            {['envoye', 'vu'].includes(selected.statut) && (
-                              <>
-                                <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />
-                                <button onClick={() => {
-                                  const d = new Date(); d.setDate(d.getDate() + 3);
-                                  const relanceDate = d.toISOString().split('T')[0];
-                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
-                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
-                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+3)`, 'success');
-                                  setShowChannelDropdown(false);
-                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                  <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center"><Clock size={14} /></span>
-                                  Relance J+3
-                                </button>
-                                <button onClick={() => {
-                                  const d = new Date(); d.setDate(d.getDate() + 7);
-                                  const relanceDate = d.toISOString().split('T')[0];
-                                  onUpdate(selected.id, { relance_planifiee: relanceDate });
-                                  setSelected(s => ({...s, relance_planifiee: relanceDate }));
-                                  showToast(`Relance planifiée le ${d.toLocaleDateString('fr-FR')} (J+7)`, 'success');
-                                  setShowChannelDropdown(false);
-                                }} className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
-                                  <span className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center"><Clock size={14} /></span>
-                                  Relance J+7
-                                </button>
-                              </>
-                            )}
-                          </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            {/* Quick Actions - Always available */}
+            {isDevis ? (
+              <>
+                {/* Envoyer - always available */}
+                <button
+                  onClick={() => sendEmail(selected)}
+                  className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                    selected.statut === 'brouillon'
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                      : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                  title="Envoyer au client"
+                >
+                  <Send size={16} /> <span className="hidden sm:inline">Envoyer</span>
+                </button>
 
-                  {['envoye', 'vu'].includes(selected.statut) && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowSignaturePad(true)}
-                        className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
-                        style={{ backgroundColor: couleur }}
-                      >
-                        <PenTool size={16} /> Faire signer
-                      </button>
-                      {yousignReady && (
-                        <button
-                          onClick={async () => {
-                            if (!selected) return;
-                            const client = clients.find(c => c.id === selected.client_id);
-                            if (!client?.email) {
-                              setSnackbar({ type: 'warning', message: 'Email du client requis pour la e-signature' });
-                              return;
-                            }
-                            setYousignSending(true);
-                            try {
-                              const result = await createYousignSignature({
-                                documentName: `${selected.type === 'facture' ? 'Facture' : 'Devis'} ${selected.numero}`,
-                                documentBase64: '', // Would be generated from PDF builder
-                                signataires: [{
-                                  name: `${client.prenom || ''} ${client.nom || ''}`.trim() || 'Client',
-                                  email: client.email,
-                                  phone: client.telephone,
-                                }],
-                                externalId: selected.id,
-                                message: `Merci de signer ce ${selected.type === 'facture' ? 'la facture' : 'le devis'} ${selected.numero}.`,
-                              });
-                              if (result.success) {
-                                setSnackbar({ type: 'success', message: `📝 Demande de e-signature envoyée via Yousign` });
-                              } else {
-                                throw new Error(result.error || 'Erreur Yousign');
-                              }
-                            } catch (err) {
-                              setSnackbar({ type: 'error', message: `Erreur e-signature: ${err.message}` });
-                            } finally {
-                              setYousignSending(false);
-                            }
-                          }}
-                          disabled={yousignSending}
-                          className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md ${
-                            isDark ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                          }`}
-                        >
-                          {yousignSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                          E-signature
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {(selected.statut === 'accepte' || selected.statut === 'signe') && (
-                    <button
-                      onClick={async () => {
-                        if (canAcompte) {
-                          // Go straight to acompte modal — it has its own confirm/cancel
-                          setShowAcompteModal(true);
-                        } else {
-                          // Full invoice — confirm with correct amount
-                          const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : 'le client';
-                          const confirmed = await confirm({
-                            title: 'Créer la facture complète ?',
-                            message: `Une facture de ${formatMoney(selected.total_ttc)} sera créée pour ${clientName}. Cette action est irréversible.`
-                          });
-                          if (!confirmed) return;
-                          createSolde();
-                        }
-                      }}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
-                    >
-                      <Receipt size={16} /> Facturer
-                    </button>
-                  )}
-
-                  {selected.statut === 'acompte_facture' && (
-                    <button
-                      onClick={confirmAndCreateSolde}
-                      className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-white flex items-center gap-2 transition-all bg-emerald-500 hover:bg-emerald-600 shadow-md"
-                    >
-                      <Receipt size={16} /> Facturer solde ({formatMoney(resteAFacturer)})
-                    </button>
-                  )}
-
-                  {selected.statut === 'facture' && (
-                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-violet-900/50 text-violet-400' : 'bg-violet-100 text-violet-700'}`}>
-                      <CheckCircle size={14} className="inline mr-1" /> Facturé
-                    </span>
-                  )}
-
-                  {selected.statut === 'refuse' && (
-                    <button
-                      onClick={() => { /* duplicate logic */ }}
-                      className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                    >
-                      <Copy size={16} /> Dupliquer
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {selected.statut !== 'payee' ? (
-                    <button
-                      onClick={() => setShowPaymentModal(true)}
-                      className="px-5 py-2.5 min-h-[44px] text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all hover:opacity-90 shadow-md"
-                      style={{ background: couleur }}
-                    >
-                      <CreditCard size={16} /> Encaisser
-                    </button>
-                  ) : (
-                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
-                      <CheckCircle size={14} className="inline mr-1" /> Payée
-                    </span>
-                  )}
-                </>
-              )}
-
-              <div className="flex-1" />
-
-              {/* Secondary actions */}
-              <div className="flex items-center gap-1.5">
-                {/* Vue client - preview signature page */}
-                {isDevis && !['facture', 'refuse'].includes(selected.statut) && (
+                {/* Signer - always available for devis */}
+                {selected.statut !== 'facture' && (
                   <button
-                    onClick={async () => {
-                      try {
-                        const token = await getOrGenerateSignatureToken(selected);
-                        if (token) {
-                          window.open(buildSignatureUrl(token), '_blank');
-                        } else {
-                          showToast('Impossible de générer le lien', 'error');
-                        }
-                      } catch (e) {
-                        showToast(mapError(e), 'error');
-                      }
-                    }}
-                    className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                    title="Voir comme le client"
+                    onClick={() => setShowSignaturePad(true)}
+                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                      selected.statut === 'envoye'
+                        ? 'text-white hover:opacity-90'
+                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    style={selected.statut === 'envoye' ? { backgroundColor: couleur } : {}}
+                    title="Faire signer le devis"
                   >
-                    <Eye size={16} /> <span className="hidden sm:inline">Vue client</span>
+                    <PenTool size={16} /> <span className="hidden sm:inline">Signer</span>
                   </button>
                 )}
 
-                {/* Chantier link */}
-                {isDevis && (hasChantier && linkedChantier ? (
-                  <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                    <Building2 size={14} /> <span className="hidden sm:inline truncate max-w-[80px]">{linkedChantier.nom}</span>
+                {/* Facturer - always available for devis not yet fully invoiced */}
+                {selected.statut !== 'facture' && (
+                  <button
+                    onClick={() => canAcompte ? setShowAcompteModal(true) : createSolde()}
+                    className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-all font-medium ${
+                      ['accepte', 'signe', 'acompte_facture'].includes(selected.statut)
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        : isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    title={selected.statut === 'acompte_facture' ? 'Facturer le solde' : 'Facturer'}
+                  >
+                    <Receipt size={16} /> <span className="hidden sm:inline">{selected.statut === 'acompte_facture' ? 'Solde' : 'Facturer'}</span>
                   </button>
-                ) : canCreateChantier && (
-                  <button onClick={openChantierModal} className={`min-w-[40px] min-h-[40px] px-3 rounded-xl text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
-                    <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
-                  </button>
-                ))}
-
-                {/* Communication - compact icons for non-brouillon (brouillon uses dropdown) */}
-                {selected.statut !== 'brouillon' && (
-                  <>
-                    <button
-                      onClick={() => sendWhatsApp(selected)}
-                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-green-400' : 'bg-slate-100 hover:bg-slate-200 text-green-600'}`}
-                      title="WhatsApp"
-                    >
-                      <MessageCircle size={16} />
-                    </button>
-                    <button
-                      onClick={() => sendEmail(selected)}
-                      className={`min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-blue-400' : 'bg-slate-100 hover:bg-slate-200 text-blue-600'}`}
-                      title="Email"
-                    >
-                      <Mail size={16} />
-                    </button>
-                  </>
                 )}
-              </div>
+
+                {/* Terminal status badge */}
+                {selected.statut === 'facture' && (
+                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
+                    <CheckCircle size={14} className="inline mr-1" /> Facturé
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Facture: Encaisser always available */}
+                {selected.statut !== 'payee' && (
+                  <button
+                    onClick={() => setShowPaymentModal(true)}
+                    className="px-4 py-2 min-h-[40px] text-white rounded-lg text-sm flex items-center gap-2 transition-all hover:shadow-lg font-medium bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
+                  >
+                    <QrCode size={16} /> Encaisser
+                  </button>
+                )}
+                {selected.statut === 'payee' && (
+                  <span className={`px-3 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>
+                    <CheckCircle size={14} className="inline mr-1" />
+                    {selected.payment_status === 'succeeded' ? '💳 Payée par carte' : 'Payée'}
+                  </span>
+                )}
+              </>
+            )}
+
+            {/* Chantier link - always show for devis */}
+            {isDevis && (hasChantier && linkedChantier ? (
+              <button onClick={() => { setSelectedChantier?.(linkedChantier.id); setPage?.('chantiers'); }} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                <Building2 size={14} /> <span className="truncate max-w-[100px]">{linkedChantier.nom}</span>
+              </button>
+            ) : canCreateChantier && (
+              <button onClick={openChantierModal} className={`px-3 py-2 min-h-[40px] rounded-lg text-sm flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}>
+                <Building2 size={14} /> <span className="hidden sm:inline">+ Chantier</span>
+              </button>
+            ))}
+
+            <div className="flex-1" />
+
+            {/* Communication buttons */}
+            <div className="flex items-center gap-1">
+              <button onClick={() => sendWhatsApp(selected)} className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-lg flex items-center justify-center transition-colors" title="WhatsApp">
+                <MessageCircle size={16} />
+              </button>
+              <button onClick={() => sendSMS(selected)} className="w-10 h-10 bg-purple-500 hover:bg-purple-600 text-white rounded-lg flex items-center justify-center transition-colors" title="SMS">
+                <Send size={16} />
+              </button>
+              <button onClick={() => sendEmail(selected)} className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-lg flex items-center justify-center transition-colors" title="Email">
+                <Mail size={16} />
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ============ AVOIR: Facture d'origine ============ */}
-        {isAvoir && sourceFacture && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
-                <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>Facture d'origine</span>
-              </div>
-              <button
-                onClick={() => { setSelected(sourceFacture); }}
-                className={`text-sm font-medium px-3 py-1 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'}`}
-              >
-                {sourceFacture.numero} →
-              </button>
-            </div>
-            {selected.avoir_motif && (
-              <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                <span className="font-medium">Motif :</span> {AVOIR_MOTIFS[selected.avoir_motif] || selected.avoir_motif}
-                {selected.avoir_motif_detail && <p className={`mt-1 text-xs ${textMuted}`}>{selected.avoir_motif_detail}</p>}
-              </div>
-            )}
-            {selected.avoir_type && (
-              <div className="mt-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  selected.avoir_type === 'total'
-                    ? (isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700')
-                    : (isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700')
-                }`}>
-                  {selected.avoir_type === 'total' ? 'Avoir total' : 'Avoir partiel'}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ============ FACTURE: Avoirs liés ============ */}
-        {!isAvoir && selected.type === 'facture' && avoirsLies.length > 0 && (
-          <div className={`rounded-xl border p-4 ${isDark ? 'bg-red-900/10 border-red-800/50' : 'bg-red-50 border-red-200'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <RotateCcw size={16} className={isDark ? 'text-red-400' : 'text-red-600'} />
-              <span className={`text-sm font-semibold ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                Avoirs émis ({avoirsLies.length})
-              </span>
-            </div>
-            <div className="space-y-2">
-              {avoirsLies.map(avoir => (
-                <div key={avoir.id} className={`flex items-center justify-between py-2 px-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setSelected(avoir)} className="text-sm font-medium hover:underline" style={{ color: couleur }}>
-                      {avoir.numero}
-                    </button>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      avoir.statut === 'payee' ? (isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700') :
-                      avoir.statut === 'envoye' ? (isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                      (isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-100 text-slate-600')
-                    }`}>
-                      {avoir.statut === 'payee' ? 'Appliqué' : avoir.statut === 'envoye' ? 'Émis' : 'Brouillon'}
-                    </span>
-                  </div>
-                  <span className="text-sm font-semibold text-red-600">{formatMoney(avoir.total_ttc)}</span>
-                </div>
-              ))}
-            </div>
-            <div className={`flex items-center justify-between pt-3 mt-3 border-t ${isDark ? 'border-slate-600' : 'border-red-200'}`}>
-              <div className="space-y-1">
-                <div className="flex justify-between gap-6 text-xs">
-                  <span className={textMuted}>Montant facturé</span>
-                  <span className={`font-medium ${textPrimary}`}>{formatMoney(selected.total_ttc)}</span>
-                </div>
-                <div className="flex justify-between gap-6 text-xs">
-                  <span className={textMuted}>Total avoirs</span>
-                  <span className="font-medium text-red-600">-{formatMoney(totalAvoirs)}</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className={`text-xs ${textMuted}`}>Restant dû</p>
-                <p className={`text-lg font-bold ${restantDu > 0 ? textPrimary : 'text-emerald-600'}`}>{formatMoney(restantDu)}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============ LEGAL COMPLIANCE BANNER ============ */}
-        {(() => {
-          const legal = getLegalIssues();
-          if (legal.length === 0 || selected.statut === 'refuse') return null;
-          return (
-            <div className={`rounded-xl border p-3 flex items-start gap-3 ${isDark ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'}`}>
-              <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                  Profil entreprise incomplet — {legal.length} mention{legal.length > 1 ? 's' : ''} légale{legal.length > 1 ? 's' : ''} manquante{legal.length > 1 ? 's' : ''}
-                </p>
-                <p className={`text-xs mt-0.5 ${isDark ? 'text-amber-400/80' : 'text-amber-700'}`}>
-                  {legal.map(i => i.label).join(' · ')}
-                </p>
-              </div>
-              {setPage && (
-                <button
-                  onClick={() => setPage('settings', { tab: 'legal' })}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors ${isDark ? 'bg-amber-800/40 text-amber-300 hover:bg-amber-800/60' : 'bg-amber-200 text-amber-800 hover:bg-amber-300'}`}
-                >
-                  Compléter →
-                </button>
-              )}
-            </div>
-          );
-        })()}
-
         {/* ============ ZONE 2: SMART CONTEXT CARD ============ */}
         {/* Billing options - always visible for devis not yet invoiced */}
 
-        {/* Facturation: AcompteSuiviCard handles all cases (échéancier, legacy acompte, options, guidance) */}
-        {isDevis && selected.statut !== 'facture' && (
-          <AcompteSuiviCard
-            devis={selected}
-            echeancier={currentEcheancier}
-            facturesLiees={facturesLiees}
-            allDevis={devis}
-            isDark={isDark}
-            couleur={couleur}
-            textPrimary={textPrimary}
-            textMuted={textMuted}
-            modeDiscret={modeDiscret}
-            formatMoney={formatMoney}
-            canAcompte={canAcompte}
-            canFacturer={canFacturer}
-            hasChantier={!!selected.chantier_id}
-            acompteFacture={acompteFacture}
-            resteAFacturer={resteAFacturer}
-            onFacturerEtape={facturerEtape}
-            onFacturerSolde={confirmAndCreateSolde}
-            onOpenAcompteSimple={() => setShowAcompteModal(true)}
-            onOpenEcheancierModal={() => setShowEcheancierModal(true)}
-            onSelectFacture={(f) => setSelected(f)}
-            onFacturer100={confirmAndCreateSolde}
-            onOpenSituation={selected.chantier_id ? () => { setSelectedChantier(selected.chantier_id); setPage('chantiers'); } : null}
-          />
-        )}
-
-        {/* Devis follow-up alert */}
-        {isDevis && needsFollowUp(selected) && (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'}`}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">⏰</span>
-                <div>
-                  <p className={`font-medium text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                    Devis en attente · {getDaysSinceSent(selected)} jours
-                  </p>
-                  <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                    Envoyé le {new Date(selected.date).toLocaleDateString('fr-FR')} · {formatMoney(selected.total_ttc)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const message = `Bonjour, avez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} ? N'hésitez pas si vous avez des questions. Cordialement`;
-                    setTimeout(() => {
-                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
-                    }, 100);
-                    if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance devis ${selected.numero}` });
-                  }}
-                  className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <MessageCircle size={14} /> WhatsApp
-                </button>
-                <button
-                  onClick={() => {
-                    const subject = `Relance devis ${selected.numero}`;
-                    const body = `Bonjour,\n\nAvez-vous pu consulter le devis ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} envoyé le ${new Date(selected.date).toLocaleDateString('fr-FR')} ?\n\nN'hésitez pas si vous avez des questions.\n\nCordialement`;
-                    setTimeout(() => {
-                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                    }, 100);
-                    if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance devis ${selected.numero}` });
-                  }}
-                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <Mail size={14} /> Email
-                </button>
+        {/* Show billing options for all devis statuses (except already invoiced) */}
+        {/* Signature info card - when devis is signed electronically */}
+        {isDevis && selected.signature_data && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <PenTool size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+              <p className={`text-sm font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                Signé électroniquement
+              </p>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
+                eIDAS
+              </span>
+            </div>
+            <div className="flex items-start gap-4">
+              <img
+                src={selected.signature_data}
+                alt="Signature"
+                className="h-16 border border-slate-200 rounded-lg bg-white p-1"
+              />
+              <div className={`text-sm space-y-1 ${textSecondary}`}>
+                <p><strong className={textPrimary}>Signataire :</strong> {selected.signataire_nom || selected.signataire || 'Non renseigné'}</p>
+                <p><strong className={textPrimary}>Date :</strong> {selected.signature_date ? new Date(selected.signature_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : (selected.signatureDate ? new Date(selected.signatureDate).toLocaleDateString('fr-FR') : 'Non renseignée')}</p>
+                {selected.signature_ip && <p><strong className={textPrimary}>IP :</strong> {selected.signature_ip}</p>}
               </div>
             </div>
           </div>
         )}
 
-        {/* Devis expiry alert */}
-        {isDevis && (isExpiringSoon(selected) || isExpired(selected)) && (
-          <div className={`rounded-xl p-4 border ${isExpired(selected) ? (isDark ? 'bg-red-900/30 border-red-700' : 'bg-red-50 border-red-200') : (isDark ? 'bg-orange-900/30 border-orange-700' : 'bg-orange-50 border-orange-200')}`}>
+        {isDevis && selected.statut !== 'facture' && selected.statut !== 'acompte_facture' && (
+          <div className={`rounded-xl border p-4 ${
+            ['accepte', 'signe'].includes(selected.statut)
+              ? (isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200')
+              : (isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200')
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              {['accepte', 'signe'].includes(selected.statut) ? (
+                <>
+                  <CheckCircle size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                  <p className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                    Devis signé - Choisir le mode de facturation
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Receipt size={18} className={textMuted} />
+                  <p className={`text-sm font-medium ${textMuted}`}>
+                    Options de facturation
+                  </p>
+                  {selected.statut === 'brouillon' && (
+                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                      Envoyer d'abord recommandé
+                    </span>
+                  )}
+                  {selected.statut === 'envoye' && (
+                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                      Signature recommandée
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {canAcompte && (
+                <button onClick={() => setShowAcompteModal(true)} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-purple-700 bg-purple-900/30 hover:bg-purple-900/50' : 'border-purple-200 bg-white hover:bg-purple-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CreditCard size={16} className="text-purple-500" />
+                    <span className={`font-medium text-sm ${textPrimary}`}>Acompte 30%</span>
+                  </div>
+                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc * 0.3)}</p>
+                </button>
+              )}
+              {canFacturer && (
+                <button onClick={createSolde} className={`p-3 rounded-lg border text-left transition-all hover:shadow-md ${isDark ? 'border-emerald-700 bg-emerald-900/30 hover:bg-emerald-900/50' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Receipt size={16} className="text-emerald-500" />
+                    <span className={`font-medium text-sm ${textPrimary}`}>Facturer 100%</span>
+                  </div>
+                  <p className={`text-xs ${textMuted}`}>{formatMoney(selected.total_ttc)}</p>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Acompte facturé: Show progress */}
+        {isDevis && selected.statut === 'acompte_facture' && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <CreditCard size={16} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                <span className={`text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                  Acompte {selected.acompte_pct}% facturé
+                </span>
+                {acompteFacture && (
+                  <button onClick={() => setSelected(acompteFacture)} className="text-xs text-blue-500 hover:underline">
+                    ({acompteFacture.numero})
+                  </button>
+                )}
+              </div>
+              <span className={`font-bold ${textPrimary}`}>{formatMoney(resteAFacturer)} restant</span>
+            </div>
+            <div className={`h-2 rounded-full mb-3 ${isDark ? 'bg-slate-700' : 'bg-blue-200'}`}>
+              <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${selected.acompte_pct}%` }} />
+            </div>
+            {canFacturer && (
+              <button onClick={createSolde} className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+                <Receipt size={16} /> Facturer le solde
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Card payment confirmation */}
+        {selected.type === 'facture' && selected.payment_status === 'succeeded' && (
+          <div className={`rounded-xl border p-4 ${isDark ? 'bg-emerald-900/20 border-emerald-700' : 'bg-emerald-50 border-emerald-200'}`}>
             <div className="flex items-center gap-3">
-              <span className="text-xl">{isExpired(selected) ? '❌' : '⏳'}</span>
-              <div>
-                <p className={`font-medium text-sm ${isExpired(selected) ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-orange-300' : 'text-orange-800')}`}>
-                  {isExpired(selected) ? 'Devis expiré' : `Expire dans ${getExpiryDaysLeft(selected)} jour${getExpiryDaysLeft(selected) > 1 ? 's' : ''}`}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-emerald-800' : 'bg-emerald-100'}`}>
+                <CreditCard size={18} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
+                  💳 Paiement par carte confirmé
                 </p>
-                <p className={`text-xs ${isExpired(selected) ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-orange-400' : 'text-orange-600')}`}>
-                  Validité: {selected.validite || 30} jours · Émis le {new Date(selected.date).toLocaleDateString('fr-FR')}
+                <p className={`text-xs ${isDark ? 'text-emerald-400/70' : 'text-emerald-600'}`}>
+                  {selected.payment_completed_at
+                    ? `Le ${new Date(selected.payment_completed_at).toLocaleDateString('fr-FR')} à ${new Date(selected.payment_completed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Paiement reçu'}
+                  {selected.payment_amount ? ` · ${formatMoney(selected.payment_amount / 100)}` : ''}
                 </p>
               </div>
+              <CheckCircle size={20} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
             </div>
           </div>
         )}
@@ -2945,9 +1495,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <button
                   onClick={() => {
                     const message = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    setTimeout(() => {
-                      window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
-                    }, 100);
+                    window.open(`https://wa.me/${client?.telephone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`);
                     if (addEchange) addEchange({ type: 'whatsapp', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
                   }}
                   className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
@@ -2958,9 +1506,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   onClick={() => {
                     const subject = `Relance facture ${selected.numero}`;
                     const body = `Bonjour,\n\nRelance pour la facture ${selected.numero} d'un montant de ${formatMoney(selected.total_ttc)} émise le ${new Date(selected.date).toLocaleDateString('fr-FR')}.\n\nMerci de procéder au règlement.\n\nCordialement`;
-                    setTimeout(() => {
-                      window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-                    }, 100);
+                    window.open(`mailto:${client?.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
                     if (addEchange) addEchange({ type: 'email', client_id: selected.client_id, document: selected.numero, montant: selected.total_ttc, objet: `Relance facture ${selected.numero}` });
                   }}
                   className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
@@ -2972,120 +1518,24 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           </div>
         )}
 
-        {/* Relance Timeline Widget */}
-        {relances.isEnabled && (() => {
-          const docType = selected.type === 'facture' ? 'facture' : 'devis';
-          const steps = docType === 'facture' ? relances.relanceConfig.factureSteps : relances.relanceConfig.devisSteps;
-          const docExecs = relances.getDocumentTimeline(selected.id);
-          const docExcluded = relances.isDocumentExcluded(selected.id) || relances.isClientExcluded(selected.client_id);
-          if (!steps?.length && docExecs.length === 0) return null;
-          const client = clients.find(c => c.id === selected.client_id);
-          return (
-            <RelanceTimelineWidget
-              executions={docExecs}
-              steps={steps || []}
-              doc={selected}
-              onSendNow={() => {
-                if (client) relances.skipToNextStep(selected, client).then(r => {
-                  if (r?.success) showToast('Relance envoyée !', 'success');
-                  else showToast(r?.error || 'Erreur envoi relance', 'error');
-                });
-              }}
-              onSkipToNext={() => {
-                if (client) relances.skipToNextStep(selected, client);
-              }}
-              onExclude={(scope, reason) => {
-                relances.addExclusion(scope, {
-                  documentId: scope === 'document' ? selected.id : undefined,
-                  clientId: scope === 'client' ? selected.client_id : undefined,
-                  reason,
-                }).then(() => showToast('Document exclu des relances', 'success'));
-              }}
-              isExcluded={docExcluded}
-              isEnabled={relances.isEnabled}
-              isDark={isDark}
-              couleur={couleur}
-              modeDiscret={modeDiscret}
-              formatMoney={formatMoney}
-            />
-          );
-        })()}
-
-        {/* Pénalités de retard */}
-        {selected.type === 'facture' && selected.statut !== 'payee' && (() => {
-          const pen = calculatePenalites(selected);
-          if (!pen) return null;
-          return (
-            <div className={`rounded-xl p-4 border ${isDark ? 'bg-orange-900/20 border-orange-700' : 'bg-orange-50 border-orange-200'}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={16} className="text-orange-500" />
-                <span className={`font-medium text-sm ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
-                  Pénalités de retard · {pen.joursRetard} jour{pen.joursRetard > 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="space-y-1.5 text-sm">
-                <div className={`flex justify-between ${textSecondary}`}>
-                  <span>Intérêts ({pen.taux}% annuel)</span>
-                  <span className="font-medium">{formatMoney(pen.penalite)}</span>
-                </div>
-                <div className={`flex justify-between ${textSecondary}`}>
-                  <span>Indemnité forfaitaire de recouvrement</span>
-                  <span className="font-medium">{formatMoney(pen.indemnite)}</span>
-                </div>
-                <div className={`flex justify-between pt-2 border-t font-bold ${isDark ? 'border-orange-700 text-orange-300' : 'border-orange-200 text-orange-800'}`}>
-                  <span>Total pénalités</span>
-                  <span>{formatMoney(pen.total)}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-orange-200 dark:border-orange-700">
-                <p className={`text-[10px] ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
-                  Art. L441-10 C. com. — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
-                </p>
-                {pen.joursRetard >= 30 && (
-                  <button
-                    onClick={() => {
-                      const client = clients.find(c => c.id === selected.client_id);
-                      printMiseEnDemeure({
-                        doc: selected,
-                        client,
-                        entreprise,
-                        executions: relances.getDocumentTimeline(selected.id),
-                        couleur,
-                      });
-                    }}
-                    className={`text-[10px] px-2 py-1 rounded-lg font-medium transition-colors ${isDark ? 'bg-red-900/50 text-red-300 hover:bg-red-900/70' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
-                  >
-                    📄 Mise en demeure
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* ============ ZONE 3: TABBED DOCUMENT VIEW ============ */}
         <div className={`rounded-xl sm:rounded-2xl border overflow-hidden ${cardBg}`}>
           <Tabs defaultValue="document">
             <div className={`px-4 pt-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <TabsList variant="underline" className="w-full justify-start gap-4">
-                <TabsTrigger value="document" variant="underline" className="pb-3">Document</TabsTrigger>
-                {isDevis && (
-                  <TabsTrigger value="historique" variant="underline" className="pb-3">
-                    Historique
+                <TabsTrigger value="document" className="pb-3">Document</TabsTrigger>
+                {(isDevis && facturesLiees.length > 0) && (
+                  <TabsTrigger value="historique" className="pb-3">
+                    Historique {facturesLiees.length > 0 && <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{facturesLiees.length}</span>}
                   </TabsTrigger>
                 )}
                 {selected.type === 'facture' && selected.devis_source_id && (
-                  <TabsTrigger value="source" variant="underline" className="pb-3">Devis source</TabsTrigger>
-                )}
-                {getDocumentEmailStatus(selected.id).sent > 0 && (
-                  <TabsTrigger value="emails" variant="underline" className="pb-3">
-                    Emails <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>{getDocumentEmailStatus(selected.id).sent}</span>
-                  </TabsTrigger>
+                  <TabsTrigger value="source" className="pb-3">Devis source</TabsTrigger>
                 )}
               </TabsList>
             </div>
 
-            <TabsContent value="document" className="mt-0 p-2 sm:p-6 overflow-x-auto">
+            <TabsContent value="document" className="mt-0 p-4 sm:p-6">
               {/* Document header */}
               <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-3">
@@ -3098,7 +1548,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   )}
                   <div>
                     <p className={`font-bold ${textPrimary}`}>{entreprise?.nom}</p>
-                    <p className={`text-xs ${textMuted} whitespace-pre-line`}>{entreprise?.adresse}</p>
+                    <p className={`text-xs ${textMuted}`}>{entreprise?.adresse}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -3110,68 +1560,31 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Client info */}
               <div className={`mb-6 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                 <p className={`text-xs font-medium mb-1 ${textMuted}`}>Client</p>
-                <p className={`font-semibold ${client ? textPrimary : 'text-red-500'}`}>
-                  {client ? `${client.prenom || ''} ${client.nom}`.trim() : (selected.client_nom || 'Client supprimé')}
-                </p>
-                {client?.adresse && <p className={`text-sm ${textMuted} whitespace-pre-line`}>{client.adresse}</p>}
+                <p className={`font-semibold ${textPrimary}`}>{client?.nom} {client?.prenom}</p>
+                {client?.adresse && <p className={`text-sm ${textMuted}`}>{client.adresse}</p>}
               </div>
 
-              {/* Avenant banner */}
-              {selected.is_avenant && (
-                <div className={`mb-4 p-3 rounded-lg border flex items-center gap-3 ${isDark ? 'bg-orange-900/20 border-orange-700/50' : 'bg-orange-50 border-orange-200'}`}>
-                  <Edit3 size={16} className="text-orange-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>
-                      Avenant n°{selected.avenant_numero} du devis {selected.avenant_source_numero}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { const src = devis.find(d => d.id === selected.avenant_source_id); if (src) setSelected(src); }}
-                    className="text-xs font-medium px-2 py-1 rounded hover:underline"
-                    style={{ color: couleur }}
-                  >
-                    Voir l'original
-                  </button>
-                </div>
-              )}
-
-              {/* Line items - scrollable on mobile, with section headers */}
-              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 mb-6">
-                {(selected.sections && selected.sections.length > 0
-                  ? selected.sections
-                  : [{ titre: '', lignes: selected.lignes || [] }]
-                ).map((section, si) => (
-                  <div key={si}>
-                    {section.titre && (
-                      <h4 className={`font-semibold text-sm ${si > 0 ? 'mt-4 pt-3 border-t' : ''} pb-1 ${textPrimary} ${si > 0 ? (isDark ? 'border-slate-600' : 'border-slate-200') : ''}`}>
-                        {section.titre}
-                      </h4>
-                    )}
-                    <table className="w-full text-xs sm:text-sm" aria-label={section.titre || 'Lignes du devis'}>
-                      {si === 0 && (
-                        <thead>
-                          <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                            <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
-                            <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
-                            <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
-                            <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
-                          </tr>
-                        </thead>
-                      )}
-                      <tbody>
-                        {filterValidLignes(section.lignes).map((l, i) => (
-                          <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                            <td className={`py-2.5 ${textPrimary}`}>{l.description || ''}</td>
-                            <td className={`text-right ${textSecondary}`}>{l.quantite || 0} {l.unite || ''}</td>
-                            <td className={`text-right ${textSecondary}`}>{formatMoney(parseFloat(l.prixUnitaire || l.prix_unitaire || 0))}</td>
-                            <td className={`text-right font-medium ${getLineTotal(l) < 0 ? 'text-red-500' : textPrimary}`}>{formatMoney(getLineTotal(l))}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
+              {/* Line items */}
+              <table className="w-full mb-6 text-sm">
+                <thead>
+                  <tr className={`border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                    <th className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
+                    <th className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
+                    <th className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                    <th className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selected.lignes || []).filter(l => l.description || l.quantite || l.prixUnitaire).map((l, i) => (
+                    <tr key={i} className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                      <td className={`py-2.5 ${textPrimary}`}>{l.description}</td>
+                      <td className={`text-right ${textSecondary}`}>{l.quantite} {l.unite}</td>
+                      <td className={`text-right ${textSecondary}`}>{(l.prixUnitaire || 0).toFixed(2)}€</td>
+                      <td className={`text-right font-medium ${l.montant < 0 ? 'text-red-500' : textPrimary}`}>{(l.montant || 0).toFixed(2)}€</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
               {/* Totals */}
               <div className="flex justify-end">
@@ -3180,91 +1593,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <span>HT</span>
                     <span>{formatMoney(selected.total_ht)}</span>
                   </div>
-                  {/* TVA breakdown by rate — no more hardcoded 10% */}
-                  {(() => {
-                    const tvaMap = selected.tvaParTaux || selected.tvaDetails;
-                    if (tvaMap && typeof tvaMap === 'object' && Object.keys(tvaMap).length > 0) {
-                      return Object.entries(tvaMap).map(([rate, info]) => (
-                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {rate}%</span>
-                          <span>{formatMoney(typeof info === 'object' ? info.montant : info)}</span>
-                        </div>
-                      ));
-                    }
-                    // Fallback: recalculate from lignes if tvaParTaux not stored
-                    const rates = {};
-                    (selected.lignes || []).forEach(l => {
-                      const rate = l.tva !== undefined ? l.tva : (selected.tvaRate || entreprise?.tvaDefaut || 10);
-                      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
-                      if (!rates[rate]) rates[rate] = 0;
-                      rates[rate] += montant * (rate / 100);
-                    });
-                    if (Object.keys(rates).length > 0) {
-                      return Object.entries(rates).map(([rate, montant]) => (
-                        <div key={rate} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                          <span>TVA {rate}%</span>
-                          <span>{formatMoney(montant)}</span>
-                        </div>
-                      ));
-                    }
-                    // Last resort: show total TVA with stored rate
-                    return (
-                      <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                        <span>TVA {selected.tvaRate || entreprise?.tvaDefaut || 20}%</span>
-                        <span>{formatMoney(selected.tva || selected.total_tva || 0)}</span>
-                      </div>
-                    );
-                  })()}
-                  {selected.remise > 0 && (
-                    <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                      <span>Remise {selected.remise}%</span>
-                      <span>-{formatMoney(selected.total_ht * selected.remise / (100 - selected.remise))}</span>
-                    </div>
-                  )}
+                  <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
+                    <span>TVA {selected.tvaRate || 10}%</span>
+                    <span>{formatMoney(selected.tva)}</span>
+                  </div>
                   <div className={`flex justify-between py-2 border-t font-bold ${isDark ? 'border-slate-600' : 'border-slate-200'}`} style={{color: couleur}}>
                     <span>TTC</span>
                     <span>{formatMoney(selected.total_ttc)}</span>
                   </div>
-                  {selected.retenueGarantie && (
-                    <>
-                      <div className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                        <span>Retenue garantie 5%</span>
-                        <span>-{formatMoney((selected.total_ht || 0) * 0.05)}</span>
-                      </div>
-                      <div className={`flex justify-between py-1 text-sm font-semibold ${textPrimary}`}>
-                        <span>Net à payer</span>
-                        <span>{formatMoney((selected.total_ttc || 0) - (selected.total_ht || 0) * 0.05)}</span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Paiements partiels reçus */}
-                  {(() => {
-                    if (selected.type !== 'facture') return null;
-                    const linkedPaiements = paiements.filter(p => p.facture_id === selected.id || p.document === selected.numero);
-                    if (linkedPaiements.length === 0) return null;
-                    const totalPaye = linkedPaiements.reduce((s, p) => s + (p.montant || 0), 0);
-                    const resteAPayer = (selected.total_ttc || 0) - totalPaye;
-                    return (
-                      <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                        <p className={`text-xs font-medium mb-2 ${textMuted}`}>Paiements reçus</p>
-                        {linkedPaiements.map(p => (
-                          <div key={p.id} className={`flex justify-between text-sm py-1 ${textSecondary}`}>
-                            <span>{new Date(p.date).toLocaleDateString('fr-FR')} · {p.mode || 'Virement'}</span>
-                            <span className="font-medium text-emerald-600">{formatMoney(p.montant)}</span>
-                          </div>
-                        ))}
-                        <div className={`flex justify-between font-bold pt-2 mt-1 border-t text-sm ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''}>
-                            {resteAPayer <= 0 ? '✅ Soldé' : 'Reste à payer'}
-                          </span>
-                          <span className={resteAPayer <= 0 ? 'text-emerald-600' : ''} style={resteAPayer > 0 ? {color: couleur} : {}}>
-                            {formatMoney(Math.max(0, resteAPayer))}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
 
@@ -3273,165 +1609,61 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                   <div className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-emerald-500" />
-                    <span className="text-emerald-600 font-medium text-sm">
-                      Accepté{selected.signataire ? ` par ${selected.signataire}` : ' par le client'}
-                    </span>
+                    <span className="text-emerald-600 font-medium text-sm">Accepté par le client</span>
                     <span className={`text-xs ${textMuted}`}>· {new Date(selected.signatureDate).toLocaleDateString('fr-FR')}</span>
                   </div>
                 </div>
               )}
-
-              {/* Notes */}
-              {selected.notes && (
-                <div className={`mt-6 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                  <p className={`text-xs font-medium mb-1 ${textMuted}`}>Notes</p>
-                  <p className={`text-sm whitespace-pre-wrap ${textSecondary}`}>{selected.notes}</p>
-                </div>
-              )}
-
-              {/* Conditions de paiement */}
-              {selected.conditionsPaiement && CONDITIONS_PAIEMENT[selected.conditionsPaiement] && (
-                <div className={`mt-4 pt-3 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-                  <p className={`text-xs font-medium mb-1 ${textMuted}`}>Conditions de paiement</p>
-                  <p className={`text-sm ${textSecondary}`}>{CONDITIONS_PAIEMENT[selected.conditionsPaiement]}</p>
-                </div>
-              )}
             </TabsContent>
 
-            {isDevis && (
+            {isDevis && facturesLiees.length > 0 && (
               <TabsContent value="historique" className="mt-0 p-4 sm:p-6">
-                <DevisHistoriqueTab
-                  selected={selected}
-                  facturesLiees={facturesLiees}
-                  setSelected={setSelected}
-                  isDark={isDark}
-                  couleur={couleur}
-                  modeDiscret={modeDiscret}
-                  formatMoney={formatMoney}
-                  textPrimary={textPrimary}
-                  textMuted={textMuted}
-                />
-              </TabsContent>
-            )}
-
-            {selected.type === 'facture' && selected.devis_source_id && (() => {
-              const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
-              const isAcompteFacture = selected.facture_type === 'acompte';
-              const isSoldeFacture = selected.facture_type === 'solde';
-              const allAcomptesForSource = devis.filter(d => d.type === 'facture' && d.devis_source_id === selected.devis_source_id && d.facture_type === 'acompte');
-              const sourceEcheancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
-
-              return (
-                <TabsContent value="source" className="mt-0 p-4 sm:p-6 space-y-4">
-                  {/* Devis source link */}
-                  <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                    <p className={`text-sm ${textMuted} mb-2`}>
-                      {isAcompteFacture ? 'Facture d\'acompte créée à partir du devis :' : isSoldeFacture ? 'Facture de solde créée à partir du devis :' : 'Cette facture a été créée à partir du devis :'}
-                    </p>
-                    <button
-                      onClick={() => { if (sourceDevis) setSelected(sourceDevis); }}
-                      className="text-sm font-medium hover:underline flex items-center gap-2"
-                      style={{ color: couleur }}
-                    >
-                      <FileText size={16} />
-                      {sourceDevis ? `${sourceDevis.numero} · ${formatMoney(sourceDevis.total_ttc)}` : 'Voir le devis source'}
-                    </button>
-                  </div>
-
-                  {/* Acompte context: show all acompte factures linked to same devis */}
-                  {(isAcompteFacture || isSoldeFacture) && allAcomptesForSource.length > 0 && (
-                    <div className={`rounded-lg border p-4 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
-                        Factures d'acompte ({allAcomptesForSource.length})
-                      </p>
-                      <div className="space-y-2">
-                        {allAcomptesForSource.map((ac, idx) => {
-                          const isCurrent = ac.id === selected.id;
-                          return (
-                            <div
-                              key={ac.id}
-                              onClick={() => !isCurrent && setSelected(ac)}
-                              className={cn(
-                                'flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
-                                isCurrent ? (isDark ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200') : 'cursor-pointer',
-                                !isCurrent && (isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'),
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className={cn('font-medium', isCurrent ? (isDark ? 'text-blue-300' : 'text-blue-700') : textPrimary)}>
-                                  {ac.numero}
-                                </span>
-                                {ac.acompte_pct && <span className={`text-xs ${textMuted}`}>{ac.acompte_pct}%</span>}
-                                {isCurrent && <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>actuel</span>}
-                              </div>
-                              <span className={cn('font-semibold', textPrimary)}>{formatMoney(ac.total_ttc)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {/* Total acomptes vs devis */}
-                      {sourceDevis && (
-                        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} flex items-center justify-between`}>
-                          <span className={`text-xs ${textMuted}`}>Total acomptes / Devis</span>
-                          <span className={`text-sm font-bold ${textPrimary}`}>
-                            {formatMoney(allAcomptesForSource.reduce((s, a) => s + (a.total_ttc || 0), 0))} / {formatMoney(sourceDevis.total_ttc)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Échéancier progress if available */}
-                  {sourceEcheancier && sourceEcheancier.etapes?.length > 0 && (
-                    <div className={`rounded-lg border p-4 ${isDark ? 'border-blue-800 bg-blue-900/10' : 'border-blue-200 bg-blue-50/50'}`}>
-                      <p className={`text-sm font-medium mb-2 ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                        <ClipboardList size={14} className="inline mr-1" />
-                        Échéancier de paiement
-                      </p>
-                      <div className="space-y-1">
-                        {sourceEcheancier.etapes.map(etape => (
-                          <div key={etape.numero} className={`flex items-center justify-between text-xs py-1 ${textMuted}`}>
-                            <div className="flex items-center gap-1.5">
-                              {(etape.statut === 'facture' || etape.statut === 'paye') ? (
-                                <CheckCircle size={12} className={etape.statut === 'paye' ? 'text-emerald-500' : 'text-blue-500'} />
-                              ) : (
-                                <span className={`w-3 h-3 rounded-full border ${isDark ? 'border-slate-600' : 'border-slate-300'}`} />
-                              )}
-                              <span className={textPrimary}>{etape.label}</span>
-                              <span>{etape.pourcentage}%</span>
-                            </div>
-                            <span className={`font-medium ${textPrimary}`}>{formatMoney(etape.montant_ttc)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </TabsContent>
-              );
-            })()}
-
-              {/* Email tracking tab */}
-              <TabsContent value="emails" className="mt-0 p-4 sm:p-6">
                 <div className="space-y-3">
-                  <p className={`text-sm font-medium ${textPrimary}`}>Historique d'envoi</p>
-                  {getDocumentEmailStatus(selected.id).records.map((rec, idx) => (
-                    <div key={rec.id || idx} className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                      <Mail size={16} className="text-sky-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${textPrimary} truncate`}>{rec.to}</p>
-                        <p className={`text-xs ${textMuted}`}>{rec.subject}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <div>
+                      <p className={`text-sm ${textPrimary}`}>{new Date(selected.date).toLocaleDateString('fr-FR')} - Devis créé</p>
+                    </div>
+                  </div>
+                  {selected.signatureDate && (
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <div>
+                        <p className={`text-sm ${textPrimary}`}>{new Date(selected.signatureDate).toLocaleDateString('fr-FR')} - Accepté</p>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleDateString('fr-FR')}</p>
-                        <p className={`text-xs ${textMuted}`}>{new Date(rec.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  )}
+                  {facturesLiees.map(f => (
+                    <div key={f.id} className={`flex items-center gap-3 cursor-pointer rounded-lg p-2 -mx-2 transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`} onClick={() => setSelected(f)}>
+                      <span className={`w-3 h-3 rounded-full ${f.statut === 'payee' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      <div className="flex-1">
+                        <p className={`text-sm ${textPrimary}`}>
+                          {new Date(f.date).toLocaleDateString('fr-FR')} - {f.facture_type === 'acompte' ? 'Acompte' : f.facture_type === 'solde' ? 'Solde' : 'Facture'}
+                        </p>
+                        <p className={`text-xs ${textMuted}`}>{f.numero} · {formatMoney(f.total_ttc)}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
-                        Envoyé
-                      </span>
+                      <ChevronRight size={16} className={textMuted} />
                     </div>
                   ))}
                 </div>
               </TabsContent>
+            )}
+
+            {selected.type === 'facture' && selected.devis_source_id && (
+              <TabsContent value="source" className="mt-0 p-4 sm:p-6">
+                <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                  <p className={`text-sm ${textMuted} mb-2`}>Cette facture a été créée à partir du devis :</p>
+                  <button
+                    onClick={() => { const src = devis.find(d => d.id === selected.devis_source_id); if (src) setSelected(src); }}
+                    className="text-sm font-medium hover:underline flex items-center gap-2"
+                    style={{ color: couleur }}
+                  >
+                    <FileText size={16} />
+                    Voir le devis source
+                  </button>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
@@ -3454,42 +1686,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span className="ml-auto font-bold">{formatMoney(selected.total_ttc * acomptePct / 100)}</span>
                 </div>
               </div>
-              {acomptePct > 50 ? (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-xs text-red-800 flex items-center gap-2">
-                  <AlertTriangle size={14} className="flex-shrink-0" />
-                  <span>Attention : un acompte de plus de 50% est très inhabituel et peut poser des problèmes juridiques.</span>
-                </div>
-              ) : acomptePct > 30 ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800 flex items-center gap-2">
-                  <AlertTriangle size={14} className="flex-shrink-0" />
-                  <span>Pour travaux &gt; 1 500 € chez un particulier, l'acompte est limité à 30% par la loi (art. L. 214-1 code conso).</span>
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
-                  Acompte de {acomptePct}% · {formatMoney(selected.total_ttc * acomptePct / 100)}
-                </div>
-              )}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-800"> Pour travaux supérieurs à 1500€ chez particulier, acompte max 30%</div>
               <div className="flex gap-3">
                 <button onClick={() => setShowAcompteModal(false)} className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Annuler</button>
-                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors font-semibold">
-                  {acomptePct > 30 ? <AlertTriangle size={16} /> : <Check size={16} />}
-                  Facturer {formatMoney(selected.total_ttc * acomptePct / 100)}
-                </button>
+                <button onClick={createAcompte} className="flex-1 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl flex items-center justify-center gap-1.5 min-h-[44px] transition-colors"><Check size={16} />Créer</button>
               </div>
             </div>
           </div>
         )}
-
-        {/* Modal Échéancier d'acomptes */}
-        <AcompteEcheancierModal
-          isOpen={showEcheancierModal}
-          onClose={() => setShowEcheancierModal(false)}
-          devis={selected}
-          isDark={isDark}
-          couleur={couleur}
-          modeDiscret={modeDiscret}
-          onEcheancierCreated={handleEcheancierCreated}
-        />
 
         {/* Modal Preview */}
         {showPreview && (
@@ -3529,8 +1733,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Récapitulatif financier */}
               <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
                 <p className={`text-sm font-medium mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Revenu prévu</p>
-                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € HT`}</p>
-                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € TTC</p>
+                <p className="text-2xl font-bold" style={{ color: couleur }}>{modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} € HT`}</p>
+                <p className={`text-sm ${textMuted}`}>{(selected.total_ttc || 0).toLocaleString('fr-FR')} € TTC</p>
               </div>
 
               {/* Formulaire */}
@@ -3557,7 +1761,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
               {/* Info */}
               <p className={`text-xs ${textMuted} mt-4`}>
-                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}) sera utilisé pour calculer la marge.
+                Le chantier sera automatiquement lié à ce devis. Le revenu prévu ({modeDiscret ? '·····' : `${(selected.total_ht || 0).toLocaleString('fr-FR')} €`}) sera utilisé pour calculer la marge.
               </p>
 
               {/* Actions */}
@@ -3588,12 +1792,12 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                     <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
+                    <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Apercu du document</h2>
                     <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <button onClick={() => tryDownload(selected, printPDF)} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm">
+                  <button onClick={() => { printPDF(selected); }} className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm">
                     <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
                     <span className="hidden sm:inline">Imprimer / PDF</span>
                     <span className="sm:hidden">PDF</span>
@@ -3613,432 +1817,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         )}
 
         <Snackbar />
-
-        {/* Signature Pad Modal — must be inside preview return for it to render */}
-        <SignaturePad
-          isOpen={showSignaturePad}
-          onClose={() => setShowSignaturePad(false)}
-          onSave={handleSignatureSave}
-          document={selected}
-          client={selected ? clients.find(c => c.id === selected.client_id) : null}
-          entreprise={entreprise}
-          isDark={isDark}
-          couleur={couleur}
-        />
-
-        {/* Signature Link Modal */}
-        {/* Creation success modal */}
-        {showCreationSuccess && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCreationSuccess(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
-              {/* Success animation */}
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={32} style={{ color: couleur }} />
-                </div>
-              </div>
-              <h3 className={`text-xl font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {showCreationSuccess.devis?.type === 'facture' ? 'Facture' : 'Devis'} cree !
-              </h3>
-              <p className={`text-sm text-center mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                N&deg; {showCreationSuccess.numero}
-              </p>
-              <p className={`text-2xl font-bold text-center mb-5`} style={{ color: couleur }}>
-                {formatMoney(showCreationSuccess.devis?.total_ttc)}
-              </p>
-
-              <button
-                onClick={() => {
-                  setShowCreationSuccess(null);
-                  if (showCreationSuccess.devis) sendEmail(showCreationSuccess.devis);
-                }}
-                className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md mb-3"
-                style={{ backgroundColor: couleur }}
-              >
-                <Send size={16} /> Envoyer maintenant
-              </button>
-              <button
-                onClick={() => setShowCreationSuccess(null)}
-                className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Plus tard
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Pre-send validation issues modal */}
-        {sendValidationIssues && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSendValidationIssues(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${sendValidationIssues.isDownload ? (isDark ? 'bg-amber-900/40' : 'bg-amber-50') : (isDark ? 'bg-red-900/40' : 'bg-red-50')}`}>
-                    <AlertTriangle size={24} className={sendValidationIssues.isDownload ? 'text-amber-500' : 'text-red-500'} />
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${textPrimary}`}>{sendValidationIssues.isDownload ? 'Profil incomplet' : 'Envoi impossible'}</h3>
-                    <p className={`text-sm ${textMuted}`}>{sendValidationIssues.isDownload ? 'Votre profil entreprise est incomplet' : 'Corrigez ces éléments avant d\'envoyer'}</p>
-                  </div>
-                </div>
-
-                {/* Legal conformity warning */}
-                {sendValidationIssues.issues.some(i => i.isLegal) && (
-                  <div className={`rounded-xl p-3 mb-4 ${isDark ? 'bg-amber-900/20 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
-                    <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                      <strong>⚖️ Conformité légale :</strong> Votre devis ne sera pas conforme à la réglementation française sans ces informations.
-                      <button
-                        onClick={() => {
-                          const firstLegal = sendValidationIssues.issues.find(i => i.isLegal);
-                          setSendValidationIssues(null);
-                          setSelected(null);
-                          setPage('settings');
-                          if (firstLegal?.settingsTab) {
-                            setTimeout(() => {
-                              window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
-                                detail: { tab: firstLegal.settingsTab, fieldId: firstLegal.settingsField }
-                              }));
-                            }, 200);
-                          }
-                        }}
-                        className="ml-1 underline font-semibold hover:opacity-80"
-                        style={{ color: isDark ? '#fbbf24' : '#d97706' }}
-                      >
-                        Compléter votre profil maintenant →
-                      </button>
-                    </p>
-                  </div>
-                )}
-
-                {/* Issues list */}
-                <div className="space-y-2 mb-6">
-                  {sendValidationIssues.issues.map(issue => (
-                    <div key={issue.id} className={`flex items-start gap-3 p-3 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                      <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${textPrimary}`}>{issue.label}</p>
-                      </div>
-                      {issue.action === 'settings' && (
-                        <button
-                          onClick={() => {
-                            setSendValidationIssues(null);
-                            setSelected(null);
-                            setPage('settings');
-                            // Deep link to specific settings tab/field
-                            if (issue.settingsTab) {
-                              setTimeout(() => {
-                                window.dispatchEvent(new CustomEvent('navigate-settings-tab', {
-                                  detail: { tab: issue.settingsTab, fieldId: issue.settingsField }
-                                }));
-                              }, 200);
-                            }
-                          }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
-                        >
-                          {issue.actionLabel}
-                        </button>
-                      )}
-                      {issue.action === 'edit' && (
-                        <button
-                          onClick={() => {
-                            const doc = sendValidationIssues.doc;
-                            setSendValidationIssues(null);
-                            if (doc) {
-                              setEditingDevis(doc);
-                              setShowDevisWizard(true);
-                            }
-                          }}
-                          className="text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 transition-colors"
-                          style={{ color: couleur, backgroundColor: `${couleur}15` }}
-                        >
-                          {issue.actionLabel}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setSendValidationIssues(null)}
-                    className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                  >
-                    Compris
-                  </button>
-                  {sendValidationIssues.sendFn && sendValidationIssues.isDownload && sendValidationIssues.issues.every(i => ['no_siret', 'no_adresse', 'no_nom', 'no_forme_juridique', 'no_decennale'].includes(i.id)) && (
-                    <button
-                      onClick={() => { const fn = sendValidationIssues.sendFn; const doc = sendValidationIssues.doc; setSendValidationIssues(null); fn(doc); }}
-                      className="flex-1 py-2.5 rounded-xl font-medium text-sm text-white transition-colors hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      Télécharger quand même
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Post-send confirmation modal */}
-        {showSendConfirmation && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSendConfirmation(null)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-sm shadow-2xl p-6`} onClick={e => e.stopPropagation()}>
-              {/* Success icon */}
-              <div className="flex justify-center mb-4">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: `${couleur}15` }}>
-                  <CheckCircle size={28} style={{ color: couleur }} />
-                </div>
-              </div>
-              <h3 className={`text-lg font-bold text-center mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {showSendConfirmation.doc?.type === 'facture' ? 'Facture' : 'Devis'} envoy{showSendConfirmation.doc?.type === 'facture' ? 'e' : 'e'} !
-              </h3>
-              <p className={`text-sm text-center mb-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                via {showSendConfirmation.canal}
-              </p>
-
-              {/* Summary */}
-              <div className={`rounded-xl p-4 mb-4 space-y-2 ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Client</span>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.clientName}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Montant</span>
-                  <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatMoney(showSendConfirmation.montant)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Canal</span>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{showSendConfirmation.canal}</span>
-                </div>
-              </div>
-
-              {/* Copy signature link */}
-              {showSendConfirmation.doc?.signature_token && (
-                <button
-                  onClick={() => {
-                    const url = buildSignatureUrl(showSendConfirmation.doc.signature_token);
-                    navigator.clipboard.writeText(url);
-                    showToast('Lien de signature copie !', 'success');
-                  }}
-                  className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 mb-3 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                >
-                  <Link2 size={16} /> Copier le lien de signature
-                </button>
-              )}
-
-              {/* Send via other channel */}
-              <div className="flex gap-2 mb-3">
-                {showSendConfirmation.canal !== 'WhatsApp' && (
-                  <button
-                    onClick={() => { sendWhatsApp(showSendConfirmation.doc); }}
-                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <MessageCircle size={14} /> WhatsApp
-                  </button>
-                )}
-                {showSendConfirmation.canal !== 'Email' && (
-                  <button
-                    onClick={() => { sendEmail(showSendConfirmation.doc); }}
-                    className="flex-1 px-3 py-2 rounded-xl text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Mail size={14} /> Email
-                  </button>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowSendConfirmation(null)}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                style={{ backgroundColor: couleur }}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        )}
-
-        {showSignatureLinkModal && signatureLinkUrl && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSignatureLinkModal(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Lien de signature</h3>
-                <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                  <X size={20} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                </button>
-              </div>
-              <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Partagez ce lien avec votre client pour qu'il puisse signer le devis <strong>{selected?.numero}</strong> en ligne.
-              </p>
-              {/* URL display + copy */}
-              <div className={`flex items-center gap-2 p-3 rounded-xl mb-4 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                <input
-                  type="text"
-                  readOnly
-                  value={signatureLinkUrl}
-                  className={`flex-1 text-sm bg-transparent outline-none ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(signatureLinkUrl);
-                    showToast('Lien copié !', 'success');
-                  }}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white"
-                  style={{ background: couleur }}
-                >
-                  <Copy size={14} />
-                </button>
-              </div>
-              {/* Share buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const phone = (client?.telephone || '').replace(/\s/g, '');
-                    const text = `Bonjour, veuillez signer votre devis ${selected?.numero} en ligne :\n${signatureLinkUrl}`;
-                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
-                >
-                  WhatsApp
-                </button>
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const phone = (client?.telephone || '').replace(/\s/g, '');
-                    const text = `Signez votre devis ${selected?.numero}: ${signatureLinkUrl}`;
-                    window.location.href = `sms:${phone}?body=${encodeURIComponent(text)}`;
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
-                >
-                  SMS
-                </button>
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const subject = `Signature devis ${selected?.numero}`;
-                    const body = `Bonjour,%0A%0AVeuillez signer votre devis en ligne :%0A${encodeURIComponent(signatureLinkUrl)}%0A%0ACordialement`;
-                    window.location.href = `mailto:${client?.email || ''}?subject=${subject}&body=${body}`;
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
-                >
-                  Email
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Payment Modal — also needed in preview mode */}
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          document={selected}
-          client={selected ? clients.find(c => c.id === selected.client_id) : null}
-          onPaymentSaved={async (payment) => {
-            if (selected) {
-              const updatedMontantPaye = (selected.montant_paye || 0) + (payment.montant || 0);
-              const isPaid = updatedMontantPaye >= (selected.total_ttc || 0);
-              onUpdate(selected.id, {
-                montant_paye: updatedMontantPaye,
-                ...(isPaid ? { statut: 'payee' } : {}),
-              });
-              setSelected(s => ({ ...s, montant_paye: updatedMontantPaye, ...(isPaid ? { statut: 'payee' } : {}) }));
-
-              // If this is an acompte facture and it's paid, update échéancier étape to 'paye'
-              if (isPaid && selected.facture_type === 'acompte' && selected.devis_source_id) {
-                const sourceDevis = devis.find(d => d.id === selected.devis_source_id);
-                const echeancier = sourceDevis?.echeancier_id ? echeancierCache[sourceDevis.id] : null;
-                if (echeancier) {
-                  const etape = echeancier.etapes?.find(e => e.facture_id === selected.id);
-                  if (etape) {
-                    const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
-                    const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
-                    try {
-                      if (isDemo || !supabase) {
-                        const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
-                        stored[sourceDevis.id] = updatedEcheancier;
-                        localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
-                      } else {
-                        await supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id);
-                      }
-                      setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
-                    } catch (err) {
-                      console.error('Error updating echeancier on payment:', err);
-                    }
-                  }
-                }
-              }
-            }
-          }}
-          isDark={isDark}
-          couleur={couleur}
-        />
-
-        {/* Avoir Creation Modal */}
-        <AvoirCreationModal
-          isOpen={showAvoirModal}
-          onClose={() => setShowAvoirModal(false)}
-          facture={selected}
-          devis={devis}
-          onCreateAvoir={handleCreateAvoir}
-          isDark={isDark}
-          couleur={couleur}
-          modeDiscret={modeDiscret}
-          formatMoney={formatMoney}
-        />
-
-        {/* Snapshot Viewer */}
-        {viewingSnapshot && (
-          <SnapshotViewer
-            snapshot={viewingSnapshot}
-            entityType="devis"
-            isDark={isDark}
-            couleur={couleur}
-            modeDiscret={modeDiscret}
-            onClose={() => setViewingSnapshot(null)}
-            onRestore={async (snap) => {
-              const confirmed = await showConfirm('Restaurer cette version ?', 'Les données actuelles seront remplacées par cette version. Cette action est irréversible.');
-              if (!confirmed) return;
-              const restoreData = { ...snap.data };
-              delete restoreData.id;
-              delete restoreData.created_at;
-              delete restoreData.updated_at;
-              delete restoreData.user_id;
-              delete restoreData.organization_id;
-              await onUpdate(selected.id, restoreData);
-              setSelected(s => ({ ...s, ...restoreData }));
-              setViewingSnapshot(null);
-              showToast('Version restaurée avec succès', 'success');
-            }}
-            onCompare={(snap) => {
-              setComparingSnapshots({ a: snap, b: { ...devisSnapshots[0], data: selected } });
-              setViewingSnapshot(null);
-            }}
-          />
-        )}
-
-        {/* Diff Viewer */}
-        {comparingSnapshots && (
-          <DiffViewer
-            snapshotA={comparingSnapshots.a}
-            snapshotB={comparingSnapshots.b}
-            entityType="devis"
-            isDark={isDark}
-            couleur={couleur}
-            modeDiscret={modeDiscret}
-            onClose={() => setComparingSnapshots(null)}
-          />
-        )}
       </div>
-      {devisWizardElement}
-    </>
     );
   }
 
@@ -4048,14 +1827,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const catalogueFiltered = catalogue?.filter(c => !debouncedCatalogueSearch || c.nom?.toLowerCase().includes(debouncedCatalogueSearch.toLowerCase())) || [];
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2></div>
+        <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('list')} className={`p-2.5 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button><h1 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h1></div>
 
         {/* Template Options */}
         <div className="grid sm:grid-cols-2 gap-3">
           {/* Smart Template Wizard - Full guided flow */}
           <button
             onClick={() => setShowSmartWizard(true)}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
+            className={`p-4 rounded-xl border-2 border-dashed flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform flex-shrink-0">
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -4070,14 +1849,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Load Template - Add lines to current form */}
           <button
             onClick={() => setShowTemplateSelector(true)}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-blue-500/50 hover:border-blue-400 bg-gradient-to-r from-blue-900/20 to-indigo-900/20' : 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50'}`}
+            className={`p-4 rounded-xl border-2 border-dashed flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-blue-500/50 hover:border-blue-400 bg-gradient-to-r from-blue-900/20 to-indigo-900/20' : 'border-blue-300 hover:border-blue-400 bg-gradient-to-r from-blue-50 to-indigo-50'}`}
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-500 group-hover:scale-110 transition-transform flex-shrink-0">
               <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Charger un modèle</p>
-              <p className={`text-xs sm:text-sm ${textMuted}`}>Ajouter des lignes métier</p>
+              <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Charger un modele</p>
+              <p className={`text-xs sm:text-sm ${textMuted}`}>Ajouter des lignes metier</p>
             </div>
             <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
           </button>
@@ -4131,7 +1910,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input
                   placeholder="Rechercher dans le catalogue..."
-                  aria-label="Rechercher dans le catalogue"
                   value={catalogueSearch}
                   onChange={e => setCatalogueSearch(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
@@ -4168,7 +1946,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Header with count */}
               <div className="flex items-center justify-between">
                 <p className={`text-sm font-medium ${textMuted}`}>
-                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + getLineTotal(l), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + (l.montant || 0), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                 </p>
               </div>
 
@@ -4191,26 +1969,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-bold tabular-nums transition-all" style={{ color: couleur }}>
-                          {getLineTotal(l).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                          {(l.montant || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
                         </p>
                         <p className={`text-xs ${textMuted}`}>HT</p>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        {idx > 0 && (
-                          <button onClick={() => moveLigne(section.id, idx, -1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Monter la ligne">
-                            <ChevronUp size={14} />
-                          </button>
-                        )}
-                        {idx < section.lignes.length - 1 && (
-                          <button onClick={() => moveLigne(section.id, idx, 1)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-400'}`} aria-label="Descendre la ligne">
-                            <ChevronDown size={14} />
-                          </button>
-                        )}
                       </div>
                       <button
                         onClick={() => removeLigne(section.id, l.id)}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
-                        aria-label="Supprimer la ligne"
                       >
                         <X size={18} />
                       </button>
@@ -4223,7 +1988,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <button
                           onClick={() => updateLigne(section.id, l.id, 'quantite', Math.max(0, (l.quantite || 0) - 1))}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
-                          aria-label="Diminuer la quantité"
                         >
                           <span className="text-lg font-bold">−</span>
                         </button>
@@ -4236,7 +2000,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                         <button
                           onClick={() => updateLigne(section.id, l.id, 'quantite', (l.quantite || 0) + 1)}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
-                          aria-label="Augmenter la quantité"
                         >
                           <span className="text-lg font-bold">+</span>
                         </button>
@@ -4297,31 +2060,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               {/* Add line button */}
               <button
                 onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)}
-                className={`w-full py-3 border-2 rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
+                className={`w-full py-3 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
               >
                 <Plus size={18} style={{ color: couleur }} />
                 <span className="font-medium" style={{ color: couleur }}>Ajouter une ligne</span>
               </button>
-              {/* B2: Inline error when no lines */}
-              {section.lignes.length === 0 && (
-                <p className={`text-xs font-medium flex items-center gap-1.5 mt-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                  <AlertTriangle size={12} /> Ajoutez au moins une prestation pour calculer le montant total
-                </p>
-              )}
             </div>
           ))}
           
           {/* Options */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
             <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validité (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: parseInt(e.target.value) || 30}))} /></div>
-            <div>
-              <label className={`block text-sm mb-1 ${textPrimary}`}>Conditions de paiement</label>
-              <select value={form.conditionsPaiement} onChange={e => setForm(p => ({...p, conditionsPaiement: e.target.value}))} className={`w-full px-3 py-2.5 border rounded-xl ${inputBg}`}>
-                {Object.entries(CONDITIONS_PAIEMENT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <label className={`block text-sm mb-1 ${textPrimary}`}>Retenue de garantie</label>
               <label className={`flex items-center gap-3 px-4 py-2.5 border rounded-xl cursor-pointer ${form.retenueGarantie ? (isDark ? 'border-amber-500 bg-amber-900/20' : 'border-amber-400 bg-amber-50') : inputBg}`}>
                 <input type="checkbox" checked={form.retenueGarantie} onChange={e => setForm(p => ({...p, retenueGarantie: e.target.checked}))} className="w-4 h-4 rounded" />
@@ -4332,17 +2083,17 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           
           {/* Totaux avec multi-TVA et marge */}
           <div className="flex flex-col sm:flex-row justify-end gap-4">
-            {/* Aperçu marge (visible seulement pour l'artisan, pas sur le PDF) */}
-            {!modeDiscret && totals.totalCoutAchat > 0 && (
+            {/* Apercu marge (visible seulement pour l'artisan, pas sur le PDF) */}
+            {totals.totalCoutAchat > 0 && (
               <div className={`w-full sm:w-64 p-4 rounded-xl border ${totals.marge >= 0 ? (isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200') : (isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp size={16} className={totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'} />
                   <span className={`text-sm font-medium ${textPrimary}`}>Votre marge</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>privé</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>prive</span>
                 </div>
                 <div className="space-y-1">
                   <div className={`flex justify-between text-sm ${textSecondary}`}>
-                    <span>Coût d'achat</span>
+                    <span>Cout d'achat</span>
                     <span>{modeDiscret ? '·····' : formatMoney(totals.totalCoutAchat)}</span>
                   </div>
                   <div className={`flex justify-between font-medium ${totals.marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -4401,13 +2152,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <X size={16} />
                 <span>Annuler</span>
               </button>
-              <button onClick={handleCreate} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
+              <button onClick={handleCreate} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
                 <FileText size={16} />
                 <span>Brouillon</span>
               </button>
-              <button onClick={handleCreate} disabled={isSubmitting} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold disabled:opacity-50" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+              <button onClick={handleCreate} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
                 <Check size={18} />
-                <span>{isSubmitting ? 'Création...' : `Créer le ${form.type}`}</span>
+                <span>Créer le {form.type}</span>
               </button>
             </div>
           </div>
@@ -4419,11 +2170,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           isOpen={showTemplateSelector}
           onClose={() => setShowTemplateSelector(false)}
           onSelectTemplate={handleTemplateSelect}
-          customTemplates={ctxTemplates}
-          onDeleteTemplate={(id) => {
-            deleteCtxTemplate(id);
-            showToast('Modèle supprimé', 'success');
-          }}
           isDark={isDark}
           couleur={couleur}
         />
@@ -4447,277 +2193,211 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // === LIST VIEW ===
   return (
-    <div className="space-y-3">
-      {/* ========== HEADER COMPACT ========== */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          {setPage && (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold">Devis & Factures</h1>
+        <div className="flex items-center gap-2">
+          {/* Quick access to Devis Express Modal */}
+          <button
+            onClick={() => setShowDevisExpressModal(true)}
+            className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white"
+          >
+            <Sparkles size={16} />
+            <span className="hidden sm:inline">Devis express</span>
+          </button>
+          <button
+            onClick={() => setPage?.('devis-ia')}
+            className="px-3 sm:px-4 py-2 rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all bg-gradient-to-r from-violet-500 to-purple-600 text-white"
+          >
+            <Mic size={16} />
+            <span className="hidden sm:inline">Devis IA</span>
+          </button>
+          <button onClick={() => setShowDevisWizard(true)} className="px-3 sm:px-4 py-2 text-white rounded-xl text-sm min-h-[44px] flex items-center gap-1.5 hover:shadow-lg transition-all" style={{background: couleur}}>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Nouveau</span>
+          </button>
+          {/* View mode toggle */}
+          <div className={`hidden sm:flex items-center rounded-xl border ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
             <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              title="Retour au tableau de bord"
-              aria-label="Retour au tableau de bord"
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-l-xl transition-colors ${viewMode === 'list' ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
+              title="Vue liste"
             >
-              <ArrowLeft size={20} />
+              <ListIcon size={16} className={viewMode === 'list' ? '' : textMuted} style={viewMode === 'list' ? { color: couleur } : {}} />
             </button>
-          )}
-          <div>
-            <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>Devis & Factures</h1>
-            <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Gérez vos documents commerciaux</p>
-          </div>
-        </div>
-
-        {/* Split-button: + Nouveau devis — hidden for view-only roles */}
-        {canPerform('devis', 'create') && (
-        <div className="relative">
-          <div className="flex items-stretch">
             <button
-              onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }}
-              className="px-4 py-2.5 text-white rounded-l-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all"
-              style={{ background: couleur }}
+              onClick={() => setViewMode('kanban')}
+              className={`p-2 rounded-r-xl transition-colors ${viewMode === 'kanban' ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
+              title="Vue Kanban"
             >
-              <Plus size={16} />
-              <span className="hidden sm:inline">Nouveau devis</span>
-              <span className="sm:hidden">Nouveau</span>
-            </button>
-            <button
-              onClick={() => setShowCreateMenu(!showCreateMenu)}
-              className="px-2 text-white rounded-r-xl border-l border-white/20 hover:opacity-80 transition-all"
-              style={{ background: couleur }}
-              aria-label="Options de création"
-            >
-              <ChevronDown size={14} />
+              <LayoutGrid size={16} className={viewMode === 'kanban' ? '' : textMuted} style={viewMode === 'kanban' ? { color: couleur } : {}} />
             </button>
           </div>
-          {/* Dropdown menu */}
-          {showCreateMenu && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
-              <div className={`absolute right-0 mt-1 w-56 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <button
-                  onClick={() => { setShowCreateMenu(false); setPage('ia-devis'); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}
-                >
-                  <Sparkles size={16} className="text-violet-500" />
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Devis IA</p>
-                    <p className={`text-[11px] ${textMuted}`}>Photo → Devis automatique</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { setShowCreateMenu(false); setShowDevisExpressModal(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
-                >
-                  <Zap size={16} className="text-amber-500" />
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Devis Express</p>
-                    <p className={`text-[11px] ${textMuted}`}>3 clics, c'est chiffré</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { setShowCreateMenu(false); setEditingDevis(null); setShowDevisWizard(true); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-colors border-t ${isDark ? 'hover:bg-slate-700 border-slate-700' : 'hover:bg-slate-50 border-slate-100'}`}
-                >
-                  <Edit3 size={16} style={{ color: couleur }} />
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Devis manuel</p>
-                    <p className={`text-[11px] ${textMuted}`}>Création détaillée</p>
-                  </div>
-                </button>
-              </div>
-            </>
-          )}
         </div>
-        )}
       </div>
 
-      {/* RBAC: ReadOnly banner for view-only users */}
-      {isViewOnly && <ReadOnlyBanner />}
+      {/* Kanban view */}
+      {viewMode === 'kanban' && (
+        <PipelineKanban
+          devis={devis}
+          clients={clients}
+          onUpdateStatut={(id, statut) => onUpdate(id, { statut })}
+          onSelectDevis={(d) => { setSelected(d); setMode('preview'); }}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
 
-      {/* === COMPLIANCE BANNER — compact + dismissable === */}
-      {!complianceDismissed && (() => {
-        const missingLegal = [];
-        if (!entreprise?.siret) missingLegal.push('SIRET');
-        if (!entreprise?.adresse) missingLegal.push('Adresse');
-        if (!entreprise?.formeJuridique) missingLegal.push('Forme juridique');
-        if (!entreprise?.decennaleAssureur) missingLegal.push('Assurance décennale');
-        if (missingLegal.length === 0) return null;
-        return (
-          <div className={`flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl border text-xs ${isDark ? 'bg-red-900/30 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-800'}`}>
-            <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="font-semibold">Profil incomplet</span>
-              <span className="hidden sm:inline mx-1">— {missingLegal.join(', ')}</span>
-              <span className={`sm:hidden block text-[10px] mt-0.5 truncate ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>{missingLegal.join(', ')}</span>
-            </div>
-            {setPage && (
-              <button onClick={() => setPage('settings')} className={`shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
-            )}
-          </div>
-        );
-      })()}
-      {/* === KPIs COMPACTS — ligne dense === */}
+      {/* === SECTION: VUE D'ENSEMBLE === */}
+      {viewMode === 'list' && <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
+          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Vue d'ensemble</h2>
+          <span className={`text-xs ${textMuted}`}>— Suivez l'avancement de vos documents</span>
+        </div>
+
+      {/* Pipeline View */}
       {(() => {
-        const cleanDevis = devis.filter(d => {
-          if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
-          if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
-          return true;
+        // Calculate pipeline stats
+        const devisBrouillon = devis.filter(d => d.type === 'devis' && d.statut === 'brouillon');
+        const devisEnvoye = devis.filter(d => d.type === 'devis' && d.statut === 'envoye');
+        const devisAccepte = devis.filter(d => d.type === 'devis' && ['accepte', 'signe', 'acompte_facture', 'facture'].includes(d.statut));
+        const devisRefuse = devis.filter(d => d.type === 'devis' && d.statut === 'refuse');
+
+        const facturesEnAttente = devis.filter(d => d.type === 'facture' && d.statut !== 'payee');
+        const facturesPayees = devis.filter(d => d.type === 'facture' && d.statut === 'payee');
+        const facturesEnRetard = facturesEnAttente.filter(f => {
+          const days = Math.floor((new Date() - new Date(f.date)) / 86400000);
+          return days > 30;
         });
-        const devisEnvoye = cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'vu'].includes(d.statut));
-        const facturesEnAttente = cleanDevis.filter(d => d.type === 'facture' && d.statut !== 'payee');
-        const facturesPayees = cleanDevis.filter(d => d.type === 'facture' && d.statut === 'payee');
-        const facturesEnRetard = facturesEnAttente.filter(f => Math.floor((Date.now() - new Date(f.date)) / 86400000) > 30);
-        const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const montantEnCours = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantEnRetard = facturesEnRetard.reduce((s, f) => s + (f.total_ttc || 0), 0);
         const montantAEncaisser = facturesEnAttente.reduce((s, f) => s + (f.total_ttc || 0), 0);
-        const avoirsEmis = cleanDevis.filter(d => d.facture_type === 'avoir');
-        const montantAvoirs = avoirsEmis.reduce((s, a) => s + Math.abs(a.total_ttc || 0), 0);
-        const conversionResult = calcConversion(cleanDevis);
-        const totalEnvoyes = conversionResult.envoyes;
-        const tauxConversion = totalEnvoyes > 0 ? conversionResult.taux : null;
+
+        // Group documents by client for "Accès rapide"
+        const clientsWithDocs = {};
+        devis.forEach(d => {
+          if (!d.client_id) return;
+          if (!clientsWithDocs[d.client_id]) {
+            const client = clients.find(c => c.id === d.client_id);
+            clientsWithDocs[d.client_id] = { client, devis: [], factures: [] };
+          }
+          if (d.type === 'devis') clientsWithDocs[d.client_id].devis.push(d);
+          else clientsWithDocs[d.client_id].factures.push(d);
+        });
+        const activeClients = Object.values(clientsWithDocs)
+          .filter(c => c.devis.some(d => d.statut !== 'refuse') || c.factures.some(f => f.statut !== 'payee'))
+          .slice(0, 5);
+
+        // Calculate amounts per stage
+        const montantBrouillon = devisBrouillon.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantEnvoye = devisEnvoye.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantAccepte = devisAccepte.reduce((s, d) => s + (d.total_ttc || 0), 0);
+        const montantPayees = facturesPayees.reduce((s, f) => s + (f.total_ttc || 0), 0);
+
+        // Conversion rate
+        const totalEnvoyes = devisEnvoye.length + devisAccepte.length + devisRefuse.length;
+        const tauxConversion = totalEnvoyes > 0 ? ((devisAccepte.length / totalEnvoyes) * 100).toFixed(0) : null;
 
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
-            {/* CA encaissé */}
-            <button onClick={() => setFilter('factures')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'factures' ? 'ring-2' : ''}`} style={filter === 'factures' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>CA encaissé</p>
-              <p className="text-xs sm:text-base font-bold leading-tight mt-0.5 truncate" style={{ color: couleur }}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantPayees)}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{facturesPayees.length} fact.</p>
-            </button>
+          <div className="space-y-3">
+            {/* Simplified Pipeline - Devis + Factures side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* DEVIS */}
+              <div className={`${cardBg} rounded-xl border p-3`}>
+                <p className={`text-xs font-medium ${textMuted} mb-2`}>Devis</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setFilter('attente')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisEnvoye.length > 0 ? 'border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${devisEnvoye.length > 0 ? 'text-amber-600 dark:text-amber-400' : textMuted}`}>{devisEnvoye.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
+                  </button>
+                  <button onClick={() => setFilter('devis')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${devisAccepte.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${devisAccepte.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{devisAccepte.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Signés</p>
+                  </button>
+                </div>
+              </div>
 
-            {/* En cours */}
-            <button onClick={() => setFilter('attente')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'attente' ? 'ring-2' : ''}`} style={filter === 'attente' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>En cours</p>
-              <p className="text-xs sm:text-base font-bold text-blue-600 leading-tight mt-0.5">{devisEnvoye.length}</p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5 truncate`}>{!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantEnCours)}</p>
-            </button>
-
-            {/* Conversion */}
-            <button onClick={() => setFilter('conversion')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'conversion' ? 'ring-2' : ''}`} style={filter === 'conversion' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Conversion</p>
-              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 ${tauxConversion != null ? (tauxConversion >= 50 ? 'text-emerald-600' : tauxConversion >= 25 ? 'text-amber-600' : 'text-red-500') : textMuted}`}>
-                {formatConversion(tauxConversion)}
-              </p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{conversionResult.signes}/{totalEnvoyes}</p>
-            </button>
-
-            {/* À encaisser */}
-            <button onClick={() => setFilter('factures_impayees')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${facturesEnRetard.length > 0 ? (isDark ? 'border-red-800' : 'border-red-300') : ''} ${filter === 'factures_impayees' ? 'ring-2' : ''}`} style={filter === 'factures_impayees' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>À encaisser</p>
-              <p className={`text-xs sm:text-base font-bold leading-tight mt-0.5 truncate ${facturesEnRetard.length > 0 ? 'text-red-600' : 'text-violet-600'}`}>
-                {!canViewPrices ? '—' : modeDiscret ? '···' : formatMoney(montantAEncaisser)}
-              </p>
-              <p className={`text-[10px] leading-none mt-0.5 ${facturesEnRetard.length > 0 ? 'text-red-500 font-medium' : textMuted}`}>
-                {facturesEnRetard.length > 0 ? `${facturesEnRetard.length} retard` : `${facturesEnAttente.length} att.`}
-              </p>
-            </button>
-
-            {/* Avoirs */}
-            {avoirsEmis.length > 0 && (
-            <button onClick={() => setFilter('avoirs')} className={`${cardBg} rounded-xl border px-2 sm:px-3 py-2 text-left transition-all hover:shadow-md ${filter === 'avoirs' ? 'ring-2' : ''}`} style={filter === 'avoirs' ? { '--tw-ring-color': couleur } : {}}>
-              <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider ${textMuted} leading-none`}>Avoirs</p>
-              <p className="text-xs sm:text-base font-bold text-red-500 leading-tight mt-0.5 truncate">
-                {!canViewPrices ? '—' : modeDiscret ? '···' : `-${formatMoney(montantAvoirs)}`}
-              </p>
-              <p className={`text-[10px] ${textMuted} leading-none mt-0.5`}>{avoirsEmis.length} avoir{avoirsEmis.length > 1 ? 's' : ''}</p>
-            </button>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* === SEARCH + FILTERS === */}
-      <div className="space-y-2">
-        {/* Row 1: Search + Period filters + Sort + Export */}
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1 max-w-[200px]">
-            <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-            <input placeholder="Rechercher..." aria-label="Rechercher un document" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-8 pr-3 py-1.5 border rounded-xl text-sm ${inputBg}`} />
-          </div>
-          <div role="group" aria-label="Filtrer par période" className="flex gap-1">
-            {[['all', 'Tout'], ['month', 'Ce mois'], ['quarter', 'Trim.'], ['year', 'Année']].map(([k, v]) => (
-              <button key={k} onClick={() => setPeriodFilter(k)} aria-pressed={periodFilter === k} className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap ${periodFilter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={periodFilter === k ? {background: couleur} : {}}>
-                {v}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1" />
-          {/* View mode toggle */}
-          <div className={`flex rounded-lg border overflow-hidden ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 transition-colors ${viewMode === 'cards' ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-200 text-slate-800') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300' : 'bg-white text-slate-400 hover:text-slate-600')}`}
-              title="Vue cartes"
-              aria-label="Vue cartes"
-              aria-pressed={viewMode === 'cards'}
-            >
-              <LayoutGrid size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 transition-colors border-l ${viewMode === 'table' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
-              title="Vue tableau"
-              aria-label="Vue tableau"
-              aria-pressed={viewMode === 'table'}
-            >
-              <List size={14} />
-            </button>
-          </div>
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className={`px-2 py-1 rounded-lg text-xs border min-w-[75px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
-          >
-            <option value="recent">Récent</option>
-            <option value="status">Statut</option>
-            <option value="amount">Montant</option>
-          </select>
-          {/* Export dropdown */}
-          {filtered.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const menu = e.currentTarget.nextElementSibling;
-                  menu.classList.toggle('hidden');
-                }}
-                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                aria-label="Exporter"
-                title="Exporter"
-              >
-                <Download size={14} />
-              </button>
-              <div className={`hidden absolute right-0 mt-1 w-36 rounded-xl border shadow-lg z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <button onClick={() => exportCSV(filtered)} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-600'}`}>
-                  <Download size={12} /> CSV
-                </button>
-                <button onClick={() => batchExportPDF(filtered)} disabled={actionLoading === 'batch'} className={`w-full px-3 py-2 text-xs text-left flex items-center gap-2 border-t ${isDark ? 'hover:bg-slate-700 text-slate-300 border-slate-700' : 'hover:bg-slate-50 text-slate-600 border-slate-100'}`}>
-                  {actionLoading === 'batch' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} PDF ({filtered.length})
-                </button>
+              {/* FACTURES */}
+              <div className={`${cardBg} rounded-xl border p-3`}>
+                <p className={`text-xs font-medium ${textMuted} mb-2`}>Factures</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesEnAttente.length > 0 ? 'border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${facturesEnAttente.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : textMuted}`}>{facturesEnAttente.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Attente</p>
+                  </button>
+                  <button onClick={() => setFilter('factures')} className={`flex-1 p-2 rounded-lg text-center border-l-4 transition-colors ${facturesPayees.length > 0 ? 'border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20' : 'border-slate-200 dark:border-slate-600'} ${isDark ? 'bg-slate-700/50' : 'bg-white'}`}>
+                    <p className={`text-lg font-bold ${facturesPayees.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : textMuted}`}>{facturesPayees.length}</p>
+                    <p className={`text-[10px] ${textMuted}`}>Payées</p>
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-        {/* Row 2: Type filter pills */}
-        <div className="flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1">
-          {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['acomptes', 'Acomptes'], ['situations', 'Situations'], ['avoirs', 'Avoirs'], ['attente', 'En attente'], ['a_traiter', 'À traiter'], ...(relances.isEnabled && relances.counts.total > 0 ? [['en_relance', 'En relance']] : [])].map(([k, v]) => {
-            const count = k === 'en_relance' ? relances.counts.total : (filterCounts[k] || 0);
-            if (k === 'acomptes' && count === 0) return null;
-            return (
-              <button key={k} onClick={() => setFilter(k)} aria-pressed={filter === k} className={`px-2.5 py-1 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>
-                {k === 'acomptes' && <CreditCard size={11} />}
-                {k === 'situations' && <BarChart3 size={11} />}
-                {k === 'avoirs' && <RotateCcw size={11} />}
-                {k === 'a_traiter' && <Bell size={11} />}
-                {k === 'en_relance' && <BellRing size={11} />}
-                {v}
-                {count > 0 && <span className={`text-[10px] font-bold px-1 py-0.5 rounded-full leading-none ${filter === k ? 'bg-white/20' : isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>{count}</span>}
+
+            {/* Overdue alert - compact */}
+            {facturesEnRetard.length > 0 && (
+              <button onClick={() => setFilter('factures')} className={`w-full rounded-lg p-3 flex items-center justify-between ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                <span className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+                  {facturesEnRetard.length} en retard • {formatMoney(montantEnRetard)}
+                </span>
+                <ChevronRight size={16} className="text-red-500" />
               </button>
-            );
-          })}
-          <span className={`text-[10px] ${textMuted} self-center ml-1 whitespace-nowrap shrink-0`}>{filtered.length} doc.</span>
+            )}
+
+            {/* Quick status badges */}
+            <div className="flex gap-2 flex-wrap">
+              {devisBrouillon.length > 0 && (
+                <button
+                  onClick={() => { setFilter('devis'); setSortBy('status'); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                >
+                  <FileText size={14} />
+                  {devisBrouillon.length} brouillon{devisBrouillon.length > 1 ? 's' : ''}
+                </button>
+              )}
+              {devisEnvoye.length > 0 && (
+                <button
+                  onClick={() => { setFilter('attente'); }}
+                  className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${isDark ? 'bg-amber-900/30 text-amber-300 hover:bg-amber-900/50' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                >
+                  <Send size={14} />
+                  {devisEnvoye.length} en attente de réponse
+                </button>
+              )}
+              {tauxConversion !== null && (
+                <span className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 ${
+                  parseInt(tauxConversion) >= 50
+                    ? (isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700')
+                    : parseInt(tauxConversion) >= 30
+                    ? (isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700')
+                    : (isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700')
+                }`} title={`${devisAccepte.length} signés / ${totalEnvoyes} envoyés`}>
+                  <Zap size={14} />
+                  Conversion {tauxConversion}%
+                </span>
+              )}
+            </div>
+
+            {/* Section supprimée pour simplifier l'interface */}
+          </div>
+        );
+      })()}
+      </div>}
+
+      {/* === SECTION: LISTE DES DOCUMENTS === */}
+      {viewMode === 'list' && <>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: couleur }} />
+          <h2 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Tous les documents</h2>
+          <span className={`text-xs ${textMuted}`}>— {filtered.length} document{filtered.length > 1 ? 's' : ''}</span>
         </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap items-center overflow-x-auto pb-1">
+        <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className={`flex-1 max-w-[180px] sm:max-w-xs px-3 sm:px-4 py-2 border rounded-xl text-sm ${inputBg}`} />
+        {[['all', 'Tous'], ['devis', 'Devis'], ['factures', 'Factures'], ['attente', 'En attente']].map(([k, v]) => <button key={k} onClick={() => setFilter(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${filter === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={filter === k ? {background: couleur} : {}}>{v}</button>)}
+        <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+        {[['recent', '📅 Récent'], ['status', '📊 Statut'], ['amount', '💰 Montant']].map(([k, v]) => <button key={k} onClick={() => setSortBy(k)} className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm whitespace-nowrap min-h-[36px] ${sortBy === k ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100'}`} style={sortBy === k ? {background: couleur} : {}}>{v}</button>)}
       </div>
       {filtered.length === 0 ? (
         <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
@@ -4777,7 +2457,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+                <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                   <FileText size={18} />
                   Créer mon premier devis
                 </button>
@@ -4792,302 +2472,58 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           {/* Simple CTA for filtered empty state */}
           {(search || filter !== 'all') && (
             <div className={`p-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'} text-center`}>
-              <button onClick={() => { setEditingDevis(null); setShowDevisWizard(true); }} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
+              <button onClick={() => setShowDevisWizard(true)} className="px-6 py-3 text-white rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium" style={{ background: couleur }}>
                 <Plus size={18} />
                 Créer un nouveau document
               </button>
             </div>
           )}
         </div>
-      ) : viewMode === 'table' ? (
-        /* ========== TABLE VIEW ========== */
-        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className={isDark ? 'bg-slate-700/50' : 'bg-slate-50'}>
-                  {[
-                    { key: 'numero', label: 'N°' },
-                    { key: 'client', label: 'Client' },
-                    { key: 'date', label: 'Date' },
-                    { key: 'montant', label: 'Montant TTC' },
-                    { key: 'statut', label: 'Statut' },
-                  ].map(col => (
-                    <th
-                      key={col.key}
-                      onClick={() => handleTableSort(col.key)}
-                      className={`px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer select-none transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'} ${col.key === 'montant' ? 'text-right' : ''}`}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {col.label}
-                        {tableSortBy === col.key ? (
-                          tableSortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-                        ) : (
-                          <ArrowUpDown size={10} className="opacity-30" />
-                        )}
-                      </span>
-                    </th>
-                  ))}
-                  <th className={`px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-100'}`}>
-                {getTableSorted(filtered).map((d, idx) => {
-                  const client = clients.find(c => c.id === d.client_id);
-                  const clientName = cleanClientName(client) || d.client_nom || '—';
-                  const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
-                  const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
-                  const isAvoirItem = d.facture_type === 'avoir';
-                  return (
-                    <tr
-                      key={d.id}
-                      onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }}
-                      className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
-                    >
-                      <td className={`px-3 py-2.5 font-medium text-xs whitespace-nowrap ${textPrimary}`}>
-                        <span className="inline-flex items-center gap-1.5">
-                          {isAvoirItem ? <RotateCcw size={12} className="text-red-500" /> : d.type === 'facture' ? <Receipt size={12} className="text-violet-500" /> : <FileText size={12} style={{ color: couleur }} />}
-                          {cleanNumero(d.numero)}
-                        </span>
-                      </td>
-                      <td className={`px-3 py-2.5 text-xs truncate max-w-[180px] ${textSecondary}`}>
-                        {clientName}
-                      </td>
-                      <td className={`px-3 py-2.5 text-xs whitespace-nowrap ${textMuted}`}>
-                        {new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className={`px-3 py-2.5 text-xs font-bold text-right whitespace-nowrap tabular-nums`} style={{ color: isAvoirItem ? '#dc2626' : couleur }}>
-                        {!canViewPrices ? '—' : modeDiscret ? '···' : isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={(e) => { e.stopPropagation(); setSelected(d); setMode('preview'); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Voir">
-                            <Eye size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                          </button>
-                          {!isViewOnly && canPerform('devis', 'edit') && (
-                            <button onClick={(e) => { e.stopPropagation(); setEditingDevis(d); setShowDevisWizard(true); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`} title="Modifier">
-                              <Edit3 size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       ) : (
-        <div className="space-y-2">{filtered.map(d => {
+        <div className="space-y-3">{filtered.map(d => {
           const client = clients.find(c => c.id === d.client_id);
+          const icon = { brouillon: '⚪', envoye: '', accepte: '[OK]', acompte_facture: '', facture: '', payee: '', refuse: 'âŒ' }[d.statut] || '';
           const hasAcompte = d.type === 'devis' && getAcompteFacture(d.id);
-          const chantier = chantiers.find(ch => ch.id === d.chantier_id);
-          const daysSince = Math.floor((Date.now() - new Date(d.date)) / 86400000);
-          const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
-          const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
-
-          // Follow-up time indicator for sent devis
-          const getFollowUpInfo = () => {
-            if (!['envoye', 'vu'].includes(d.statut) || d.type !== 'devis') return null;
-            const sentDate = d.updated_at || d.date;
-            const daysSent = Math.floor((Date.now() - new Date(sentDate)) / 86400000);
-            if (daysSent >= 30) return { text: `+${daysSent}j sans réponse`, cls: 'text-red-500 font-medium' };
-            if (daysSent >= 14) return { text: `${daysSent}j sans réponse`, cls: 'text-red-500' };
-            if (daysSent >= 7) return { text: `${daysSent}j en attente`, cls: isDark ? 'text-amber-400' : 'text-amber-600' };
-            if (daysSent >= 3) return { text: `Envoyé il y a ${daysSent}j`, cls: textMuted };
-            return { text: 'Envoyé récemment', cls: isDark ? 'text-emerald-400' : 'text-emerald-600' };
-          };
-          const followUp = getFollowUpInfo();
-
-          // Left border color by status
-          const isAvoirItem = d.facture_type === 'avoir';
-          const isSituationItem = d.facture_type === 'situation';
-          const borderLeftColor = isAvoirItem ? '#dc2626'
-            : isSituationItem ? '#f97316'
-            : d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
-            : ['envoye', 'vu'].includes(d.statut) ? '#3b82f6'
-            : ['accepte', 'signe'].includes(d.statut) ? '#22c55e'
-            : d.statut === 'facture' || d.statut === 'acompte_facture' ? '#8b5cf6'
-            : d.statut === 'payee' ? '#10b981'
-            : d.statut === 'refuse' ? '#ef4444'
-            : '#94a3b8';
-
-          // Contextual CTAs by status — gated by RBAC permissions
-          const getQuickAction = () => {
-            if (isViewOnly) return null; // No actions for view-only roles
-            if (d.statut === 'brouillon' && getDevisTTC(d) > 0 && canPerform('devis', 'send')) return { label: 'Envoyer', Icon: Send, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); sendEmail(d); } };
-            if (d.statut === 'brouillon' && getDevisTTC(d) <= 0 && canPerform('devis', 'edit')) return { label: 'Compléter', Icon: Edit3, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (['envoye', 'vu'].includes(d.statut) && canPerform('devis', 'send')) return { label: 'Relancer', Icon: Mail, cls: isDark ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white', fn: (e) => { e.stopPropagation(); sendEmail(d); } };
-            if ((d.statut === 'accepte' || d.statut === 'signe') && d.type === 'devis') return { label: 'Facturer', Icon: Receipt, cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.type === 'facture' && d.statut !== 'payee') return { label: 'Encaisser', Icon: CreditCard, cls: 'text-white', style: { background: couleur }, fn: (e) => { e.stopPropagation(); setSelected(d); setMode('preview'); } };
-            if (d.statut === 'refuse' && canPerform('devis', 'create')) return { label: 'Dupliquer', Icon: Copy, cls: isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600', fn: (e) => { e.stopPropagation(); duplicateDocument(d); } };
-            if (d.statut === 'payee') return null;
-            return null;
-          };
-          const qa = getQuickAction();
-
-          // Client display
-          const clientName = cleanClientName(client) || d.client_nom || '';
-          const isOrphan = !d.client_id || (d.client_id && !client);
-          const isNameless = client && !clientName;
-
           return (
-            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }} className={`${cardBg} rounded-xl border cursor-pointer hover:shadow-md transition-all duration-200 px-3 py-2.5`} style={{ borderLeftWidth: '3px', borderLeftColor }}>
-              <div className="flex items-center gap-2.5">
-                {/* Content — single dense row */}
+            <div key={d.id} onClick={() => { setSelected(d); setMode('preview'); }} className={`${cardBg} rounded-lg sm:rounded-xl border p-3 sm:p-4 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 min-h-[70px]`}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${d.type === 'facture' ? (isDark ? 'bg-purple-900/30' : 'bg-purple-100') : (isDark ? 'bg-blue-900/30' : 'bg-blue-100')}`}>
+                  {d.type === 'facture' ? <Receipt size={20} className="text-purple-600" /> : <FileText size={20} className="text-blue-600" />}
+                </div>
                 <div className="flex-1 min-w-0">
-                  {/* Row 1: Numero + badges — stacked on mobile, inline on sm+ */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {isAvoirItem ? <RotateCcw size={13} className="text-red-500 shrink-0" /> : isSituationItem ? <BarChart3 size={13} className="text-orange-500 shrink-0" /> : <span className={`text-xs shrink-0 ${d.type === 'facture' ? 'text-violet-500' : textMuted}`}>{d.type === 'facture' ? '📄' : '📋'}</span>}
-                      <p className={`font-semibold text-xs sm:text-sm truncate ${textPrimary}`}>{cleanNumero(d.numero)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? `${statusColor.darkBg} ${statusColor.darkText}` : `${statusColor.bg} ${statusColor.text}`}`}>{statusLabel}</span>
-                      {isAvoirItem && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Avoir</span>}
-                      {d.facture_type === 'situation' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>Situation{d.situation_numero ? ` n°${d.situation_numero}` : ''}</span>}
-                      {hasAcompte && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
-                      {d.facture_type === 'acompte' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte{d.acompte_pct ? ` ${d.acompte_pct}%` : ''}</span>}
-                      {d.facture_type === 'solde' && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Solde</span>}
-                      {d.is_avenant && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>AV{d.avenant_numero}</span>}
-                      {isExpired(d) && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-200 text-red-700'}`}>Expiré</span>}
-                      {d.statut === 'brouillon' && (isOrphan || isNameless) && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Incomplet</span>
-                      )}
-                      {(() => {
-                        const docPending = relances.getDocumentPending(d.id);
-                        if (!docPending) return null;
-                        const stepLabel = docPending.nextStep?.step?.name || `J+${docPending.nextStep?.step?.delay || '?'}`;
-                        return (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-0.5 ${
-                            docPending.nextStep?.isDue
-                              ? (isDark ? 'bg-orange-900/50 text-orange-300' : 'bg-orange-100 text-orange-700')
-                              : (isDark ? 'bg-sky-900/50 text-sky-300' : 'bg-sky-100 text-sky-700')
-                          }`}>
-                            <BellRing size={9} />
-                            {docPending.nextStep?.isDue ? stepLabel : `Auto ${stepLabel}`}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                  {/* Row 2: Client · Chantier · Date · Follow-up */}
-                  <div className={`text-xs ${textMuted} truncate mt-0.5 flex items-center gap-1 flex-wrap`}>
-                    {(isOrphan || isNameless) ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className={`text-[10px] ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          {isOrphan ? 'Aucun client' : 'Client sans nom'}
-                        </span>
-                        <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>
-                        <button onClick={(e) => { e.stopPropagation(); setAssigningClientDevisId(d.id); }} className={`text-[10px] font-medium underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                          Assigner →
-                        </button>
-                      </span>
-                    ) : (
-                      <span>{clientName}</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`font-semibold ${textPrimary}`}>{cleanNumero(d.numero)}</p>
+                    {/* Status badge - explicit text instead of small icons */}
+                    {d.statut === 'brouillon' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Brouillon</span>}
+                    {d.statut === 'envoye' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Envoyé</span>}
+                    {d.statut === 'signe' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>✍ Signé</span>}
+                    {d.statut === 'accepte' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>}
+                    {d.statut === 'acompte_facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte facturé</span>}
+                    {d.statut === 'facture' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-indigo-900/50 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Facturé</span>}
+                    {d.statut === 'payee' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Payé</span>}
+                    {d.statut === 'refuse' && <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-700'}`}>Refusé</span>}
+                    {hasAcompte && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Acompte</span>}
+                    {d.facture_type === 'acompte' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>Acompte</span>}
+                    {d.facture_type === 'solde' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'}`}>Solde</span>}
+                    {d.facture_type === 'totale' && <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Complète</span>}
+                    {d.type === 'facture' && isFacturXCompliant(d, client, entreprise) && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-teal-900/50 text-teal-300' : 'bg-teal-100 text-teal-700'}`}>2026 ✓</span>
                     )}
-                    {chantier && (
-                      <>
-                        <span>·</span>
-                        <span className={`italic truncate max-w-[120px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{chantier.nom}</span>
-                      </>
-                    )}
-                    <span>·</span>
-                    <span>{new Date(d.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
-                    {followUp && (
-                      <>
-                        <span>·</span>
-                        <span className={`text-[10px] ${followUp.cls}`}>{followUp.text}</span>
-                      </>
+                    {needsFollowUp(d) && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium animate-pulse ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Relancer</span>
                     )}
                   </div>
+                  <p className={`text-sm ${textMuted}`}>{cleanClientName(client)} · {new Date(d.date).toLocaleDateString('fr-FR')}</p>
                 </div>
-
-                {/* Right: Amount + Action (button always at far right) */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {d.signature_token && (
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      const url = `${window.location.origin}/devis/signer/${d.signature_token}`;
-                      navigator.clipboard?.writeText(url).then(() => showToast('Lien copié !', 'success')).catch(() => showToast('Copie échouée', 'error'));
-                    }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Copier le lien de signature">
-                      <Link2 size={13} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                    </button>
-                  )}
-                  {!canViewPrices ? null : getDevisTTC(d) <= 0 ? (
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-lg ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                      0 €
-                    </span>
-                  ) : (
-                    <p className="text-xs sm:text-sm font-bold text-right tabular-nums whitespace-nowrap" style={{color: isAvoirItem ? '#dc2626' : couleur}}>
-                      {isAvoirItem ? `-${formatMoney(Math.abs(getDevisTTC(d)))}` : formatMoney(getDevisTTC(d))}
-                    </p>
-                  )}
-                  {qa ? (
-                    <button onClick={qa.fn} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 min-h-[32px] transition-all ${qa.cls}`} style={qa.style}>
-                      <qa.Icon size={13} />
-                      <span className="hidden sm:inline">{qa.label}</span>
-                    </button>
-                  ) : d.statut === 'payee' ? (
-                    <CheckCircle size={16} className="text-emerald-500" />
-                  ) : (
-                    <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-1.5 rounded-lg transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`} title="Aperçu PDF">
-                      <Eye size={14} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
-                    </button>
-                  )}
-                </div>
+                <button onClick={(e) => { e.stopPropagation(); duplicateDocument(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Dupliquer ce document"><Copy size={20} className="text-slate-400 hover:text-slate-600" /></button>
+                <button onClick={(e) => { e.stopPropagation(); previewPDF(d); }} className={`p-2 rounded-xl flex-shrink-0 transition-all ${isDark ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-100 hover:text-slate-700'}`} title="Voir l'aperçu PDF"><Eye size={20} className="text-slate-400 hover:text-slate-600" /></button>
+                <p className={`text-base sm:text-lg font-bold min-w-[100px] sm:min-w-[120px] text-right flex-shrink-0 tabular-nums ${(d.total_ttc || 0) === 0 ? 'text-slate-400' : ''}`} style={(d.total_ttc || 0) > 0 ? {color: couleur} : {}}>{formatMoney(d.total_ttc)}</p>
               </div>
             </div>
           );
         })}</div>
       )}
       <Snackbar />
-
-      {/* B1: Assign client dropdown modal */}
-      {assigningClientDevisId && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setAssigningClientDevisId(null)}>
-          <div className={`${cardBg} border rounded-2xl w-full max-w-sm shadow-2xl`} onClick={e => e.stopPropagation()}>
-            <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <h3 className={`font-bold ${textPrimary}`}>Assigner un client</h3>
-              <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez le client pour ce devis</p>
-            </div>
-            <div className="p-3 max-h-64 overflow-y-auto space-y-1">
-              {clients.filter(c => c.nom).map(c => (
-                <button key={c.id} onClick={() => {
-                  const d = devis.find(dv => dv.id === assigningClientDevisId);
-                  if (d) {
-                    onUpdate(d.id, { client_id: c.id, client_nom: `${c.prenom || ''} ${c.nom}`.trim() });
-                    showToast(`Client "${`${c.prenom || ''} ${c.nom}`.trim()}" assigné`, 'success');
-                  }
-                  setAssigningClientDevisId(null);
-                }} className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-50'}`}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: couleur }}>
-                    {(c.prenom?.[0] || c.nom?.[0] || '?').toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.prenom ? `${c.prenom} ${c.nom}` : c.nom}</p>
-                    {c.entreprise && <p className={`text-xs truncate ${textMuted}`}>{c.entreprise}</p>}
-                  </div>
-                </button>
-              ))}
-              {clients.filter(c => c.nom).length === 0 && (
-                <p className={`text-sm text-center py-4 ${textMuted}`}>Aucun client disponible</p>
-              )}
-            </div>
-            <div className={`p-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <button onClick={() => setAssigningClientDevisId(null)} className={`w-full py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* PDF Preview Modal */}
       {showPdfPreview && (
@@ -5100,13 +2536,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <FileText size={18} className="sm:w-5 sm:h-5" style={{ color: couleur }} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Aperçu du document</h2>
+                  <h2 className={`font-bold text-base sm:text-lg ${textPrimary} truncate`}>Apercu du document</h2>
                   <p className={`text-xs sm:text-sm ${textMuted} hidden sm:block`}>Format A4 - Pret pour impression</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
-                  onClick={() => tryDownload(selected, printPDF)}
+                  onClick={() => { printPDF(selected); }}
                   className="px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 sm:gap-2 min-h-[44px] transition-colors text-sm"
                 >
                   <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -5153,88 +2589,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         couleur={couleur}
       />
 
-      {/* Save as Template Modal */}
-      {showSaveTemplateModal && selected && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`${cardBg} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
-            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
-                  <Star size={20} style={{ color: couleur }} />
-                </div>
-                <div>
-                  <h2 className={`font-bold text-lg ${textPrimary}`}>Sauvegarder comme modèle</h2>
-                  <p className={`text-sm ${textMuted}`}>{(selected.lignes || []).length} lignes · {selected.numero}</p>
-                </div>
-              </div>
-              <button onClick={() => setShowSaveTemplateModal(false)} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                <X size={20} className={textSecondary} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Nom du modèle</label>
-                <input
-                  value={templateName}
-                  onChange={e => setTemplateName(e.target.value)}
-                  placeholder={selected.objet || selected.lignes?.[0]?.description || 'Mon modèle'}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Catégorie</label>
-                <input
-                  value={templateCategory}
-                  onChange={e => setTemplateCategory(e.target.value)}
-                  placeholder="ex: Plomberie, Électricité, Rénovation..."
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                />
-              </div>
-              <button
-                onClick={async () => {
-                  if (!templateName.trim()) return showToast('Donnez un nom au modèle', 'error');
-                  await addTemplate({
-                    nom: templateName.trim(),
-                    categorie: templateCategory.trim() || 'Mes modèles',
-                    description: `Créé depuis ${selected.numero}`,
-                    lignes: (selected.lignes || []).map(l => ({
-                      description: l.description,
-                      quantite: l.quantite,
-                      unite: l.unite,
-                      prixUnitaire: Math.abs(l.prixUnitaire || 0),
-                      prixAchat: l.prixAchat || 0,
-                      tva: l.tva,
-                    })),
-                    tva_defaut: selected.tvaRate || 10,
-                    notes: selected.notes || '',
-                  });
-                  setShowSaveTemplateModal(false);
-                  setTemplateName('');
-                  setTemplateCategory('Mes modèles');
-                  showToast(`Modèle "${templateName}" sauvegardé`, 'success');
-                }}
-                disabled={!templateName.trim()}
-                className="w-full py-3.5 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 hover:shadow-lg"
-                style={{ background: couleur }}
-              >
-                <Star size={16} /> Sauvegarder le modèle
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Template Selector Modal */}
+      {/* Template Selector Modal (legacy) */}
       <TemplateSelector
         isOpen={showTemplateSelector}
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
-        customTemplates={ctxTemplates}
-        onDeleteTemplate={(id) => {
-          deleteCtxTemplate(id);
-          showToast('Modèle supprimé', 'success');
-        }}
         isDark={isDark}
         couleur={couleur}
       />
@@ -5251,8 +2610,32 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         couleur={couleur}
       />
 
-      {/* Devis Wizard - uses extracted variable (shared with preview mode) */}
-      {devisWizardElement}
+      </>}
+
+      {/* Devis Wizard - Step-by-step devis creation */}
+      <DevisWizard
+        isOpen={showDevisWizard}
+        onClose={() => setShowDevisWizard(false)}
+        onSubmit={(devisData) => {
+          const numero = generateNumero(devisData.type);
+          const newDevis = onSubmit({ ...devisData, numero });
+          if (newDevis?.id) {
+            setSelected(newDevis);
+            setMode('preview');
+          }
+        }}
+        clients={clients}
+        addClient={(data) => {
+          const c = { id: generateId(), ...data };
+          setClients(prev => [...prev, c]);
+          return c;
+        }}
+        catalogue={catalogue}
+        chantiers={chantiers}
+        entreprise={entreprise}
+        isDark={isDark}
+        couleur={couleur}
+      />
 
       {/* Signature Pad Modal */}
       <SignaturePad
@@ -5284,14 +2667,9 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       <DevisExpressModal
         isOpen={showDevisExpressModal}
         onClose={() => setShowDevisExpressModal(false)}
-        onCreateDevis={async (devisData) => {
-          const numero = await generateNumero(devisData.type || 'devis');
-          const client = clients.find(c => c.id === devisData.client_id);
-          const newDevis = await onSubmit({
-            ...devisData,
-            numero,
-            client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
-          });
+        onCreateDevis={(devisData) => {
+          const numero = generateNumero(devisData.type);
+          const newDevis = onSubmit({ ...devisData, numero });
           if (newDevis?.id) {
             setSelected(newDevis);
             setMode('preview');
@@ -5299,120 +2677,10 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           }
         }}
         clients={clients}
-        addClient={addClient}
         isDark={isDark}
         couleur={couleur}
         tvaDefaut={entreprise?.tvaDefaut || 10}
-        customTemplates={ctxTemplates}
-        recentTemplates={enrichedRecentTemplates}
-        onTrackUsage={trackTemplateUsage}
       />
     </div>
-  );
-}
-
-// ── Devis Historique tab (extracted sub-component) ──
-function DevisHistoriqueTab({ selected, facturesLiees, setSelected, isDark, couleur, modeDiscret, formatMoney, textPrimary, textMuted }) {
-  const [auditEntries, setAuditEntries] = React.useState([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  // Load audit history for this devis
-  React.useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-
-    getEntityHistory(isDemo ? null : supabase, 'devis', selected?.id, { limit: 50 })
-      .then(entries => {
-        if (!cancelled) setAuditEntries(entries);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setIsLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [selected?.id]);
-
-  // Build legacy events from devis data (creation, send, signature, factures)
-  const legacyEntries = React.useMemo(() => {
-    if (!selected) return [];
-    const entries = [];
-
-    entries.push({
-      id: `legacy-created-${selected.id}`,
-      entity_type: 'devis',
-      entity_id: selected.id,
-      action: 'created',
-      changes: {},
-      metadata: {},
-      user_name: '',
-      created_at: selected.created_at || selected.date,
-    });
-
-    if (selected.statut !== 'brouillon' && (selected.sent_at || selected.date !== (selected.created_at || selected.date))) {
-      entries.push({
-        id: `legacy-sent-${selected.id}`,
-        entity_type: 'devis',
-        entity_id: selected.id,
-        action: 'sent',
-        changes: {},
-        metadata: {},
-        user_name: '',
-        created_at: selected.sent_at || selected.date,
-      });
-    }
-
-    if (selected.signatureDate) {
-      entries.push({
-        id: `legacy-signed-${selected.id}`,
-        entity_type: 'devis',
-        entity_id: selected.id,
-        action: 'signed',
-        changes: {},
-        metadata: { signataire: selected.signataire },
-        user_name: selected.signataire || '',
-        created_at: selected.signatureDate,
-      });
-    }
-
-    facturesLiees.forEach(f => {
-      entries.push({
-        id: `legacy-facture-${f.id}`,
-        entity_type: 'facture',
-        entity_id: f.id,
-        action: 'created',
-        changes: {},
-        metadata: { numero: f.numero, total_ttc: f.total_ttc, facture_type: f.facture_type, statut: f.statut },
-        user_name: '',
-        created_at: f.date || f.created_at,
-      });
-    });
-
-    return entries;
-  }, [selected, facturesLiees]);
-
-  // Merge audit entries with legacy entries, deduplicate by timestamp proximity
-  const mergedEntries = React.useMemo(() => {
-    // If we have real audit entries, use them; append legacy facture entries
-    if (auditEntries.length > 0) {
-      const factureLegacy = legacyEntries.filter(e => e.entity_type === 'facture');
-      const all = [...auditEntries, ...factureLegacy];
-      all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      return all;
-    }
-
-    // No audit entries yet — show legacy timeline
-    legacyEntries.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    return legacyEntries;
-  }, [auditEntries, legacyEntries]);
-
-  return (
-    <AuditTimeline
-      entries={mergedEntries}
-      isDark={isDark}
-      couleur={couleur}
-      modeDiscret={modeDiscret}
-      isLoading={isLoading}
-      emptyMessage="Aucun historique pour ce devis"
-      showEntityBadge={true}
-    />
   );
 }

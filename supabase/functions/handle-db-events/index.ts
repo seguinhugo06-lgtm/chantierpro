@@ -59,54 +59,6 @@ async function logEvent(supabase: ReturnType<typeof getSupabaseClient>, log: Eve
 }
 
 // ============================================================================
-// WEBHOOK DISPATCH
-// ============================================================================
-
-async function dispatchWebhook(
-  supabase: ReturnType<typeof getSupabaseClient>,
-  event: string,
-  payload: Record<string, unknown>,
-  userId?: string,
-  orgId?: string,
-) {
-  try {
-    // Fire-and-forget to webhook-sender
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !serviceKey) return;
-
-    await fetch(`${supabaseUrl}/functions/v1/webhook-sender`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceKey}`,
-      },
-      body: JSON.stringify({ event, payload, userId, orgId }),
-    }).catch(err => console.warn('[WEBHOOK] Dispatch failed:', err.message));
-  } catch (err) {
-    console.warn('[WEBHOOK] Dispatch error:', err);
-  }
-}
-
-function mapDevisEvent(type: string, statut: string, oldStatut?: string): string | null {
-  if (type === 'INSERT') return 'devis.created';
-  if (type === 'UPDATE' && statut !== oldStatut) {
-    if (statut === 'accepte' || statut === 'signe') return 'devis.signed';
-    if (statut === 'payee') return 'facture.paid';
-    return 'devis.status_changed';
-  }
-  return null;
-}
-
-function mapChantierEvent(statut: string, oldStatut?: string): string | null {
-  if (statut === 'en_cours' && oldStatut !== 'en_cours') return 'chantier.status_changed';
-  if (statut === 'termine' && oldStatut !== 'termine') return 'chantier.completed';
-  if (statut !== oldStatut) return 'chantier.status_changed';
-  return null;
-}
-
-// ============================================================================
 // EVENT HANDLERS
 // ============================================================================
 
@@ -319,7 +271,7 @@ async function handlePhotoInsert(record: Record<string, unknown>, supabase: Retu
 
     if (chantier?.client?.email) {
       const { sendEmail } = await import('../_shared/communications.ts');
-      const link = `${Deno.env.get('APP_URL') || 'https://app.batigesti.fr'}/portal/chantier/${chantierId}/photos`;
+      const link = `${Deno.env.get('APP_URL') || 'https://app.chantierpro.fr'}/portal/chantier/${chantierId}/photos`;
 
       await sendEmail(
         chantier.client.email,
@@ -391,41 +343,6 @@ serve(async (req) => {
       default:
         console.log(`[WEBHOOK] Unhandled table: ${table}`);
         result = { handled: false, reason: 'unhandled_table' };
-    }
-
-    // ── Dispatch outbound webhooks (fire-and-forget) ──
-    const userId = record?.user_id as string | undefined;
-    const orgId = record?.organization_id as string | undefined;
-
-    if (table === 'devis') {
-      const devisEvent = mapDevisEvent(
-        type,
-        record?.statut as string,
-        old_record?.statut as string | undefined,
-      );
-      if (devisEvent) {
-        dispatchWebhook(supabase, devisEvent, {
-          id: record?.id,
-          numero: record?.numero,
-          type: record?.type,
-          statut: record?.statut,
-          montant_ttc: record?.montant_ttc || record?.total_ttc,
-          client_id: record?.client_id,
-        }, userId, orgId);
-      }
-    } else if (table === 'chantiers') {
-      const chantierEvent = mapChantierEvent(
-        record?.statut as string,
-        old_record?.statut as string | undefined,
-      );
-      if (chantierEvent) {
-        dispatchWebhook(supabase, chantierEvent, {
-          id: record?.id,
-          nom: record?.nom,
-          statut: record?.statut,
-          client_id: record?.client_id,
-        }, userId, orgId);
-      }
     }
 
     return new Response(

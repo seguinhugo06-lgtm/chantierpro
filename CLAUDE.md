@@ -1,70 +1,72 @@
-# BatiGesti — Règles projet
+# BatiGesti — SaaS gestion de chantiers BTP
 
-## Commandes essentielles
+## Commandes
 
 ```bash
-npm run dev          # Dev server (Vite, port 5173)
-npm run build        # Build prod — vérifier 0 erreurs avant push
+npm run dev          # Dev server (port 5173)
+npm run build        # Build production (DOIT passer sans erreurs)
+npm run lint         # ESLint sur src/
+npm run check        # Lint + build (vérification complète)
 ```
 
 ## Stack
 
-- **Frontend**: React 18 + Vite 5 + Tailwind CSS
-- **Backend**: Supabase (auth, PostgreSQL, storage, Edge Functions en Deno/TypeScript)
-- **State**: Zustand (`subscriptionStore`, `toastStore`) + React Context (`DataContext`, `AppContext`)
-- **Paiement**: Stripe (checkout + webhooks)
-- **PDF**: `devisHtmlBuilder.js` (principal) + `DevisPDF.jsx` (React PDF Renderer) + Factur-X (`facturx-pdf.js`)
-- **PWA**: vite-plugin-pwa + workbox (offline-first)
-- **Icônes**: lucide-react uniquement
-- **Monitoring**: Sentry (prod, `VITE_SENTRY_DSN`) + Plausible Analytics
+React 18 + Vite 5 + Tailwind 3.4 | Supabase (auth, DB, Edge Functions, Storage) | Zustand | Vercel
 
 ## Architecture
 
-- SPA mono-page — navigation via `setPage('nom-page')` dans `App.jsx`
-- Lazy loading avec `lazyWithRetry()` pour tous les composants de page
-- Feature gating : `<FeatureGuard feature="tresorerie">` + `subscriptionStore`
-- 3 plans : **Gratuit** (0€) / **Artisan** (14,90€/mois) / **Équipe** (29,90€/mois)
-- Mode démo : `isDemo` flag → localStorage au lieu de Supabase
-- Multi-tenant via `organization_id` + RLS policies sur toutes les tables
-- Edge Functions : pattern action-dispatch (`{ action: 'sync' | 'validate' | ... }`)
+- **SPA mono-page** : navigation via `setPage('nom')` dans App.jsx (pas de React Router)
+- **Multi-tenant** : `organization_id` + RLS sur toutes les tables
+- **Demo mode** : `isDemo` → localStorage au lieu de Supabase
+- **3 plans** : `gratuit` / `artisan` / `equipe` (IDs identiques DB ↔ frontend)
 
-## Conventions critiques
-
-- Langue UI : **français** — commits en **anglais** (`feat:`, `fix:`, `refactor:`)
-- Dark mode : prop `isDark` sur tous les composants
-- Couleur accent : prop `couleur` (défaut `#f97316`)
-- DB mapping : `fromSupabase()`/`toSupabase()` pour snake_case ↔ camelCase
-- Plans : ne jamais hardcoder les noms — utiliser `PLANS[planId].name`
-- Validation : utiliser `src/lib/validation.js` (`useFormValidation` hook)
-
-## Structure fichiers
+## Structure
 
 ```
 src/
-├── components/{domaine}/   # UI (Chantiers/, DevisPage.jsx, etc.)
-├── stores/                 # Zustand (subscriptionStore.js)
-├── services/               # API clients (syncService.js, webhookService.js)
-├── lib/                    # Utilitaires (validation.js, facturx.js, analytics.js)
-├── context/                # React Context (DataContext, AppContext, OrgContext)
-├── hooks/                  # Custom hooks (usePermissions, useFormValidation)
+├── components/     # Pages et UI (isDark, couleur props)
+├── stores/         # Zustand stores (*Store.js)
+├── hooks/          # Custom hooks (use*.js)
+├── services/       # API services (*Service.js, *Api.js)
+├── lib/            # Utilitaires (validation.js, sentry.js, queryHelper.js)
 supabase/
-├── migrations/             # SQL migrations (054 max)
-├── functions/              # Edge Functions (Deno TypeScript)
+├── functions/      # Edge Functions (Deno, action-dispatch pattern)
+├── migrations/     # SQL migrations (numérotées 001-054)
 ```
 
 ## Points d'attention
 
-- `aiPrefill` est utilisé par ChatInterface du Dashboard — ne pas supprimer
-- Labels/certifications → `entreprise.labels[]` (pas de champs individuels)
-- Flux IA devis = stepper 5 étapes inline (pas de modal)
-- Déploiement = **Vercel** (PAS Netlify) — auto-deploy au push sur `main`
-- Domaine prod : `batigesti.fr`
+- Dark mode : prop `isDark` + variables thème (`cardBg`, `inputBg`), **jamais** `dark:` Tailwind
+- Couleur accent : prop `couleur` (hex) via `style` inline
+- Icônes : `lucide-react` uniquement
+- DB mapping : `fromSupabase()` / `toSupabase()` dans `useSupabaseSync.js`
+- Erreurs : `captureException()` depuis `src/lib/sentry.js` (prod only)
+- Edge Functions : toujours `corsHeaders` dans chaque réponse
 
 ## Règles détaillées
 
 Voir `.claude/rules/` pour les conventions par domaine :
-- @.claude/rules/code-style.md — conventions de code
-- @.claude/rules/supabase.md — patterns Supabase & Edge Functions
-- @.claude/rules/components.md — patterns composants React
-- @.claude/rules/subscriptions.md — système d'abonnements
-- @.claude/rules/testing.md — tests et qualité
+- @.claude/rules/code-style.md — Formatting, naming, validation
+- @.claude/rules/supabase.md — Edge Functions, migrations, RLS, demo mode
+- @.claude/rules/components.md — Props, dark mode, responsive, navigation
+- @.claude/rules/subscriptions.md — Plans, gating, Stripe
+- @.claude/rules/testing.md — Build, qualité, Sentry
+- @.claude/rules/migrations.md — Migrations SQL (path: supabase/migrations/)
+- @.claude/rules/edge-functions.md — Edge Functions Deno (path: supabase/functions/)
+
+## Agents spécialisés
+
+- @.claude/agents/code-reviewer.md — Revue de code (sécurité, patterns, qualité)
+- @.claude/agents/debugger.md — Debugging (build, runtime, Supabase)
+- @.claude/agents/feature-planner.md — Planification de features
+
+## Skills (commandes)
+
+- `/nouveau-composant NomPage` — Génère un composant avec tous les patterns
+- `/migration description` — Crée une migration SQL complète
+- `/audit-qualite` — Audit complet du code
+
+## MCP Servers
+
+- **GitHub** : issues, PRs, code review (auth via `/mcp`)
+- **Sentry** : erreurs production, exceptions (auth via `/mcp`)

@@ -1,90 +1,331 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useToast } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
-import supabase, { auth, isDemo } from '../supabaseClient';
-import AdminHelp from './admin-help/AdminHelp';
+import { Link2, Unlink, Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, CreditCard, Receipt, Building2, Shield, Eye, EyeOff, Loader2, Key } from 'lucide-react';
+import supabase, { isDemo } from '../supabaseClient';
 import {
+  INTEGRATION_TYPES,
+  SYNC_STATUS,
+  getIntegrations,
+  saveIntegration,
+  removeIntegration,
   exportInvoicesToCSV,
   exportExpensesToCSV,
   generateFEC,
   downloadFile,
   calculateTVASummary,
+  syncToPennylane,
+  syncToIndy
 } from '../lib/integrations/accounting';
-
-import Facture2026Tab from './settings/Facture2026Tab';
-import RelanceConfigTab from './settings/RelanceConfigTab';
-import PaymentConfigTab from './settings/PaymentConfigTab';
-import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
-import TeamManagement from './settings/TeamManagement';
-import { usePermissions } from '../hooks/usePermissions';
-import { useRelances } from '../hooks/useRelances';
-import { useOrg } from '../context/OrgContext';
-import TemplateManager from './settings/TemplateManager';
-import IntegrationsHub from './integrations/IntegrationsHub';
-
-// ── Tab groups for mobile navigation ────────────────────────────────────────
-const TAB_GROUPS = [
-  { id: 'entreprise', label: '⚡ Mon entreprise', tabs: [
-    { key: 'identite', label: '🏢 Identité' },
-    { key: 'legal', label: '📋 Légal' },
-    { key: 'assurances', label: '🛡️ Assurances' },
-    { key: 'banque', label: '🏦 Banque' },
-  ]},
-  { id: 'documents', label: '📄 Documents', tabs: [
-    { key: 'documents', label: '📄 Documents' },
-    { key: 'templates', label: '📋 Modèles' },
-    { key: 'facture2026', label: '🧾 Facture 2026' },
-    { key: 'relances', label: '📨 Relances' },
-  ]},
-  { id: 'finance', label: '💶 Finance', tabs: [
-    { key: 'comptabilite', label: '🧮 Comptabilité' },
-    { key: 'rentabilite', label: '📊 Rentabilité' },
-    { key: 'paiements', label: '💳 Paiements' },
-  ]},
-  { id: 'equipe', label: '👥 Équipe', tabs: [
-    { key: 'team', label: '👥 Équipe & Accès' },
-  ]},
-  { id: 'integrations', label: '🔗 Intégrations', tabs: [
-    { key: 'integrations', label: '🔗 Intégrations' },
-  ]},
-  { id: 'avance', label: '⚙️ Avancé', tabs: [
-    { key: 'donnees', label: '💾 Données' },
-    { key: 'administratif', label: '📁 Administratif' },
-    { key: 'multi', label: '🏗️ Multi-entreprise' },
-  ]},
-];
-
-// ── Wizard step definitions ─────────────────────────────────────────────────
-const WIZARD_STEPS_DEF = [
-  { id: 'identite', title: 'Identité', desc: 'Votre entreprise en un coup d’œil', icon: Palette },
-  { id: 'siret', title: 'Informations légales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
-  { id: 'documents', title: 'Documents', desc: 'TVA, acompte et mentions', icon: FileCheck },
-  { id: 'relances', title: 'Relances', desc: '85% des relances auto sont payées dans 7 jours', icon: BellRing },
-  { id: 'catalogue', title: 'Catalogue', desc: 'Importez le référentiel BTP', icon: Package },
-];
-
-// ── Frais de structure charge items ─────────────────────────────────────────
-const FRAIS_ITEMS = [
-  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '🏠' },
-  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: '🛡️' },
-  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: '📱' },
-  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '🧮' },
-  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: '⛽' },
-  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '📦' },
-];
+import {
+  storeApiKeys,
+  deleteConfig,
+  getConnections,
+  disconnect as disconnectBank,
+  getStatus as getBankStatus,
+} from '../lib/integrations/gocardless';
+import BankConnectionModal from './bank/BankConnectionModal';
 
 // Villes RCS principales France
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur, setPage, modeDiscret }) {
+// ============================================================================
+// BanqueSubTab - Bank connection management in Settings
+// ============================================================================
+function BanqueSubTab({ isDark, cardBg, inputBg, textPrimary, textSecondary, textMuted, couleur, showToast }) {
+  const [connections, setConnections] = useState([]);
+  const [bankStatus, setBankStatus] = useState({ enabled: false, hasConnections: false });
+  const [loading, setLoading] = useState(true);
+  const [secretId, setSecretId] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [showKeys, setShowKeys] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(null);
+  const [connectModalOpen, setConnectModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadBankData();
+  }, []);
+
+  const loadBankData = async () => {
+    setLoading(true);
+    try {
+      const status = await getBankStatus();
+      setBankStatus(status);
+      if (status.enabled) {
+        const conns = await getConnections();
+        setConnections(conns);
+      }
+    } catch (e) {
+      console.error('Bank data load error:', e);
+    }
+    setLoading(false);
+  };
+
+  const handleSaveKeys = async () => {
+    if (!secretId || !secretKey) return;
+    setSaving(true);
+    try {
+      const result = await storeApiKeys(secretId, secretKey);
+      if (result?.success) {
+        setSecretId('');
+        setSecretKey('');
+        setShowKeys(false);
+        setBankStatus(prev => ({ ...prev, enabled: true }));
+        showToast('Clés GoCardless enregistrées', 'success');
+      }
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteConfig = async () => {
+    try {
+      await deleteConfig();
+      setBankStatus({ enabled: false, hasConnections: false });
+      setConnections([]);
+      showToast('Configuration bancaire supprimée', 'success');
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+  };
+
+  const handleDisconnect = async (connId) => {
+    setDisconnecting(connId);
+    try {
+      await disconnectBank(connId);
+      setConnections(prev => prev.filter(c => c.id !== connId));
+      showToast('Compte bancaire déconnecté', 'success');
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
+    }
+    setDisconnecting(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className={`${cardBg} rounded-xl border p-6 h-40`} />
+        <div className={`${cardBg} rounded-xl border p-6 h-32`} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
+        <div className="flex gap-3">
+          <Shield size={20} className={isDark ? 'text-blue-400 flex-shrink-0' : 'text-blue-600 flex-shrink-0'} />
+          <div>
+            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>
+              Connexion bancaire sécurisée
+            </p>
+            <p className={`text-sm mt-1 ${isDark ? 'text-blue-400/80' : 'text-blue-700'}`}>
+              Connectez votre banque via GoCardless (Open Banking). L'accès est valable 90 jours et peut être renouvelé. Vos identifiants bancaires ne sont jamais stockés.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* API Key Configuration */}
+      <div className={`${cardBg} rounded-xl border p-4 sm:p-6`}>
+        <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
+          <Key size={18} style={{ color: couleur }} />
+          Clés API GoCardless
+        </h3>
+
+        {bankStatus.enabled ? (
+          <div className="space-y-3">
+            <div className={`flex items-center gap-2 p-3 rounded-lg ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
+              <CheckCircle size={16} className="text-emerald-500" />
+              <span className={`text-sm font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                Clés API configurées
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowKeys(!showKeys)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {showKeys ? 'Masquer' : 'Modifier les clés'}
+              </button>
+              <button
+                onClick={handleDeleteConfig}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isDark ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                Supprimer la configuration
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className={`text-sm mb-4 ${textSecondary}`}>
+            Entrez vos identifiants API GoCardless pour activer la connexion bancaire.
+          </p>
+        )}
+
+        {(!bankStatus.enabled || showKeys) && (
+          <div className="space-y-3 mt-3">
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Secret ID</label>
+              <input
+                type="text"
+                value={secretId}
+                onChange={e => setSecretId(e.target.value)}
+                className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Secret Key</label>
+              <input
+                type="password"
+                value={secretKey}
+                onChange={e => setSecretKey(e.target.value)}
+                className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSaveKeys}
+                disabled={saving || !secretId || !secretKey}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 disabled:opacity-50 shadow-sm transition-all"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                Enregistrer
+              </button>
+              <a
+                href="https://bankaccountdata.gocardless.com/user-secrets/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-500 hover:text-primary-600 inline-flex items-center gap-1"
+              >
+                Obtenir des clés <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Connected accounts */}
+      <div className={`${cardBg} rounded-xl border p-4 sm:p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}>
+            <Building2 size={18} style={{ color: couleur }} />
+            Comptes connectés
+          </h3>
+          {bankStatus.enabled && (
+            <button
+              onClick={() => setConnectModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 shadow-sm transition-all"
+            >
+              <Link2 size={14} />
+              Connecter
+            </button>
+          )}
+        </div>
+
+        {connections.length === 0 ? (
+          <div className={`rounded-xl border-2 border-dashed p-8 text-center ${
+            isDark ? 'border-slate-600' : 'border-gray-300'
+          }`}>
+            <Building2 size={32} className={`mx-auto mb-3 ${isDark ? 'text-slate-500' : 'text-gray-300'}`} />
+            <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+              Aucun compte connecté
+            </p>
+            <p className={`text-xs mt-1 ${textMuted}`}>
+              {bankStatus.enabled
+                ? 'Cliquez sur "Connecter" pour ajouter votre banque'
+                : 'Configurez d\'abord vos clés API ci-dessus'
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {connections.map(conn => (
+              <div
+                key={conn.id}
+                className={`rounded-xl border p-4 ${isDark ? 'border-slate-600' : 'border-gray-200'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {conn.institution_logo && (
+                      <img src={conn.institution_logo} alt="" className="w-8 h-8 rounded-lg object-contain" />
+                    )}
+                    <div>
+                      <p className={`font-medium ${textPrimary}`}>{conn.institution_name}</p>
+                      <p className={`text-xs font-mono ${textMuted}`}>
+                        {conn.iban ? `${conn.iban.substring(0, 4)} •••• ${conn.iban.slice(-4)}` : 'IBAN non disponible'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${
+                        conn.last_balance >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }`}>
+                        {conn.last_balance != null
+                          ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(conn.last_balance)
+                          : '—'
+                        }
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                          conn.requisition_status === 'linked' ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`} />
+                        <span className={`text-xs ${textMuted}`}>
+                          {conn.requisition_status === 'linked' ? 'Actif' :
+                           conn.requisition_status === 'expired' ? 'Expiré' : conn.requisition_status}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDisconnect(conn.id)}
+                      disabled={disconnecting === conn.id}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isDark ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-500'
+                      }`}
+                      title="Déconnecter"
+                    >
+                      {disconnecting === conn.id
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <Unlink size={16} />
+                      }
+                    </button>
+                  </div>
+                </div>
+                {conn.expires_at && (
+                  <p className={`text-xs mt-2 ${textMuted}`}>
+                    Accès expire le {new Date(conn.expires_at).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bank Connection Modal */}
+      <BankConnectionModal
+        isOpen={connectModalOpen}
+        onClose={() => setConnectModalOpen(false)}
+        onConnected={() => {
+          setConnectModalOpen(false);
+          loadBankData();
+        }}
+        isDark={isDark}
+      />
+    </div>
+  );
+}
+
+export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], onExportComptable, isDark, couleur }) {
   const { showToast } = useToast();
-  const { canManageTeam } = usePermissions();
-  const { orgId } = useOrg();
-  const relances = useRelances({
-    devis, clients, entreprise,
-    userId: user?.id,
-    orgId,
-  });
 
   // Theme classes
   const cardBg = isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
@@ -96,161 +337,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [tab, setTab] = useState('identite');
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
-  const [showSetupWizard, setShowSetupWizard] = useState(false);
-  const [wizardStep, setWizardStep] = useState(() => {
-    try { return parseInt(localStorage.getItem('cp_wizard_step')) || 0; } catch { return 0; }
-  });
-  const [showProfileDetail, setShowProfileDetail] = useState(false);
-  const [sireneLoading, setSireneLoading] = useState(false);
-  const [mobileGroupOpen, setMobileGroupOpen] = useState('entreprise');
-  const [showFraisCalc, setShowFraisCalc] = useState(false);
-  const [fraisCharges, setFraisCharges] = useState({});
-
-  // Filter tab groups based on permissions (hide Équipe tab if not team manager)
-  const visibleTabGroups = TAB_GROUPS.filter(g => g.id !== 'equipe' || canManageTeam);
-
-  // Persist wizard step
-  useEffect(() => {
-    if (showSetupWizard) {
-      try { localStorage.setItem('cp_wizard_step', String(wizardStep)); } catch {}
-    }
-  }, [wizardStep, showSetupWizard]);
-
-  // Debounced save notification with visible indicator (MUST be before lookupSIRENE)
-  const saveTimeoutRef = useRef(null);
-  const supabaseSaveRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
-  const updateEntreprise = useCallback((updater) => {
-    // setEntreprise is now a context wrapper that persists to entreprises table
-    setEntreprise(updater);
-    // Also sync to legacy entreprise table for backward compat
-    if (!isDemo && supabase && user?.id) {
-      if (supabaseSaveRef.current) clearTimeout(supabaseSaveRef.current);
-      supabaseSaveRef.current = setTimeout(async () => {
-        try {
-          const current = typeof updater === 'function' ? updater(entreprise) : updater;
-          const { error } = await supabase
-            .from('entreprise')
-            .upsert({ user_id: user.id, settings_json: current }, { onConflict: 'user_id' });
-          if (error) console.warn('Supabase legacy entreprise sync failed:', error.message);
-        } catch (e) {
-          console.warn('Supabase legacy entreprise sync error:', e.message);
-        }
-      }, 1500);
-    }
-    setSaveStatus('saving');
-    // Debounce the toast to avoid spam
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      setSaveStatus('saved');
-      showToast('Modifications enregistrées', 'success');
-      // Reset indicator after 3s
-      setTimeout(() => setSaveStatus(null), 3000);
-    }, 800);
-  }, [setEntreprise, showToast, user?.id, entreprise]);
-
-  // SIRENE API lookup
-  const lookupSIRENE = useCallback(async () => {
-    const siret = (entreprise.siret || '').replace(/\s/g, '');
-    if (siret.length !== 14) {
-      showToast('SIRET invalide (14 chiffres requis)', 'error');
-      return;
-    }
-    setSireneLoading(true);
-    try {
-      // Use open data API (no key required)
-      const resp = await fetch(`https://api.insee.fr/entreprises/sirene/V3.11/siret/${siret}`, {
-        headers: { Accept: 'application/json' },
-      }).catch(() => null);
-
-      // Fallback to open data API
-      const resp2 = resp?.ok ? resp : await fetch(`https://entreprise.data.gouv.fr/api/sirene/v3/etablissements/${siret}`);
-      if (!resp2?.ok) throw new Error('API indisponible');
-      const data = await resp2.json();
-      const etab = data.etablissement || data;
-      const unite = etab.uniteLegale || etab.unite_legale || {};
-      const adresse = etab.adresseEtablissement || etab.adresse || {};
-
-      const nom = unite.denominationUniteLegale || unite.denomination || unite.nomUniteLegale || '';
-      const prenom = unite.prenomUsuelUniteLegale || '';
-      const fullNom = nom || (prenom ? `${prenom} ${unite.nomUniteLegale || ''}`.trim() : '');
-      const codeNaf = etab.periodesEtablissement?.[0]?.activitePrincipaleEtablissement || unite.activitePrincipaleUniteLegale || '';
-      const formeJur = unite.categorieJuridiqueUniteLegale || '';
-      const adresseStr = [
-        adresse.numeroVoieEtablissement,
-        adresse.typeVoieEtablissement,
-        adresse.libelleVoieEtablissement,
-        adresse.codePostalEtablissement,
-        adresse.libelleCommuneEtablissement,
-      ].filter(Boolean).join(' ');
-
-      updateEntreprise(prev => ({
-        ...prev,
-        ...(fullNom && !prev.nom ? { nom: fullNom } : {}),
-        ...(adresseStr && !prev.adresse ? { adresse: adresseStr } : {}),
-        ...(codeNaf ? { codeApe: codeNaf } : {}),
-      }));
-
-      showToast(`SIRENE : ${fullNom || 'Entreprise trouvée'}`, 'success');
-    } catch (err) {
-      showToast('Impossible de récupérer les données SIRENE. Vérifiez le SIRET.', 'error');
-    }
-    setSireneLoading(false);
-  }, [entreprise.siret, updateEntreprise, showToast]);
-
-  // Frais de structure calculator
-  const fraisTotal = useMemo(() => Object.values(fraisCharges).reduce((s, v) => s + (parseFloat(v) || 0), 0), [fraisCharges]);
-  const caEstime = useMemo(() => {
-    // rough estimate: sum of accepte/signe devis monthly avg
-    const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-    const recentCA = devis
-      .filter(d => ['accepte', 'signe', 'payee', 'paye'].includes(d.statut) && new Date(d.date) >= sixMonthsAgo)
-      .reduce((s, d) => s + (d.total_ht || 0), 0);
-    return recentCA / 6 || 1;
-  }, [devis]);
-  const tauxSuggere = useMemo(() => caEstime > 0 ? Math.round((fraisTotal / caEstime) * 100) : 15, [fraisTotal, caEstime]);
-
-  // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
-  useEffect(() => {
-    const handleTabNav = (e) => {
-      const data = e.detail;
-      // Support both string (legacy) and object { tab, fieldId } formats
-      const tabValue = typeof data === 'string' ? data : data?.tab;
-      const fieldId = typeof data === 'object' ? data?.fieldId : null;
-      if (tabValue) {
-        setTab(tabValue);
-        // After tab switch, scroll to and focus the relevant field
-        if (fieldId) {
-          setTimeout(() => {
-            const el = document.getElementById(`settings-field-${fieldId}`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              el.focus();
-            }
-          }, 150);
-        }
-      }
-    };
-    window.addEventListener('navigate-settings-tab', handleTabNav);
-    return () => window.removeEventListener('navigate-settings-tab', handleTabNav);
-  }, []);
-
-  // Escape key handler for modals
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        if (showSetupWizard) { setShowSetupWizard(false); return; }
-        if (showExportModal) { setShowExportModal(false); return; }
-        if (showProfileDetail) { setShowProfileDetail(false); return; }
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [showSetupWizard, showExportModal, showProfileDetail]);
 
   // Comptabilite state
-  const [comptaSubTab, setComptaSubTab] = useState('export');
+  const [comptaSubTab, setComptaSubTab] = useState('integrations');
+  const [integrations, setIntegrations] = useState(getIntegrations);
+  const [connecting, setConnecting] = useState(null);
+  const [syncing, setSyncing] = useState(null);
   const [exportPeriod, setExportPeriod] = useState(() => {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -260,47 +352,96 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     };
   });
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500 * 1024) {
-      showToast('Logo trop volumineux (500 Ko max)', 'error');
-      e.target.value = '';
-      return;
+  // Stripe config state
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [stripeConfigured, setStripeConfigured] = useState(false);
+  const [stripeKey, setStripeKey] = useState('');
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState('');
+  const [showStripeKey, setShowStripeKey] = useState(false);
+  const [commissionModel, setCommissionModel] = useState('artisan');
+  const [savingStripe, setSavingStripe] = useState(false);
+
+  // Load Stripe config from Supabase on mount
+  useEffect(() => {
+    if (isDemo) return;
+    (async () => {
+      try {
+        const { data } = await supabase.from('stripe_config').select('*').single();
+        if (data) {
+          setStripeEnabled(data.stripe_enabled || false);
+          setStripeConfigured(!!data.secret_key_vault_id);
+          setCommissionModel(data.commission_model || 'artisan');
+        }
+      } catch (e) {
+        // No config yet, that's fine
+      }
+    })();
+  }, []);
+
+  // Save Stripe key
+  const saveStripeKey = async () => {
+    if (!stripeKey) return;
+    setSavingStripe(true);
+    try {
+      const { data, error } = await supabase.rpc('store_stripe_key', {
+        p_secret_key: stripeKey,
+        p_webhook_secret: stripeWebhookSecret || null
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setStripeConfigured(true);
+        setStripeKey('');
+        setStripeWebhookSecret('');
+        showToast('Clé Stripe enregistrée de manière sécurisée', 'success');
+      } else {
+        showToast(data?.error || 'Erreur lors de la sauvegarde', 'error');
+      }
+    } catch (e) {
+      showToast('Erreur: ' + e.message, 'error');
     }
-    const reader = new FileReader();
-    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result }));
-    reader.readAsDataURL(file);
+    setSavingStripe(false);
   };
 
-  // Helper to mask sensitive data in modeDiscret
-  const maskValue = (value) => modeDiscret ? '····················' : value;
+  // Update Stripe config (toggle, commission model)
+  const updateStripeConfig = async (enabled, model) => {
+    if (isDemo) return;
+    try {
+      await supabase.rpc('update_stripe_config', {
+        p_enabled: enabled ?? null,
+        p_commission_model: model ?? null
+      });
+    } catch (e) {
+      console.error('Erreur mise à jour config Stripe:', e);
+    }
+  };
+
+  // Debounced save notification
+  const saveTimeoutRef = useRef(null);
+  const updateEntreprise = useCallback((updater) => {
+    setEntreprise(updater);
+    // Debounce the toast to avoid spam
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      showToast('Modifications enregistrées', 'success');
+    }, 800);
+  }, [setEntreprise, showToast]);
+  
+  const handleLogoUpload = (e) => { 
+    const file = e.target.files?.[0]; 
+    if (!file) return; 
+    const reader = new FileReader(); 
+    reader.onload = () => setEntreprise(p => ({ ...p, logo: reader.result })); 
+    reader.readAsDataURL(file); 
+  };
   
   const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
   // Calcul score complétude
-  const PROFILE_FIELDS = [
-    { key: 'nom', label: 'Nom de l\'entreprise', required: true, tab: 'identite' },
-    { key: 'adresse', label: 'Adresse', required: true, tab: 'identite' },
-    { key: 'siret', label: 'N° SIRET', required: true, tab: 'legal' },
-    { key: 'tel', label: 'Téléphone', required: true, tab: 'identite' },
-    { key: 'email', label: 'Email', required: true, tab: 'identite' },
-    { key: 'formeJuridique', label: 'Forme juridique', required: true, tab: 'legal' },
-    { key: 'codeApe', label: 'Code APE', required: false, tab: 'legal' },
-    { key: 'rcsVille', label: 'Ville RCS', required: false, tab: 'legal' },
-    { key: 'rcsNumero', label: 'N° RCS', required: false, tab: 'legal' },
-    { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', required: false, tab: 'legal' },
-    { key: 'rcProAssureur', label: 'Assureur RC Pro', required: false, tab: 'assurances' },
-    { key: 'rcProNumero', label: 'N° Police RC Pro', required: false, tab: 'assurances' },
-    { key: 'decennaleAssureur', label: 'Assureur Décennale', required: false, tab: 'assurances' },
-    { key: 'decennaleNumero', label: 'N° Police Décennale', required: false, tab: 'assurances' },
-  ];
-  const missingFields = PROFILE_FIELDS.filter(f => !entreprise[f.key] || String(entreprise[f.key]).trim() === '');
-  const missingRequired = missingFields.filter(f => f.required);
-  const missingRecommended = missingFields.filter(f => !f.required);
   const getCompletude = () => {
-    const filled = PROFILE_FIELDS.filter(f => entreprise[f.key] && String(entreprise[f.key]).trim() !== '');
-    return Math.round((filled.length / PROFILE_FIELDS.length) * 100);
+    const required = ['nom', 'adresse', 'siret', 'tel', 'email'];
+    const recommended = ['formeJuridique', 'codeApe', 'rcsVille', 'rcsNumero', 'tvaIntra', 'rcProAssureur', 'rcProNumero', 'decennaleAssureur', 'decennaleNumero'];
+    const filled = [...required, ...recommended].filter(k => entreprise[k] && String(entreprise[k]).trim() !== '');
+    return Math.round((filled.length / (required.length + recommended.length)) * 100);
   };
   const completude = getCompletude();
 
@@ -346,6 +487,47 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return calculateTVASummary(devis, depenses, exportPeriod.debut, exportPeriod.fin);
   }, [devis, depenses, exportPeriod]);
 
+  // Comptabilite handlers
+  const handleConnect = async (integrationId) => {
+    setConnecting(integrationId);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    saveIntegration(integrationId, {
+      status: SYNC_STATUS.CONNECTED,
+      connectedAt: new Date().toISOString(),
+      lastSync: null
+    });
+    setIntegrations(getIntegrations());
+    setConnecting(null);
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} connecté`, 'success');
+  };
+
+  const handleDisconnect = (integrationId) => {
+    removeIntegration(integrationId);
+    setIntegrations(getIntegrations());
+    showToast(`${INTEGRATION_TYPES[integrationId.toUpperCase()]?.name || integrationId} déconnecté`, 'info');
+  };
+
+  const handleSync = async (integrationId) => {
+    setSyncing(integrationId);
+    try {
+      if (integrationId === 'pennylane') {
+        await syncToPennylane(factures, depenses, integrations[integrationId]?.apiKey);
+      } else if (integrationId === 'indy') {
+        await syncToIndy(factures, integrations[integrationId]?.apiKey);
+      }
+      saveIntegration(integrationId, {
+        ...integrations[integrationId],
+        lastSync: new Date().toISOString(),
+        status: SYNC_STATUS.UP_TO_DATE
+      });
+      setIntegrations(getIntegrations());
+      showToast('Synchronisation terminée', 'success');
+    } catch (error) {
+      showToast('Erreur de synchronisation', 'error');
+    }
+    setSyncing(null);
+  };
+
   const handleExportCSV = (type) => {
     if (type === 'factures') {
       const csv = exportInvoicesToCSV(factures, clients, entreprise);
@@ -362,6 +544,17 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     const fec = generateFEC(factures, depenses, clients, chantiers, entreprise, exportPeriod.debut, exportPeriod.fin);
     downloadFile(fec, `FEC_${entreprise?.siret || 'SIRET'}_${exportPeriod.debut.replace(/-/g, '')}_${exportPeriod.fin.replace(/-/g, '')}.txt`, 'text/plain');
     showToast('Fichier FEC généré', 'success');
+  };
+
+  const getIntegrationIcon = (iconName) => {
+    switch (iconName) {
+      case 'receipt': return Receipt;
+      case 'calculator': return Calculator;
+      case 'credit-card': return CreditCard;
+      case 'file-spreadsheet': return FileSpreadsheet;
+      case 'file-text': return FileText;
+      default: return Building2;
+    }
   };
 
   // Export comptable Excel
@@ -424,108 +617,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     <div className="space-y-4 sm:space-y-6">
       {/* Header avec score */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
-              aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
-          {/* Auto-save status indicator */}
-          {saveStatus && (
-            <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
-              saveStatus === 'saving'
-                ? isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
-                : isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-            }`}>
-              {saveStatus === 'saving' ? (
-                <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Enregistrement...</>
-              ) : (
-                <><CheckCircle size={12} /> Enregistré</>
-              )}
-            </span>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold">Paramètres</h1>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setShowExportModal(true)}
-            className={`px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm flex items-center gap-2 transition-colors"
             title="Exporter vos devis et factures au format CSV pour votre comptable"
           >
             📊 Export comptable
           </button>
-          <div className="relative">
-            <button
-              onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
-              title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
-            >
-              <div className="text-right shrink-0">
-                <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
-                <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
-              </div>
-              <div className={`w-16 sm:w-32 h-3 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
-              </div>
-              {completude < 100 && <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>▼</span>}
-            </button>
-
-            {/* Dropdown showing missing fields */}
-            {showProfileDetail && completude < 100 && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-xl border shadow-xl z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm font-semibold ${textPrimary}`}>Champs manquants ({missingFields.length})</p>
-                    <button onClick={() => setShowProfileDetail(false)} className={`p-1 rounded-lg text-xs ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>✕</button>
-                  </div>
-
-                  {missingRequired.length > 0 && (
-                    <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Obligatoires
-                      </p>
-                      <div className="space-y-1">
-                        {missingRequired.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                            <span>{f.label}</span>
-                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {missingRecommended.length > 0 && (
-                    <div>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-center gap-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> Recommandés
-                      </p>
-                      <div className="space-y-1">
-                        {missingRecommended.map(f => (
-                          <button key={f.key} onClick={() => { setTab(f.tab); setShowProfileDetail(false); }} className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'}`}>
-                            <span>{f.label}</span>
-                            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>→ {f.tab === 'identite' ? 'Identité' : f.tab === 'legal' ? 'Légal' : 'Assurances'}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}
-                    className="w-full mt-1 px-4 py-2.5 text-white rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
-                    style={{ background: couleur }}
-                  >
-                    🪄 Compléter avec l'assistant
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className={`flex items-center gap-4 px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm`}>
+            <div className="text-right">
+              <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Profil complété</p>
+              <p className="text-xl font-bold" style={{ color: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }}>{completude}%</p>
+            </div>
+            <div className={`w-32 h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${completude}%`, background: completude >= 80 ? '#22c55e' : completude >= 50 ? '#f59e0b' : '#ef4444' }} />
+            </div>
           </div>
         </div>
       </div>
@@ -543,113 +651,28 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       ))}
 
       {completude < 80 && (
-        <div className={`rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <span className="text-xl shrink-0">📝</span>
-            <div className="min-w-0">
-              <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
-            </div>
+        <div className={`rounded-xl p-4 flex items-start gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+          <span className="text-xl">📝</span>
+          <div>
+            <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
           </div>
-          <button
-            onClick={() => { setShowSetupWizard(true); setWizardStep(0); }}
-            className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0"
-            style={{ background: couleur }}
-          >
-            🪄 Assistant config
-          </button>
         </div>
       )}
 
-      {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
-      {/* Level 1: Group pills (hidden on mobile) */}
-      <div className={`hidden sm:block border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        <div className="flex gap-0.5">
-          {visibleTabGroups.map(group => {
-            const activeInGroup = group.tabs.some(t => t.key === tab);
-            return (
-              <button
-                key={group.id}
-                onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
-                className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
-                style={activeInGroup ? { color: entreprise.couleur } : {}}
-              >
-                {group.label}
-                {activeInGroup && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ backgroundColor: entreprise.couleur }} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        {/* Level 2: Sub-tabs within active group */}
-        {(() => {
-          const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
-          if (!activeGroup || activeGroup.tabs.length <= 1) return null;
-          return (
-            <div className={`flex gap-1 px-2 py-2 ${isDark ? 'bg-slate-800/30' : 'bg-slate-50/80'}`}>
-              {activeGroup.tabs.map(t => (
-                <button
-                  key={t.key}
-                  data-tab={t.key}
-                  onClick={() => setTab(t.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
-                  style={tab === t.key ? { backgroundColor: entreprise.couleur } : {}}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Mobile tabs — grouped accordion (visible < 640px) */}
-      <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-        {visibleTabGroups.map(group => {
-          const isOpen = mobileGroupOpen === group.id;
-          const activeInGroup = group.tabs.some(t => t.key === tab);
-          return (
-            <div key={group.id}>
-              <button
-                onClick={() => setMobileGroupOpen(isOpen ? '' : group.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeInGroup
-                    ? isDark ? 'bg-slate-700/60 text-white' : 'bg-slate-50 text-slate-900'
-                    : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span>{group.label}</span>
-                <div className="flex items-center gap-2">
-                  {activeInGroup && !isOpen && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
-                      {group.tabs.find(t => t.key === tab)?.label}
-                    </span>
-                  )}
-                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </div>
-              </button>
-              {isOpen && (
-                <div className={`px-2 pb-2 flex gap-1.5 overflow-x-auto ${isDark ? 'bg-slate-800/50' : 'bg-white'}`} style={{ scrollbarWidth: 'none' }}>
-                  {group.tabs.map(t => (
-                    <button
-                      key={t.key}
-                      onClick={() => setTab(t.key)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[44px] whitespace-nowrap shrink-0 ${
-                        tab === t.key
-                          ? 'text-white shadow-sm'
-                          : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-700/40' : 'text-slate-500 hover:text-slate-700 bg-slate-100'
-                      } ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
-                      style={tab === t.key ? { backgroundColor: couleur } : {}}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* Tabs */}
+      <div className={`flex gap-2 border-b pb-2 flex-wrap overflow-x-auto ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+        {[
+          ['identite', '🏢 Identité'],
+          ['legal', '📋 Légal'],
+          ['assurances', `🛡️ Assurances${hasAssuranceAlerts ? ' ⚠️' : ''}`],
+          ['banque', '🏦 Banque'],
+          ['documents', '📄 Documents'],
+          ['rentabilite', '📊 Rentabilité'],
+          ['comptabilite', '🧮 Comptabilité']
+        ].map(([k, v]) => (
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2.5 rounded-t-xl font-medium whitespace-nowrap min-h-[44px] ${tab === k ? (isDark ? 'bg-slate-800 border border-b-slate-800 border-slate-700' : 'bg-white border border-b-white border-slate-200') + ' -mb-[3px]' : (isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-500 hover:text-slate-700')} ${k === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`} style={tab === k ? {color: entreprise.couleur} : {}}>{v}</button>
+        ))}
       </div>
 
       {/* IDENTITÉ */}
@@ -661,11 +684,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <p className="text-sm font-medium mb-2">Logo entreprise</p>
                 <div className="flex items-center gap-4">
-                  <div
-                  onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2'); e.currentTarget.style.borderColor = entreprise.couleur; e.currentTarget.style.ringColor = entreprise.couleur; }}
-                  onDragLeave={e => { e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; }}
-                  onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; const file = e.dataTransfer.files?.[0]; if (file) { const fakeEvent = { target: { files: [file] } }; handleLogoUpload(fakeEvent); } }}
-                  className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
+                  <div className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
                     ) : entreprise.nom ? (
@@ -718,7 +737,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Nom de l'entreprise <span className="text-red-500">*</span></label>
-                <input id="settings-field-nom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({...p, nom: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({...p, nom: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
@@ -731,8 +750,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value="SARL">SARL</option>
                   <option value="SAS">SAS</option>
                   <option value="SASU">SASU</option>
-                  <option value="SA">SA (Société Anonyme)</option>
-                  <option value="SNC">SNC (Société en Nom Collectif)</option>
                 </select>
               </div>
               <div>
@@ -746,16 +763,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <textarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
+                <textarea className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={e => updateEntreprise(p => ({...p, adresse: e.target.value}))} />
                 <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
-                <input id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
+                <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
-                <input id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
+                <input type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web</label>
@@ -778,7 +795,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
-                <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
                 )}
@@ -793,14 +810,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">RCS - Registre du Commerce</h3>
-            <p className={`text-sm mb-4 ${textMuted}`}>Format légal: RCS [Ville] [Type] [Numéro] — ex: RCS Paris B 123 456 789</p>
+            <p className="text-sm text-slate-500 mb-4">Format légal: RCS [Ville] [Type] [Numéro]</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Ville du greffe</label>
-                <select id="settings-field-rcs" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
+                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
                   <option value="">Sélectionner...</option>
                   {VILLES_RCS.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
@@ -821,22 +837,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             {getRCSComplet() && (
               <div className="mt-4 p-3 bg-green-50 rounded-xl">
-                <p className="text-sm text-green-700">" Sera affiché: <strong>{getRCSComplet()}</strong></p>
+                <p className="text-sm text-green-700">“ Sera affiché: <strong>{getRCSComplet()}</strong></p>
               </div>
             )}
           </div>
-          ) : (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
-            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>ℹ️ Auto-entrepreneur / Micro-entreprise</p>
-            <p className={`text-xs mt-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Le RCS n'est pas requis pour votre statut juridique.</p>
-          </div>
-          )}
 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
             <div>
               <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <input id="settings-field-tvaIntra" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={e => updateEntreprise(p => ({...p, tvaIntra: e.target.value.toUpperCase()}))} />
               <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
               {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
                 <p className="text-xs text-green-600 mt-1">“ Format valide</p>
@@ -908,19 +918,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
-              {entreprise.rcProValidite && (() => {
-                const d = new Date(entreprise.rcProValidite);
-                const now = new Date();
-                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
-                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
-                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
-                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
-              })()}
+              {entreprise.rcProAssureur && entreprise.rcProNumero && entreprise.rcProValidite && new Date(entreprise.rcProValidite) > new Date() && (
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Compagnie d'assurance <span className="text-red-500">*</span></label>
-                <input id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
+                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={e => updateEntreprise(p => ({...p, rcProAssureur: e.target.value}))} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Numéro de contrat <span className="text-red-500">*</span></label>
@@ -929,13 +934,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div>
                 <label className="block text-sm font-medium mb-1">Date de validité <span className="text-red-500">*</span></label>
                 <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Montant de garantie</label>
-                <div className="flex">
-                  <input type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={e => updateEntreprise(p => ({...p, rcProMontantGarantie: e.target.value}))} />
-                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>€</span>
-                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Zone géographique</label>
@@ -947,14 +945,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold"> Garantie Décennale</h3>
-              {entreprise.decennaleValidite && (() => {
-                const d = new Date(entreprise.decennaleValidite);
-                const now = new Date();
-                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
-                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
-                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
-                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
-              })()}
+              {entreprise.decennaleAssureur && entreprise.decennaleNumero && entreprise.decennaleValidite && new Date(entreprise.decennaleValidite) > new Date() && (
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">“ Valide</span>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -979,7 +972,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
 
       {/* BANQUE */}
-      {tab === 'banque' && (
+      {tab === 'banque' && (<>
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
           <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
           <p className="text-sm text-slate-500 mb-4">Ces informations apparaîtront sur vos factures pour faciliter le paiement par virement.</p>
@@ -994,44 +987,149 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">IBAN</label>
-              <input id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.iban && !/^FR\d{2}\s?([A-Z0-9]{4}\s?){5}[A-Z0-9]{3}$/.test(entreprise.iban.replace(/\s/g, '').match(/^FR\d{2}/) ? entreprise.iban : '') && entreprise.iban.replace(/\s/g, '').length > 4 ? 'border-amber-300' : ''} ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
-              {entreprise.iban && entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR') && (
-                <p className="text-xs text-green-600 mt-1">✓ Format IBAN valide</p>
-              )}
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={entreprise.iban || ''} onChange={e => updateEntreprise(p => ({...p, iban: e.target.value.toUpperCase()}))} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} readOnly={modeDiscret} />
+              <input className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={entreprise.bic || ''} onChange={e => updateEntreprise(p => ({...p, bic: e.target.value.toUpperCase()}))} />
             </div>
           </div>
-          <div className={`mt-4 rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-            <Shield size={16} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
-            <p className={`text-xs ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-              Vos coordonnées bancaires apparaîtront sur vos factures pour faciliter les virements. Elles sont stockées localement et ne sont jamais partagées avec des tiers.
-            </p>
-          </div>
-
-          {/* Mode de paiement par défaut */}
-          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <h4 className="font-semibold mb-3">Mode de paiement par défaut</h4>
-            <p className={`text-sm ${textMuted} mb-3`}>Mode pré-sélectionné lors de l'encaissement d'une facture.</p>
-            <select
-              className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-              value={entreprise.modePaiementDefaut || 'virement'}
-              onChange={e => updateEntreprise(p => ({...p, modePaiementDefaut: e.target.value}))}
-            >
-              <option value="virement">Virement bancaire (recommandé BTP)</option>
-              <option value="cheque">Chèque</option>
-              <option value="especes">Espèces</option>
-              <option value="cb">Carte bancaire</option>
-              <option value="prelevement">Prélèvement</option>
-              <option value="autre">Autre</option>
-            </select>
-          </div>
         </div>
-      )}
 
-      {/* DOCUMENTS — removed, content moved to comptabilite */}
+        {/* Stripe Payment Section */}
+        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 mt-4`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+              <CreditCard size={20} style={{ color: couleur }} />
+            </div>
+            <div>
+              <h3 className="font-semibold">Paiement en ligne</h3>
+              <p className={`text-sm ${textMuted}`}>Acceptez les paiements par carte bancaire via Stripe</p>
+            </div>
+          </div>
+
+          {/* Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <label className="text-sm font-medium">Activer le paiement par carte bancaire</label>
+            <button
+              onClick={() => {
+                const newState = !stripeEnabled;
+                setStripeEnabled(newState);
+                updateStripeConfig(newState, null);
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${stripeEnabled ? 'bg-emerald-500' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${stripeEnabled ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
+
+          {stripeEnabled && (
+            <div className="space-y-4">
+              {/* Status badge */}
+              {stripeConfigured && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-medium">Stripe configuré et actif</span>
+                </div>
+              )}
+
+              {/* Secret key input */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {stripeConfigured ? 'Remplacer la clé secrète Stripe' : 'Clé secrète Stripe'}
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type={showStripeKey ? 'text' : 'password'}
+                      className={`w-full px-4 py-2.5 pr-10 border rounded-xl font-mono text-sm ${inputBg}`}
+                      placeholder="sk_live_..."
+                      value={stripeKey}
+                      onChange={e => setStripeKey(e.target.value)}
+                    />
+                    <button
+                      onClick={() => setShowStripeKey(!showStripeKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showStripeKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <button
+                    onClick={saveStripeKey}
+                    disabled={!stripeKey || savingStripe}
+                    className="px-4 py-2.5 text-white rounded-xl font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+                    style={{ background: couleur }}
+                  >
+                    {savingStripe ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
+                    Sauver
+                  </button>
+                </div>
+                <p className={`text-xs mt-1 ${textMuted}`}>
+                  La clé est chiffrée et stockée de manière sécurisée (Vault). Elle n'est jamais visible après enregistrement.
+                </p>
+              </div>
+
+              {/* Webhook secret (optional, advanced) */}
+              <details className={`text-sm ${textMuted}`}>
+                <summary className="cursor-pointer hover:text-slate-500">Configuration avancée</summary>
+                <div className="mt-2">
+                  <label className="block text-sm font-medium mb-1">Secret webhook Stripe (optionnel)</label>
+                  <input
+                    type="password"
+                    className={`w-full px-4 py-2.5 border rounded-xl font-mono text-sm ${inputBg}`}
+                    placeholder="whsec_..."
+                    value={stripeWebhookSecret}
+                    onChange={e => setStripeWebhookSecret(e.target.value)}
+                  />
+                  <p className={`text-xs mt-1 ${textMuted}`}>
+                    Configurez un webhook dans votre dashboard Stripe pointant vers votre endpoint Supabase Edge Function.
+                  </p>
+                </div>
+              </details>
+
+              {/* Commission model */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Commission Stripe absorbée par</label>
+                <div className="space-y-2">
+                  {[
+                    { value: 'artisan', label: "L'artisan", desc: 'Le client paie le montant exact TTC. Vous absorbez les frais (~1.4% + 0.25€).' },
+                    { value: 'client', label: 'Le client', desc: 'Le client paie un surplus de ~1.7% pour couvrir les frais Stripe.' },
+                    { value: 'partage', label: 'Partagé 50/50', desc: 'Les frais sont partagés (~0.85% chacun).' }
+                  ].map(opt => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        commissionModel === opt.value
+                          ? (isDark ? 'border-emerald-500 bg-emerald-900/20' : 'border-emerald-500 bg-emerald-50')
+                          : (isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-200 hover:border-slate-300')
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="commission"
+                        value={opt.value}
+                        checked={commissionModel === opt.value}
+                        onChange={() => {
+                          setCommissionModel(opt.value);
+                          updateStripeConfig(null, opt.value);
+                        }}
+                        className="mt-1"
+                        style={{ accentColor: couleur }}
+                      />
+                      <div>
+                        <span className="font-medium text-sm">{opt.label}</span>
+                        <p className={`text-xs mt-0.5 ${textMuted}`}>{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </>)}
+
+      {/* DOCUMENTS */}
       {tab === 'documents' && (
         <div className="space-y-4 sm:space-y-6">
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
@@ -1045,7 +1143,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value={60}>2 mois</option>
                   <option value={90}>3 mois</option>
                 </select>
-                <p className={`text-xs mt-1 ${textMuted}`}>Art. L.111-1 du Code de la consommation</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">TVA par défaut</label>
@@ -1055,7 +1152,6 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <option value={5.5}>5,5% (réno. énergétique)</option>
                   <option value={0}>0% (franchise TVA)</option>
                 </select>
-                <p className={`text-xs mt-1 ${textMuted}`}>20% standard · 10% rénovation {'>'} 2 ans · 5,5% performance énergétique</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Délai de paiement</label>
@@ -1072,7 +1168,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.acompteDefaut || 30} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
                   <option value={0}>Pas d'acompte</option>
                   <option value={20}>20%</option>
-                  <option value={30}>30% (recommandé BTP)</option>
+                  <option value={30}>30% (max légal si &gt;1500€)</option>
                   <option value={40}>40%</option>
                   <option value={50}>50%</option>
                 </select>
@@ -1106,185 +1202,36 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </div>
 
-          {/* Pénalités de retard */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold">Pénalités de retard</h3>
-                <p className={`text-sm ${textMuted}`}>Art. L441-10 du Code de commerce — obligatoire sur les factures</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={entreprise.mentionPenalites !== false} onChange={e => updateEntreprise(p => ({...p, mentionPenalites: e.target.checked}))} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              </label>
-            </div>
-            {entreprise.mentionPenalites !== false && (
-              <div className="flex items-center gap-3">
-                <label className={`text-sm ${textSecondary}`}>Taux annuel :</label>
-                <div className="flex items-center">
-                  <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites ?? 11.62} onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || 0}))} />
-                  <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm ${isDark ? 'bg-slate-600 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-500 border-slate-300'}`}>%</span>
-                </div>
-                <p className={`text-xs ${textMuted}`}>Défaut : 3× taux directeur BCE</p>
-              </div>
-            )}
-          </div>
-
-          {/* Médiateur de la consommation */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-1">Médiateur de la consommation</h3>
-            <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire depuis 2016 (Art. L612-1 du Code de la consommation)</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Nom du médiateur</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={e => updateEntreprise(p => ({...p, mediateur: e.target.value}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Site web / Adresse</label>
-                <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.mediateur-consommation.fr" value={entreprise.mediateurContact || ''} onChange={e => updateEntreprise(p => ({...p, mediateurContact: e.target.value}))} />
-              </div>
-            </div>
-          </div>
-
-          {/* CGV */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
             <textarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={e => updateEntreprise(p => ({...p, cgv: e.target.value}))} />
-            <p className={`text-xs ${textMuted} mt-2`}>Ce texte sera ajouté après les mentions légales obligatoires.</p>
+            <p className="text-xs text-slate-500 mt-2">Ce texte sera ajouté après les mentions légales obligatoires.</p>
           </div>
         </div>
-      )}
-
-      {/* MODÈLES DE DEVIS */}
-      {tab === 'templates' && (
-        <TemplateManager
-          isDark={isDark}
-          couleur={couleur}
-          modeDiscret={modeDiscret}
-        />
-      )}
-
-      {/* FACTURE 2026 */}
-      {tab === 'facture2026' && (
-        <Facture2026Tab
-          entreprise={entreprise}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      )}
-
-      {/* RELANCES */}
-      {tab === 'relances' && (
-        <RelanceConfigTab
-          entreprise={entreprise}
-          updateEntreprise={updateEntreprise}
-          isDark={isDark}
-          couleur={couleur}
-          stats={relances.stats}
-          exclusions={relances.exclusions}
-          onRemoveExclusion={(id) => relances.deleteExclusion(id)}
-          onSaveConfig={(config) => relances.saveConfig(config)}
-          clients={clients}
-          devis={devis}
-          modeDiscret={modeDiscret}
-        />
       )}
 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 Calcul de Rentabilité</h3>
+          <h3 className="font-semibold mb-4"> Calcul de Rentabilité</h3>
           <div className="space-y-4">
-            <div className="flex items-end gap-3 flex-wrap">
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux de frais de structure (%)</label>
-                <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
-              </div>
-              <button
-                onClick={() => setShowFraisCalc(!showFraisCalc)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                style={{ backgroundColor: couleur }}
-              >
-                <Calculator size={16} /> {showFraisCalc ? 'Masquer' : 'Calculer mes frais'}
-              </button>
+            <div>
+              <label className="block text-sm font-medium mb-1">Taux de frais de structure (%)</label>
+              <input type="number" min="0" max="50" className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.tauxFraisStructure || 15} onChange={e => updateEntreprise(p => ({...p, tauxFraisStructure: parseFloat(e.target.value) || 15}))} />
+              <p className="text-sm text-slate-500 mt-2">Loyer, assurances, carburant, comptable, téléphone...</p>
             </div>
-
-            {/* Mini-wizard frais de structure */}
-            {showFraisCalc && (
-              <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-semibold ${textPrimary}`}>🧮 Calculez votre taux réel</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {FRAIS_ITEMS.map(item => (
-                    <div key={item.key}>
-                      <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>{item.icon} {item.label}</label>
-                      <input
-                        type="number"
-                        placeholder={item.placeholder}
-                        value={fraisCharges[item.key] || ''}
-                        onChange={e => setFraisCharges(prev => ({ ...prev, [item.key]: e.target.value }))}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-800 border border-slate-600' : 'bg-white border border-blue-200'}`}>
-                  <div>
-                    <p className={`text-xs ${textSecondary}`}>Total charges mensuelles</p>
-                    <p className={`text-lg font-bold ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(fraisTotal)}</p>
-                  </div>
-                  <div className="text-center px-4">
-                    <p className={`text-xs ${textSecondary}`}>CA moyen mensuel</p>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(caEstime)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-xs ${textSecondary}`}>Taux suggéré</p>
-                    <p className="text-xl font-bold" style={{ color: couleur }}>{tauxSuggere}%</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
-                    setShowFraisCalc(false);
-                    showToast(`Taux mis à jour : ${tauxSuggere}%`, 'success');
-                  }}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                  style={{ backgroundColor: couleur }}
-                >
-                  Appliquer {tauxSuggere}% comme taux de frais de structure
-                </button>
-              </div>
-            )}
-
-            {/* Visual formula breakdown */}
-            <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gradient-to-br from-slate-50 to-blue-50/50 border-slate-200'}`}>
-              <p className={`text-sm font-semibold mb-3 ${textPrimary}`}>Formule de calcul</p>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="px-3 py-1.5 rounded-lg font-semibold text-white" style={{ backgroundColor: couleur }}>Marge Réelle</span>
-                <span className={`text-lg font-bold ${textMuted}`}>=</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>CA HT</span>
-                <span className={`text-lg font-bold ${textMuted}`}>+</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>Ajustements Revenus</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm mt-2 ml-0 sm:ml-8">
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Matériaux</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Main d'œuvre</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>Frais structure ({entreprise.tauxFraisStructure || 15}%)</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium ${isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'}`}>Ajustements Dépenses</span>
-              </div>
+            <div className={`${isDark ? 'bg-slate-700' : 'bg-slate-50'} rounded-xl p-4 font-mono text-sm`}>
+              <p><strong>Marge Réelle</strong> = CA HT + Ajustements Revenus</p>
+              <p className="ml-4">- Matériaux (achats)</p>
+              <p className="ml-4">- Main d'œuvre (heures × coût chargé)</p>
+              <p className="ml-4">- Frais structure ({entreprise.tauxFraisStructure || 15}% du CA)</p>
+              <p className="ml-4">- Ajustements Dépenses</p>
             </div>
-
-            {/* Color legend */}
-            <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 border border-blue-800/30' : 'bg-blue-50 border border-blue-100'}`}>
-              <p className={`font-semibold mb-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>Code couleur marge :</p>
-              <div className="flex flex-wrap gap-4">
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-red-500 shrink-0"></span> {'<'}0% — Négative</span>
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-amber-500 shrink-0"></span> 0-15% — Faible</span>
-                <span className={`flex items-center gap-2 ${isDark ? 'text-blue-300' : 'text-blue-700'}`}><span className="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> {'>'}15% — Saine</span>
-              </div>
+            <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
+              <p><strong>Code couleur marge:</strong></p>
+              <p className="flex items-center gap-2 mt-1"><span className="w-3 h-3 rounded bg-red-500"></span> Rouge: Marge négative (&lt;0%)</p>
+              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-amber-500"></span> Orange: Marge faible (0-15%)</p>
+              <p className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500"></span> Vert: Marge saine (&gt;15%)</p>
             </div>
           </div>
         </div>
@@ -1296,6 +1243,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Sub-tabs */}
           <div className="flex gap-2 flex-wrap">
             {[
+              { id: 'integrations', label: 'Intégrations', icon: Link2 },
+              { id: 'banque', label: 'Banque', icon: Building2 },
               { id: 'export', label: 'Export', icon: Download },
               { id: 'tva', label: 'Résumé TVA', icon: Calculator }
             ].map(subtab => (
@@ -1314,6 +1263,125 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </button>
             ))}
           </div>
+
+          {/* Integrations Sub-tab */}
+          {comptaSubTab === 'integrations' && (
+            <div className="space-y-4">
+              <p className={`text-sm ${textSecondary} mb-4`}>
+                Connectez vos outils comptables pour synchroniser automatiquement vos factures et dépenses.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                {Object.values(INTEGRATION_TYPES).filter(i => i.apiSupported).map(integration => {
+                  const isConnected = integrations[integration.id]?.status === SYNC_STATUS.CONNECTED ||
+                                     integrations[integration.id]?.status === SYNC_STATUS.UP_TO_DATE;
+                  const Icon = getIntegrationIcon(integration.icon);
+                  const isSyncing = syncing === integration.id;
+                  const isConnecting = connecting === integration.id;
+
+                  return (
+                    <div
+                      key={integration.id}
+                      className={`${cardBg} rounded-xl border p-4 transition-all hover:shadow-lg ${
+                        isConnected ? (isDark ? 'border-emerald-800' : 'border-emerald-200') : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{ background: `${integration.color}20` }}
+                          >
+                            <Icon size={20} style={{ color: integration.color }} />
+                          </div>
+                          <div>
+                            <h3 className={`font-semibold ${textPrimary}`}>{integration.name}</h3>
+                            <p className={`text-xs ${textMuted}`}>{integration.description}</p>
+                          </div>
+                        </div>
+                        {isConnected && (
+                          <CheckCircle size={20} className="text-emerald-500" />
+                        )}
+                      </div>
+
+                      {isConnected ? (
+                        <div className="space-y-3">
+                          <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
+                            <span>Dernière sync:</span>
+                            <span>{integrations[integration.id]?.lastSync
+                              ? new Date(integrations[integration.id].lastSync).toLocaleDateString('fr-FR')
+                              : 'Jamais'
+                            }</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSync(integration.id)}
+                              disabled={isSyncing}
+                              className="flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 text-white disabled:opacity-50"
+                              style={{ background: couleur }}
+                            >
+                              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+                              {isSyncing ? 'Sync...' : 'Synchroniser'}
+                            </button>
+                            <button
+                              onClick={() => handleDisconnect(integration.id)}
+                              className={`py-2 px-3 rounded-lg text-sm ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            >
+                              <Unlink size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleConnect(integration.id)}
+                          disabled={isConnecting}
+                          className={`w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
+                            isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          } disabled:opacity-50`}
+                        >
+                          {isConnecting ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" />
+                              Connexion...
+                            </>
+                          ) : (
+                            <>
+                              <Link2 size={14} />
+                              Connecter
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      <a
+                        href={integration.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-1 text-xs mt-3 ${textMuted} hover:underline`}
+                      >
+                        <ExternalLink size={12} />
+                        {integration.website.replace('https://', '')}
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Banque Sub-tab */}
+          {comptaSubTab === 'banque' && (
+            <BanqueSubTab
+              isDark={isDark}
+              cardBg={cardBg}
+              inputBg={inputBg}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              textMuted={textMuted}
+              couleur={couleur}
+              showToast={showToast}
+            />
+          )}
 
           {/* Export Sub-tab */}
           {comptaSubTab === 'export' && (
@@ -1469,14 +1537,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full" aria-label="Détail par taux de TVA">
+                  <table className="w-full">
                     <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
                       <tr>
-                        <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
-                        <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
+                        <th className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectée</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
+                        <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1525,358 +1593,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       )}
 
-      {/* PAIEMENTS EN LIGNE */}
-      {tab === 'paiements' && (
-        <PaymentConfigTab
-          entreprise={entreprise}
-          isDark={isDark}
-          couleur={couleur}
-          user={user}
-          modeDiscret={modeDiscret}
-        />
-      )}
-
-      {/* Données Import/Export Tab — removed */}
-      {tab === 'donnees' && (
-        <div className="space-y-6">
-          {/* Export Global */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <Download size={18} style={{ color: couleur }} />
-              Export global des données
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Exportez toutes vos données BatiGesti dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              {[
-                { label: 'Devis/Factures', count: devis.length, color: couleur },
-                { label: 'Clients', count: clients.length, color: '#3b82f6' },
-                { label: 'Chantiers', count: chantiers.length, color: '#10b981' },
-                { label: 'Dépenses', count: depenses.length, color: '#8b5cf6' },
-              ].map((s, i) => (
-                <div key={i} className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
-                  <p className={`text-xs ${textMuted}`}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => {
-                try {
-                  const exportData = {
-                    version: '3.0',
-                    exportDate: new Date().toISOString(),
-                    app: 'BatiGesti',
-                    data: {
-                      entreprise,
-                      devis,
-                      clients,
-                      chantiers,
-                      depenses,
-                    },
-                    localStorage: (() => {
-                      const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
-                      const obj = {};
-                      keys.forEach(k => { try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch { obj[k] = localStorage.getItem(k); } });
-                      return obj;
-                    })(),
-                  };
-                  const json = JSON.stringify(exportData, null, 2);
-                  const blob = new Blob([json], { type: 'application/json' });
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `batigesti_backup_${new Date().toISOString().split('T')[0]}.json`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                  showToast('Export global téléchargé', 'success');
-                } catch (err) {
-                  showToast('Erreur lors de l\'export', 'error');
-                }
-              }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl text-white font-medium transition-all hover:shadow-lg"
-              style={{ background: couleur }}
-            >
-              <Download size={18} />
-              Exporter toutes les données (.json)
-            </button>
-          </div>
-
-          {/* Import Global */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <RefreshCw size={18} style={{ color: '#3b82f6' }} />
-              Import de données
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Restaurez vos données depuis un fichier d'export BatiGesti (.json). Les données existantes seront fusionnées.
-            </p>
-
-            <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
-              <input
-                type="file"
-                accept=".json"
-                id="import-file"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => {
-                    try {
-                      const data = JSON.parse(ev.target.result);
-                      if (!data.app || data.app !== 'BatiGesti') {
-                        showToast('Fichier non reconnu (pas un export BatiGesti)', 'error');
-                        return;
-                      }
-                      // Restore localStorage keys
-                      if (data.localStorage) {
-                        Object.entries(data.localStorage).forEach(([k, v]) => {
-                          try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
-                        });
-                      }
-                      // Restore entreprise
-                      if (data.data?.entreprise) {
-                        setEntreprise(prev => ({ ...prev, ...data.data.entreprise }));
-                      }
-                      showToast(`Import réussi — ${data.exportDate ? new Date(data.exportDate).toLocaleDateString('fr-FR') : 'date inconnue'}. Rechargez la page pour voir tous les changements.`, 'success');
-                    } catch {
-                      showToast('Erreur de lecture du fichier', 'error');
-                    }
-                  };
-                  reader.readAsText(file);
-                  e.target.value = '';
-                }}
-              />
-              <label htmlFor="import-file" className="cursor-pointer">
-                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                  <RefreshCw size={24} className={textMuted} />
-                </div>
-                <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
-                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export BatiGesti)</p>
-              </label>
-            </div>
-          </div>
-
-          {/* Onboarding Replay */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              🎓 Visite guidée
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de BatiGesti.
-            </p>
-            <button
-              onClick={() => {
-                localStorage.removeItem('batigesti_onboarding_complete');
-                localStorage.removeItem('batigesti_onboarding_skipped');
-                showToast('Rechargez la page pour relancer la visite guidée', 'info');
-              }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-            >
-              <RefreshCw size={18} />
-              Relancer la visite guidée
-            </button>
-          </div>
-
-          {/* Data Management */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 text-red-500`}>
-              <AlertCircle size={18} />
-              Gestion des données locales
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length > 0 && (
-                <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                  <p className={`text-xs ${textMuted}`}>Clés stockées</p>
-                  <p className="text-lg font-bold" style={{ color: couleur }}>
-                    {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti')).length}
-                  </p>
-                </div>
-              )}
-              <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-                <p className={`text-xs ${textMuted}`}>Taille estimée</p>
-                <p className="text-lg font-bold" style={{ color: couleur }}>
-                  {(() => {
-                    let total = 0;
-                    Object.keys(localStorage).forEach(k => { total += (localStorage.getItem(k) || '').length; });
-                    return total > 1024 * 1024 ? `${(total / (1024 * 1024)).toFixed(1)} Mo` : `${Math.round(total / 1024)} Ko`;
-                  })()}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* RGPD — Export données personnelles */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <Shield size={18} style={{ color: '#3b82f6' }} />
-              Vos droits RGPD
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.
-            </p>
-
-            {/* Export RGPD */}
-            <button
-              onClick={() => {
-                try {
-                  const rgpdData = {
-                    export_type: 'RGPD - Droit d\'accès (Art. 15)',
-                    date: new Date().toISOString(),
-                    utilisateur: {
-                      email: user?.email || 'Mode démo',
-                      id: user?.id || 'demo',
-                      date_inscription: user?.created_at || null,
-                    },
-                    entreprise: {
-                      nom: entreprise.nom,
-                      adresse: entreprise.adresse,
-                      siret: entreprise.siret,
-                      email: entreprise.email,
-                      telephone: entreprise.tel,
-                    },
-                    donnees: {
-                      clients: clients.map(c => ({ nom: c.nom, prenom: c.prenom, email: c.email, telephone: c.telephone, adresse: c.adresse })),
-                      nombre_devis: devis.filter(d => d.type === 'devis').length,
-                      nombre_factures: devis.filter(d => d.type === 'facture').length,
-                      nombre_chantiers: chantiers.length,
-                      nombre_depenses: depenses.length,
-                    },
-                    consentements: (() => {
-                      try {
-                        const c = localStorage.getItem('cp_cookie_consent');
-                        return c ? JSON.parse(c) : { info: 'Aucun consentement enregistré' };
-                      } catch { return {}; }
-                    })(),
-                  };
-                  const json = JSON.stringify(rgpdData, null, 2);
-                  const blob = new Blob([json], { type: 'application/json' });
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `batigesti_rgpd_export_${new Date().toISOString().split('T')[0]}.json`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                  showToast('Export RGPD téléchargé', 'success');
-                } catch {
-                  showToast('Erreur lors de l\'export RGPD', 'error');
-                }
-              }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-            >
-              <Download size={18} />
-              Exporter mes données personnelles
-            </button>
-          </div>
-
-          {/* Danger Zone — Suppression de compte */}
-          <div className={`rounded-xl sm:rounded-2xl border-2 p-4 sm:p-6 ${isDark ? 'bg-red-950/20 border-red-800/50' : 'bg-red-50 border-red-300'}`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-              <Trash2 size={18} />
-              Zone de danger
-            </h3>
-            <p className={`text-sm mb-2 ${isDark ? 'text-red-300/80' : 'text-red-700/80'}`}>
-              <strong>Supprimer mon compte et mes données.</strong> Cette action est irréversible. Toutes vos données (devis, factures, clients, chantiers) seront définitivement supprimées.
-            </p>
-            <p className={`text-xs mb-4 ${isDark ? 'text-red-400/60' : 'text-red-600/60'}`}>
-              Nous vous recommandons d'exporter vos données avant de procéder.
-            </p>
-            <button
-              onClick={async () => {
-                const confirmation = prompt('Tapez "SUPPRIMER" pour confirmer la suppression définitive de votre compte et de toutes vos données :');
-                if (confirmation !== 'SUPPRIMER') {
-                  if (confirmation !== null) showToast('Suppression annulée — texte incorrect', 'info');
-                  return;
-                }
-                try {
-                  // LEGAL-002: Delete all user data from Supabase first
-                  if (supabase && !isDemo) {
-                    const { error: rpcError } = await supabase.rpc('delete_user_data');
-                    if (rpcError) {
-                      console.error('Server-side deletion failed:', rpcError);
-                      // Fallback: try manual deletion of key tables
-                      const uid = (await auth.getCurrentUser())?.id;
-                      if (uid) {
-                        await Promise.allSettled([
-                          supabase.from('devis').delete().eq('user_id', uid),
-                          supabase.from('chantiers').delete().eq('user_id', uid),
-                          supabase.from('clients').delete().eq('user_id', uid),
-                          supabase.from('articles').delete().eq('user_id', uid),
-                          supabase.from('memos').delete().eq('user_id', uid),
-                          supabase.from('events').delete().eq('user_id', uid),
-                          supabase.from('entreprise').delete().eq('user_id', uid),
-                        ]);
-                      }
-                    }
-                  }
-                  // Clear all localStorage
-                  const keys = Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('batigesti'));
-                  keys.forEach(k => localStorage.removeItem(k));
-                  // Clear IndexedDB offline store
-                  try { indexedDB.deleteDatabase('batigesti-offline'); } catch {}
-                  // Sign out
-                  await auth.signOut();
-                  showToast('Compte et données supprimés définitivement', 'success');
-                  window.location.reload();
-                } catch (e) {
-                  console.error('Account deletion error:', e);
-                  showToast('Erreur lors de la suppression', 'error');
-                }
-              }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-500 text-white hover:bg-red-600'}`}
-            >
-              <Trash2 size={18} />
-              Supprimer mon compte
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Team Management Tab */}
-      {tab === 'team' && (
-        <TeamManagement isDark={isDark} couleur={entreprise.couleur || couleur} />
-      )}
-
-      {/* Intégrations Tab */}
-      {tab === 'integrations' && (
-        <IntegrationsHub
-          isDark={isDark}
-          couleur={entreprise.couleur || couleur}
-          showToast={showToast}
-          user={user}
-        />
-      )}
-
-      {/* Multi-entreprise Tab */}
-      {tab === 'multi' && (
-        <EntrepriseSettingsPage
-          isDark={isDark}
-          couleur={entreprise.couleur || couleur}
-          showToast={showToast}
-        />
-      )}
-
-      {/* Administratif Tab */}
-      {tab === 'administratif' && (
-        <AdminHelp
-          chantiers={chantiers}
-          clients={clients}
-          devis={devis}
-          factures={devis.filter(d => d.type === 'facture')}
-          depenses={depenses}
-          entreprise={entreprise}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      )}
-
-      {/* APERÇU DOCUMENT — only visible on identite tab */}
-      {tab === 'identite' && <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
+      {/* APERÇU DOCUMENT */}
+      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
         <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
         <div className={`border rounded-xl p-6 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50'}`}>
           <div className="flex justify-between items-start mb-4">
@@ -1896,17 +1614,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {entreprise.formeJuridique && (
                   <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` · Capital: ${entreprise.capital} €`}</p>
                 )}
-                {entreprise.adresse ? (
-                  <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse}</p>
-                ) : (
-                  <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">⚠️ Adresse manquante — vos documents ne seront pas conformes</p>
-                )}
+                <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse || 'Adresse non renseignée'}</p>
               </div>
             </div>
             <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
           </div>
           <div className="text-xs text-slate-500 space-y-0.5 border-t pt-3 mt-3">
-            {entreprise.siret && <p>SIRET: {maskValue(entreprise.siret)} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
+            {entreprise.siret && <p>SIRET: {entreprise.siret} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
             {getRCSComplet() && <p>{getRCSComplet()}</p>}
             {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
             {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
@@ -1919,278 +1633,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             )}
           </div>
         </div>
-      </div>}
-
-      {/* ── Setup Wizard Modal (5 steps) ─────────────────────────── */}
-      {showSetupWizard && (() => {
-        const totalSteps = WIZARD_STEPS_DEF.length;
-        const safeStep = Math.min(wizardStep, totalSteps - 1);
-        const stepDef = WIZARD_STEPS_DEF[safeStep];
-        const progress = ((safeStep + 1) / totalSteps) * 100;
-        const StepIcon = stepDef.icon;
-
-        return (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
-            <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
-              {/* Progress bar */}
-              <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
-                <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: couleur }} />
-              </div>
-
-              {/* Step dots */}
-              <div className="flex items-center justify-center gap-3 px-5 pt-4 pb-1">
-                {WIZARD_STEPS_DEF.map((s, i) => {
-                  const SIcon = s.icon;
-                  const isDone = i < safeStep;
-                  const isCurrent = i === safeStep;
-                  return (
-                    <React.Fragment key={s.id}>
-                      <button
-                        onClick={() => i <= safeStep && setWizardStep(i)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                          isDone ? 'text-white' : isCurrent ? 'text-white shadow-lg scale-110' : isDark ? 'bg-slate-700 text-slate-500' : 'bg-slate-200 text-slate-400'
-                        }`}
-                        style={(isDone || isCurrent) ? { backgroundColor: couleur } : undefined}
-                        title={s.title}
-                      >
-                        {isDone ? <Check size={14} /> : <SIcon size={14} />}
-                      </button>
-                      {i < totalSteps - 1 && (
-                        <div className={`flex-1 h-0.5 rounded max-w-[40px] ${isDone ? '' : isDark ? 'bg-slate-700' : 'bg-slate-200'}`} style={isDone ? { backgroundColor: couleur } : undefined} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-
-              {/* Header */}
-              <div className="px-5 pb-2 pt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Étape {safeStep + 1}/{totalSteps}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-                    <X size={16} />
-                  </button>
-                </div>
-                <h3 className={`text-lg font-bold ${textPrimary}`}>{stepDef.title}</h3>
-                <p className={`text-sm ${textMuted}`}>{stepDef.desc}</p>
-              </div>
-
-              {/* Step content */}
-              <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-3">
-
-                {/* Step 1: Identité */}
-                {safeStep === 0 && (
-                  <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l’entreprise *</label>
-                      <input type="text" value={entreprise.nom || ''} onChange={e => updateEntreprise(p => ({ ...p, nom: e.target.value }))}
-                        placeholder="Ex : Martin Rénovation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Logo</label>
-                      <div className="flex items-center gap-3">
-                        {entreprise.logo ? (
-                          <img src={entreprise.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain border" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: entreprise.couleur || couleur }}>
-                            {(entreprise.nom || 'E').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <label className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                          {entreprise.logo ? 'Changer' : 'Uploader'} un logo
-                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                        </label>
-                      </div>
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Couleur principale</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {COULEURS.map(c => (
-                          <button key={c} onClick={() => updateEntreprise(p => ({ ...p, couleur: c }))}
-                            className={`w-9 h-9 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
-                            style={{ backgroundColor: c, ringColor: c }} />
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 2: SIRET + SIRENE */}
-                {safeStep === 1 && (
-                  <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° SIRET *</label>
-                      <div className="flex gap-2">
-                        <input type="text" value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({ ...p, siret: e.target.value }))}
-                          placeholder="123 456 789 00012" className={`flex-1 px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                        <button
-                          onClick={lookupSIRENE}
-                          disabled={sireneLoading}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
-                          style={{ backgroundColor: couleur }}
-                        >
-                          {sireneLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                          Auto-remplir
-                        </button>
-                      </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l’API SIRENE</p>
-                    </div>
-                    {[
-                      { key: 'formeJuridique', label: 'Forme juridique', placeholder: 'SARL, SAS, EI, Auto-entrepreneur...' },
-                      { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
-                      { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
-                      { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris' },
-                      { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
-                      { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
-                    ].map(f => (
-                      <div key={f.key}>
-                        <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
-                        <input type="text" value={entreprise[f.key] || ''} onChange={e => updateEntreprise(p => ({ ...p, [f.key]: e.target.value }))}
-                          placeholder={f.placeholder} className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Step 3: Documents */}
-                {safeStep === 2 && (
-                  <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par défaut : <strong>{entreprise.tauxTva || 10}%</strong></label>
-                      <input type="range" min="0" max="20" step="0.5"
-                        value={entreprise.tauxTva || 10}
-                        onChange={e => updateEntreprise(p => ({ ...p, tauxTva: parseFloat(e.target.value) }))}
-                        className="w-full accent-current" style={{ accentColor: couleur }}
-                      />
-                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>5.5%</span><span>10%</span><span>20%</span></div>
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompte || 30}%</strong></label>
-                      <input type="range" min="0" max="50" step="5"
-                        value={entreprise.acompte || 30}
-                        onChange={e => updateEntreprise(p => ({ ...p, acompte: parseInt(e.target.value) }))}
-                        className="w-full" style={{ accentColor: couleur }}
-                      />
-                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0%</span><span>30%</span><span>50%</span></div>
-                    </div>
-                    <div className="space-y-2">
-                      {[
-                        { key: 'mentionRGE', label: 'Mention RGE sur les documents' },
-                        { key: 'mentionDecennale', label: 'Mentions assurance décennale' },
-                      ].map(toggle => (
-                        <label key={toggle.key} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${isDark ? 'border-slate-600 hover:bg-slate-700/50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                          <span className={`text-sm font-medium ${textPrimary}`}>{toggle.label}</span>
-                          <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise[toggle.key] ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                            style={entreprise[toggle.key] ? { backgroundColor: couleur } : undefined}
-                            onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, [toggle.key]: !p[toggle.key] })); }}>
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise[toggle.key] ? 'translate-x-5' : ''}`} />
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {/* Step 4: Relances */}
-                {safeStep === 3 && (
-                  <>
-                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-emerald-900/20 border-emerald-800/40' : 'bg-emerald-50 border-emerald-200'}`}>
-                      <p className={`text-2xl font-bold mb-1 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>85%</p>
-                      <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>des relances automatiques sont payées dans les 7 jours</p>
-                    </div>
-                    <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                      <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Scénario de relance type :</p>
-                      <div className="space-y-2">
-                        {[
-                          { jour: 'J+7', type: 'Email', desc: 'Rappel de consultation' },
-                          { jour: 'J+15', type: 'Email + SMS', desc: 'Relance douce' },
-                          { jour: 'J+30', type: 'Email', desc: 'Dernière relance' },
-                        ].map(r => (
-                          <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
-                            <span className="font-mono font-bold w-10" style={{ color: couleur }}>{r.jour}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>{r.type}</span>
-                            <span className={textPrimary}>{r.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <label className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                      entreprise.relancesActives
-                        ? isDark ? 'border-emerald-700 bg-emerald-900/20' : 'border-emerald-300 bg-emerald-50'
-                        : isDark ? 'border-slate-600' : 'border-slate-200'
-                    }`}>
-                      <div>
-                        <p className={`text-sm font-semibold ${textPrimary}`}>Activer les relances automatiques</p>
-                        <p className={`text-xs ${textMuted}`}>(recommandé)</p>
-                      </div>
-                      <div className={`relative w-11 h-6 rounded-full transition-colors ${entreprise.relancesActives ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                        style={entreprise.relancesActives ? { backgroundColor: '#22c55e' } : undefined}
-                        onClick={(e) => { e.preventDefault(); updateEntreprise(p => ({ ...p, relancesActives: !p.relancesActives })); }}>
-                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${entreprise.relancesActives ? 'translate-x-5' : ''}`} />
-                      </div>
-                    </label>
-                  </>
-                )}
-
-                {/* Step 5: Catalogue */}
-                {safeStep === 4 && (
-                  <>
-                    <div className={`p-4 rounded-xl border text-center ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-                      <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
-                      <p className={`text-sm font-semibold ${textPrimary}`}>Importez le Référentiel BTP</p>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Sélectionnez votre métier pour importer automatiquement les articles courants dans votre catalogue.</p>
-                    </div>
-                    <button
-                      onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}
-                      className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                      style={{ backgroundColor: couleur }}
-                    >
-                      <Package size={16} className="inline mr-2" />Ouvrir le Catalogue pour importer
-                    </button>
-                    <p className={`text-xs text-center ${textMuted}`}>Vous pourrez toujours le faire plus tard depuis le module Catalogue.</p>
-                  </>
-                )}
-              </div>
-
-              {/* Footer Navigation */}
-              <div className={`p-5 pt-3 border-t flex items-center gap-3 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                {safeStep > 0 && (
-                  <button
-                    onClick={() => setWizardStep(s => Math.max(0, s - 1))}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
-                  >
-                    ← Précédent
-                  </button>
-                )}
-                <div className="flex-1">
-                  <p className={`text-xs text-center ${textMuted}`}>Profil {completude}%</p>
-                </div>
-                {safeStep < totalSteps - 1 ? (
-                  <button
-                    onClick={() => setWizardStep(s => s + 1)}
-                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
-                    style={{ background: couleur }}
-                  >
-                    Suivant →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setShowSetupWizard(false);
-                      try { localStorage.setItem('cp_wizard_done', '1'); } catch {}
-                      showToast('Configuration terminée !', 'success');
-                    }}
-                    className="px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-colors"
-                    style={{ background: '#22c55e' }}
-                  >
-                    <Check size={16} className="inline mr-1" /> Terminer
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      </div>
 
       {/* Modal Export Comptable */}
       {showExportModal && (

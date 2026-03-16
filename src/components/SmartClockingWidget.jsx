@@ -139,7 +139,7 @@ export default function SmartClockingWidget({
   // Handle check-in
   const handleCheckIn = async () => {
     if (!employe?.id || !selectedChantier) {
-      setError('Sélectionnez un chantier');
+      setError('Selectionnez un chantier');
       return;
     }
 
