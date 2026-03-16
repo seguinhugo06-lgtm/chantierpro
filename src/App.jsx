@@ -1228,15 +1228,18 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted or when version changes
-  const needsCguAcceptance = !isDemo && user && (
+  // Wait for entreprise to load before showing modal (otherwise entrepriseId is null and save fails)
+  const needsCguAcceptance = !isDemo && user && !entrepriseLoading && entrepriseId && (
     !entreprise.cguAcceptedAt || entreprise.cguVersion !== CGU_VERSION
   );
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Persist to entreprises table via context (toSupabase maps cguAcceptedAt → cgu_accepted_at)
-    setEntreprise(prev => ({ ...prev, ...cguData }));
+    // Persist ONLY CGU fields to entreprise table via context
+    if (entrepriseId) {
+      await ctxUpdateEntreprise(entrepriseId, cguData);
+    }
   };
 
   return (
