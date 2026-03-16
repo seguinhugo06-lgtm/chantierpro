@@ -8,7 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src/ --ext .js,.jsx --max-warnings 0",
-    "check": "npm run lint && npm run build"
+    "check": "npm run lint && npm run build",
+    "smoke": "bash scripts/smoke-test.sh",
+    "precheck": "bash scripts/smoke-test.sh",
+    "setup-hooks": "cp scripts/pre-push.sh .git/hooks/pre-push && chmod +x .git/hooks/pre-push && echo '✓ Git hooks installed'",
+    "postinstall": "[ -d .git ] && npm run setup-hooks || true"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

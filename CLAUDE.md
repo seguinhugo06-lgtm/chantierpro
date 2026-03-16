@@ -7,7 +7,11 @@ npm run dev          # Dev server (port 5173)
 npm run build        # Build production (DOIT passer sans erreurs)
 npm run lint         # ESLint sur src/
 npm run check        # Lint + build (vérification complète)
+npm run smoke        # Smoke tests (imports, tables, orphelins, sécurité)
+npm run setup-hooks  # Installe le pre-push hook
 ```
+
+> **Pre-push hook** : vérifie automatiquement les imports critiques, noms de tables, secrets et build avant chaque `git push`. S'installe auto via `npm install` ou manuellement via `npm run setup-hooks`.
 
 ## Stack
 
