@@ -66,7 +66,7 @@ export default function PaiementsTab({ devis = [], clients = [], isDark, couleur
       if (error) throw error;
       setTransactions(data || []);
     } catch (err) {
-      console.error('Error loading transactions:', err);
+      // Table may not exist yet — fail silently
     } finally {
       setLoading(false);
     }
