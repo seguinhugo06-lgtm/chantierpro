@@ -174,6 +174,7 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
+  const [cguJustAccepted, setCguJustAccepted] = useState(false); // LEGAL-001: optimistic dismiss
   // Multi-entreprise context
   const {
     activeEntreprise,
@@ -1234,7 +1235,6 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted
-  const [cguJustAccepted, setCguJustAccepted] = useState(false);
   const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt && !cguJustAccepted;
 
   const handleCguAccept = async (version) => {
