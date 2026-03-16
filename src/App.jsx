@@ -5,7 +5,7 @@ import supabase, { auth, isDemo } from './supabaseClient';
 import Dashboard from './components/Dashboard';
 import FABMenu from './components/FABMenu';
 import PWAUpdatePrompt from './components/PWAUpdatePrompt';
-import LandingPage from './components/LandingPage';
+import LandingPage from './components/landing/LandingPage';
 
 // Stale bundle handler — auto-reload once when a chunk fails to load
 const lazyWithRetry = (importFn, name) => lazy(() =>
@@ -1008,10 +1008,8 @@ export default function App() {
   if (!user && !isDemo && showLanding) return (
     <>
       <LandingPage
-        couleur={entreprise.couleur || '#f97316'}
         onLogin={() => setShowLanding(false)}
-        onSignUp={() => { setShowLanding(false); setShowSignUp(true); }}
-        onNavigate={(p) => { setPage(p); setShowLanding(false); }}
+        onSignup={() => { setShowLanding(false); setShowSignUp(true); }}
       />
       <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
     </>
