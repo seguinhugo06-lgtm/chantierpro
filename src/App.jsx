@@ -1231,15 +1231,22 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted
-  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt;
+  const [cguAcceptedLocal, setCguAcceptedLocal] = useState(false);
+  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt && !cguAcceptedLocal;
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
+    // Immediately dismiss the modal via local state
+    setCguAcceptedLocal(true);
     // Update via context (persists to entreprises table)
-    setEntreprise(prev => ({ ...prev, ...cguData }));
-    // Also sync to legacy entreprise table for backward compat
+    try { setEntreprise(prev => ({ ...prev, ...cguData })); } catch {}
+    // Also sync to user_metadata for reliability
     if (supabase && user?.id) {
+      try {
+        await supabase.auth.updateUser({ data: { cgu_accepted_at: now, cgu_version: version } });
+      } catch (e) { console.warn('CGU user_metadata sync failed:', e.message); }
+      // Also sync to legacy entreprise table for backward compat
       try {
         const updated = { ...entreprise, ...cguData };
         const upsertData = { user_id: user.id, settings_json: updated };
