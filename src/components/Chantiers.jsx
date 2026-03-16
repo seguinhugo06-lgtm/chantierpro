@@ -3,6 +3,7 @@ import { Plus, ArrowLeft, ArrowRight, Edit3, Trash2, Check, X, Camera, MapPin, P
 
 const ChantierMap = lazy(() => import('./chantiers/ChantierMap'));
 const GanttView = lazy(() => import('./GanttView'));
+const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
 import { useOnlineStatus } from '../hooks/useNetworkStatus';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId, findDuplicateChantiers } from '../lib/utils';
@@ -2740,6 +2741,14 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
             >
               <Map size={16} />
             </button>
+            <button
+              onClick={() => setViewMode('garanties')}
+              className={`p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors ${viewMode === 'garanties' ? 'text-white' : isDark ? 'text-slate-400 hover:text-slate-200 bg-slate-800' : 'text-slate-500 hover:text-slate-700 bg-white'}`}
+              style={viewMode === 'garanties' ? { background: couleur } : {}}
+              title="Vue garanties"
+            >
+              <Shield size={16} />
+            </button>
           </div>
           {canPerform('chantier', 'create') && (
           <button onClick={() => setShow(true)} className="w-11 h-11 sm:w-auto sm:h-11 sm:px-4 text-white rounded-xl text-sm flex items-center justify-center sm:gap-2 hover:shadow-lg transition-all" style={{background: couleur}}>
@@ -3020,6 +3029,18 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 couleur={couleur}
                 formatMoney={formatMoney}
                 modeDiscret={modeDiscret}
+              />
+            </Suspense>
+          )}
+
+          {/* Garanties Dashboard View */}
+          {viewMode === 'garanties' && (
+            <Suspense fallback={<div className={`h-[400px] rounded-xl flex items-center justify-center ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur} transparent ${couleur} ${couleur}` }} /></div>}>
+              <GarantiesDashboard
+                isDark={isDark}
+                couleur={couleur}
+                showToast={showToast}
+                chantiers={chantiers}
               />
             </Suspense>
           )}

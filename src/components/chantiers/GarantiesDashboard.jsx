@@ -20,7 +20,7 @@ import {
   X,
   Wrench,
 } from 'lucide-react';
-import supabase, { isDemo } from '../../supabaseClient';
+import supabase, { isDemo, auth } from '../../supabaseClient';
 import { GARANTIE_TYPES, getGarantieProgress, getDashboardStats, getAll } from '../../services/garantieService';
 import GarantieProgressBar from './GarantieProgressBar';
 
@@ -210,23 +210,31 @@ function EmptyState({ isDark }) {
 
 // ── Main Dashboard ──────────────────────────────────────────────────────────────
 
-export default function GarantiesDashboard({ isDark = false, couleur, showToast, user, chantiers = [] }) {
+export default function GarantiesDashboard({ isDark = false, couleur, showToast, user: userProp, chantiers = [] }) {
   const [stats, setStats] = useState(null);
   const [garanties, setGaranties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [resolvedUser, setResolvedUser] = useState(userProp || null);
   const [filters, setFilters] = useState({
     type: '',        // '' | 'parfait_achevement' | 'biennale' | 'decennale'
     statut: '',      // '' | 'active' | 'expiree' | 'litige'
     search: '',
   });
 
+  // Auto-resolve user from auth if not provided as prop
+  useEffect(() => {
+    if (userProp) { setResolvedUser(userProp); return; }
+    if (isDemo) return;
+    auth.getCurrentUser().then(u => { if (u) setResolvedUser(u); }).catch(() => {});
+  }, [userProp]);
+
   // ── Data loading ────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const userId = user?.id || 'demo-user-id';
-      const orgId = user?.user_metadata?.organization_id || user?.organization_id || 'demo-org-id';
+      const userId = resolvedUser?.id || 'demo-user-id';
+      const orgId = resolvedUser?.user_metadata?.organization_id || resolvedUser?.organization_id || 'demo-org-id';
 
       // Build filters for getAll
       const queryFilters = {};
@@ -258,7 +266,7 @@ export default function GarantiesDashboard({ isDark = false, couleur, showToast,
     } finally {
       setLoading(false);
     }
-  }, [user, filters, showToast]);
+  }, [resolvedUser, filters, showToast]);
 
   useEffect(() => {
     loadData();

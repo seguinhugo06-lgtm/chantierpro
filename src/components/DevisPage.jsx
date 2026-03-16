@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
+import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Filter, Eye, Pen, CreditCard, Banknote, CheckCircle, AlertCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, QrCode, Sparkles, PenTool, MoreVertical, Loader2, Link2, Mic, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, Circle, LayoutGrid, List, Kanban } from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
+const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
 import { DEVIS_STATUS_COLORS, DEVIS_STATUS_LABELS } from '../lib/constants';
 import PaymentModal from './PaymentModal';
 import TemplateSelector from './TemplateSelector';
@@ -4662,6 +4663,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             >
               <List size={14} />
             </button>
+            <button
+              onClick={() => setViewMode('pipeline')}
+              className={`p-1.5 transition-colors border-l ${viewMode === 'pipeline' ? (isDark ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-200 text-slate-800 border-slate-300') : (isDark ? 'bg-slate-700 text-slate-400 hover:text-slate-300 border-slate-600' : 'bg-white text-slate-400 hover:text-slate-600 border-slate-200')}`}
+              title="Vue pipeline"
+              aria-label="Vue pipeline"
+              aria-pressed={viewMode === 'pipeline'}
+            >
+              <Kanban size={14} />
+            </button>
           </div>
           {/* Sort */}
           <select
@@ -4799,6 +4809,19 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           )}
         </div>
+      ) : viewMode === 'pipeline' ? (
+        /* ========== PIPELINE VIEW (Kanban) ========== */
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} /></div>}>
+          <PipelineKanban
+            devis={devis}
+            clients={clients}
+            isDark={isDark}
+            couleur={couleur}
+            setPage={setPage}
+            setSelectedDevis={(d) => { setSelected(d); setMode('preview'); }}
+            onUpdateDevis={onUpdate}
+          />
+        </Suspense>
       ) : viewMode === 'table' ? (
         /* ========== TABLE VIEW ========== */
         <div className={`${cardBg} rounded-xl border overflow-hidden`}>

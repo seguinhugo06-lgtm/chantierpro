@@ -173,7 +173,6 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
-  const [cguAcceptedLocal, setCguAcceptedLocal] = useState(false); // LEGAL-001: local bypass for CGU modal
   // Multi-entreprise context
   const {
     activeEntreprise,
@@ -1192,14 +1191,11 @@ export default function App() {
       badgeTitle: memosOverdueCount > 0 ? `${memosOverdueCount} tâche${memosOverdueCount > 1 ? 's' : ''} en retard` : ''
     },
     { id: 'messagerie', icon: MessageCircle, label: 'Messagerie' },
-    { id: 'garanties', icon: Shield, label: 'Garanties' },
     { id: 'equipe', icon: HardHat, label: 'Équipe' },
     { id: 'bibliotheque', icon: Library, label: 'Bibliothèque' },
     { id: 'catalogue', icon: Package, label: 'Catalogue' },
-    { id: 'pipeline', icon: Kanban, label: 'Pipeline', feature: 'pipeline' },
     { id: 'avis-google', icon: Star, label: 'Avis Google', feature: 'avis_google' },
     { id: 'finances', icon: Wallet, label: 'Finances' },
-    { id: 'profil', icon: User, label: 'Mon profil' },
     { id: 'plan', icon: CreditCard, label: 'Mon plan' },
     (() => {
       // Compute Facture 2026 compliance score for badge
@@ -1232,21 +1228,15 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted
-  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt && !cguAcceptedLocal;
+  const needsCguAcceptance = !isDemo && user && !entreprise.cguAcceptedAt;
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Immediately dismiss the modal via local state
-    setCguAcceptedLocal(true);
     // Update via context (persists to entreprises table)
-    try { setEntreprise(prev => ({ ...prev, ...cguData })); } catch {}
-    // Also sync to user_metadata for reliability
+    setEntreprise(prev => ({ ...prev, ...cguData }));
+    // Also sync to legacy entreprise table for backward compat
     if (supabase && user?.id) {
-      try {
-        await supabase.auth.updateUser({ data: { cgu_accepted_at: now, cgu_version: version } });
-      } catch (e) { console.warn('CGU user_metadata sync failed:', e.message); }
-      // Also sync to legacy entreprise table for backward compat
       try {
         const updated = { ...entreprise, ...cguData };
         const upsertData = { user_id: user.id, settings_json: updated };
