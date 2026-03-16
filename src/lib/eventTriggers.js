@@ -11,7 +11,6 @@
 
 import { supabase } from '../supabaseClient';
 import CommunicationsService from '../services/CommunicationsService';
-import { captureException } from './sentry';
 
 // ============================================================================
 // CONFIGURATION
@@ -78,7 +77,7 @@ const CONFIG = {
 async function logEvent(eventType, entityType, entityId, success, metadata = {}) {
   try {
     if (!supabase) {
-      if (import.meta.env.DEV) console.log(`[DEMO] Event logged: ${eventType} for ${entityType}:${entityId}`);
+      console.log(`[DEMO] Event logged: ${eventType} for ${entityType}:${entityId}`);
       return 'demo-log-id';
     }
 
@@ -99,7 +98,7 @@ async function logEvent(eventType, entityType, entityId, success, metadata = {})
     if (error) throw error;
     return data?.id || null;
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.logEvent' });
+    console.error('Failed to log event:', error);
     return null;
   }
 }
@@ -118,7 +117,7 @@ export async function onDevisCreated(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Devis created: ${record.id}, status: ${record.statut}`);
+  console.log(`[EVENT] Devis created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Only notify if already sent
@@ -136,7 +135,7 @@ export async function onDevisCreated(record) {
     return { success: true, data: { notified: false } };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onDevisCreated' });
+    console.error('Error in onDevisCreated:', error);
     await logEvent('devis_created', 'devis', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -156,7 +155,7 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
   const oldStatus = oldRecord?.statut;
   const newStatus = newRecord.statut;
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Devis status changed: ${newRecord.id}, ${oldStatus} -> ${newStatus}`);
+  console.log(`[EVENT] Devis status changed: ${newRecord.id}, ${oldStatus} → ${newStatus}`);
 
   try {
     const results = {};
@@ -166,8 +165,8 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
       results.notification = await CommunicationsService.notifyDevisEnvoye(newRecord.id);
     }
 
-    // Status: accepte/signe → Send confirmation + create suggestion
-    if (!['accepte', 'signe'].includes(oldStatus) && ['accepte', 'signe'].includes(newStatus)) {
+    // Status: accepte → Send confirmation + create suggestion
+    if (oldStatus !== 'accepte' && newStatus === 'accepte') {
       results.notification = await CommunicationsService.notifyDevisAccepte(newRecord.id);
 
       // Create suggestion to convert to invoice
@@ -193,7 +192,7 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
     return { success: true, data: results };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onDevisStatusChanged' });
+    console.error('Error in onDevisStatusChanged:', error);
     await logEvent('devis_status_changed', 'devis', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -215,7 +214,7 @@ export async function onChantierStarted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_started' } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Chantier started: ${newRecord.id}`);
+  console.log(`[EVENT] Chantier started: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyChantierDemarre(newRecord.id);
@@ -228,7 +227,7 @@ export async function onChantierStarted(oldRecord, newRecord) {
     return { success: true, data: result };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onChantierStarted' });
+    console.error('Error in onChantierStarted:', error);
     await logEvent('chantier_started', 'chantier', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -250,7 +249,7 @@ export async function onChantierCompleted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_completed' } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Chantier completed: ${newRecord.id}`);
+  console.log(`[EVENT] Chantier completed: ${newRecord.id}`);
 
   try {
     const results = {};
@@ -276,7 +275,7 @@ export async function onChantierCompleted(oldRecord, newRecord) {
     return { success: true, data: results };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onChantierCompleted' });
+    console.error('Error in onChantierCompleted:', error);
     await logEvent('chantier_completed', 'chantier', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -297,7 +296,7 @@ export async function onFactureCreated(record) {
     return { success: true, data: { skipped: true, reason: 'not_facture' } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Facture created: ${record.id}, status: ${record.statut}`);
+  console.log(`[EVENT] Facture created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Notify if sent
@@ -315,7 +314,7 @@ export async function onFactureCreated(record) {
     return { success: true, data: { notified: false } };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onFactureCreated' });
+    console.error('Error in onFactureCreated:', error);
     await logEvent('facture_created', 'facture', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -337,7 +336,7 @@ export async function onPaymentReceived(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_paid' } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Payment received: ${newRecord.id}`);
+  console.log(`[EVENT] Payment received: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyPaiementRecu(newRecord.id);
@@ -350,7 +349,7 @@ export async function onPaymentReceived(oldRecord, newRecord) {
     return { success: true, data: result };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onPaymentReceived' });
+    console.error('Error in onPaymentReceived:', error);
     await logEvent('payment_received', 'facture', newRecord.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -366,7 +365,7 @@ export async function onPhotoUploaded(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  if (import.meta.env.DEV) console.log(`[EVENT] Photo uploaded: ${record.id} for chantier ${record.chantier_id}`);
+  console.log(`[EVENT] Photo uploaded: ${record.id} for chantier ${record.chantier_id}`);
 
   try {
     const results = {};
@@ -425,7 +424,7 @@ export async function onPhotoUploaded(record) {
     return { success: true, data: results };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.onPhotoUploaded' });
+    console.error('Error in onPhotoUploaded:', error);
     await logEvent('photo_uploaded', 'chantier_photo', record.id, false, { error: error.message });
     return { success: false, error: error.message };
   }
@@ -447,7 +446,7 @@ export async function onPhotoUploaded(record) {
 export async function handleWebhook(payload) {
   const { type, table, record, old_record } = payload;
 
-  if (import.meta.env.DEV) console.log(`[WEBHOOK] ${type} on ${table}`, record?.id);
+  console.log(`[WEBHOOK] ${type} on ${table}`, record?.id);
 
   try {
     switch (table) {
@@ -488,13 +487,13 @@ export async function handleWebhook(payload) {
         break;
 
       default:
-        if (import.meta.env.DEV) console.log(`[WEBHOOK] Unhandled table: ${table}`);
+        console.log(`[WEBHOOK] Unhandled table: ${table}`);
     }
 
     return { success: true, data: { handled: false } };
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.handleWebhook' });
+    console.error('[WEBHOOK] Error handling webhook:', error);
     return { success: false, error: error.message };
   }
 }
@@ -511,11 +510,11 @@ let lastPollTime = new Date().toISOString();
  */
 export function startPolling() {
   if (pollingInterval) {
-    if (import.meta.env.DEV) console.log('[POLLING] Already running');
+    console.log('[POLLING] Already running');
     return;
   }
 
-  if (import.meta.env.DEV) console.log('[POLLING] Starting polling system...');
+  console.log('[POLLING] Starting polling system...');
 
   pollingInterval = setInterval(async () => {
     await pollForChanges();
@@ -532,7 +531,7 @@ export function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
-    if (import.meta.env.DEV) console.log('[POLLING] Stopped');
+    console.log('[POLLING] Stopped');
   }
 }
 
@@ -541,12 +540,12 @@ export function stopPolling() {
  */
 async function pollForChanges() {
   if (!supabase) {
-    if (import.meta.env.DEV) console.log('[POLLING] Demo mode - skipping');
+    console.log('[POLLING] Demo mode - skipping');
     return;
   }
 
   const now = new Date().toISOString();
-  if (import.meta.env.DEV) console.log(`[POLLING] Checking for changes since ${lastPollTime}`);
+  console.log(`[POLLING] Checking for changes since ${lastPollTime}`);
 
   try {
     // Check for devis changes
@@ -589,7 +588,7 @@ async function pollForChanges() {
     lastPollTime = now;
 
   } catch (error) {
-    captureException(error, { context: 'eventTriggers.pollForChanges' });
+    console.error('[POLLING] Error:', error);
   }
 }
 
@@ -604,11 +603,11 @@ let subscriptions = [];
  */
 export function setupRealtimeSubscriptions() {
   if (!supabase) {
-    if (import.meta.env.DEV) console.log('[REALTIME] Demo mode - skipping');
+    console.log('[REALTIME] Demo mode - skipping');
     return;
   }
 
-  if (import.meta.env.DEV) console.log('[REALTIME] Setting up subscriptions...');
+  console.log('[REALTIME] Setting up subscriptions...');
 
   // Devis changes
   const devisSubscription = supabase
@@ -662,7 +661,7 @@ export function setupRealtimeSubscriptions() {
 
   subscriptions = [devisSubscription, chantiersSubscription, photosSubscription];
 
-  if (import.meta.env.DEV) console.log('[REALTIME] Subscriptions active');
+  console.log('[REALTIME] Subscriptions active');
 }
 
 /**
@@ -673,7 +672,7 @@ export function cleanupRealtimeSubscriptions() {
     supabase?.removeChannel(sub);
   });
   subscriptions = [];
-  if (import.meta.env.DEV) console.log('[REALTIME] Subscriptions cleaned up');
+  console.log('[REALTIME] Subscriptions cleaned up');
 }
 
 // ============================================================================

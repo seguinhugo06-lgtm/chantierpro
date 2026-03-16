@@ -134,7 +134,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             {step > 1 && (
-              <button onClick={handleBack} className={`p-2 rounded-lg ${bgHover} ${textSecondary}`}>
+              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textSecondary}`}>
                 <ChevronLeft size={20} />
               </button>
             )}
@@ -153,7 +153,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
               </p>
             </div>
           </div>
-          <button onClick={handleClose} className={`p-2 rounded-lg ${bgHover} ${textMuted}`}>
+          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textMuted}`}>
             <X size={20} />
           </button>
         </div>
@@ -185,6 +185,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, isDark = fals
               <input
                 type="text"
                 placeholder="Rechercher un article..."
+                aria-label="Rechercher un article"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary} focus:outline-none focus:ring-2`}

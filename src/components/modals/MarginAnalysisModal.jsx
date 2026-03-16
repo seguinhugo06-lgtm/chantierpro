@@ -271,7 +271,7 @@ export function MarginAnalysisModal({
 
     // Get devis for this chantier
     const chantierDevis = devis.filter(d => d.chantier_id === chantierId);
-    const acceptedDevis = chantierDevis.find(d => ['accepte', 'signe'].includes(d.statut) || d.statut === 'facture');
+    const acceptedDevis = chantierDevis.find(d => d.statut === 'accepte' || d.statut === 'facture');
     const revenuPrevu = acceptedDevis?.total_ht || chantier.budget_estime || 0;
 
     // Get expenses for this chantier
@@ -294,8 +294,10 @@ export function MarginAnalysisModal({
     const totalHeures = chantierPointages.reduce((sum, p) => sum + (p.heures || 0), 0);
 
     const totalDepenses = coutMateriaux + coutMO + coutAutres;
+    const hasDepenses = totalDepenses > 0;
     const margeBrute = revenuPrevu - totalDepenses;
-    const tauxMarge = revenuPrevu > 0 ? (margeBrute / revenuPrevu) * 100 : 0;
+    // Marge non calculable si aucune dépense (évite 100% trompeur)
+    const tauxMarge = revenuPrevu > 0 && hasDepenses ? (margeBrute / revenuPrevu) * 100 : 0;
 
     // Calculate budget consumption
     const budgetConsomme = revenuPrevu > 0 ? (totalDepenses / revenuPrevu) * 100 : 0;
@@ -306,6 +308,7 @@ export function MarginAnalysisModal({
       coutMO,
       coutAutres,
       totalDepenses,
+      hasDepenses,
       margeBrute,
       tauxMarge,
       budgetConsomme,
@@ -448,10 +451,19 @@ export function MarginAnalysisModal({
               {/* Gauge + Main Stats */}
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-shrink-0">
-                  <MarginGauge
-                    value={marginData.tauxMarge}
-                    isDark={isDark}
-                  />
+                  {marginData.hasDepenses ? (
+                    <MarginGauge
+                      value={marginData.tauxMarge}
+                      isDark={isDark}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center" style={{ width: 140, height: 100 }}>
+                      <p className={cn('text-2xl font-bold', isDark ? 'text-gray-500' : 'text-gray-400')}>—</p>
+                      <p className={cn('text-xs text-center mt-1', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                        Aucune dépense enregistrée
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 grid grid-cols-2 gap-3 w-full">
                   <StatBox

@@ -8,7 +8,7 @@ export const INTEGRATION_TYPES = {
   PENNYLANE: {
     id: 'pennylane',
     name: 'Pennylane',
-    description: 'Comptabilite automatisee pour TPE/PME',
+    description: 'Comptabilité automatisée pour TPE/PME',
     color: '#6366f1',
     icon: 'receipt',
     features: ['sync_factures', 'sync_depenses', 'rapprochement'],
@@ -18,7 +18,7 @@ export const INTEGRATION_TYPES = {
   INDY: {
     id: 'indy',
     name: 'Indy',
-    description: 'Comptabilite simplifiee pour independants',
+    description: 'Comptabilité simplifiée pour indépendants',
     color: '#10b981',
     icon: 'calculator',
     features: ['sync_factures', 'declarations'],
@@ -47,7 +47,7 @@ export const INTEGRATION_TYPES = {
   EXPORT_FEC: {
     id: 'export_fec',
     name: 'Export FEC',
-    description: 'Fichier des Ecritures Comptables (legal)',
+    description: 'Fichier des Écritures Comptables (legal)',
     color: '#3b82f6',
     icon: 'file-text',
     features: ['export_fec', 'conformite_fiscale'],
@@ -269,8 +269,8 @@ export const exportExpensesToCSV = (expenses, chantiers) => {
 };
 
 /**
- * Genere un fichier FEC (Fichier des Ecritures Comptables)
- * Format obligatoire pour le fisc francais
+ * Genere un fichier FEC (Fichier des Écritures Comptables)
+ * Format obligatoire pour le fisc français
  */
 export const generateFEC = (invoices, expenses, clients, chantiers, entreprise, dateDebut, dateFin) => {
   // Format FEC conforme a l'article A.47 A-1 du LPF

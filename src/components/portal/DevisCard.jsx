@@ -40,8 +40,6 @@ const getStatusInfo = (statut) => {
   switch (statut) {
     case 'accepte':
       return { variant: 'success', label: 'Accepte', icon: CheckCircle };
-    case 'signe':
-      return { variant: 'success', label: 'Signe', icon: CheckCircle };
     case 'refuse':
       return { variant: 'danger', label: 'Refuse', icon: XCircle };
     case 'envoye':

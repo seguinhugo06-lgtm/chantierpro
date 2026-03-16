@@ -49,6 +49,8 @@ import {
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { calculateGlobalKPIs, getMarginColor, MARGIN_THRESHOLDS } from '../../lib/business/margin-calculator';
 import { cn } from '../../lib/utils';
+import { formatDevisNumber } from '../../lib/formatters';
+import { formatConversion } from '../../lib/statsUtils';
 
 // ============ UTILS ============
 
@@ -358,7 +360,7 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
               'text-sm font-semibold',
               isDark ? 'text-white' : 'text-gray-900'
             )}>
-              {facture.numero || `#${facture.id?.slice(-6)}`}
+              {formatDevisNumber(facture)}
             </span>
             {isOverdue && (
               <span className={cn(
@@ -408,7 +410,7 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
         />
         <ActionButton
           icon={Send}
-          label="Relancer"
+          label="Envoyer une relance"
           variant={isOverdue ? 'warning' : 'outline'}
           size="sm"
           onClick={() => onRelance?.(facture)}
@@ -564,12 +566,12 @@ export function EncaisserModal({
                 <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
               </div>
               <div className="flex-1">
-                <h3 className={cn(
+                <h4 className={cn(
                   'font-semibold',
                   isDark ? 'text-red-400' : 'text-red-700'
                 )}>
                   Action requise
-                </h3>
+                </h4>
                 <p className={cn(
                   'text-sm mt-1',
                   isDark ? 'text-red-300' : 'text-red-600'
@@ -772,6 +774,7 @@ export function CeMoisModal({
 
   // Get stats based on period
   const periodStats = React.useMemo(() => {
+    const hasDepenses = stats?.hasDepenses ?? false;
     if (period === 'year') {
       return {
         totalCA: stats?.totalCAYear || stats?.totalCA || 0,
@@ -779,6 +782,7 @@ export function CeMoisModal({
         tauxMarge: stats?.tauxMargeYear ?? stats?.tauxMarge ?? 0,
         marge: stats?.margeYear || stats?.marge || 0,
         tauxConversion: stats?.tauxConversionYear ?? stats?.tauxConversion ?? 0,
+        hasDepenses,
       };
     }
     if (period === '5years') {
@@ -788,6 +792,7 @@ export function CeMoisModal({
         tauxMarge: stats?.tauxMarge5Y ?? stats?.tauxMarge ?? 0,
         marge: stats?.marge5Y || stats?.marge || 0,
         tauxConversion: stats?.tauxConversion5Y ?? stats?.tauxConversion ?? 0,
+        hasDepenses,
       };
     }
     return {
@@ -796,6 +801,7 @@ export function CeMoisModal({
       tauxMarge: stats?.tauxMarge ?? 0,
       marge: stats?.marge || 0,
       tauxConversion: stats?.tauxConversion ?? 0,
+      hasDepenses,
     };
   }, [stats, period]);
 
@@ -938,19 +944,30 @@ export function CeMoisModal({
                     Marge brute
                   </span>
                 </div>
-                <p className={cn(
-                  'text-3xl font-bold',
-                  periodStats.tauxMarge >= 30
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : periodStats.tauxMarge >= 15
-                      ? isDark ? 'text-white' : 'text-gray-900'
-                      : 'text-red-600 dark:text-red-400'
-                )}>
-                  {Math.round(periodStats.tauxMarge || 0)}%
-                </p>
-                <p className={cn('text-sm mt-2', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                  {formatMoney(periodStats.marge, modeDiscret)} de marge
-                </p>
+                {periodStats.hasDepenses ? (
+                  <>
+                    <p className={cn(
+                      'text-3xl font-bold',
+                      periodStats.tauxMarge >= 30
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : periodStats.tauxMarge >= 15
+                          ? isDark ? 'text-white' : 'text-gray-900'
+                          : 'text-red-600 dark:text-red-400'
+                    )}>
+                      {Math.round(periodStats.tauxMarge || 0)}%
+                    </p>
+                    <p className={cn('text-sm mt-2', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                      {formatMoney(periodStats.marge, modeDiscret)} de marge
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className={cn('text-3xl font-bold', isDark ? 'text-gray-500' : 'text-gray-400')}>—</p>
+                    <p className={cn('text-xs mt-2', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                      Ajoutez vos dépenses pour calculer votre marge
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1015,7 +1032,7 @@ export function CeMoisModal({
                 )}>
                   Pipeline commercial
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     { label: 'Brouillons', count: devisPipeline.brouillon?.length || 0, color: 'gray' },
                     { label: 'Envoyés', count: devisPipeline.envoye?.length || 0, color: 'blue' },
@@ -1067,7 +1084,7 @@ export function CeMoisModal({
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : isDark ? 'text-white' : 'text-gray-900'
                       )}>
-                        {Math.round(periodStats.tauxConversion || 0)}%
+                        {formatConversion(periodStats.tauxConversion || 0)}
                       </span>
                     </div>
                   </div>
@@ -1112,7 +1129,7 @@ export function CeMoisModal({
                             {client?.nom || 'Client'}
                           </p>
                           <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                            {devisItem.numero || `#${devisItem.id?.slice(-6)}`} • {days}j
+                            {formatDevisNumber(devisItem)} • {days}j
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1160,12 +1177,12 @@ export function CeMoisModal({
               <div className={cn('rounded-xl border p-4', isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200')}>
                 <div className="flex items-center justify-between mb-2">
                   <span className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>Marge moyenne</span>
-                  <div className={cn('p-1.5 rounded-lg', getMarginColor(kpis.margeGlobale, isDark).bg)}>
-                    <Target size={14} className={getMarginColor(kpis.margeGlobale, isDark).text} />
+                  <div className={cn('p-1.5 rounded-lg', kpis.hasDepenses ? getMarginColor(kpis.margeGlobale, isDark).bg : (isDark ? 'bg-slate-700' : 'bg-gray-100'))}>
+                    <Target size={14} className={kpis.hasDepenses ? getMarginColor(kpis.margeGlobale, isDark).text : (isDark ? 'text-gray-500' : 'text-gray-400')} />
                   </div>
                 </div>
-                <p className={cn('text-xl font-bold', getMarginColor(kpis.margeGlobale, isDark).text)}>
-                  {modeDiscret ? '··%' : `${kpis.margeGlobale.toFixed(1)}%`}
+                <p className={cn('text-xl font-bold', kpis.hasDepenses ? getMarginColor(kpis.margeGlobale, isDark).text : (isDark ? 'text-gray-500' : 'text-gray-400'))}>
+                  {kpis.hasDepenses ? (modeDiscret ? '··%' : `${kpis.margeGlobale.toFixed(1)}%`) : '—'}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   {kpis.tendance >= 0 ? (
@@ -1339,15 +1356,23 @@ export function CeMoisModal({
                 </div>
                 <div>
                   <p className={cn('text-xs mb-1', isDark ? 'text-gray-400' : 'text-gray-500')}>Marge brute</p>
-                  <p className={cn('text-lg font-bold', kpis.margeGlobaleMontant >= 0 ? 'text-emerald-500' : 'text-red-500')}>
-                    {formatMoney(kpis.margeGlobaleMontant, modeDiscret)}
-                  </p>
+                  {kpis.hasDepenses ? (
+                    <p className={cn('text-lg font-bold', kpis.margeGlobaleMontant >= 0 ? 'text-emerald-500' : 'text-red-500')}>
+                      {formatMoney(kpis.margeGlobaleMontant, modeDiscret)}
+                    </p>
+                  ) : (
+                    <p className={cn('text-lg font-bold', isDark ? 'text-gray-500' : 'text-gray-400')}>—</p>
+                  )}
                 </div>
                 <div>
                   <p className={cn('text-xs mb-1', isDark ? 'text-gray-400' : 'text-gray-500')}>Taux de marge</p>
-                  <p className={cn('text-lg font-bold', getMarginColor(kpis.margeGlobale, isDark).text)}>
-                    {modeDiscret ? '··%' : `${kpis.margeGlobale.toFixed(1)}%`}
-                  </p>
+                  {kpis.hasDepenses ? (
+                    <p className={cn('text-lg font-bold', getMarginColor(kpis.margeGlobale, isDark).text)}>
+                      {modeDiscret ? '··%' : `${kpis.margeGlobale.toFixed(1)}%`}
+                    </p>
+                  ) : (
+                    <p className={cn('text-lg font-bold', isDark ? 'text-gray-500' : 'text-gray-400')}>—</p>
+                  )}
                 </div>
               </div>
             </div>

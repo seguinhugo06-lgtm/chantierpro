@@ -10,7 +10,7 @@
  */
 
 import { supabase } from '../supabaseClient';
-import { captureException } from '../lib/sentry';
+import { formatClientName } from '../lib/formatters';
 
 // ============================================================================
 // CONFIGURATION
@@ -124,7 +124,7 @@ async function checkRateLimit(type) {
   // Check if over limit
   if (state.count >= limit) {
     const waitTime = 60000 - (now - state.resetTime);
-    if (import.meta.env.DEV) console.warn(`Rate limit reached for ${type}, waiting ${waitTime}ms`);
+    console.warn(`Rate limit reached for ${type}, waiting ${waitTime}ms`);
     await sleep(waitTime);
     state.count = 0;
     state.resetTime = Date.now();
@@ -149,7 +149,7 @@ async function withRetry(fn, maxAttempts = CONFIG.retry.maxAttempts) {
       return await fn();
     } catch (error) {
       lastError = error;
-      if (import.meta.env.DEV) console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
+      console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
 
       if (attempt < maxAttempts) {
         const delay = CONFIG.retry.baseDelayMs * Math.pow(2, attempt - 1);
@@ -169,7 +169,6 @@ async function withRetry(fn, maxAttempts = CONFIG.retry.maxAttempts) {
 async function logCommunication(log) {
   try {
     if (!supabase) {
-      if (import.meta.env.DEV) console.log('[DEMO] Would log communication:', log);
       return 'demo-log-id';
     }
 
@@ -185,7 +184,7 @@ async function logCommunication(log) {
     if (error) throw error;
     return data?.id || null;
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.logCommunication' });
+    console.error('Failed to log communication:', error);
     return null;
   }
 }
@@ -205,7 +204,7 @@ async function updateCommunicationLog(logId, status, extra = {}) {
       .update({ status, ...extra, updated_at: new Date().toISOString() })
       .eq('id', logId);
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.updateCommunicationLog' });
+    console.error('Failed to update communication log:', error);
   }
 }
 
@@ -227,7 +226,7 @@ export async function sendSMS(to, message, options = {}) {
 
   // Validate
   if (!formattedNumber || formattedNumber.length < 10) {
-    captureException(new Error(`Invalid phone number: ${to}`), { context: 'CommunicationsService.sendSMS' });
+    console.error('Invalid phone number:', to);
     return { success: false, error: 'Invalid phone number' };
   }
 
@@ -237,7 +236,7 @@ export async function sendSMS(to, message, options = {}) {
 
   // Check config
   if (!CONFIG.twilio.accountSid || !CONFIG.twilio.authToken) {
-    if (import.meta.env.DEV) console.log('[DEMO] SMS would be sent to:', formattedNumber);
+    console.warn('[DEMO] SMS would be sent to:', formattedNumber, 'Message:', message);
     return { success: true, messageId: 'demo-sms-id' };
   }
 
@@ -288,11 +287,10 @@ export async function sendSMS(to, message, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.sid });
     }
 
-    if (import.meta.env.DEV) console.log(`SMS sent to ${formattedNumber}, SID: ${result.sid}`);
     return { success: true, messageId: result.sid };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.sendSMS' });
+    console.error('Failed to send SMS:', error);
 
     // Update log
     if (logId) {
@@ -313,7 +311,77 @@ export async function sendSMS(to, message, options = {}) {
  * @param {string} [preheader] - Preheader text
  * @returns {string} Complete HTML email
  */
-function getEmailWrapper(content, preheader = '') {
+/**
+ * Generate a unique tracking ID for email open tracking
+ * @returns {string} tracking ID
+ */
+function generateTrackingId() {
+  return `trk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Record email send event for tracking
+ * @param {string} trackingId - Tracking ID
+ * @param {string} to - Recipient email
+ * @param {string} subject - Email subject
+ * @param {Object} options - Additional tracking data
+ */
+function recordEmailSend(trackingId, to, subject, options = {}) {
+  try {
+    const tracking = JSON.parse(localStorage.getItem('cp_email_tracking') || '{}');
+    tracking[trackingId] = {
+      to,
+      subject,
+      sentAt: new Date().toISOString(),
+      status: 'sent',
+      clientId: options.clientId || null,
+      documentId: options.documentId || null,
+      documentType: options.documentType || null,
+      openedAt: null,
+    };
+    localStorage.setItem('cp_email_tracking', JSON.stringify(tracking));
+  } catch (e) {
+    console.warn('Failed to record email tracking:', e);
+  }
+}
+
+/**
+ * Get all email tracking records
+ * @param {string} [filterDocumentId] - Optional document ID filter
+ * @returns {Array} Tracking records sorted by date desc
+ */
+export function getEmailTrackingRecords(filterDocumentId) {
+  try {
+    const tracking = JSON.parse(localStorage.getItem('cp_email_tracking') || '{}');
+    let records = Object.entries(tracking).map(([id, data]) => ({ id, ...data }));
+    if (filterDocumentId) {
+      records = records.filter(r => r.documentId === filterDocumentId);
+    }
+    return records.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get tracking status for a specific document
+ * @param {string} documentId - Devis/facture ID
+ * @returns {{ sent: number, lastSent: string|null }} Summary
+ */
+export function getDocumentEmailStatus(documentId) {
+  const records = getEmailTrackingRecords(documentId);
+  return {
+    sent: records.length,
+    lastSent: records.length > 0 ? records[0].sentAt : null,
+    records,
+  };
+}
+
+function getEmailWrapper(content, preheader = '', trackingId = '') {
+  const trackingPixel = trackingId
+    ? `<img src="https://batigesti.vercel.app/api/track/${trackingId}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`
+    : '';
+
   return `
 <!DOCTYPE html>
 <html lang="fr">
@@ -352,6 +420,7 @@ function getEmailWrapper(content, preheader = '') {
       <div class="email-footer">
         <p>Cet email a été envoyé automatiquement par BatiGesti.</p>
         <p>&copy; ${new Date().getFullYear()} BatiGesti. Tous droits réservés.</p>
+        ${trackingPixel}
       </div>
     </div>
   </center>
@@ -380,13 +449,17 @@ export async function sendEmail(to, subject, html, options = {}) {
     return { success: false, error: 'Subject and HTML content required' };
   }
 
-  // Wrap in responsive template
-  const fullHtml = getEmailWrapper(html, options.preheader);
+  // Generate tracking ID for email open tracking
+  const trackingId = generateTrackingId();
+
+  // Wrap in responsive template with tracking pixel
+  const fullHtml = getEmailWrapper(html, options.preheader, trackingId);
 
   // Check config
   if (!CONFIG.sendgrid.apiKey) {
-    if (import.meta.env.DEV) console.log('[DEMO] Email would be sent to:', to, 'Subject:', subject);
-    return { success: true, messageId: 'demo-email-id' };
+    console.warn('[DEMO] Email would be sent to:', to, 'Subject:', subject);
+    recordEmailSend(trackingId, to, subject, options);
+    return { success: true, messageId: 'demo-email-id', trackingId };
   }
 
   // Log communication (pending)
@@ -440,11 +513,11 @@ export async function sendEmail(to, subject, html, options = {}) {
       await updateCommunicationLog(logId, 'sent', { provider_id: result.messageId });
     }
 
-    if (import.meta.env.DEV) console.log(`Email sent to ${to}, ID: ${result.messageId}`);
-    return { success: true, messageId: result.messageId };
+    recordEmailSend(trackingId, to, subject, options);
+    return { success: true, messageId: result.messageId, trackingId };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.sendEmail' });
+    console.error('Failed to send email:', error);
 
     // Update log
     if (logId) {
@@ -517,7 +590,7 @@ export async function notifyDevisEnvoye(devisId) {
       : { data: null, error: { message: 'Demo mode' } };
 
     if (error || !devis) {
-      captureException(error || new Error('Devis not found'), { context: 'CommunicationsService.notifyDevisEnvoye' });
+      console.error('Failed to fetch devis:', error);
       return { sms: { success: false, error: 'Devis not found' }, email: { success: false, error: 'Devis not found' } };
     }
 
@@ -526,43 +599,30 @@ export async function notifyDevisEnvoye(devisId) {
       return { sms: { success: false, error: 'Client not found' }, email: { success: false, error: 'Client not found' } };
     }
 
-    // Generate signature token if not already present
-    let signatureLink = `${CONFIG.baseUrl}/portal/devis/${devisId}`;
-    if (devis.type === 'devis' && supabase) {
-      try {
-        if (devis.signature_token && devis.signature_expires_at && new Date(devis.signature_expires_at) > new Date()) {
-          signatureLink = `${CONFIG.baseUrl}/devis/signer/${devis.signature_token}`;
-        } else {
-          const { data: token } = await supabase.rpc('generate_signature_token', { p_devis_id: devisId });
-          if (token) signatureLink = `${CONFIG.baseUrl}/devis/signer/${token}`;
-        }
-      } catch (err) { captureException(err, { context: 'CommunicationsService.notifyDevisEnvoye.signatureToken' }); }
-    }
-
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       devis_number: devis.numero,
       amount: formatCurrency(devis.total_ttc),
-      link: signatureLink,
+      link: `${CONFIG.baseUrl}/portal/devis/${devisId}`,
     };
 
     // SMS
     const smsMessage = renderTemplate(
-      'Bonjour {{client_name}}, votre devis #{{devis_number}} est prêt. Montant: {{amount}}. Signez en ligne: {{link}}',
+      'Bonjour {{client_name}}, votre devis #{{devis_number}} est prêt. Montant: {{amount}}. Consultez-le: {{link}}',
       variables
     );
 
     // Email
     const emailHtml = renderTemplate(`
       <h2>Bonjour {{client_name}},</h2>
-      <p>Votre devis est prêt et disponible pour consultation et signature.</p>
+      <p>Votre devis est prêt et disponible pour consultation.</p>
       <div class="highlight">
         <p><strong>Devis #{{devis_number}}</strong></p>
         <p class="amount">{{amount}}</p>
       </div>
-      <p>Cliquez sur le bouton ci-dessous pour consulter et signer votre devis en ligne :</p>
+      <p>Cliquez sur le bouton ci-dessous pour consulter et accepter votre devis :</p>
       <center>
-        <a href="{{link}}" class="btn">Signer mon devis</a>
+        <a href="{{link}}" class="btn">Voir mon devis</a>
       </center>
       <p>Ce devis est valable 30 jours. N'hésitez pas à nous contacter pour toute question.</p>
     `, variables);
@@ -586,7 +646,7 @@ export async function notifyDevisEnvoye(devisId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyDevisEnvoye' });
+    console.error('Error in notifyDevisEnvoye:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -612,7 +672,7 @@ export async function notifyDevisAccepte(devisId) {
 
     const client = devis.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       devis_number: devis.numero,
     };
 
@@ -645,7 +705,7 @@ export async function notifyDevisAccepte(devisId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyDevisAccepte' });
+    console.error('Error in notifyDevisAccepte:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -672,7 +732,7 @@ export async function notifyChantierDemarre(chantierId) {
     const client = chantier.client;
     const now = new Date();
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       chantier_name: chantier.nom,
       time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       date: formatDate(now),
@@ -712,7 +772,7 @@ export async function notifyChantierDemarre(chantierId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyChantierDemarre' });
+    console.error('Error in notifyChantierDemarre:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -738,7 +798,7 @@ export async function notifyChantierTermine(chantierId) {
 
     const client = chantier.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       chantier_name: chantier.nom,
       link: `${CONFIG.baseUrl}/portal/chantier/${chantierId}/photos`,
     };
@@ -777,7 +837,7 @@ export async function notifyChantierTermine(chantierId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyChantierTermine' });
+    console.error('Error in notifyChantierTermine:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -805,7 +865,7 @@ export async function notifyFactureEnvoyee(factureId) {
     const client = facture.client;
     const echeance = facture.date_validite || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       facture_number: facture.numero,
       amount: formatCurrency(facture.total_ttc),
       date_echeance: formatDate(echeance),
@@ -852,7 +912,7 @@ export async function notifyFactureEnvoyee(factureId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyFactureEnvoyee' });
+    console.error('Error in notifyFactureEnvoyee:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -878,7 +938,7 @@ export async function notifyPaiementRecu(factureId) {
 
     const client = facture.client;
     const variables = {
-      client_name: client.nom || 'Client',
+      client_name: formatClientName(client),
       facture_number: facture.numero,
       amount: formatCurrency(facture.total_ttc),
       date: formatDate(new Date()),
@@ -912,7 +972,7 @@ export async function notifyPaiementRecu(factureId) {
     return { sms: smsResult, email: emailResult };
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.notifyPaiementRecu' });
+    console.error('Error in notifyPaiementRecu:', error);
     return { sms: { success: false, error: error.message }, email: { success: false, error: error.message } };
   }
 }
@@ -942,7 +1002,6 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to email if we have one
     if (options.fallbackEmail) {
-      if (import.meta.env.DEV) console.log('SMS failed, falling back to email');
       return sendEmail(options.fallbackEmail, subject, html, options);
     }
 
@@ -954,7 +1013,6 @@ export async function sendNotificationWithFallback({ to, message, subject, html,
 
     // Fallback to SMS if we have a phone
     if (options.fallbackPhone) {
-      if (import.meta.env.DEV) console.log('Email failed, falling back to SMS');
       return sendSMS(options.fallbackPhone, message, options);
     }
 
@@ -983,8 +1041,53 @@ export async function getCommunicationHistory(clientId, limit = 50) {
     return data || [];
 
   } catch (error) {
-    captureException(error, { context: 'CommunicationsService.getCommunicationHistory' });
+    console.error('Failed to get communication history:', error);
     return [];
+  }
+}
+
+/**
+ * Notify the artisan that a client signed their devis
+ * Called from DevisSignaturePage (public, unauthenticated context)
+ * @param {Object} params
+ * @param {Object} params.entreprise - Artisan entreprise data
+ * @param {Object} params.devis - Devis data
+ * @param {Object} params.client - Client data
+ * @param {string} params.signataire - Name of the person who signed
+ */
+export async function notifyArtisanSignature({ entreprise, devis, client, signataire }) {
+  try {
+    if (!supabase) return { success: false, error: 'No supabase connection' };
+
+    const artisanEmail = entreprise?.email;
+    const artisanPhone = entreprise?.telephone;
+    const clientNom = `${client?.prenom || ''} ${client?.nom || ''}`.trim() || signataire || 'Votre client';
+    const devisNumero = devis?.numero || 'N/A';
+    const montant = (devis?.total_ttc || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
+
+    const subject = `Devis ${devisNumero} signé par ${clientNom}`;
+    const message = `${clientNom} a signé le devis ${devisNumero} (${montant}). Connectez-vous à BatiGesti pour voir les détails.`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+        <h2 style="color:#16a34a">✅ Devis signé !</h2>
+        <p><strong>${clientNom}</strong> a signé votre devis <strong>${devisNumero}</strong> d'un montant de <strong>${montant}</strong>.</p>
+        <p>Signataire : ${signataire || clientNom}</p>
+        <p>Date : ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+        <p style="margin-top:20px"><a href="${typeof window !== 'undefined' ? window.location.origin : 'https://batigesti.vercel.app'}" style="background:#f97316;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block">Voir dans BatiGesti</a></p>
+      </div>
+    `;
+
+    // Send to artisan via email or SMS (with fallback)
+    if (artisanEmail) {
+      return await sendEmail(artisanEmail, subject, html, { fallbackPhone: artisanPhone });
+    } else if (artisanPhone) {
+      return await sendSMS(artisanPhone, message);
+    }
+
+    return { success: false, error: 'No artisan contact info' };
+  } catch (error) {
+    console.error('notifyArtisanSignature error:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -1002,6 +1105,7 @@ export default {
   notifyChantierTermine,
   notifyFactureEnvoyee,
   notifyPaiementRecu,
+  notifyArtisanSignature,
   getCommunicationHistory,
   formatFrenchPhoneNumber,
   renderTemplate,

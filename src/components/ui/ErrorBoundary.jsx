@@ -28,16 +28,18 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
 
-    // Report to Sentry (prod) or console (dev)
-    captureException(error, {
-      context: 'ErrorBoundary',
-      extra: { componentStack: errorInfo?.componentStack },
-    });
+    // Log to console in development
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
 
     // Call onError callback if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
+
+    // Send to Sentry in production
+    captureException(error, {
+      componentStack: errorInfo?.componentStack,
+    });
   }
 
   handleReset = () => {

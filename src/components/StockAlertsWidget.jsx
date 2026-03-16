@@ -178,7 +178,7 @@ export default function StockAlertsWidget({ userId, onNavigate, compact = false 
           <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
           <p className="text-sm text-slate-600">{error}</p>
           <Button variant="ghost" size="sm" onClick={handleRefresh} className="mt-2">
-            Reessayer
+            Réessayer
           </Button>
         </CardContent>
       </Card>

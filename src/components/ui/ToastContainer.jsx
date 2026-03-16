@@ -109,6 +109,8 @@ export default function ToastContainer({ position = 'bottom-right' }) {
               initial="initial"
               animate="animate"
               exit="exit"
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
               className={`
                 flex items-start gap-3 p-4 rounded-xl border shadow-lg
                 min-w-[300px] max-w-[400px]

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Mail, Phone, MessageCircle, AlertTriangle, Clock, Send,
   Check, ChevronRight, Copy, ExternalLink, Bell, BellOff,
-  Calendar, Euro, User, FileText, Info
+  Calendar, Euro, User, FileText
 } from 'lucide-react';
 import {
   getPendingRelances,
@@ -12,7 +12,6 @@ import {
   createRelanceRecord,
   RELANCE_TEMPLATES
 } from '../services/RelanceService';
-import { buildPaymentUrl } from '../lib/paymentUtils';
 
 /**
  * RelanceCenter - Centralized reminder management
@@ -44,12 +43,7 @@ export default function RelanceCenter({
   // Get all pending reminders
   const pendingRelances = useMemo(() => {
     const pending = getPendingRelances(factures, clients, relanceHistory);
-    return pending.map(r => {
-      // Build payment link if facture has a payment_token
-      const token = r.facture?.payment_token;
-      const lienPaiement = token ? buildPaymentUrl(token) : '';
-      return formatRelanceForDisplay(r, entreprise, { lienPaiement });
-    });
+    return pending.map(r => formatRelanceForDisplay(r, entreprise));
   }, [factures, clients, relanceHistory, entreprise]);
 
   // Group by priority
@@ -429,7 +423,7 @@ function RelanceDetailModal({ relance, onClose, onCopy, onSendEmail, isDark, cou
         <div className="px-6 py-4 border-b flex items-center justify-between"
           style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div>
-            <h3 className={`font-bold ${textPrimary}`}>Apercu du message</h3>
+            <h3 className={`font-bold ${textPrimary}`}>Aperçu du message</h3>
             <p className={`text-sm ${textMuted}`}>{relance.templateName}</p>
           </div>
           <button onClick={onClose} className={`p-2 rounded-xl ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
@@ -451,9 +445,6 @@ function RelanceDetailModal({ relance, onClose, onCopy, onSendEmail, isDark, cou
             </pre>
           </div>
         </div>
-
-        {/* Variables disponibles */}
-        <VariablesHelper isDark={isDark} textMuted={textMuted} />
 
         {/* Actions */}
         <div className="px-6 py-4 border-t flex gap-3"
@@ -480,47 +471,5 @@ function RelanceDetailModal({ relance, onClose, onCopy, onSendEmail, isDark, cou
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-/**
- * Collapsible helper showing available template variables.
- */
-function VariablesHelper({ isDark, textMuted }) {
-  const [open, setOpen] = useState(false);
-  const vars = [
-    ['{numero}', 'N° facture'],
-    ['{num_devis}', 'N° devis associé'],
-    ['{objet}', 'Objet du document'],
-    ['{montant}', 'Montant TTC'],
-    ['{date_facture}', 'Date facture'],
-    ['{date_echeance}', 'Date échéance'],
-    ['{jours_retard}', 'Jours de retard'],
-    ['{client_nom}', 'Nom du client'],
-    ['{entreprise_nom}', 'Votre entreprise'],
-    ['{lien_paiement}', 'Lien de paiement'],
-  ];
-
-  return (
-    <div className="px-6 py-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1.5 text-xs ${textMuted} hover:opacity-70`}
-      >
-        <Info size={12} />
-        Variables disponibles
-        <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
-      {open && (
-        <div className={`mt-2 grid grid-cols-2 gap-1 text-xs ${textMuted}`}>
-          {vars.map(([v, desc]) => (
-            <div key={v} className="flex items-center gap-1.5">
-              <code className={`px-1 py-0.5 rounded ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>{v}</code>
-              <span>{desc}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

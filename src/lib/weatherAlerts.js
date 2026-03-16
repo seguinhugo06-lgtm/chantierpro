@@ -7,7 +7,6 @@
 
 import { supabase } from '../supabaseClient';
 import { templates } from './weatherNotificationTemplates';
-import { captureException } from './sentry';
 
 // ============================================================================
 // TYPES (JSDoc)
@@ -127,7 +126,7 @@ async function getMeteoFranceToken() {
   const applicationId = import.meta.env.VITE_METEOFRANCE_APP_ID;
 
   if (!applicationId) {
-    if (import.meta.env.DEV) console.warn('[WeatherAlerts] Meteo-France API credentials not configured');
+    console.warn('[WeatherAlerts] Météo-France API credentials not configured');
     return null;
   }
 
@@ -164,14 +163,14 @@ export async function fetchWeatherForecast(lat, lng, days = 7) {
     );
 
     if (!response.ok) {
-      if (import.meta.env.DEV) console.warn('[WeatherAlerts] Meteo-France API error, falling back to Open-Meteo');
+      console.warn('[WeatherAlerts] Météo-France API error, falling back to Open-Meteo');
       return fetchWeatherForecastOpenMeteo(lat, lng, days);
     }
 
     const data = await response.json();
     return parseMeteoFranceData(data, days);
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.fetchWeatherForecast' });
+    console.error('[WeatherAlerts] Error fetching Météo-France data:', error);
     return fetchWeatherForecastOpenMeteo(lat, lng, days);
   }
 }
@@ -275,7 +274,7 @@ async function fetchWeatherForecastOpenMeteo(lat, lng, days = 7) {
 
     return weatherMap;
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.fetchWeatherForecastOpenMeteo' });
+    console.error('[WeatherAlerts] Error fetching Open-Meteo data:', error);
     return new Map();
   }
 }
@@ -371,7 +370,7 @@ export async function geocodeAddress(address) {
     const [lng, lat] = data.features[0].geometry.coordinates;
     return { lat, lng };
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.geocodeAddress' });
+    console.error('[WeatherAlerts] Geocoding error:', error);
     return null;
   }
 }
@@ -525,7 +524,7 @@ export function generateSuggestion(impact, weather, alternativeDates = []) {
  */
 export async function checkWeatherImpact(userId, daysAhead = 7) {
   if (!supabase) {
-    if (import.meta.env.DEV) console.warn('[WeatherAlerts] Supabase not available');
+    console.warn('[WeatherAlerts] Supabase not available');
     return [];
   }
 
@@ -650,7 +649,7 @@ export async function checkWeatherImpact(userId, daysAhead = 7) {
 
     return alerts;
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.checkWeatherImpact' });
+    console.error('[WeatherAlerts] Error checking weather impact:', error);
     return [];
   }
 }
@@ -737,7 +736,7 @@ export async function suggestRescheduling(chantier, userId, existingWeatherMap, 
     suggestions.sort((a, b) => b.score - a.score);
     return suggestions.slice(0, 3);
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.suggestRescheduling' });
+    console.error('[WeatherAlerts] Error suggesting reschedule:', error);
     return [];
   }
 }
@@ -803,12 +802,12 @@ export async function rescheduleChantier(chantierId, newDate, userId) {
         },
       ]);
     } catch (logError) {
-      captureException(logError, { context: 'weatherAlerts.rescheduleChantier.log' });
+      console.warn('[WeatherAlerts] Could not log reschedule:', logError);
     }
 
     return { success: true };
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.rescheduleChantier' });
+    console.error('[WeatherAlerts] Error rescheduling:', error);
     return { success: false, error: error.message };
   }
 }
@@ -948,19 +947,22 @@ export async function notifyWeatherAlert(alert, userId, options = {}) {
 
     if (shouldNotifyClient && sendSMS && alert.client_telephone) {
       // In real implementation, integrate with SMS provider (Twilio, etc.)
-      if (import.meta.env.DEV) console.log('[WeatherAlerts] SMS would be sent to:', alert.client_telephone);
+      console.log('[WeatherAlerts] SMS would be sent to:', alert.client_telephone);
+      console.log('[WeatherAlerts] SMS content:', generateSMSMessage(alert));
       channels.push('sms');
     }
 
     if (shouldNotifyClient && sendEmail && alert.client_email) {
       // In real implementation, integrate with email provider
-      if (import.meta.env.DEV) console.log('[WeatherAlerts] Email would be sent to:', alert.client_email);
+      const emailContent = generateEmailContent(alert);
+      console.log('[WeatherAlerts] Email would be sent to:', alert.client_email);
+      console.log('[WeatherAlerts] Email subject:', emailContent.subject);
       channels.push('email');
     }
 
     return { success: true, channels };
   } catch (error) {
-    captureException(error, { context: 'weatherAlerts.notifyWeatherAlert' });
+    console.error('[WeatherAlerts] Error sending notification:', error);
     return { success: false, channels };
   }
 }
@@ -976,12 +978,12 @@ export async function notifyWeatherAlert(alert, userId, options = {}) {
  * @returns {Promise<{alerts: WeatherAlert[], notified: number}>}
  */
 export async function dailyWeatherCheck(userId) {
-  if (import.meta.env.DEV) console.log(`[WeatherAlerts] Running daily check for user ${userId}`);
+  console.log(`[WeatherAlerts] Running daily check for user ${userId} at ${new Date().toISOString()}`);
 
   // Check weather impact
   const alerts = await checkWeatherImpact(userId, 7);
 
-  if (import.meta.env.DEV) console.log(`[WeatherAlerts] Found ${alerts.length} weather alerts`);
+  console.log(`[WeatherAlerts] Found ${alerts.length} weather alerts`);
 
   // Send notifications for critical and moderate alerts
   let notifiedCount = 0;

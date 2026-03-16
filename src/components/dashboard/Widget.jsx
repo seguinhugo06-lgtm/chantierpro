@@ -150,16 +150,16 @@ export const WidgetHeader = React.forwardRef(
             )}>
               {React.isValidElement(icon) &&
                 React.cloneElement(icon, {
-                  className: cn('w-[18px] h-[18px]', isDark ? 'text-gray-500' : 'text-gray-400'),
+                  className: cn('w-[18px] h-[18px]', isDark ? 'text-gray-500' : 'text-gray-500'),
                 })}
             </div>
           )}
-          <h3 className={cn(
+          <h2 className={cn(
             'text-base font-semibold',
             isDark ? 'text-white' : 'text-gray-900'
           )}>
             {title}
-          </h3>
+          </h2>
           {badge && (
             <span className={cn(
               'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold',
@@ -226,7 +226,7 @@ export function WidgetMenuButton({ onClick, isDark = false, className, title = "
         'p-2 rounded-md transition-all duration-150',
         isDark
           ? 'text-gray-500 hover:text-gray-300 hover:bg-slate-700'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+          : 'text-gray-500 hover:text-gray-600 hover:bg-gray-100',
         'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
         'active:scale-95',
         className
@@ -319,7 +319,7 @@ const Widget = React.forwardRef(
         ref={ref}
         className={cn(
           // Base styles - Level 2 Elevation
-          'rounded-xl overflow-visible',
+          'rounded-xl overflow-hidden',
           isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200',
           'border',
           // Padding

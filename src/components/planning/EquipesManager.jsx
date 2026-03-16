@@ -243,7 +243,7 @@ function EquipeCard({
           {/* Chantiers */}
           <div className="p-4 border-b border-gray-100 dark:border-slate-800">
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-              Chantiers assignes ({chantiers?.length || 0})
+              Chantiers assignés ({chantiers?.length || 0})
             </p>
             {chantiers && chantiers.length > 0 ? (
               <div className="space-y-2">
@@ -278,7 +278,7 @@ function EquipeCard({
               </div>
             ) : (
               <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                Aucun chantier assigne
+                Aucun chantier assigné
               </p>
             )}
           </div>
@@ -444,7 +444,7 @@ function EquipeFormModal({ isOpen, onClose, equipe, onSave, isSaving }) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Nom de l'equipe *
+              Nom de l'équipe *
             </label>
             <input
               type="text"
@@ -560,7 +560,7 @@ function EquipeFormModal({ isOpen, onClose, equipe, onSave, isSaving }) {
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             rows={2}
-            placeholder="Notes supplementaires..."
+            placeholder="Notes supplémentaires..."
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white resize-none"
           />
         </div>
@@ -596,7 +596,7 @@ function DeleteConfirmModal({ isOpen, onClose, equipe, onConfirm, isDeleting }) 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm">
       <ModalHeader>
-        <ModalTitle>Supprimer l'equipe</ModalTitle>
+        <ModalTitle>Supprimer l'équipe</ModalTitle>
       </ModalHeader>
       <ModalBody>
         <p className="text-gray-600 dark:text-gray-400">
@@ -802,6 +802,7 @@ export default function EquipesManager({ userId, onViewPlanning, className }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher une equipe..."
+          aria-label="Rechercher une equipe"
           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         />
       </div>
@@ -820,7 +821,7 @@ export default function EquipesManager({ userId, onViewPlanning, className }) {
           <p className="text-gray-500 dark:text-gray-400 mb-4">
             {search
               ? 'Modifiez votre recherche'
-              : 'Creez votre premiere equipe pour organiser vos chantiers'}
+              : 'Créez votre première équipe pour organiser vos chantiers'}
           </p>
           {!search && (
             <Button variant="primary" onClick={() => setFormModal({ isOpen: true, equipe: null })}>
@@ -860,7 +861,7 @@ export default function EquipesManager({ userId, onViewPlanning, className }) {
                 {equipes.filter((e) => e.charge?.overloaded).map((e) => e.nom).join(', ')}
               </p>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                Suggestion : Reprogrammez certains chantiers ou assignez-les a d'autres equipes
+                Suggestion : Reprogrammez certains chantiers ou assignez-les à d'autres équipes
               </p>
             </div>
           </div>

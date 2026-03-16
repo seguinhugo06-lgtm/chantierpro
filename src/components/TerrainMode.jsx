@@ -116,7 +116,7 @@ export default function TerrainMode({
             <div>
               <h1 className="text-xl font-bold text-white">Mode Terrain</h1>
               <p className="text-white/80 text-sm">
-                {activeChantier?.nom || 'Selectionnez un chantier'}
+                {activeChantier?.nom || 'Sélectionnez un chantier'}
               </p>
             </div>
           </div>

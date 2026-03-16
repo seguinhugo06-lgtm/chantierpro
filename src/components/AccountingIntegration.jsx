@@ -390,7 +390,7 @@ export default function AccountingIntegration({
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>
-                      <p className={`text-xs ${textMuted}`}>Fichier des Ecritures Comptables</p>
+                      <p className={`text-xs ${textMuted}`}>Fichier des Écritures Comptables</p>
                     </div>
                   </div>
                   <p className={`text-sm mb-4 ${textSecondary}`}>
@@ -454,14 +454,14 @@ export default function AccountingIntegration({
                 <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
                   <h3 className={`font-semibold ${textPrimary}`}>Detail par taux de TVA</h3>
                 </div>
-                <table className="w-full">
+                <table className="w-full" aria-label="Détail par taux de TVA">
                   <thead className={isDark ? 'bg-slate-700/30' : 'bg-slate-50'}>
                     <tr>
-                      <th className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
-                      <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
-                      <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectee</th>
-                      <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Deductible</th>
-                      <th className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
+                      <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
+                      <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
+                      <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Collectee</th>
+                      <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Deductible</th>
+                      <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
                     </tr>
                   </thead>
                   <tbody>

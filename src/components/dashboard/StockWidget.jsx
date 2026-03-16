@@ -237,8 +237,6 @@ function OrderModal({ isOpen, onClose, alert, onConfirm }) {
 
   const handleOrder = async () => {
     setIsOrdering(true);
-    // Simulate order creation
-    await new Promise((resolve) => setTimeout(resolve, 1500));
     onConfirm?.(alert, quantity);
     setIsOrdering(false);
     onClose();
@@ -443,8 +441,6 @@ export default function StockWidget({ userId, className, setPage, isDark = false
   // Handle dismiss
   const handleDismiss = async (productId) => {
     setDismissingId(productId);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
     setDismissedAlerts((prev) => new Set([...prev, productId]));
     setDismissingId(null);
 
@@ -518,7 +514,7 @@ export default function StockWidget({ userId, className, setPage, isDark = false
               <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
               <Button variant="outline" size="sm" onClick={fetchData}>
                 <RefreshCw className="w-4 h-4 mr-1.5" />
-                Reessayer
+                Réessayer
               </Button>
             </div>
           ) : (
@@ -613,7 +609,7 @@ export default function StockWidget({ userId, className, setPage, isDark = false
 
         <WidgetFooter isDark={isDark}>
           <WidgetLink onClick={handleManageStock} isDark={isDark}>
-            Gerer stock
+            Gérer stock
           </WidgetLink>
           <WidgetLink onClick={handleViewMovements} isDark={isDark}>
             Voir mouvements

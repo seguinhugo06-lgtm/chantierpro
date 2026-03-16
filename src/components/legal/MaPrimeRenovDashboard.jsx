@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
 import { calculateTotalAide } from '../../lib/compliance/renovation-compliance';
 import MaPrimeRenovAssistant, { STATUS_COLORS, CategoryBadge } from './MaPrimeRenovAssistant';
+import { toast } from '../../stores/toastStore';
 
 // ============ DEMO DATA ============
 
@@ -198,7 +199,8 @@ function DossierRow({ dossier, isDark, onView, onAction }) {
           <button
             onClick={() => onView(dossier)}
             className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
-            title="Voir détails"
+            title="Voir les détails"
+            aria-label="Voir les détails du dossier"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -561,7 +563,7 @@ export default function MaPrimeRenovDashboard({
   const handleAction = useCallback((dossier, action) => {
     if (action === 'relancer') {
       // Simulate email
-      alert(`Email de relance envoyé à ${dossier.client_email}`);
+      toast.success('Email de relance envoyé', `Relance envoyée à ${dossier.client_email}`);
     }
   }, []);
 
@@ -729,25 +731,25 @@ export default function MaPrimeRenovDashboard({
       {/* Table */}
       <div className={`rounded-xl overflow-hidden ${isDark ? 'bg-gray-800' : 'bg-white'} shadow-sm border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full" aria-label="Dossiers MaPrimeRénov'">
             <thead className={isDark ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Client
                 </th>
-                <th className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Statut
                 </th>
-                <th className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Travaux
                 </th>
-                <th className={`px-4 py-3 text-right text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-right text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Aide estimée
                 </th>
-                <th className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-left text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Date
                 </th>
-                <th className={`px-4 py-3 text-right text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <th scope="col" className={`px-4 py-3 text-right text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   Actions
                 </th>
               </tr>

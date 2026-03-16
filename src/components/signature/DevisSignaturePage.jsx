@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield } from 'lucide-react';
+import { FileText, Check, X, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCircle, Loader2, ArrowRight, ArrowLeft, Shield, Download } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
+import { notifyArtisanSignature } from '../../services/CommunicationsService';
 
 /**
  * Page publique de signature électronique de devis
@@ -13,6 +14,7 @@ import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
 export default function DevisSignaturePage({ signatureToken }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [alreadySigned, setAlreadySigned] = useState(false);
   const [devisData, setDevisData] = useState(null);
   const [step, setStep] = useState('preview'); // preview, info, sign, success
   const [signataire, setSignataire] = useState('');
@@ -42,7 +44,7 @@ export default function DevisSignaturePage({ signatureToken }) {
         }
 
         if (data.devis?.already_signed) {
-          setError('Ce devis a déjà été signé.');
+          setAlreadySigned(true);
           setLoading(false);
           return;
         }
@@ -110,7 +112,25 @@ export default function DevisSignaturePage({ signatureToken }) {
       if (!data?.success) {
         setError(data?.error || 'Erreur lors de la signature. Veuillez réessayer.');
       } else {
+        // Update local devis data with signature info for PDF download
+        setDevisData(prev => ({
+          ...prev,
+          devis: {
+            ...prev.devis,
+            signature_data: signatureImage,
+            signature_date: new Date().toISOString(),
+            signataire_nom: signataire.trim()
+          }
+        }));
         setStep('success');
+
+        // Notify artisan in background (don't block success page)
+        notifyArtisanSignature({
+          entreprise,
+          devis,
+          client,
+          signataire: signataire.trim()
+        }).catch(err => console.warn('Failed to notify artisan:', err));
       }
     } catch (err) {
       console.error('Error signing devis:', err);
@@ -126,6 +146,23 @@ export default function DevisSignaturePage({ signatureToken }) {
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4" style={{ color: '#f97316' }} />
           <p className="text-slate-600">Chargement du devis...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // === ALREADY SIGNED STATE ===
+  if (alreadySigned) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mb-3">Devis déjà signé</h1>
+          <p className="text-slate-600 leading-relaxed">
+            Ce devis a déjà été signé. Aucune action supplémentaire n'est nécessaire.
+          </p>
         </div>
       </div>
     );
@@ -181,13 +218,43 @@ export default function DevisSignaturePage({ signatureToken }) {
             </div>
           </div>
 
+          {/* Download signed PDF button */}
+          <button
+            onClick={() => {
+              const signedHtml = buildDevisHtml({
+                doc: {
+                  ...devis,
+                  signature_data: devis.signature_data,
+                  signature_date: devis.signature_date,
+                  signataire_nom: devis.signataire_nom
+                },
+                client,
+                chantier: null,
+                entreprise,
+                couleur,
+                mode: 'client'
+              });
+              const w = window.open('', '_blank');
+              if (w) {
+                w.document.write(signedHtml);
+                w.document.close();
+                setTimeout(() => w.print(), 500);
+              }
+            }}
+            className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 mb-4 transition-all hover:shadow-lg text-white"
+            style={{ background: couleur }}
+          >
+            <Download className="w-5 h-5" />
+            Télécharger mon devis signé
+          </button>
+
           <div className="flex items-center gap-2 justify-center text-xs text-slate-400">
             <Shield className="w-3.5 h-3.5" />
             <span>Signature électronique conforme au règlement eIDAS (UE 910/2014)</span>
           </div>
 
           <p className="text-sm text-slate-500 mt-4">
-            {entreprise?.nom} a été notifié de votre signature et vous recontactera sous 48h.
+            {entreprise?.nom || 'Votre artisan'} a été notifié de votre signature et vous recontactera sous 48h.
           </p>
         </div>
       </div>
@@ -201,7 +268,8 @@ export default function DevisSignaturePage({ signatureToken }) {
       client,
       chantier: null,
       entreprise,
-      couleur
+      couleur,
+      mode: 'client'
     });
 
     return (

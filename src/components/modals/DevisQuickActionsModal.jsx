@@ -466,7 +466,7 @@ export default function DevisQuickActionsModal({
   const statusInfo = devisData ? getStatusInfo(devisData.statut, devisData.createdAt || devisData.date) : null;
   const canRelance = devisData && [DEVIS_STATUS.ENVOYE, DEVIS_STATUS.VU].includes(devisData.statut);
   const canMarkAccepted = devisData && [DEVIS_STATUS.ENVOYE, DEVIS_STATUS.VU].includes(devisData.statut);
-  const canConvert = devisData && [DEVIS_STATUS.ACCEPTE, 'signe'].includes(devisData.statut) && devisData.type === 'devis';
+  const canConvert = devisData && devisData.statut === DEVIS_STATUS.ACCEPTE && devisData.type === 'devis';
   const isFacture = devisData?.type === 'facture';
 
   return (

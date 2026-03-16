@@ -19,7 +19,7 @@ import {
   FileStack,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { formatMoney, formatDate, formatRelativeDate } from '../../lib/formatters';
+import { formatMoney, formatDate, formatRelativeDate, normalizeDevisRef, formatDevisNumber } from '../../lib/formatters';
 import { useDevis, useClients } from '../../context/DataContext';
 import { useToast } from '../../context/AppContext';
 import { DEVIS_STATUS } from '../../lib/constants';
@@ -65,28 +65,7 @@ function daysSince(dateString) {
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-/**
- * Format document number with correct prefix (DEV- for devis, FAC- for factures)
- */
-function formatDocumentNumber(devis) {
-  const numero = devis.numero || devis.id?.slice(-6) || '---';
-
-  // If it already has a proper prefix, use it as-is
-  if (numero.startsWith('DEV-') || numero.startsWith('FAC-')) {
-    return numero;
-  }
-
-  // Determine the type and add appropriate prefix
-  const isFacture = devis.type === 'facture';
-  const prefix = isFacture ? 'FAC' : 'DEV';
-
-  // If number starts with a digit, add the prefix
-  if (/^\d/.test(numero)) {
-    return `${prefix}-${numero}`;
-  }
-
-  return numero;
-}
+// formatDocumentNumber → replaced by centralized formatDevisNumber from formatters.js
 
 
 /**
@@ -206,9 +185,9 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {title}
-          </h3>
+          </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -252,8 +231,8 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
   useEffect(() => {
     if (isOpen && client && devis) {
       const template = method === 'email'
-        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} pour un montant de ${formatMoney(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
-        : `Bonjour ${client.nom}, je vous relance concernant le devis ${devis.numero || '#' + devis.id?.slice(-6)} (${formatMoney(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
+        ? `Bonjour ${client.nom},\n\nJe me permets de vous relancer concernant le devis ${normalizeDevisRef(devis.numero, devis.type, devis.id)} pour un montant de ${formatMoney(devis.total_ttc)}.\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nCordialement`
+        : `Bonjour ${client.nom}, je vous relance concernant le devis ${normalizeDevisRef(devis.numero, devis.type, devis.id)} (${formatMoney(devis.total_ttc)}). Avez-vous pu y réfléchir ?`;
       setMessage(template);
     }
   }, [isOpen, client, devis, method]);
@@ -270,7 +249,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
     >
       <div className="space-y-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Devis <span className="font-medium">{devis?.numero || '#' + devis?.id?.slice(-6)}</span> • {formatMoney(devis?.total_ttc)}
+          Devis <span className="font-medium">{normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
         {/* Method selector */}
@@ -340,7 +319,7 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
             </div>
             <div>
               <p className="font-medium text-gray-900 dark:text-white">
-                {devis?.numero || '#' + devis?.id?.slice(-6)}
+                {normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {client?.nom || 'Client inconnu'}
@@ -410,7 +389,7 @@ function DevisCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className={cn('text-xs font-semibold', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                {formatDocumentNumber(devis)}
+                {formatDevisNumber(devis)}
               </span>
               {needsRelance && (
                 <span className={cn(
@@ -422,11 +401,11 @@ function DevisCard({
                 </span>
               )}
             </div>
-            <p className={cn('text-sm font-semibold truncate leading-snug', isDark ? 'text-white' : 'text-gray-900')}>
+            <p className={cn('text-sm font-semibold leading-snug', isDark ? 'text-white' : 'text-gray-900')} style={{ wordBreak: 'break-word' }}>
               {client?.nom || 'Client inconnu'}
             </p>
             <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
-              {devis.titre || devis.objet || `Devis ${devis.numero || '#' + (devis.id?.slice(-6) || '---')}`}
+              {devis.titre || devis.objet || formatDevisNumber(devis)}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
@@ -445,17 +424,35 @@ function DevisCard({
         <div className={cn('flex items-center gap-1.5 pt-3 border-t', isDark ? 'border-slate-700/50' : 'border-gray-100')}>
           <button
             type="button"
+            onClick={() => onConvert(devis)}
+            disabled={isConverting}
+            title="Transformer ce devis en facture"
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5',
+              'px-3 py-2 rounded-lg text-xs font-medium',
+              'transition-all duration-150',
+              'bg-orange-500 hover:bg-orange-600 text-white shadow-sm',
+              isConverting && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            {isConverting ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ArrowRight className="w-3.5 h-3.5" />
+            )}
+            Convertir
+          </button>
+          <button
+            type="button"
             onClick={() => onRelance(devis)}
             disabled={isRelancing}
             className={cn(
               'flex-1 inline-flex items-center justify-center gap-1.5',
               'px-3 py-2 rounded-lg text-xs font-medium',
               'transition-all duration-150',
-              needsRelance
-                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-sm'
-                : isDark
-                  ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+              isDark
+                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
               isRelancing && 'opacity-50 cursor-not-allowed'
             )}
           >
@@ -474,33 +471,12 @@ function DevisCard({
               'px-3 py-2 rounded-lg text-xs font-medium',
               'transition-all duration-150',
               isDark
-                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                ? 'bg-slate-700/50 hover:bg-slate-700 text-gray-400'
+                : 'bg-gray-50 hover:bg-gray-100 text-gray-500'
             )}
           >
             <Eye className="w-3.5 h-3.5" />
             Voir
-          </button>
-          <button
-            type="button"
-            onClick={() => onConvert(devis)}
-            disabled={isConverting}
-            className={cn(
-              'flex-1 inline-flex items-center justify-center gap-1.5',
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              'transition-all duration-150',
-              isDark
-                ? 'bg-primary-500/20 hover:bg-primary-500/30 text-primary-300'
-                : 'bg-primary-100 hover:bg-primary-200 text-primary-700',
-              isConverting && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            {isConverting ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <ArrowRight className="w-3.5 h-3.5" />
-            )}
-            Convertir
           </button>
         </div>
       </div>
@@ -535,7 +511,7 @@ function DevisCardSkeleton() {
  *
  * @param {DevisWidgetProps} props
  */
-export default function DevisWidget({
+function DevisWidget({
   userId,
   maxDisplay = 3,
   limit, // Backward compatibility
@@ -571,21 +547,22 @@ export default function DevisWidget({
 
     try {
       if (isDemo || !supabase) {
-        // Demo mode: filter from context
+        // Demo mode: filter from context — only devis (not factures)
         const filtered = allDevis
-          .filter(d => WAITING_STATUSES.includes(d.statut))
+          .filter(d => d.type === 'devis' && WAITING_STATUSES.includes(d.statut))
           .sort((a, b) => new Date(b.createdAt || b.date_envoi || b.date) - new Date(a.createdAt || a.date_envoi || a.date))
           .slice(0, displayLimit);
 
         setPendingDevis(filtered);
       } else {
-        // Real Supabase query
+        // Real Supabase query — only devis (exclude factures)
         const { data, error: queryError } = await supabase
           .from('devis')
           .select(`
             *,
             client:clients(id, nom)
           `)
+          .eq('type', 'devis')
           .in('statut', WAITING_STATUSES)
           .order('created_at', { ascending: false })
           .limit(displayLimit);
@@ -734,7 +711,7 @@ export default function DevisWidget({
   // Total count for badge
   const totalPendingCount = useMemo(() => {
     if (isDemo || !supabase) {
-      return allDevis.filter(d => WAITING_STATUSES.includes(d.statut)).length;
+      return allDevis.filter(d => d.type === 'devis' && WAITING_STATUSES.includes(d.statut)).length;
     }
     return pendingDevis.length;
   }, [allDevis, pendingDevis]);
@@ -779,7 +756,7 @@ export default function DevisWidget({
           }
         />
 
-        <WidgetContent>
+        <WidgetContent className="overflow-y-auto" style={{ maxHeight: '420px' }}>
           {error ? (
             <div className="text-center py-6">
               <p className="text-sm text-red-600 dark:text-red-400 mb-3">
@@ -845,6 +822,8 @@ export default function DevisWidget({
     </>
   );
 }
+
+export default React.memo(DevisWidget);
 
 /**
  * DevisWidgetSkeleton - Full skeleton for the widget

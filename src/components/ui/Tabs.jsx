@@ -76,7 +76,7 @@ TabsList.displayName = 'TabsList';
 
 // ============ TABS TRIGGER ============
 export const TabsTrigger = React.forwardRef(
-  ({ className, value, disabled = false, children, ...props }, ref) => {
+  ({ className, value, disabled = false, variant = 'default', children, ...props }, ref) => {
     const context = React.useContext(TabsContext);
     const isSelected = context?.value === value;
 
@@ -84,6 +84,21 @@ export const TabsTrigger = React.forwardRef(
       if (!disabled) {
         context?.onValueChange(value);
       }
+    };
+
+    // Styles par variante
+    const baseStyles = 'inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2';
+
+    const variantStyles = {
+      default: isSelected
+        ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm rounded-lg'
+        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700/50 rounded-lg',
+      underline: isSelected
+        ? 'text-gray-900 dark:text-white border-b-2 border-current -mb-px font-semibold'
+        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent -mb-px',
+      pills: isSelected
+        ? 'bg-primary-500 text-white rounded-full'
+        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full',
     };
 
     return (
@@ -96,13 +111,8 @@ export const TabsTrigger = React.forwardRef(
         disabled={disabled}
         onClick={handleClick}
         className={cn(
-          'inline-flex items-center justify-center whitespace-nowrap',
-          'px-4 py-2 text-sm font-medium rounded-lg',
-          'transition-all duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
-          isSelected
-            ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm'
-            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700/50',
+          baseStyles,
+          variantStyles[variant] || variantStyles.default,
           disabled && 'opacity-50 cursor-not-allowed',
           className
         )}

@@ -9,7 +9,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { toast } from '../stores/toastStore';
 import { useModal, useMultiModal } from './useModal';
 import { useData } from '../context/DataContext';
-import { captureException } from '../lib/sentry';
+import { buildDocumentHTML, getEntrepriseFromStorage } from '../lib/pdfHtmlBuilder';
 
 /**
  * @typedef {'devis' | 'facture' | 'chantier' | 'client'} ItemType
@@ -158,7 +158,7 @@ export function useQuickActions(config) {
         onSuccess?.();
         return true;
       } catch (error) {
-        captureException(error, { context: `useQuickActions.${actionName}` });
+        console.error(`${actionName} error:`, error);
         toast.error(
           errorMsg || ERROR_MESSAGES[actionName] || ERROR_MESSAGES.default,
           error.message
@@ -210,21 +210,12 @@ export function useQuickActions(config) {
    * Relancer - Send reminder email/SMS
    */
   const relancer = useCallback(
-    async (id = itemId, relanceConfig = {}) => {
-      const { method = 'email', customMessage, template } = relanceConfig;
-
-      return executeAction('relancer', async () => {
-        // TODO: Replace with actual API call
-        // await api.relancer(type, id, { method, customMessage, template });
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Log for demo
-        if (import.meta.env.DEV) console.log(`Relance ${method} envoyee pour ${type} #${id}`);
-      });
+    async (id = itemId) => {
+      // Open the RelanceModal which handles actual send via CommunicationsService
+      relanceModal.open({ itemId: id, type });
+      return true;
     },
-    [itemId, type, executeAction]
+    [itemId, type, relanceModal]
   );
 
   /**
@@ -243,34 +234,35 @@ export function useQuickActions(config) {
   const convertir = useCallback(
     async (devisId = itemId) => {
       if (type !== 'devis') {
-        if (import.meta.env.DEV) console.warn('convertir is only available for devis');
+        console.warn('convertir is only available for devis');
         return false;
       }
 
       return executeAction('convertir', async () => {
-        // Get devis data
         const devis = dataContext?.getDevis?.(devisId);
         if (!devis) throw new Error('Devis non trouvé');
 
-        // Create facture from devis
-        const factureData = {
+        // Generate facture numero
+        const allDevis = dataContext?.devis || [];
+        const year = new Date().getFullYear();
+        const existingFacNums = allDevis
+          .filter(d => d.type === 'facture' && d.numero?.startsWith(`FAC-${year}-`))
+          .map(d => parseInt(d.numero.split('-')[2]) || 0);
+        const nextNum = existingFacNums.length > 0 ? Math.max(...existingFacNums) + 1 : 1;
+        const numero = `FAC-${year}-${String(nextNum).padStart(5, '0')}`;
+
+        const facture = {
           ...devis,
+          id: crypto.randomUUID(),
+          numero,
           type: 'facture',
-          devisId: devisId,
-          statut: 'brouillon',
-          dateEmission: new Date().toISOString(),
+          devis_source_id: devisId,
+          date: new Date().toISOString().split('T')[0],
+          statut: 'envoye',
         };
 
-        // TODO: Replace with actual API call
-        // await api.createFacture(factureData);
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Update devis status
-        dataContext?.updateDevis?.(devisId, { statut: 'accepte' });
-
-        if (import.meta.env.DEV) console.log(`Devis #${devisId} converti en facture`);
+        await dataContext?.addDevis?.(facture);
+        await dataContext?.updateDevis?.(devisId, { statut: 'facture' });
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -330,8 +322,6 @@ export function useQuickActions(config) {
 
         // Add duplicate
         addFn?.(duplicate);
-
-        if (import.meta.env.DEV) console.log(`${type} #${id} duplique`);
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -364,8 +354,6 @@ export function useQuickActions(config) {
           await new Promise((resolve) => setTimeout(resolve, 500));
 
           deleteFn?.(id);
-
-          if (import.meta.env.DEV) console.log(`${type} #${id} supprime`);
         });
       };
 
@@ -390,17 +378,27 @@ export function useQuickActions(config) {
   const telecharger = useCallback(
     async (id = itemId) => {
       return executeAction('telecharger', async () => {
-        // TODO: Replace with actual PDF generation
-        // const pdfUrl = await api.generatePdf(type, id);
-        // window.open(pdfUrl, '_blank');
+        const doc = (type === 'devis' || type === 'facture')
+          ? dataContext?.getDevis?.(id)
+          : null;
+        if (!doc) throw new Error('Document non trouvé');
 
-        // Simulate PDF download
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        const client = dataContext?.getClient?.(doc.client_id);
+        const chantier = doc.chantier_id ? dataContext?.getChantier?.(doc.chantier_id) : null;
+        const entreprise = getEntrepriseFromStorage();
 
-        if (import.meta.env.DEV) console.log(`Téléchargement PDF pour ${type} #${id}`);
+        const htmlContent = buildDocumentHTML(doc, client, chantier, entreprise);
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.write(htmlContent);
+          win.document.close();
+          win.onload = () => win.print();
+        } else {
+          throw new Error('Pop-up bloqué. Autorisez les pop-ups pour télécharger.');
+        }
       });
     },
-    [itemId, type, executeAction]
+    [itemId, type, dataContext, executeAction]
   );
 
   /**
@@ -414,8 +412,6 @@ export function useQuickActions(config) {
 
         // Copy to clipboard
         await navigator.clipboard.writeText(shareUrl);
-
-        if (import.meta.env.DEV) console.log(`Lien partagé: ${shareUrl}`);
       });
     },
     [itemId, type, executeAction]
@@ -427,7 +423,7 @@ export function useQuickActions(config) {
   const terminer = useCallback(
     async (chantierId = itemId) => {
       if (type !== 'chantier') {
-        if (import.meta.env.DEV) console.warn('terminer is only available for chantier');
+        console.warn('terminer is only available for chantier');
         return false;
       }
 
@@ -440,8 +436,6 @@ export function useQuickActions(config) {
           dateFin: new Date().toISOString(),
           avancement: 100,
         });
-
-        if (import.meta.env.DEV) console.log(`Chantier #${chantierId} terminé`);
       });
     },
     [itemId, type, dataContext, executeAction]
@@ -462,8 +456,6 @@ export function useQuickActions(config) {
       const route = routes[type];
       if (route && navigate) {
         navigate(route);
-      } else {
-        if (import.meta.env.DEV) console.log(`Navigate to ${route}`);
       }
     },
     [itemId, type]
@@ -710,7 +702,7 @@ export function useChantierActions(chantierId, chantierData = {}, options = {}) 
       {
         label: 'Documenter',
         icon: icons?.documenter,
-        onClick: () => { if (import.meta.env.DEV) console.log('Open photo upload'); },
+        onClick: () => actions.voir(chantierId),
       },
       {
         label: 'GPS',

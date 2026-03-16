@@ -102,24 +102,19 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
     .filter(a => a.type === AJUSTEMENT_TYPE.DEPENSE)
     .reduce((sum, a) => sum + (a.montant || a.montant_ht || 0), 0);
 
-  // ===== SOUS-TRAITANCE =====
-  // Extract sous-traitance costs from depenses (informational - already included in coutMateriaux)
-  const coutSousTraitance = chantierDepenses
-    .filter(d => d.categorie === 'Sous-traitance')
-    .reduce((sum, d) => sum + (d.montant || 0), 0);
-
   // ===== TOTAUX =====
   const revenuTotal = revenuPrevu + adjRevenus;
   const totalDepenses = coutMateriaux + coutMO + adjDepenses;
+  const hasDepenses = totalDepenses > 0;
 
   // ===== MARGES =====
-  // Gross margin (projected)
+  // Gross margin (projected) — non calculable si aucune dépense enregistrée
   const margeBrute = revenuTotal - totalDepenses;
-  const tauxMarge = revenuTotal > 0 ? (margeBrute / revenuTotal) * 100 : 0;
+  const tauxMarge = revenuTotal > 0 && hasDepenses ? (margeBrute / revenuTotal) * 100 : 0;
 
   // Real margin (based on actual payments received)
   const margeReelle = revenuEncaisse - totalDepenses;
-  const tauxMargeReelle = revenuEncaisse > 0 ? (margeReelle / revenuEncaisse) * 100 : 0;
+  const tauxMargeReelle = revenuEncaisse > 0 && hasDepenses ? (margeReelle / revenuEncaisse) * 100 : 0;
 
   // Margin status for color coding
   let margeStatus = 'excellent';
@@ -141,9 +136,9 @@ export const calculateChantierMargin = (chantier, { devis = [], depenses = [], p
     // Couts
     coutMateriaux,
     coutMO,
-    coutSousTraitance,
     coutAutres: adjDepenses,
     totalDepenses,
+    hasDepenses,
     // Heures
     heuresTotal,
     // Marges (CONSISTENT NAMING - use these everywhere!)
@@ -257,7 +252,9 @@ export const calculateGlobalKPIs = (chantiers, data) => {
   const caTotal = margins.reduce((s, m) => s + m.revenuTotal, 0);
   const caTotalEncaisse = margins.reduce((s, m) => s + m.revenuEncaisse, 0);
   const coutTotal = margins.reduce((s, m) => s + m.totalDepenses, 0);
-  const margeGlobale = caTotal > 0 ? ((caTotal - coutTotal) / caTotal * 100) : 0;
+  const hasDepenses = coutTotal > 0;
+  // Si aucune dépense enregistrée, la marge n'est pas calculable (évite 100% trompeur)
+  const margeGlobale = caTotal > 0 && hasDepenses ? ((caTotal - coutTotal) / caTotal * 100) : 0;
 
   // Chantiers a risque
   const chantiersRisque = margins.filter(m => m.tauxMarge < MARGIN_THRESHOLDS.WARNING && m.statut === 'en_cours');
@@ -286,6 +283,7 @@ export const calculateGlobalKPIs = (chantiers, data) => {
     caTotalEncaisse,
     aEncaisser: caTotal - caTotalEncaisse,
     coutTotal,
+    hasDepenses,
     margeGlobale,
     margeGlobaleMontant: caTotal - coutTotal,
     // Performance

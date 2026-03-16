@@ -6,7 +6,6 @@
  */
 
 import { supabase } from '../supabaseClient';
-import { captureException } from './sentry';
 
 // ============================================================================
 // TYPES (JSDoc)
@@ -87,7 +86,7 @@ export function saveStockSettings(userId, settings) {
   try {
     localStorage.setItem(`stock_settings_${userId}`, JSON.stringify(settings));
   } catch (err) {
-    captureException(err, { context: 'StockAutoDeduction.saveStockSettings' });
+    console.error('[StockAutoDeduction] Error saving settings:', err);
   }
 }
 
@@ -109,7 +108,7 @@ export function saveStockSettings(userId, settings) {
 export async function deductStockFromDevis(devisId, userId, options = {}) {
   const { dryRun = false, allowNegative = false } = options;
 
-  if (import.meta.env.DEV) console.log(`[StockAutoDeduction] ${dryRun ? 'Calculating' : 'Deducting'} stock for devis ${devisId}`);
+  console.log(`[StockAutoDeduction] ${dryRun ? 'Calculating' : 'Deducting'} stock for devis ${devisId}`);
 
   const result = {
     success: true,
@@ -130,7 +129,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
     // Check if auto deduction is enabled
     const settings = await getStockSettings(userId);
     if (!settings.enabled && !dryRun) {
-      if (import.meta.env.DEV) console.log('[StockAutoDeduction] Auto deduction disabled for user');
+      console.log('[StockAutoDeduction] Auto deduction disabled for user');
       result.alerts.push('Deduction automatique desactivee dans les parametres');
       return result;
     }
@@ -156,7 +155,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
       .eq('type', 'sortie');
 
     if (existingMovements && existingMovements > 0 && !dryRun) {
-      if (import.meta.env.DEV) console.log('[StockAutoDeduction] Stock already deducted for this devis');
+      console.log('[StockAutoDeduction] Stock already deducted for this devis');
       result.alerts.push('Stock deja deduit pour ce devis');
       return result;
     }
@@ -170,7 +169,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
     );
 
     if (productLines.length === 0) {
-      if (import.meta.env.DEV) console.log('[StockAutoDeduction] No product lines to deduct');
+      console.log('[StockAutoDeduction] No product lines to deduct');
       return result;
     }
 
@@ -278,13 +277,13 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
 
     // If dry run, don't actually update
     if (dryRun) {
-      if (import.meta.env.DEV) console.log('[StockAutoDeduction] Dry run complete', result);
+      console.log('[StockAutoDeduction] Dry run complete', result);
       return result;
     }
 
     // If we have errors and success is false, abort
     if (!result.success && result.errors.length > 0) {
-      captureException(new Error(`StockAutoDeduction: ${result.errors.join(', ')}`), { context: 'StockAutoDeduction.deductStockFromDevis' });
+      console.error('[StockAutoDeduction] Aborting due to errors:', result.errors);
       return result;
     }
 
@@ -300,7 +299,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
         .eq('id', movement.catalogue_id);
 
       if (updateError) {
-        captureException(updateError, { context: 'StockAutoDeduction.deductStockFromDevis.updateStock' });
+        console.error('[StockAutoDeduction] Error updating stock:', updateError);
         result.errors.push(`Erreur mise a jour stock: ${updateError.message}`);
         continue;
       }
@@ -321,7 +320,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
         }]);
 
       if (insertError) {
-        captureException(insertError, { context: 'StockAutoDeduction.deductStockFromDevis.insertMovement' });
+        console.error('[StockAutoDeduction] Error inserting movement:', insertError);
         // Don't fail entirely, just log
       }
     }
@@ -339,7 +338,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
             data: { devis_id: devisId },
           }]);
         } catch (err) {
-          captureException(err, { context: 'StockAutoDeduction.deductStockFromDevis.createAlert' });
+          console.error('[StockAutoDeduction] Error creating alert:', err);
         }
       }
     }
@@ -350,7 +349,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
       .update({ stock_deduit: true, stock_deduit_at: new Date().toISOString() })
       .eq('id', devisId);
 
-    if (import.meta.env.DEV) console.log('[StockAutoDeduction] Deduction complete:', {
+    console.log('[StockAutoDeduction] Deduction complete:', {
       totalDeducted: result.totalDeducted,
       totalValue: result.totalValue,
       alertsCount: result.alerts.length,
@@ -358,7 +357,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
 
     return result;
   } catch (error) {
-    captureException(error, { context: 'StockAutoDeduction.deductStockFromDevis' });
+    console.error('[StockAutoDeduction] Error:', error);
     result.success = false;
     result.errors.push(error.message || 'Erreur inconnue');
     return result;
@@ -373,7 +372,7 @@ export async function deductStockFromDevis(devisId, userId, options = {}) {
  * @returns {Promise<RestockResult>}
  */
 export async function restockFromDevis(devisId, userId) {
-  if (import.meta.env.DEV) console.log(`[StockAutoDeduction] Restocking for cancelled devis ${devisId}`);
+  console.log(`[StockAutoDeduction] Restocking for cancelled devis ${devisId}`);
 
   const result = {
     success: true,
@@ -398,7 +397,7 @@ export async function restockFromDevis(devisId, userId) {
 
     if (movementsError) throw movementsError;
     if (!movements || movements.length === 0) {
-      if (import.meta.env.DEV) console.log('[StockAutoDeduction] No movements to reverse');
+      console.log('[StockAutoDeduction] No movements to reverse');
       return result;
     }
 
@@ -462,10 +461,10 @@ export async function restockFromDevis(devisId, userId) {
       .update({ stock_deduit: false, stock_deduit_at: null })
       .eq('id', devisId);
 
-    if (import.meta.env.DEV) console.log('[StockAutoDeduction] Restock complete:', result);
+    console.log('[StockAutoDeduction] Restock complete:', result);
     return result;
   } catch (error) {
-    captureException(error, { context: 'StockAutoDeduction.restockFromDevis' });
+    console.error('[StockAutoDeduction] Restock error:', error);
     result.success = false;
     result.errors.push(error.message || 'Erreur inconnue');
     return result;
@@ -530,11 +529,11 @@ export async function adjustStock(catalogueId, quantity, motif, userId, type = '
       user_id: userId,
     }]);
 
-    if (import.meta.env.DEV) console.log(`[StockAutoDeduction] Manual adjustment: ${product?.nom} ${quantity > 0 ? '+' : ''}${quantity}`);
+    console.log(`[StockAutoDeduction] Manual adjustment: ${product?.nom} ${quantity > 0 ? '+' : ''}${quantity}`);
 
     return { success: true, newStock };
   } catch (error) {
-    captureException(error, { context: 'StockAutoDeduction.adjustStock' });
+    console.error('[StockAutoDeduction] Adjustment error:', error);
     return { success: false, newStock: 0, error: error.message };
   }
 }
@@ -595,7 +594,7 @@ export async function getStockMovements(userId, filters = {}) {
 
     return { data: data || [], count: count || 0 };
   } catch (error) {
-    captureException(error, { context: 'StockAutoDeduction.getStockMovements' });
+    console.error('[StockAutoDeduction] Error fetching movements:', error);
     return { data: [], count: 0 };
   }
 }
@@ -662,12 +661,12 @@ export function downloadCSV(csvContent, filename = 'stock_mouvements.csv') {
  * @returns {Promise<DeductionResult | RestockResult | null>}
  */
 export async function handleDevisStatusChange(devisId, oldStatus, newStatus, userId) {
-  if (import.meta.env.DEV) console.log(`[StockAutoDeduction] Devis ${devisId} status: ${oldStatus} -> ${newStatus}`);
+  console.log(`[StockAutoDeduction] Devis ${devisId} status: ${oldStatus} -> ${newStatus}`);
 
   // Deduct when starting work
   if (
-    (newStatus === 'accepte' || newStatus === 'signe' || newStatus === 'en_cours') &&
-    !['accepte', 'signe', 'en_cours', 'facture', 'payee'].includes(oldStatus)
+    (newStatus === 'accepte' || newStatus === 'en_cours') &&
+    !['accepte', 'en_cours', 'facture', 'payee'].includes(oldStatus)
   ) {
     return await deductStockFromDevis(devisId, userId);
   }

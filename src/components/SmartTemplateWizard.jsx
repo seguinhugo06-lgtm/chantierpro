@@ -190,7 +190,7 @@ export default function SmartTemplateWizard({
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <button onClick={onClose} aria-label="Fermer" className="p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/20 rounded-full transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -215,6 +215,7 @@ export default function SmartTemplateWizard({
                       <input
                         type="text"
                         placeholder="Rechercher un client..."
+                        aria-label="Rechercher un client"
                         value={clientSearch}
                         onChange={(e) => setClientSearch(e.target.value)}
                         className={`w-full pl-10 pr-4 py-3 rounded-xl border ${inputBg} ${textPrimary}`}
@@ -240,7 +241,7 @@ export default function SmartTemplateWizard({
                         className="text-sm font-medium hover:underline"
                         style={{ color: couleur }}
                       >
-                        Creer votre premier client
+                        Créer votre premier client
                       </button>
                     </div>
                   ) : (
@@ -294,7 +295,7 @@ export default function SmartTemplateWizard({
                   </div>
 
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Telephone</label>
+                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Téléphone</label>
                     <input
                       type="tel"
                       value={newClient.telephone}
@@ -352,6 +353,7 @@ export default function SmartTemplateWizard({
                 <input
                   type="text"
                   placeholder="Rechercher..."
+                  aria-label="Rechercher"
                   value={metierSearch}
                   onChange={(e) => setMetierSearch(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2.5 rounded-xl border ${inputBg} ${textPrimary}`}
@@ -416,7 +418,7 @@ export default function SmartTemplateWizard({
 
               {!expandedMetier && (
                 <p className={`text-center text-sm ${textMuted} py-4`}>
-                  Selectionnez un metier pour voir les prestations
+                  Sélectionnez un métier pour voir les prestations
                 </p>
               )}
             </div>

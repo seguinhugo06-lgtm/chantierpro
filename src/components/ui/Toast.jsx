@@ -112,10 +112,10 @@ export function Toast({
             setShow(false);
             setTimeout(onClose, 300);
           }}
-          className="ml-2 p-1 rounded-lg hover:bg-white/20 transition-colors"
+          className="ml-2 p-2.5 min-w-[44px] min-h-[44px] rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           aria-label="Fermer"
         >
-          <X size={16} />
+          <X size={18} />
         </button>
       </div>
     </div>
@@ -213,10 +213,10 @@ export function Snackbar({
             setShow(false);
             setTimeout(onClose, 300);
           }}
-          className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+          className="p-2.5 min-w-[44px] min-h-[44px] rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           aria-label="Fermer"
         >
-          <X size={16} />
+          <X size={18} />
         </button>
       </div>
     </div>

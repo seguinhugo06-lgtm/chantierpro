@@ -28,17 +28,24 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { cn } from '../../lib/utils';
+import { cn, isDraftChantier } from '../../lib/utils';
 import { useChantiers, useClients, useDevis, useEquipe, useData } from '../../context/DataContext';
 import Widget, { WidgetHeader, WidgetContent } from './Widget';
+import { calcConversion, formatConversion } from '../../lib/statsUtils';
+import { formatClientName } from '../../lib/formatters';
 
 /**
- * Format currency compact
+ * Format currency — exact amounts for consistency across Dashboard
+ * Compact only for very large amounts (100k+)
  */
 function formatMoney(amount) {
+  if (amount == null || isNaN(amount)) return '0 €';
   if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M €`;
-  if (amount >= 1000) return `${Math.round(amount / 1000)}k €`;
-  return `${Math.round(amount)} €`;
+  if (amount >= 100000) return `${Math.round(amount / 1000)}k €`;
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency', currency: 'EUR',
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 /**
@@ -158,7 +165,7 @@ function StatCard({
       {/* Title */}
       <p className={cn(
         'text-xs font-medium mb-1',
-        isDark ? 'text-gray-400' : 'text-gray-500'
+        isDark ? 'text-gray-400' : 'text-gray-600'
       )}>
         {title}
       </p>
@@ -175,7 +182,7 @@ function StatCard({
           {mainLabel && (
             <span className={cn(
               'text-sm',
-              isDark ? 'text-gray-500' : 'text-gray-400'
+              isDark ? 'text-gray-500' : 'text-gray-600'
             )}>
               {mainLabel}
             </span>
@@ -215,7 +222,7 @@ function StatCard({
           {progress.label && (
             <p className={cn(
               'text-[10px] mt-1',
-              isDark ? 'text-gray-500' : 'text-gray-400'
+              isDark ? 'text-gray-500' : 'text-gray-600'
             )}>
               {progress.label}
             </p>
@@ -237,7 +244,7 @@ function StatCard({
 /**
  * OverviewWidget Component
  */
-export default function OverviewWidget({ setPage, isDark = false, className }) {
+function OverviewWidget({ setPage, isDark = false, className }) {
   const { chantiers = [] } = useChantiers();
   const { clients = [] } = useClients();
   const { devis = [] } = useDevis();
@@ -249,8 +256,15 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
+    // Exclude ghost devis (same filter as DevisPage) for consistent counts
+    const cleanDevis = devis.filter(d => {
+      if (!d.numero && !clients.find(c => c.id === d.client_id) && (!d.statut || d.statut === 'brouillon')) return false;
+      if (d.client_id && !clients.find(c => c.id === d.client_id) && d.statut === 'brouillon' && !d.total_ttc) return false;
+      return true;
+    });
+
     // Chantiers
-    const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours');
+    const chantiersEnCours = chantiers.filter(c => c.statut === 'en_cours' && !isDraftChantier(c));
     const chantiersProspect = chantiers.filter(c => c.statut === 'prospect').length;
     const chantiersTermines = chantiers.filter(c => c.statut === 'termine').length;
     const totalChantiers = chantiers.length;
@@ -278,36 +292,46 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
       { value: chantiersTermines, color: '#10b981', label: 'Terminés' },
     ].filter(d => d.value > 0);
 
-    // Clients
+    // Clients — actifs = chantiers actifs (non terminé/archivé/abandonné) OU devis actifs
+    // Même logique que Clients.jsx pour cohérence
     const activeChantierClientIds = new Set(
-      chantiersEnCours.map(c => c.client_id)
+      chantiers.filter(ch => !['archive', 'abandonne', 'termine'].includes(ch.statut)).map(c => c.client_id || c.clientId)
     );
-    const clientsActifs = clients.filter(c => activeChantierClientIds.has(c.id)).length;
+    const activeDevisClientIds = new Set(
+      cleanDevis.filter(d => d.type === 'devis' && ['envoye', 'accepte', 'acompte_facture'].includes(d.statut)).map(d => d.client_id)
+    );
+    const clientsActifs = clients.filter(c => activeChantierClientIds.has(c.id) || activeDevisClientIds.has(c.id)).length;
 
-    // CA par client (top client)
+    // CA par client (top client) — inclure devis acceptés + factures
     const clientRevenue = {};
-    devis.forEach(d => {
-      if (['accepte', 'signe'].includes(d.statut) || d.type === 'facture') {
+    cleanDevis.forEach(d => {
+      if (['accepte', 'acompte_facture', 'facture'].includes(d.statut) || d.type === 'facture') {
         clientRevenue[d.client_id] = (clientRevenue[d.client_id] || 0) + (d.total_ht || 0);
       }
     });
-    const topClientRevenue = Math.max(...Object.values(clientRevenue), 0);
+    // Find top client name
+    const topClientEntry = Object.entries(clientRevenue).sort((a, b) => b[1] - a[1])[0];
+    const topClientObj = topClientEntry ? clients.find(c => c.id === topClientEntry[0]) : null;
+    const topClientName = topClientObj ? formatClientName(topClientObj, topClientObj?.entreprise || '—') : '—';
+    const topClientRevenue = topClientEntry ? topClientEntry[1] : 0;
 
-    // Devis
-    const devisOnly = devis.filter(d => d.type === 'devis');
-    const factures = devis.filter(d => d.type === 'facture');
+    // Devis (from cleaned data)
+    const devisOnly = cleanDevis.filter(d => d.type === 'devis');
+    const factures = cleanDevis.filter(d => d.type === 'facture');
 
+    // En attente de réponse = envoyé + vu (aligné avec Dashboard)
     const devisEnAttente = devisOnly.filter(d => ['envoye', 'vu'].includes(d.statut)).length;
     const montantEnAttente = devisOnly
       .filter(d => ['envoye', 'vu'].includes(d.statut))
-      .reduce((sum, d) => sum + (d.total_ht || 0), 0);
+      .reduce((sum, d) => sum + (d.total_ttc || d.total_ht || 0), 0);
 
     const devisBrouillon = devisOnly.filter(d => d.statut === 'brouillon').length;
 
-    // Conversion rate
-    const devisSent = devisOnly.filter(d => ['envoye', 'vu', 'accepte', 'signe', 'refuse'].includes(d.statut)).length;
-    const devisAcceptes = devisOnly.filter(d => ['accepte', 'signe'].includes(d.statut)).length;
-    const tauxConversion = devisSent > 0 ? Math.round((devisAcceptes / devisSent) * 100) : 0;
+    // Conversion rate (formule unifiée via calcConversion)
+    const conversionResult = calcConversion(devisOnly);
+    const devisSignesOv = conversionResult.signes;
+    const devisSent = conversionResult.envoyes;
+    const tauxConversion = devisSent > 0 ? conversionResult.taux : -1;
 
     // Factures
     const facturesImpayees = factures.filter(f => f.statut !== 'payee');
@@ -377,11 +401,14 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
       totalClients: clients.length,
       clientsActifs,
       topClientRevenue,
+      topClientName,
       // Devis
       devisEnAttente,
       devisBrouillon,
       montantEnAttente,
       tauxConversion,
+      devisSignesOv,
+      devisSent,
       // Factures
       facturesImpayees: facturesImpayees.length,
       montantImpaye,
@@ -479,7 +506,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
           <StatCard
             icon={Percent}
             title="Conversion"
-            mainValue={`${stats.tauxConversion}%`}
+            mainValue={formatConversion(stats.tauxConversion < 0 ? null : stats.tauxConversion)}
+            secondaryValue={stats.tauxConversion >= 0 ? `${stats.devisSent} envoyés → ${stats.devisSignesOv} signés` : undefined}
             color={stats.tauxConversion >= 50 ? '#10b981' : stats.tauxConversion >= 30 ? '#f59e0b' : '#ef4444'}
             gradient={stats.tauxConversion >= 50
               ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
@@ -489,11 +517,11 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             }
             onClick={() => setPage?.('devis')}
             isDark={isDark}
-            progress={{
+            progress={stats.tauxConversion >= 0 ? {
               value: stats.tauxConversion,
               max: 100,
               label: stats.tauxConversion >= 50 ? 'Excellent' : stats.tauxConversion >= 30 ? 'Bon' : 'À améliorer',
-            }}
+            } : undefined}
           />
 
           {/* Équipe */}
@@ -515,7 +543,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             onClick={() => setPage?.('equipe')}
             isDark={isDark}
             badge={stats.membresDisponibles > 0 ? {
-              text: `${stats.membresDisponibles} dispo`,
+              text: `${stats.membresDisponibles} disponible${stats.membresDisponibles > 1 ? 's' : ''}`,
               color: '#10b981',
             } : stats.membresActifs > 0 ? {
               text: `${stats.membresActifs} actif${stats.membresActifs > 1 ? 's' : ''}`,
@@ -530,7 +558,7 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
             mainValue={stats.stockAlerts > 0 ? stats.stockAlerts : stats.totalCatalogue}
             mainLabel={stats.stockAlerts > 0 ? 'articles' : 'articles'}
             secondaryValue={stats.avgMargin > 0 ? `${stats.avgMargin}%` : undefined}
-            secondaryLabel="marge moy."
+            secondaryLabel="marge moyenne"
             color={stats.stockAlerts > 0 ? '#ef4444' : stats.marginColor}
             gradient={stats.stockAlerts > 0
               ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
@@ -554,6 +582,8 @@ export default function OverviewWidget({ setPage, isDark = false, className }) {
     </Widget>
   );
 }
+
+export default React.memo(OverviewWidget);
 
 /**
  * Skeleton

@@ -2,27 +2,63 @@ import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
+import { OrgProvider } from './context/OrgContext'
+import { EntrepriseProvider } from './context/EntrepriseContext'
 import { DataProvider } from './context/DataContext'
-import { DEMO_DATA } from './lib/demo-data'
+import { DEMO_DATA, seedSecondaryDemoData } from './lib/demo-data'
 import { EMPTY_DATA } from './lib/empty-data'
 import { isDemo } from './supabaseClient'
 import { initSentry } from './lib/sentry'
 import './index.css'
 
-// Initialiser Sentry avant le rendu
-initSentry();
+// ── Initialize Sentry error monitoring (production only) ────────────
+initSentry()
 
-// Lazy load portal, signature page, payment page, and legal pages (separate from main app)
+// ── Stale chunk reload handler ──────────────────────────────────────
+// When a new deployment happens, old JS chunks (e.g. DevisPage-abc123.js)
+// no longer exist on the server. Lazy imports fail with ChunkLoadError.
+// This handler auto-reloads the page once to get fresh bundles.
+const RELOAD_KEY = 'batigesti_chunk_reload';
+window.addEventListener('error', (event) => {
+  const msg = event?.message || event?.error?.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('ChunkLoadError') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Importing a module script failed')
+  ) {
+    // Prevent infinite reload loop — only reload once per session
+    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    if (!lastReload || Date.now() - parseInt(lastReload, 10) > 30000) {
+      console.warn('[ChunkError] Stale bundle detected, reloading...', msg);
+      sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+      window.location.reload();
+    }
+  }
+});
+
+// Also catch unhandled promise rejections (dynamic import() returns a promise)
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = event?.reason?.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('ChunkLoadError') ||
+    msg.includes('Importing a module script failed')
+  ) {
+    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    if (!lastReload || Date.now() - parseInt(lastReload, 10) > 30000) {
+      console.warn('[ChunkError] Stale dynamic import, reloading...', msg);
+      sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+      window.location.reload();
+    }
+  }
+});
+
+// Lazy load public pages (separate from main app — no AuthGuard, no DataProvider)
 const ClientPortal = lazy(() => import('./components/portal/ClientPortal'))
 const DevisSignaturePage = lazy(() => import('./components/signature/DevisSignaturePage'))
+const AcceptInvitation = lazy(() => import('./components/auth/AcceptInvitation'))
 const FacturePaymentPage = lazy(() => import('./components/payment/FacturePaymentPage'))
-const CGU = lazy(() => import('./components/legal/CGU'))
-const CGV = lazy(() => import('./components/legal/CGV'))
-const MentionsLegales = lazy(() => import('./components/legal/MentionsLegales'))
-const PolitiqueConfidentialite = lazy(() => import('./components/legal/PolitiqueConfidentialite'))
-const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage'))
-const FeaturesDetailPage = lazy(() => import('./components/landing/FeaturesDetailPage'))
-const ResourcesPage = lazy(() => import('./components/landing/ResourcesPage'))
 
 // Check if this is a portal URL
 function getPortalToken() {
@@ -31,47 +67,25 @@ function getPortalToken() {
   return match ? match[1] : null
 }
 
-// Check if this is a signature URL: /devis/signer/{token}
+// Check if this is a signature URL: /devis/signer/{uuid}
 function getSignatureToken() {
   const path = window.location.pathname
   const match = path.match(/^\/devis\/signer\/([a-f0-9-]+)$/i)
   return match ? match[1] : null
 }
 
-// Check if this is a payment URL: /facture/payer/{token}
-function getPaymentToken() {
+// Check if this is an invitation URL: /invitation/{uuid}
+function getInvitationToken() {
   const path = window.location.pathname
-  const match = path.match(/^\/facture\/payer\/([a-f0-9-]+)$/i)
+  const match = path.match(/^\/invitation\/([a-f0-9-]+)$/i)
   return match ? match[1] : null
 }
 
-// Check if this is a legal page URL
-const LEGAL_PAGES = {
-  '/cgu': 'cgu',
-  '/cgv': 'cgv',
-  '/mentions-legales': 'mentions',
-  '/confidentialite': 'confidentialite',
-}
-
-function getLegalPage() {
-  const path = window.location.pathname.toLowerCase()
-  return LEGAL_PAGES[path] || null
-}
-
-// Check if this is the password reset page
-function isResetPasswordPage() {
-  return window.location.pathname === '/reset-password'
-}
-
-// Check if this is a marketing page
-const MARKETING_PAGES = {
-  '/fonctionnalites': 'fonctionnalites',
-  '/ressources': 'ressources',
-}
-
-function getMarketingPage() {
-  const path = window.location.pathname.toLowerCase()
-  return MARKETING_PAGES[path] || null
+// Check if this is a payment URL: /pay/{token} or /facture/payer/{token}
+function getPaymentToken() {
+  const path = window.location.pathname
+  const match = path.match(/^\/(?:pay|facture\/payer)\/([a-zA-Z0-9_-]+)$/i)
+  return match ? match[1] : null
 }
 
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
@@ -82,10 +96,8 @@ function shouldUseDemoData() {
 
 const portalToken = getPortalToken()
 const signatureToken = getSignatureToken()
+const invitationToken = getInvitationToken()
 const paymentToken = getPaymentToken()
-const legalPage = getLegalPage()
-const marketingPage = getMarketingPage()
-const isResetPw = isResetPasswordPage()
 
 // Determine initial data:
 // - If NOT in demo mode (real Supabase): use EMPTY_DATA (data comes from DB)
@@ -95,68 +107,52 @@ const useDemoData = isDemo && shouldUseDemoData()
 const initialData = useDemoData ? DEMO_DATA : EMPTY_DATA
 
 // Log mode for debugging
-if (import.meta.env.DEV) {
-  if (isDemo) {
-    console.log('Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
-  } else {
-    console.log('Production mode - data from Supabase')
+if (isDemo) {
+  console.log('🎭 Demo mode active -', useDemoData ? 'using demo data' : 'empty data (add ?demo=true for demo data)')
+  // Seed secondary localStorage data (previsions, fournisseurs, etc.) when using demo data
+  if (useDemoData) {
+    seedSecondaryDemoData()
   }
+} else {
+  console.log('🔐 Production mode - data from Supabase')
 }
 
-// Loading spinner component
-const LoadingSpinner = () => (
+// Public page loading spinner
+const PublicFallback = () => (
   <div className="min-h-screen bg-slate-50 flex items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
   </div>
 )
 
-// Render legal page component by key
-function LegalPageRenderer({ page }) {
-  switch (page) {
-    case 'cgu': return <CGU />
-    case 'cgv': return <CGV />
-    case 'mentions': return <MentionsLegales />
-    case 'confidentialite': return <PolitiqueConfidentialite />
-    default: return null
-  }
-}
-
-// Render payment page, signature page, portal, legal pages, or main app based on URL
+// Render public pages or main app based on URL
+// Public routes (/portal/:token, /devis/signer/:token) bypass AuthGuard & DataProvider
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {paymentToken ? (
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<PublicFallback />}>
         <FacturePaymentPage paymentToken={paymentToken} />
       </Suspense>
     ) : signatureToken ? (
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<PublicFallback />}>
         <DevisSignaturePage signatureToken={signatureToken} />
       </Suspense>
     ) : portalToken ? (
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<PublicFallback />}>
         <ClientPortal accessToken={portalToken} />
       </Suspense>
-    ) : legalPage ? (
-      <Suspense fallback={<LoadingSpinner />}>
-        <LegalPageRenderer page={legalPage} />
-      </Suspense>
-    ) : marketingPage === 'fonctionnalites' ? (
-      <Suspense fallback={<LoadingSpinner />}>
-        <FeaturesDetailPage />
-      </Suspense>
-    ) : marketingPage === 'ressources' ? (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ResourcesPage />
-      </Suspense>
-    ) : isResetPw ? (
-      <Suspense fallback={<LoadingSpinner />}>
-        <ResetPasswordPage />
+    ) : invitationToken ? (
+      <Suspense fallback={<PublicFallback />}>
+        <AcceptInvitation token={invitationToken} />
       </Suspense>
     ) : (
       <AppProvider>
-        <DataProvider initialData={initialData}>
-          <App />
-        </DataProvider>
+        <OrgProvider>
+          <EntrepriseProvider>
+            <DataProvider initialData={initialData}>
+              <App />
+            </DataProvider>
+          </EntrepriseProvider>
+        </OrgProvider>
       </AppProvider>
     )}
   </React.StrictMode>,

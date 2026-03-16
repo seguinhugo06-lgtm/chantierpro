@@ -339,7 +339,7 @@ export default function Calendar({
     // Get API key from environment or skip if not available
     const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
     if (!apiKey) {
-      if (import.meta.env.DEV) console.warn('OpenWeather API key not configured');
+      console.warn('OpenWeather API key not configured');
       return;
     }
 
@@ -376,7 +376,7 @@ export default function Calendar({
 
       setWeather(weatherMap);
     } catch (error) {
-      if (import.meta.env.DEV) console.error('Error fetching weather:', error);
+      console.error('Error fetching weather:', error);
     }
   }, []);
 

@@ -222,7 +222,7 @@ export const extractInvoiceData = (ocrText) => {
   const descParts = [];
   if (result.data.fournisseur) descParts.push(result.data.fournisseur);
   if (result.data.numero) descParts.push(`Fact. ${result.data.numero}`);
-  result.data.description = descParts.join(' - ') || 'Depense scannee';
+  result.data.description = descParts.join(' - ') || 'Depense scannée';
 
   // Calculate confidence
   result.confidence = Math.min(100, Math.round((confidencePoints / maxPoints) * 100));
@@ -313,7 +313,7 @@ export const formatAsExpense = (extractedData, chantierId = null) => {
 
   return {
     date: data.date || new Date().toISOString().split('T')[0],
-    description: data.description || 'Depense scannee',
+    description: data.description || 'Depense scannée',
     fournisseur: data.fournisseur || '',
     montant: data.totalHT || data.totalTTC || 0,
     montantTTC: data.totalTTC || 0,

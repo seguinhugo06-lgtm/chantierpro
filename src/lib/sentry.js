@@ -1,92 +1,147 @@
 /**
- * Sentry — Module centralisé de monitoring d'erreurs.
+ * sentry.js — Error monitoring initialization
  *
- * • En production (VITE_SENTRY_DSN configuré) : initialise @sentry/react
- * • En dev / sans DSN : fallback silencieux (console.error)
- *
- * Usage :
- *   import { captureException, captureMessage } from '../lib/sentry';
- *   captureException(error, { context: 'devisIA.transcribe' });
+ * Initializes Sentry for production error tracking.
+ * Only activates when VITE_SENTRY_DSN is set (production).
+ * In demo/dev mode, errors are logged to console only.
  */
-
 import * as Sentry from '@sentry/react';
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
-const IS_PROD = import.meta.env.PROD;
-let initialized = false;
+const IS_PRODUCTION = import.meta.env.PROD && DSN;
 
-// ── Initialisation (appelée une seule fois dans main.jsx) ─────────────
+/**
+ * Initialize Sentry error tracking.
+ * Call once in main.jsx before ReactDOM.render().
+ */
 export function initSentry() {
-  if (initialized || !DSN || !IS_PROD) return;
+  if (!IS_PRODUCTION) {
+    console.log('[Sentry] Disabled — no DSN configured (dev/demo mode)');
+    return;
+  }
 
   Sentry.init({
     dsn: DSN,
-    environment: import.meta.env.VITE_ENV || 'production',
-    release: import.meta.env.VITE_APP_VERSION || '1.0.0',
+    environment: import.meta.env.MODE || 'production',
+    release: `batigesti@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+
+    // Performance monitoring — sample 10% of transactions
+    tracesSampleRate: 0.1,
+
+    // Session replay — capture 1% of sessions, 100% of errors
+    replaysSessionSampleRate: 0.01,
+    replaysOnErrorSampleRate: 1.0,
+
     integrations: [
       Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
     ],
-    tracesSampleRate: 0.2,
-    // Ne pas capturer les erreurs de réseau courantes
+
+    // Filter noisy errors
+    ignoreErrors: [
+      // Browser extensions
+      'top.GLOBALS',
+      'chrome-extension://',
+      'moz-extension://',
+      // Network errors (handled by offline mode)
+      'Failed to fetch',
+      'NetworkError',
+      'Load failed',
+      // Chunk loading (handled by stale chunk reloader)
+      'ChunkLoadError',
+      'Failed to fetch dynamically imported module',
+      'Loading chunk',
+      'Importing a module script failed',
+      // Benign
+      'ResizeObserver loop',
+      'Non-Error exception captured',
+      'Non-Error promise rejection captured',
+    ],
+
+    // Don't send errors from these URLs
+    denyUrls: [
+      /extensions\//i,
+      /^chrome:\/\//i,
+      /^chrome-extension:\/\//i,
+      /^moz-extension:\/\//i,
+    ],
+
     beforeSend(event) {
-      const msg = event?.exception?.values?.[0]?.value || '';
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        return null;
+      // Strip PII from breadcrumbs
+      if (event.breadcrumbs) {
+        event.breadcrumbs = event.breadcrumbs.map(bc => {
+          if (bc.category === 'xhr' || bc.category === 'fetch') {
+            // Remove auth tokens from URLs
+            if (bc.data?.url) {
+              bc.data.url = bc.data.url.replace(/apikey=[^&]+/, 'apikey=***');
+              bc.data.url = bc.data.url.replace(/token=[^&]+/, 'token=***');
+            }
+          }
+          return bc;
+        });
       }
       return event;
     },
   });
 
-  initialized = true;
+  console.log('[Sentry] Initialized for production monitoring');
 }
 
-// ── API publique ──────────────────────────────────────────────────────
-
 /**
- * Capture une exception avec contexte optionnel.
- * @param {Error|string} error
- * @param {{ context?: string, extra?: object }} options
+ * Capture an exception manually.
+ * Safe to call even when Sentry is not initialized.
  */
-export function captureException(error, options = {}) {
-  const { context, extra } = options;
-
-  if (DSN && IS_PROD && initialized) {
-    Sentry.withScope((scope) => {
-      if (context) scope.setTag('context', context);
-      if (extra) scope.setExtras(extra);
-      Sentry.captureException(error instanceof Error ? error : new Error(String(error)));
-    });
-  } else {
-    // eslint-disable-next-line no-console
-    console.error(`[Sentry:${context || 'unknown'}]`, error);
+export function captureException(error, context) {
+  if (IS_PRODUCTION) {
+    Sentry.captureException(error, context ? { extra: context } : undefined);
   }
+  // Always log to console
+  console.error('[Error]', error, context || '');
 }
 
 /**
- * Capture un message (warning / info).
- * @param {string} message
- * @param {'info'|'warning'|'error'} level
+ * Capture a message (info, warning, etc.).
  */
 export function captureMessage(message, level = 'info') {
-  if (DSN && IS_PROD && initialized) {
+  if (IS_PRODUCTION) {
     Sentry.captureMessage(message, level);
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn(`[Sentry:${level}]`, message);
   }
 }
 
 /**
- * Définit l'utilisateur pour les rapports Sentry.
- * @param {{ id: string, email?: string }} user
+ * Set user context for Sentry.
+ * Call on login, clear on logout.
  */
 export function setUser(user) {
-  if (DSN && IS_PROD && initialized) {
-    Sentry.setUser(user ? { id: user.id, email: user.email } : null);
+  if (IS_PRODUCTION) {
+    if (user) {
+      Sentry.setUser({
+        id: user.id,
+        email: user.email,
+        // Don't send name — PII minimization
+      });
+    } else {
+      Sentry.setUser(null);
+    }
   }
 }
 
 /**
- * Error boundary React — wrapping de Sentry.ErrorBoundary.
+ * Add custom tags for filtering in Sentry dashboard.
  */
-export const SentryErrorBoundary = Sentry.ErrorBoundary;
+export function setTag(key, value) {
+  if (IS_PRODUCTION) {
+    Sentry.setTag(key, value);
+  }
+}
+
+export default {
+  initSentry,
+  captureException,
+  captureMessage,
+  setUser,
+  setTag,
+};

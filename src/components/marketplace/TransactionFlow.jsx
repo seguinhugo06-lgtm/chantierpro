@@ -800,7 +800,7 @@ export function TransactionCard({ transaction, userId, onClick, isDark }) {
         {transaction.listing?.photos?.[0] ? (
           <img
             src={transaction.listing.photos[0]}
-            alt=""
+            alt={`Photo de ${transaction.listing?.title || 'l\'article'}`}
             className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
           />
         ) : (
@@ -985,7 +985,7 @@ export function TransactionDetail({
           {transaction.listing?.photos?.[0] && (
             <img
               src={transaction.listing.photos[0]}
-              alt=""
+              alt={`Photo de ${transaction.listing?.titre || 'l\'article'}`}
               className="w-24 h-24 rounded-lg object-cover"
             />
           )}

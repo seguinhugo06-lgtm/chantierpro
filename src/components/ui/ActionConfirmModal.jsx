@@ -233,7 +233,7 @@ export function ConvertConfirmModal({
               Montant : <strong>{devisMontant}</strong>
             </p>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
             Le devis sera marqué comme accepté.
           </p>
         </div>

@@ -73,7 +73,7 @@ const BANNER_CONFIG = {
     text: 'text-blue-700 dark:text-blue-300',
     icon: Clock,
     iconColor: 'text-blue-500',
-    getMessage: (days) => `Essai gratuit \u00b7 ${days} jours restants`,
+    getMessage: (days) => `Essai gratuit · ${days} jours restants`,
     cta: 'Choisir un plan',
     ctaColor: 'text-blue-600 dark:text-blue-400 hover:text-blue-700'
   },
@@ -103,7 +103,7 @@ const BANNER_CONFIG = {
     text: 'text-red-800 dark:text-red-200',
     icon: AlertTriangle,
     iconColor: 'text-red-600',
-    getMessage: () => 'Votre essai est termin\u00e9',
+    getMessage: () => 'Votre essai est terminé',
     cta: 'Choisir un plan pour continuer',
     ctaColor: 'text-red-700 dark:text-red-300 hover:text-red-800 font-bold underline'
   },
@@ -122,10 +122,17 @@ const BANNER_CONFIG = {
 export default function TrialBanner() {
   const planId = useSubscriptionStore((s) => s.planId);
   const sub = useSubscriptionStore((s) => s.subscription);
-  const isTrial = useSubscriptionStore((s) => s.isTrial());
-  const daysLeft = useSubscriptionStore((s) => s.trialDaysLeft());
-  const isFree = planId === 'gratuit';
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
+
+  // Compute trial state directly from subscription data
+  // (avoid calling store methods inside selectors — they use get() which can cause issues)
+  const isTrial = sub?.status === 'trialing';
+  const isFree = planId === 'gratuit';
+  const daysLeft = useMemo(() => {
+    if (!sub?.trial_end) return 0;
+    const diff = new Date(sub.trial_end) - new Date();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [sub?.trial_end]);
 
   const bannerState = useMemo(() =>
     getBannerState(daysLeft, isTrial, isFree),
@@ -170,7 +177,7 @@ export default function TrialBanner() {
           {Icon && <Icon size={16} className={`${config.iconColor} flex-shrink-0`} />}
           <span className={`text-sm ${config.text} truncate`}>
             {config.getMessage(daysLeft)}
-            {' \u00b7 '}
+            {' · '}
             <button
               onClick={() => openUpgradeModal()}
               className={`${config.ctaColor} transition-colors inline-flex items-center gap-1`}
@@ -183,7 +190,7 @@ export default function TrialBanner() {
         <button
           onClick={handleDismiss}
           className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all flex-shrink-0"
-          aria-label="Fermer la banni\u00e8re"
+          aria-label="Fermer la bannière"
         >
           <X size={16} />
         </button>

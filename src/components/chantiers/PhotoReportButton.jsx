@@ -331,7 +331,7 @@ export default function PhotoReportButton({
                   className="w-full gap-2"
                 >
                   <Eye className="w-4 h-4" />
-                  Apercu
+                  Aperçu
                 </Button>
 
                 {clientEmail && (

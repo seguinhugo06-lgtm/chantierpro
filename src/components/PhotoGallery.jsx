@@ -315,7 +315,7 @@ export default function PhotoGallery({
               className={`px-4 py-2 rounded-xl flex items-center gap-2 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
             >
               <ArrowLeft size={18} />
-              Precedente
+              Précédente
             </button>
             <span className={textMuted}>{photoIndex + 1} / {filteredPhotos.length}</span>
             <button

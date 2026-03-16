@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Check, Sparkles, ChevronRight, Building2, Droplets, Zap, Paintbrush, LayoutGrid, Landmark, DoorOpen, Thermometer, Home, Layers, Wrench, CheckSquare, AlertCircle } from 'lucide-react';
-import { PHASES, TASKS_BY_METIER, TASKS_BY_PROJECT_TYPE, COMMON_TASKS, getAllTasksByPhase, generateSmartTasks } from '../lib/templates/task-templates';
+import { PHASES, TASKS_BY_METIER, TASKS_BY_PROJECT_TYPE, COMMON_TASKS, getAllTasksByPhase, generateSmartTasks } from '../lib/templates/task-templates-v2';
 import { generateId } from '../lib/utils';
 
 // Icons mapping

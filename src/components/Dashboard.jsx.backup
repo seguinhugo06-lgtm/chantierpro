@@ -372,15 +372,15 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
   const helpSections = useMemo(() => ({
     overview: {
       title: "Bienvenue",
-      titleFull: "Bienvenue dans BatiGesti",
+      titleFull: "Bienvenue dans ChantierPro",
       icon: Home,
       content: (
         <div className="space-y-4">
-          <p className={textSecondary}>BatiGesti est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
+          <p className={textSecondary}>ChantierPro est votre assistant de gestion quotidien. Suivez vos chantiers, vos devis et votre rentabilité en quelques clics.</p>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Exemple concret</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-              Jean, plombier, utilise BatiGesti pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
+              Jean, plombier, utilise ChantierPro pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
@@ -699,7 +699,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
               <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
                 <Sparkles size={40} className="text-white" />
               </div>
-              <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>Bienvenue dans BatiGesti</h1>
+              <h1 className={`text-2xl sm:text-3xl font-bold mb-3 ${textPrimary}`}>Bienvenue dans ChantierPro</h1>
               <p className={`text-base sm:text-lg ${textSecondary} max-w-lg mx-auto`}>
                 Votre assistant pour gérer devis, factures et chantiers. Commençons !
               </p>
@@ -828,7 +828,7 @@ export default function Dashboard({ chantiers = [], clients = [], devis = [], ev
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: couleur }}>
               <HardHat size={18} className="text-white" />
             </div>
-            <span className={`text-lg font-semibold hidden sm:block ${textPrimary}`}>BatiGesti</span>
+            <span className={`text-lg font-semibold hidden sm:block ${textPrimary}`}>ChantierPro</span>
           </div>
 
           {/* Search - Centered, max-w-2xl */}

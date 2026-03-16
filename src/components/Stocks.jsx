@@ -333,7 +333,7 @@ export default function Stocks({
                 onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
                 className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
                 rows={2}
-                placeholder="Notes supplementaires..."
+                placeholder="Notes supplémentaires..."
               />
             </div>
           </div>
@@ -671,6 +671,7 @@ export default function Stocks({
           <input
             type="text"
             placeholder="Rechercher..."
+            aria-label="Rechercher"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
