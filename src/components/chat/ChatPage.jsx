@@ -70,7 +70,7 @@ const ChatPage = memo(function ChatPage({
   // ── Active channel ────────────────────────────────────────────────────────
 
   const activeChannel = useMemo(() =>
-    channels.find(c => c.id === activeChannelId),
+    (channels || []).find(c => c.id === activeChannelId),
     [channels, activeChannelId]
   );
 
@@ -80,7 +80,7 @@ const ChatPage = memo(function ChatPage({
     if (!userId) return;
     try {
       const data = await loadChannels(supabase, { userId, orgId });
-      setChannels(data);
+      setChannels(data || []);
     } catch (err) {
       console.error('[ChatPage] Load channels error:', err);
     } finally {
