@@ -76,7 +76,7 @@ export default function LandingNav({ onLogin, onSignup }) {
   };
 
   const handleDropdownLeave = () => {
-    dropdownTimeout.current = setTimeout(() => setDropdownOpen(false), 200);
+    dropdownTimeout.current = setTimeout(() => setDropdownOpen(false), 400);
   };
 
   // Nav text color depends on scroll AND hero background
@@ -122,6 +122,11 @@ export default function LandingNav({ onLogin, onSignup }) {
                   />
                 </button>
 
+                {/* Invisible bridge to prevent flicker when moving cursor from trigger to dropdown */}
+                {dropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 h-3" />
+                )}
+
                 {/* Dropdown */}
                 <AnimatePresence>
                   {dropdownOpen && (
@@ -130,8 +135,9 @@ export default function LandingNav({ onLogin, onSignup }) {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-4"
+                      className="absolute top-full left-1/2 -translate-x-1/2 pt-2 w-[420px]"
                     >
+                      <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-4">
                       <div className="grid grid-cols-2 gap-1">
                         {FEATURE_DROPDOWN.map((item) => {
                           const Icon = item.icon;
@@ -159,6 +165,7 @@ export default function LandingNav({ onLogin, onSignup }) {
                         >
                           Voir toutes les fonctionnalit&eacute;s &rarr;
                         </a>
+                      </div>
                       </div>
                     </motion.div>
                   )}

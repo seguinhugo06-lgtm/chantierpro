@@ -77,7 +77,6 @@ const CONFIG = {
 async function logEvent(eventType, entityType, entityId, success, metadata = {}) {
   try {
     if (!supabase) {
-      console.log(`[DEMO] Event logged: ${eventType} for ${entityType}:${entityId}`);
       return 'demo-log-id';
     }
 
@@ -117,7 +116,6 @@ export async function onDevisCreated(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  console.log(`[EVENT] Devis created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Only notify if already sent
@@ -155,7 +153,6 @@ export async function onDevisStatusChanged(oldRecord, newRecord) {
   const oldStatus = oldRecord?.statut;
   const newStatus = newRecord.statut;
 
-  console.log(`[EVENT] Devis status changed: ${newRecord.id}, ${oldStatus} → ${newStatus}`);
 
   try {
     const results = {};
@@ -214,7 +211,6 @@ export async function onChantierStarted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_started' } };
   }
 
-  console.log(`[EVENT] Chantier started: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyChantierDemarre(newRecord.id);
@@ -249,7 +245,6 @@ export async function onChantierCompleted(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_completed' } };
   }
 
-  console.log(`[EVENT] Chantier completed: ${newRecord.id}`);
 
   try {
     const results = {};
@@ -296,7 +291,6 @@ export async function onFactureCreated(record) {
     return { success: true, data: { skipped: true, reason: 'not_facture' } };
   }
 
-  console.log(`[EVENT] Facture created: ${record.id}, status: ${record.statut}`);
 
   try {
     // Notify if sent
@@ -336,7 +330,6 @@ export async function onPaymentReceived(oldRecord, newRecord) {
     return { success: true, data: { skipped: true, reason: 'not_paid' } };
   }
 
-  console.log(`[EVENT] Payment received: ${newRecord.id}`);
 
   try {
     const result = await CommunicationsService.notifyPaiementRecu(newRecord.id);
@@ -365,7 +358,6 @@ export async function onPhotoUploaded(record) {
     return { success: true, data: { skipped: true } };
   }
 
-  console.log(`[EVENT] Photo uploaded: ${record.id} for chantier ${record.chantier_id}`);
 
   try {
     const results = {};
@@ -446,7 +438,6 @@ export async function onPhotoUploaded(record) {
 export async function handleWebhook(payload) {
   const { type, table, record, old_record } = payload;
 
-  console.log(`[WEBHOOK] ${type} on ${table}`, record?.id);
 
   try {
     switch (table) {
@@ -487,7 +478,6 @@ export async function handleWebhook(payload) {
         break;
 
       default:
-        console.log(`[WEBHOOK] Unhandled table: ${table}`);
     }
 
     return { success: true, data: { handled: false } };
@@ -510,11 +500,9 @@ let lastPollTime = new Date().toISOString();
  */
 export function startPolling() {
   if (pollingInterval) {
-    console.log('[POLLING] Already running');
     return;
   }
 
-  console.log('[POLLING] Starting polling system...');
 
   pollingInterval = setInterval(async () => {
     await pollForChanges();
@@ -531,7 +519,6 @@ export function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
     pollingInterval = null;
-    console.log('[POLLING] Stopped');
   }
 }
 
@@ -540,12 +527,10 @@ export function stopPolling() {
  */
 async function pollForChanges() {
   if (!supabase) {
-    console.log('[POLLING] Demo mode - skipping');
     return;
   }
 
   const now = new Date().toISOString();
-  console.log(`[POLLING] Checking for changes since ${lastPollTime}`);
 
   try {
     // Check for devis changes
@@ -603,11 +588,9 @@ let subscriptions = [];
  */
 export function setupRealtimeSubscriptions() {
   if (!supabase) {
-    console.log('[REALTIME] Demo mode - skipping');
     return;
   }
 
-  console.log('[REALTIME] Setting up subscriptions...');
 
   // Devis changes
   const devisSubscription = supabase
@@ -661,7 +644,6 @@ export function setupRealtimeSubscriptions() {
 
   subscriptions = [devisSubscription, chantiersSubscription, photosSubscription];
 
-  console.log('[REALTIME] Subscriptions active');
 }
 
 /**
@@ -672,7 +654,6 @@ export function cleanupRealtimeSubscriptions() {
     supabase?.removeChannel(sub);
   });
   subscriptions = [];
-  console.log('[REALTIME] Subscriptions cleaned up');
 }
 
 // ============================================================================

@@ -101,7 +101,7 @@ export function Toast({
         {action && (
           <button
             onClick={action.onClick}
-            className="ml-2 px-2 py-1 text-xs font-bold rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            className="ml-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/30 hover:bg-white/40 border border-white/30 transition-colors"
           >
             {action.label}
           </button>

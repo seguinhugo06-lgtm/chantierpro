@@ -491,7 +491,6 @@ export default function App() {
     if (attempt >= 3) return; // Stop after 3 auto-retries
 
     const delay = Math.min(5000 * Math.pow(2, attempt), 60000); // 5s, 10s, 20s (max 60s)
-    console.log(`[Sync] Auto-retry #${attempt + 1} scheduled in ${delay / 1000}s`);
     syncRetryTimerRef.current = setTimeout(() => {
       syncRetryTimerRef.current = null;
       syncRetryAttemptRef.current = attempt + 1;
@@ -604,7 +603,6 @@ export default function App() {
   useEffect(() => { try { localStorage.setItem('cp_theme', theme); } catch (e) { console.warn('Failed to save theme:', e.message); } }, [theme]);
   useEffect(() => { try { localStorage.setItem('cp_mode_discret', JSON.stringify(modeDiscret)); } catch (e) { console.warn('Failed to save modeDiscret:', e.message); } }, [modeDiscret]);
   useEffect(() => {
-    console.log('[NAV] page changed to:', page);
     try { localStorage.setItem('cp_current_page', page); } catch (e) { console.warn('Failed to save page:', e.message); }
   }, [page]);
 
@@ -631,12 +629,10 @@ export default function App() {
     const publicPages = ['dashboard', 'profil', 'plan', 'pricing', 'checkout-success', 'cgv', 'cgu', 'confidentialite', 'mentions-legales', 'changelog', 'design-system'];
     // Billing is restricted to owner only
     if ((page === 'billing') && !canAccessBilling) {
-      console.log('[RBAC] Billing restricted to owner, redirecting → dashboard');
       setPage('dashboard');
       return;
     }
     if (!publicPages.includes(page) && !canAccess(page)) {
-      console.log('[RBAC] Redirecting from restricted page:', page, '→ dashboard');
       setPage('dashboard');
     }
   }, [page, canAccess, canAccessBilling, orgLoading]);
@@ -654,7 +650,6 @@ export default function App() {
         try {
           const result = await checkConnection(ref);
           if (result.status === 'linked') {
-            console.log('[BANK] Connection successful:', result.details);
             showToast('Compte bancaire connecté ! Synchronisation en cours...', 'success');
             // Auto-sync transactions after successful connection
             try {

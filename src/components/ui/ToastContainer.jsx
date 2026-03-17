@@ -13,34 +13,34 @@ const iconMap = {
 };
 
 /**
- * Color classes for toast types
+ * Color classes for toast types — uses isDark prop, never dark: Tailwind
  */
-const colorMap = {
+const getColorMap = (isDark) => ({
   success: {
-    bg: 'bg-success-50 dark:bg-success-900/30',
-    border: 'border-success-200 dark:border-success-700',
-    text: 'text-success-800 dark:text-success-200',
-    icon: 'text-success-500'
+    bg: isDark ? 'bg-emerald-900/30' : 'bg-emerald-50',
+    border: isDark ? 'border-emerald-700' : 'border-emerald-200',
+    text: isDark ? 'text-emerald-200' : 'text-emerald-800',
+    icon: 'text-emerald-500'
   },
   error: {
-    bg: 'bg-danger-50 dark:bg-danger-900/30',
-    border: 'border-danger-200 dark:border-danger-700',
-    text: 'text-danger-800 dark:text-danger-200',
-    icon: 'text-danger-500'
+    bg: isDark ? 'bg-red-900/30' : 'bg-red-50',
+    border: isDark ? 'border-red-700' : 'border-red-200',
+    text: isDark ? 'text-red-200' : 'text-red-800',
+    icon: 'text-red-500'
   },
   warning: {
-    bg: 'bg-warning-50 dark:bg-warning-900/30',
-    border: 'border-warning-200 dark:border-warning-700',
-    text: 'text-warning-800 dark:text-warning-200',
-    icon: 'text-warning-500'
+    bg: isDark ? 'bg-amber-900/30' : 'bg-amber-50',
+    border: isDark ? 'border-amber-700' : 'border-amber-200',
+    text: isDark ? 'text-amber-200' : 'text-amber-800',
+    icon: 'text-amber-500'
   },
   info: {
-    bg: 'bg-primary-50 dark:bg-primary-900/30',
-    border: 'border-primary-200 dark:border-primary-700',
-    text: 'text-primary-800 dark:text-primary-200',
-    icon: 'text-primary-500'
+    bg: isDark ? 'bg-blue-900/30' : 'bg-blue-50',
+    border: isDark ? 'border-blue-700' : 'border-blue-200',
+    text: isDark ? 'text-blue-200' : 'text-blue-800',
+    icon: 'text-blue-500'
   }
-};
+});
 
 /**
  * ToastContainer - Renders toast notifications with animations
@@ -51,8 +51,9 @@ const colorMap = {
  * @param {Object} props
  * @param {'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center'} props.position
  */
-export default function ToastContainer({ position = 'bottom-right' }) {
+export default function ToastContainer({ position = 'bottom-right', isDark = false }) {
   const { toasts, removeToast } = useToastStore();
+  const colorMap = getColorMap(isDark);
 
   // Position classes
   const positionClasses = {

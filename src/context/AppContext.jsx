@@ -50,10 +50,12 @@ export function AppProvider({ children, initialValues = {} }) {
   });
 
   // Show toast notification
-  const showToast = useCallback((message, type = 'info', duration = 3000) => {
+  const showToast = useCallback((message, type = 'info', duration) => {
+    const defaultDuration = type === 'error' ? 6000 : 4500;
+    const d = duration ?? defaultDuration;
     setToast({ message, type, id: Date.now() });
-    if (duration > 0) {
-      setTimeout(() => setToast(null), duration);
+    if (d > 0) {
+      setTimeout(() => setToast(null), d);
     }
   }, []);
 
