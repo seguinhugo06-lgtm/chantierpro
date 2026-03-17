@@ -138,6 +138,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   // Get userId for relances
   const [relanceUserId, setRelanceUserId] = useState(null);
   useEffect(() => {
+    if (!supabase || isDemo) return;
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user?.id) setRelanceUserId(data.user.id);
     });
