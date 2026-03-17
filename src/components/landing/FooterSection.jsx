@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Building2 } from 'lucide-react';
+import { Building2, Linkedin } from 'lucide-react';
 
 const COLUMNS = [
   {
@@ -67,6 +67,17 @@ export default function FooterSection() {
             >
               contact@batigesti.fr
             </a>
+            <div className="flex items-center gap-3 mt-4">
+              <a
+                href="https://www.linkedin.com/company/batigesti"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
+                aria-label="LinkedIn"
+              >
+                <Linkedin size={16} className="text-slate-400" />
+              </a>
+            </div>
           </div>
 
           {/* Link columns */}

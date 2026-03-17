@@ -1,7 +1,7 @@
 /**
  * QuickFeaturesGrid — Compact grid for secondary features.
  *
- * Small cards with icon + title + one-liner for PWA, integrations,
+ * Small cards with icon + title + one-liner for mobile, integrations,
  * client portal, catalogue, conformity, import/export.
  */
 
@@ -20,7 +20,7 @@ import { ScrollReveal, staggerContainer, fadeInUp } from './animations';
 const FEATURES = [
   {
     icon: Smartphone,
-    title: 'PWA / Mobile',
+    title: 'Mobile & tablette',
     description: 'Installez l\'app sur votre t\u00e9l\u00e9phone. Fonctionne m\u00eame hors-ligne.',
     color: '#f97316',
     bg: 'bg-orange-50',
@@ -67,9 +67,9 @@ export default function QuickFeaturesGrid() {
     <section className="py-12 sm:py-20 bg-slate-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <ScrollReveal className="text-center mb-10 sm:mb-14">
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-3">
             Et bien plus encore...
-          </h3>
+          </h2>
           <p className="text-slate-500 max-w-lg mx-auto text-sm">
             BatiGesti int&egrave;gre tout ce dont vous avez besoin pour travailler efficacement.
           </p>

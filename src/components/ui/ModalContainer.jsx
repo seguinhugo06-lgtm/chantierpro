@@ -180,7 +180,7 @@ export default function ModalContainer() {
               {modal.closable !== false && (
                 <button
                   onClick={() => closeModal(modal.id)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="absolute top-4 right-4 z-10 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
                   aria-label="Fermer"
                 >
                   <X size={20} />

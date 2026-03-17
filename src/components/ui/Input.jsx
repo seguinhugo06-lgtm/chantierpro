@@ -146,7 +146,7 @@ const Input = forwardRef(({
   const baseClasses = cn(
     'w-full min-h-[44px] sm:min-h-[40px] px-3',
     'border rounded-lg',
-    'text-sm sm:text-sm',
+    'text-base sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
@@ -399,7 +399,7 @@ export const Textarea = forwardRef(({
   const baseClasses = cn(
     'w-full px-3 py-3 sm:py-2.5',
     'border rounded-lg',
-    'text-sm sm:text-sm',
+    'text-base sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
@@ -412,7 +412,7 @@ export const Textarea = forwardRef(({
     : 'bg-white border-gray-200 text-gray-900';
 
   const stateClasses = error
-    ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-100'
+    ? isDark ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-900/30' : 'border-danger-500 focus:border-danger-500 focus:ring-danger-100'
     : isDark
     ? 'focus:border-primary-500 focus:ring-primary-900/30'
     : 'focus:border-primary-500 focus:ring-primary-100';
@@ -450,8 +450,8 @@ export const Textarea = forwardRef(({
 
       <div className="flex items-start justify-between gap-2 mt-1.5">
         {error && (
-          <p id={errorId} className="text-sm text-danger-600 flex items-center gap-1" role="alert">
-            <AlertCircle size={14} className="flex-shrink-0" />
+          <p id={errorId} className={cn('text-sm flex items-center gap-1', isDark ? 'text-danger-400' : 'text-danger-600')} role="alert">
+            <AlertCircle size={14} className="flex-shrink-0" aria-hidden="true" />
             {error}
           </p>
         )}
@@ -542,7 +542,7 @@ export const Select = forwardRef(({
   const baseClasses = cn(
     'w-full min-h-[44px] sm:min-h-[40px] px-3 pr-10',
     'border rounded-lg',
-    'text-sm sm:text-sm',
+    'text-base sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
     isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
@@ -554,7 +554,7 @@ export const Select = forwardRef(({
     : 'bg-white border-gray-200 text-gray-900';
 
   const stateClasses = error
-    ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-100'
+    ? isDark ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-900/30' : 'border-danger-500 focus:border-danger-500 focus:ring-danger-100'
     : isDark
     ? 'focus:border-primary-500 focus:ring-primary-900/30'
     : 'focus:border-primary-500 focus:ring-primary-100';
@@ -571,7 +571,7 @@ export const Select = forwardRef(({
           )}
         >
           {label}
-          {required && <span className="text-danger-500 ml-0.5">*</span>}
+          {required && <span className="text-danger-500 ml-0.5" aria-hidden="true">*</span>}
         </label>
       )}
 
@@ -620,8 +620,8 @@ export const Select = forwardRef(({
 
       <div className="mt-1.5">
         {error && (
-          <p id={errorId} className="text-sm text-danger-600 flex items-center gap-1" role="alert">
-            <AlertCircle size={14} className="flex-shrink-0" />
+          <p id={errorId} className={cn('text-sm flex items-center gap-1', isDark ? 'text-danger-400' : 'text-danger-600')} role="alert">
+            <AlertCircle size={14} className="flex-shrink-0" aria-hidden="true" />
             {error}
           </p>
         )}

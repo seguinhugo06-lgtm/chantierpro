@@ -210,7 +210,8 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
-  const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
+  const [viewMode, setViewModeRaw] = useState(() => localStorage.getItem('cp_chantiers_view') || 'list'); // list, map, or gantt
+  const setViewMode = useCallback((mode) => { setViewModeRaw(mode); try { localStorage.setItem('cp_chantiers_view', mode); } catch {} }, []);
   const [ganttTasks, setGanttTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
   });
@@ -1096,9 +1097,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Avancement</span>
                   <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                    <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
+                    <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : avancement < 100 ? '#22c55e' : '#10b981' }} />
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
+                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }}>{avancement}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Budget</span>
@@ -3210,9 +3211,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
+                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }} />
                       </div>
-                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
+                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }}>{avancement}%</span>
                     </div>
                   )}
                   {ch.statut !== 'en_cours' && <div className="flex-1" />}

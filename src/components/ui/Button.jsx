@@ -51,6 +51,7 @@ export const Button = React.forwardRef(
       <button
         ref={ref}
         disabled={isDisabled}
+        aria-busy={isLoading || undefined}
         className={cn(
           'inline-flex items-center justify-center font-medium',
           'transition-all duration-150',
@@ -64,7 +65,7 @@ export const Button = React.forwardRef(
         {...props}
       >
         {isLoading && (
-          <Loader2 className={cn('animate-spin', iconSizes[size])} />
+          <Loader2 className={cn('animate-spin', iconSizes[size])} aria-hidden="true" />
         )}
         {!isLoading && leftIcon && (
           <span className={iconSizes[size]}>{leftIcon}</span>
@@ -106,6 +107,7 @@ export const IconButton = React.forwardRef(
       <button
         ref={ref}
         disabled={isDisabled}
+        aria-busy={isLoading || undefined}
         className={cn(
           'inline-flex items-center justify-center',
           'rounded-lg transition-all duration-150',
@@ -118,7 +120,7 @@ export const IconButton = React.forwardRef(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className={cn('animate-spin', iconSizes[size])} />
+          <Loader2 className={cn('animate-spin', iconSizes[size])} aria-hidden="true" />
         ) : (
           children
         )}

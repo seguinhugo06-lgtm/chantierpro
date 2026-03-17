@@ -151,7 +151,7 @@ const FEATURES = [
     icon: Smartphone,
     color: '#f97316',
     bg: 'bg-orange-50',
-    title: 'PWA & mobile',
+    title: 'Mobile & tablette',
     description: 'Installez BatiGesti sur votre t\u00e9l\u00e9phone comme une application native. Fonctionne m\u00eame hors-ligne pour consulter vos donn\u00e9es sur le chantier.',
     benefits: ['Installation en 1 clic', 'Fonctionne hors-ligne', 'Multi-appareils', 'Notifications push'],
     screenshot: '/screenshots/mobile.png',

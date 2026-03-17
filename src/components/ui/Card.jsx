@@ -79,7 +79,7 @@ export const CardHeader = React.forwardRef(
           <>
             <div className="space-y-1">
               {title && (
-                <h3 className="text-base font-semibold text-gray-900">
+                <h3 className="text-base font-semibold">
                   {title}
                 </h3>
               )}
@@ -116,13 +116,13 @@ CardContent.displayName = 'CardContent';
 // ============ CARD FOOTER ============
 
 export const CardFooter = React.forwardRef(
-  ({ className, bordered = false, ...props }, ref) => {
+  ({ className, bordered = false, isDark = false, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
           'flex items-center p-5 sm:p-6 pt-0',
-          bordered && 'pt-5 sm:pt-6 mt-0 border-t border-gray-100',
+          bordered && cn('pt-5 sm:pt-6 mt-0 border-t', isDark ? 'border-slate-700' : 'border-gray-100'),
           className
         )}
         {...props}
@@ -134,22 +134,26 @@ CardFooter.displayName = 'CardFooter';
 
 // ============ CARD SKELETON ============
 
-export function CardSkeleton({ className, rows = 3 }) {
+export function CardSkeleton({ className, rows = 3, isDark = false }) {
+  const skeletonBg = isDark ? 'bg-slate-700' : 'bg-gray-100';
+  const skeletonBgLight = isDark ? 'bg-slate-700/50' : 'bg-gray-50';
   return (
-    <Card className={cn('animate-pulse', className)}>
+    <Card className={cn('animate-pulse', className)} isDark={isDark}>
       <CardContent>
         <div className="space-y-3">
           {Array.from({ length: rows }).map((_, i) => (
             <div key={i} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-100" />
+              <div className={cn('w-10 h-10 rounded-xl', skeletonBg)} aria-hidden="true" />
               <div className="flex-1 space-y-2">
                 <div
-                  className="h-4 rounded-md bg-gray-100"
+                  className={cn('h-4 rounded-md', skeletonBg)}
                   style={{ width: `${60 + Math.random() * 40}%` }}
+                  aria-hidden="true"
                 />
                 <div
-                  className="h-3 rounded bg-gray-50"
+                  className={cn('h-3 rounded', skeletonBgLight)}
                   style={{ width: `${40 + Math.random() * 30}%` }}
+                  aria-hidden="true"
                 />
               </div>
             </div>
@@ -162,21 +166,25 @@ export function CardSkeleton({ className, rows = 3 }) {
 
 // ============ STAT CARD ============
 
-export function StatCard({ label, value, subtext, trend, icon: Icon, className }) {
+export function StatCard({ label, value, subtext, trend, icon: Icon, className, isDark = false }) {
   const trendColors = {
     up: 'text-emerald-400',
     down: 'text-red-400',
     warning: 'text-amber-400',
-    neutral: 'text-slate-400',
+    neutral: isDark ? 'text-slate-400' : 'text-slate-500',
   };
 
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
+  const iconColor = isDark ? 'text-slate-700' : 'text-slate-300';
+
   return (
-    <Card className={cn('relative overflow-hidden p-6', className)}>
-      {Icon && <Icon className="absolute right-4 top-4 w-8 h-8 text-slate-700" />}
-      <p className="text-slate-400 text-sm font-medium">{label}</p>
-      <p className="text-3xl font-bold text-white mt-1">{value}</p>
+    <Card className={cn('relative overflow-hidden p-6', className)} isDark={isDark}>
+      {Icon && <Icon className={cn('absolute right-4 top-4 w-8 h-8', iconColor)} aria-hidden="true" />}
+      <p className={cn('text-sm font-medium', textSecondary)}>{label}</p>
+      <p className={cn('text-3xl font-bold mt-1', textPrimary)}>{value}</p>
       {subtext && (
-        <p className={cn('text-sm mt-2', trendColors[trend] || 'text-slate-400')}>
+        <p className={cn('text-sm mt-2', trendColors[trend] || textSecondary)}>
           {subtext}
         </p>
       )}

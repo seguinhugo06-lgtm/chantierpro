@@ -37,16 +37,18 @@ export default function LandingPage({ onLogin, onSignup }) {
   return (
     <div className="min-h-screen bg-white" style={{ scrollBehavior: 'smooth' }}>
       <LandingNav onLogin={onLogin} onSignup={onSignup} />
-      <HeroSection onSignup={onSignup} />
-      <StatsBar />
-      <FeatureShowcase />
-      <QuickFeaturesGrid />
-      <CtaBanner onSignup={onSignup} />
-      <PricingSection onSignup={onSignup} />
-      <PricingComparisonTable />
-      <TestimonialsSection />
-      <FAQSection />
-      <FinalCta onSignup={onSignup} />
+      <main>
+        <HeroSection onSignup={onSignup} />
+        <StatsBar />
+        <FeatureShowcase />
+        <QuickFeaturesGrid />
+        <CtaBanner onSignup={onSignup} />
+        <PricingSection onSignup={onSignup} />
+        <PricingComparisonTable />
+        <TestimonialsSection />
+        <FAQSection />
+        <FinalCta onSignup={onSignup} />
+      </main>
       <FooterSection />
     </div>
   );

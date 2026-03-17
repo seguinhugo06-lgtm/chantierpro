@@ -8,8 +8,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
-  MessageCircle, Plus, Search, Users, Hash, Building2, X,
-  ArrowLeft, Settings, UserPlus, Info, Loader2, Menu,
+  MessageCircle, MessageSquarePlus, Plus, Search, Users, Hash, Building2, X,
+  ArrowLeft, Settings, UserPlus, Info, Loader2, Menu, Zap, ChevronRight,
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
@@ -375,6 +375,7 @@ const ChatPage = memo(function ChatPage({
 
   const bgClass = isDark ? 'bg-slate-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-slate-300' : 'text-gray-600';
   const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -519,23 +520,37 @@ const ChatPage = memo(function ChatPage({
           </>
         ) : (
           /* No channel selected */
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-4 ${
-              isDark ? 'bg-slate-800' : 'bg-gray-100'
-            }`}>
-              <MessageCircle size={36} className={textMuted} />
+          <div className="flex-1 flex flex-col items-center justify-center px-6">
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6`} style={{ background: `${couleur}15` }}>
+              <MessageCircle size={36} style={{ color: couleur }} />
             </div>
-            <h3 className={`text-lg font-semibold ${textPrimary}`}>Messagerie</h3>
-            <p className={`text-sm mt-1 ${textMuted} text-center max-w-xs`}>
-              Sélectionnez un canal ou créez-en un nouveau pour commencer à discuter
+            <h3 className={`text-xl font-bold ${textPrimary}`}>Messagerie d'équipe</h3>
+            <p className={`text-sm mt-2 ${textMuted} text-center max-w-sm`}>
+              Créez des canaux par chantier ou par équipe pour centraliser vos échanges en temps réel.
             </p>
+            {/* 3-step onboarding */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 mt-6 mb-6">
+              {[
+                { icon: MessageSquarePlus, label: 'Créez un canal' },
+                { icon: Users, label: 'Invitez votre équipe' },
+                { icon: Zap, label: 'Échangez en direct' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  {i > 0 && <ChevronRight size={14} className={`${textMuted} hidden sm:block`} />}
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                    <step.icon size={16} style={{ color: couleur }} />
+                    <span className={`text-xs font-medium ${textSecondary}`}>{step.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
             <button
               onClick={() => setShowNewChannel(true)}
-              className="mt-4 px-4 py-2 rounded-xl text-sm font-medium text-white flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 hover:opacity-90 transition-opacity active:scale-95"
               style={{ background: couleur }}
             >
               <Plus size={16} />
-              Nouveau canal
+              Créer mon premier canal
             </button>
           </div>
         )}

@@ -150,7 +150,7 @@ function MobileCard({ row, columns, onClick, titleKey, subtitleKey, isDark, coul
                 e.stopPropagation();
                 setExpanded(!expanded);
               }}
-              className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+              className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${
                 isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'
               }`}
             >

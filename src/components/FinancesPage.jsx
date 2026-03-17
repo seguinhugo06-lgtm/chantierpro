@@ -55,7 +55,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
           }`}
         >
           {modeDiscret ? <EyeOff size={16} /> : <Eye size={16} />}
-          <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer'}</span>
+          <span className="hidden sm:inline">{modeDiscret ? 'Montants masqués' : 'Masquer les montants'}</span>
         </button>
       </div>
 

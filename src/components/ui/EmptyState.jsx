@@ -23,7 +23,7 @@ export default function EmptyState({
   const textSecondary = isDark ? 'text-slate-400' : 'text-slate-500';
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center" role="status">
+    <div className={`flex flex-col items-center justify-center py-16 px-4 text-center rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-white'}`} role="status">
       {Icon && (
         <div className="mb-4" aria-hidden="true">
           <div
@@ -41,8 +41,8 @@ export default function EmptyState({
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="mt-6 px-5 py-3 min-h-[44px] rounded-xl text-white text-sm font-medium hover:opacity-90 active:scale-95 transition-all duration-200"
-          style={{ background: couleur }}
+          className="mt-6 px-5 py-3 min-h-[44px] rounded-xl text-white text-sm font-medium hover:opacity-90 active:scale-95 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ background: couleur, outlineColor: couleur }}
         >
           {actionLabel}
         </button>

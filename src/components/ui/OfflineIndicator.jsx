@@ -187,7 +187,7 @@ export default function OfflineIndicator({
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
                 Réessayer
@@ -196,7 +196,7 @@ export default function OfflineIndicator({
                 <button
                   onClick={handleForceClear}
                   disabled={isClearing}
-                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   title="Rejeter les modifications bloquées pour éviter les données corrompues"
                 >
                   <Trash2 size={12} />
@@ -217,7 +217,7 @@ export default function OfflineIndicator({
             {!isSyncing && (
               <button
                 onClick={handleSync}
-                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 <RefreshCw size={12} />
                 Synchroniser
@@ -227,7 +227,7 @@ export default function OfflineIndicator({
               <button
                 onClick={handleForceClear}
                 disabled={isClearing}
-                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors"
+                className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 title="Supprimer les modifications bloquées"
               >
                 <Trash2 size={12} />

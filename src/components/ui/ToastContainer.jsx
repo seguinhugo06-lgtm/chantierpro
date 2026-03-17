@@ -131,7 +131,7 @@ export default function ToastContainer({ position = 'bottom-right', isDark = fal
                       toast.action.onClick?.();
                       removeToast(toast.id);
                     }}
-                    className="text-sm font-medium underline mt-2 hover:no-underline focus:outline-none focus:ring-2 focus:ring-offset-2 rounded"
+                    className="text-sm font-medium underline mt-2 hover:no-underline rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
                   >
                     {toast.action.label}
                   </button>
@@ -141,7 +141,7 @@ export default function ToastContainer({ position = 'bottom-right', isDark = fal
               {toast.dismissible !== false && (
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${colors.text}`}
+                  className={`flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity p-1 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${colors.text}`}
                   aria-label="Fermer la notification"
                 >
                   <X size={16} />

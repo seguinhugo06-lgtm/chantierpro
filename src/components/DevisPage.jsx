@@ -232,7 +232,15 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return () => { cancelled = true; };
   }, [selected?.id, mode]);
   const [showCreateMenu, setShowCreateMenu] = useState(false); // split-button dropdown
-  const [complianceDismissed, setComplianceDismissed] = useState(() => localStorage.getItem('complianceDismissed') === 'true');
+  const [complianceDismissed, setComplianceDismissed] = useState(() => {
+    try {
+      const dismissed = localStorage.getItem('cp_devis_banner_dismissed');
+      if (!dismissed) return false;
+      const dismissedDate = new Date(dismissed);
+      const daysSince = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince < 7;
+    } catch { return false; }
+  });
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
@@ -4555,6 +4563,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             {setPage && (
               <button onClick={() => setPage('settings')} className={`shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-colors ${isDark ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>Compléter</button>
             )}
+            <button
+              onClick={() => { setComplianceDismissed(true); try { localStorage.setItem('cp_devis_banner_dismissed', new Date().toISOString()); } catch {} }}
+              className={`shrink-0 p-1 rounded-lg transition-colors ${isDark ? 'hover:bg-red-800/50 text-red-400' : 'hover:bg-red-200 text-red-500'}`}
+              title="Masquer pendant 7 jours"
+            >
+              <X size={14} />
+            </button>
           </div>
         );
       })()}
@@ -4862,11 +4877,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   const statusColor = DEVIS_STATUS_COLORS[d.statut] || DEVIS_STATUS_COLORS.brouillon;
                   const statusLabel = d.statut === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[d.statut] || d.statut);
                   const isAvoirItem = d.facture_type === 'avoir';
+                  const isAcompteRow = d.facture_type === 'acompte' || d.facture_type === 'solde';
+                  const rowBorderColor = isAvoirItem ? '#f87171' : isAcompteRow ? '#8b5cf6' : d.type === 'facture' ? '#10b981' : couleur;
                   return (
                     <tr
                       key={d.id}
                       onClick={() => { setSelected(d); setMode('preview'); if (d.statut === 'envoye' && d.type === 'devis') markAsViewed(d); }}
                       className={`cursor-pointer transition-colors ${isDark ? (idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50') : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')} ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                      style={{ borderLeft: `4px solid ${rowBorderColor}` }}
                     >
                       <td className={`px-3 py-2.5 font-medium text-xs whitespace-nowrap ${textPrimary}`}>
                         <span className="inline-flex items-center gap-1.5">
@@ -4929,18 +4947,14 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           };
           const followUp = getFollowUpInfo();
 
-          // Left border color by status
+          // Left border color by document type
           const isAvoirItem = d.facture_type === 'avoir';
           const isSituationItem = d.facture_type === 'situation';
-          const borderLeftColor = isAvoirItem ? '#dc2626'
-            : isSituationItem ? '#f97316'
-            : d.statut === 'brouillon' ? (isDark ? '#64748b' : '#94a3b8')
-            : ['envoye', 'vu'].includes(d.statut) ? '#3b82f6'
-            : ['accepte', 'signe'].includes(d.statut) ? '#22c55e'
-            : d.statut === 'facture' || d.statut === 'acompte_facture' ? '#8b5cf6'
-            : d.statut === 'payee' ? '#10b981'
-            : d.statut === 'refuse' ? '#ef4444'
-            : '#94a3b8';
+          const isAcompteItem = d.facture_type === 'acompte' || d.facture_type === 'solde';
+          const borderLeftColor = isAvoirItem ? '#f87171'
+            : isAcompteItem ? '#8b5cf6'
+            : d.type === 'facture' ? '#10b981'
+            : couleur;
 
           // Contextual CTAs by status — gated by RBAC permissions
           const getQuickAction = () => {

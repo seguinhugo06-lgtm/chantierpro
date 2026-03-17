@@ -107,7 +107,7 @@ const getThemeClasses = (isDark) => ({
   text: isDark ? "text-slate-100" : "text-slate-900",
   textSecondary: isDark ? "text-slate-200" : "text-slate-700",
   textMuted: isDark ? "text-slate-300" : "text-slate-500",
-  bg: isDark ? "bg-slate-900" : "bg-slate-100",
+  bg: isDark ? "bg-slate-900" : "bg-slate-50",
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
 
@@ -1207,8 +1207,9 @@ export default function App() {
       const missingFieldsCount = f26checks.filter(c => !c).length + profileFields.filter(k => !entreprise[k] || !String(entreprise[k]).trim()).length;
       return {
         id: 'settings', icon: SettingsIcon, label: 'Param\u00e8tres',
-        badge: showBadge ? (missingFieldsCount || 1) : 0,
-        badgeColor: f26score < 50 ? '#ef4444' : f26score < 100 ? '#f59e0b' : undefined,
+        badge: showBadge ? -1 : 0,
+        badgeDot: true,
+        badgeColor: f26score < 50 ? '#ef4444' : f26score < 100 ? '#f59e0b' : '#f97316',
         badgeTitle: f26score < 100
           ? `Conformit\u00e9 Facture 2026 : ${f26score}% — ${missingFieldsCount} champ${missingFieldsCount > 1 ? 's' : ''} manquant${missingFieldsCount > 1 ? 's' : ''}`
           : `Profil : ${profileScore}%`
@@ -1254,14 +1255,15 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full bg-slate-900 transform transition-all duration-200 flex flex-col
+      <aside className={`fixed top-0 left-0 z-50 h-full transform transition-all duration-200 flex flex-col
+        ${isDark ? 'bg-slate-900' : 'bg-white border-r border-slate-200'}
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
-        <div className="flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 md:justify-center xl:justify-start">
+        <div className={`flex items-center gap-3 px-3 py-3 border-b flex-shrink-0 md:justify-center xl:justify-start ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="hidden xl:block flex-1 min-w-0">
             <EntrepriseSwitcher
-              isDark={true}
+              isDark={isDark}
               user={user}
               onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
             />
@@ -1273,7 +1275,7 @@ export default function App() {
           {/* Mobile open: show full switcher */}
           <div className="md:hidden flex-1 min-w-0">
             <EntrepriseSwitcher
-              isDark={true}
+              isDark={isDark}
               user={user}
               onNavigateSettings={() => { setPage('settings'); setSidebarOpen(false); }}
             />
@@ -1281,7 +1283,7 @@ export default function App() {
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'}`}
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -1296,84 +1298,110 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
                 <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
+                {n.badge !== 0 && (
+                  n.badgeDot ? (
+                    <span
+                      className="w-2 h-2 rounded-full hidden xl:inline-block flex-shrink-0"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
+                      title={n.badgeTitle}
+                    />
+                  ) : n.badge > 0 ? (
+                    <span
+                      className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                      title={n.badgeTitle}
+                    >
+                      {n.badge > 99 ? '99+' : n.badge}
+                    </span>
+                  ) : null
                 )}
               </button>
             ))}
             {/* Devis IA — sub-item right under Devis & Factures */}
             <button
-              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 md:justify-center xl:justify-start md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all ${page === 'ia-devis' ? 'text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); try { localStorage.setItem('cp_ia_devis_visited', 'true'); } catch {} }}
+              className={`w-full flex items-center gap-3 md:justify-center xl:justify-start md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
               style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
               title="Devis IA"
             >
               <Sparkles size={14} className="flex-shrink-0" aria-hidden="true" />
               <span className="flex-1 text-left hidden xl:inline">Devis IA</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+              {!localStorage.getItem('cp_ia_devis_visited') && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+              )}
             </button>
             {nav.slice(2, 4).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
                 <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
+                {n.badge !== 0 && (
+                  n.badgeDot ? (
+                    <span
+                      className="w-2 h-2 rounded-full hidden xl:inline-block flex-shrink-0"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
+                      title={n.badgeTitle}
+                    />
+                  ) : n.badge > 0 ? (
+                    <span
+                      className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                      title={n.badgeTitle}
+                    >
+                      {n.badge > 99 ? '99+' : n.badge}
+                    </span>
+                  ) : null
                 )}
               </button>
             ))}
           </nav>
 
           {/* Separator */}
-          <div className="my-2 mx-3 border-t border-slate-800" />
+          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`} />
 
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Organisation</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider hidden xl:block ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Organisation</p>
             {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
                 <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
+                {n.badge !== 0 && (
+                  n.badgeDot ? (
+                    <span
+                      className="w-2 h-2 rounded-full hidden xl:inline-block flex-shrink-0"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
+                      title={n.badgeTitle}
+                    />
+                  ) : n.badge > 0 ? (
+                    <span
+                      className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                      title={n.badgeTitle}
+                    >
+                      {n.badge > 99 ? '99+' : n.badge}
+                    </span>
+                  ) : null
                 )}
               </button>
             ))}
@@ -1381,42 +1409,50 @@ export default function App() {
 
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Gestion</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider hidden xl:block ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Gestion</p>
             {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
                 <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left truncate hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
-                  <span
-                    className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
-                    style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
-                    title={n.badgeTitle}
-                  >
-                    {n.badge > 99 ? '99+' : n.badge}
-                  </span>
+                {n.badge !== 0 && (
+                  n.badgeDot ? (
+                    <span
+                      className="w-2 h-2 rounded-full hidden xl:inline-block flex-shrink-0"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
+                      title={n.badgeTitle}
+                    />
+                  ) : n.badge > 0 ? (
+                    <span
+                      className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold hidden xl:inline-block"
+                      style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
+                      title={n.badgeTitle}
+                    >
+                      {n.badge > 99 ? '99+' : n.badge}
+                    </span>
+                  ) : null
                 )}
               </button>
             ))}
           </nav>
 
           {/* Separator */}
-          <div className="my-2 mx-3 border-t border-slate-800" />
+          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`} />
 
           {/* Profil section */}
           <nav className="space-y-0.5" aria-label="Profil">
-            <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hidden xl:block">Profil</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider hidden xl:block ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Profil</p>
             {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`w-full flex items-center gap-3 md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1429,19 +1465,19 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className="flex-shrink-0 p-2 border-t border-slate-800 space-y-1">
+        <div className={`flex-shrink-0 p-2 border-t space-y-1 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
-              title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              title={modeDiscret ? 'Désactiver mode confidentiel — Afficher les montants' : 'Activer mode confidentiel — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
-              <span className="hidden xl:inline text-xs">Discret</span>
+              <span className="hidden xl:inline text-xs">Confidentiel</span>
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-500 hover:bg-slate-800 hover:text-slate-300 text-sm transition-all"
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
@@ -1450,7 +1486,7 @@ export default function App() {
           </div>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-slate-600 hover:bg-red-500/10 hover:text-red-400 text-xs transition-all"
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all ${isDark ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-500 hover:bg-red-50 hover:text-red-500'}`}
           >
             <LogOut size={13} />
             <span className="hidden xl:inline">Déconnexion</span>
@@ -1459,9 +1495,9 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-slate-100/95 border-slate-200'}`}>
+        <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'}`}>
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1549,19 +1585,19 @@ export default function App() {
             <button
               onClick={() => setShowHelp(true)}
               className={`hidden md:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
-              title="Aide"
-              aria-label="Ouvrir l'aide"
+              title="Aide & Support"
+              aria-label="Aide & Support"
             >
               <HelpCircle size={18} />
             </button>
 
             {/* Mode discret toggle — hidden on small mobile, visible sm+ */}
             <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
               className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
               style={modeDiscret ? {background: couleur} : {}}
-              title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
-              aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
+              title={modeDiscret ? 'Afficher les montants' : 'Aperçu client'}
+              aria-label={modeDiscret ? 'Afficher les montants' : 'Aperçu client'}
               aria-pressed={modeDiscret}
             >
               {modeDiscret ? <EyeOff size={18} /> : <Eye size={18} />}

@@ -25,10 +25,10 @@ const ModalContext = createContext(null);
  * Size configuration for modal widths
  */
 const sizeClasses = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  sm: 'max-w-full sm:max-w-md',
+  md: 'max-w-full sm:max-w-lg',
+  lg: 'max-w-full sm:max-w-2xl',
+  xl: 'max-w-full sm:max-w-4xl',
   full: 'max-w-full h-full m-0 rounded-none sm:m-4 sm:rounded-2xl sm:h-auto sm:max-h-[95vh]',
 };
 
@@ -265,7 +265,7 @@ function Modal({
                     <button
                       onClick={onClose}
                       className={cn(
-                        'p-2 rounded-lg transition-colors',
+                        'p-2 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
                         isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
                       )}
                       aria-label="Fermer"
@@ -393,7 +393,7 @@ export const ModalHeader = forwardRef(({
         <button
           onClick={onClose}
           className={cn(
-            'p-2 rounded-lg transition-colors flex-shrink-0',
+            'p-2 rounded-lg transition-colors flex-shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
             isDark ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
           )}
           aria-label="Fermer"
@@ -594,7 +594,7 @@ export function ConfirmModal({
           onClick={onClose}
           disabled={loading}
           className={cn(
-            'px-4 py-2.5 rounded-xl text-sm font-medium transition-colors',
+            'px-4 py-2.5 rounded-xl text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
             isDark
               ? 'bg-slate-700 text-gray-200 hover:bg-slate-600'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
@@ -608,7 +608,7 @@ export function ConfirmModal({
           disabled={loading}
           className={cn(
             'px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-offset-2',
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500',
             variantColors[variant],
             'disabled:opacity-50'
           )}
@@ -654,7 +654,7 @@ export function AlertModal({
       <ModalFooter>
         <button
           onClick={onClose}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors"
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
         >
           {buttonText}
         </button>

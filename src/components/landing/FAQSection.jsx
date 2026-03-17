@@ -5,7 +5,7 @@
  * Category tabs for filtering on desktop.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle } from 'lucide-react';
 import { ScrollReveal } from './animations';
@@ -79,6 +79,21 @@ const FAQ_ITEMS = [
     q: 'Quelles int\u00e9grations sont disponibles ?',
     a: 'BatiGesti s\'int\u00e8gre avec Stripe et GoCardless pour les paiements en ligne, SendGrid pour les emails transactionnels, Twilio pour les SMS, et OpenWeatherMap pour la m\u00e9t\u00e9o chantier. D\'autres int\u00e9grations sont en cours de d\u00e9veloppement.',
   },
+  {
+    category: 'pricing',
+    q: 'Comment fonctionne la facturation ?',
+    a: 'La facturation est mensuelle ou annuelle (avec 17% de r\u00e9duction). Vous pouvez payer par carte bancaire via Stripe. Aucun engagement : vous pouvez annuler \u00e0 tout moment depuis votre espace de gestion. La facturation s\'arr\u00eate imm\u00e9diatement et vous conservez l\'acc\u00e8s jusqu\'\u00e0 la fin de la p\u00e9riode pay\u00e9e.',
+  },
+  {
+    category: 'general',
+    q: 'Y a-t-il un support client ?',
+    a: 'Oui. Notre \u00e9quipe r\u00e9pond par email \u00e0 contact@batigesti.fr. Les utilisateurs des plans Artisan et \u00c9quipe b\u00e9n\u00e9ficient d\'un support prioritaire avec un temps de r\u00e9ponse garanti sous 24h ouvr\u00e9es.',
+  },
+  {
+    category: 'pricing',
+    q: 'Puis-je annuler mon abonnement \u00e0 tout moment ?',
+    a: 'Oui, sans engagement. Vous pouvez annuler votre abonnement en un clic depuis votre espace de gestion. Vous conservez l\'acc\u00e8s \u00e0 toutes les fonctionnalit\u00e9s jusqu\'\u00e0 la fin de votre p\u00e9riode de facturation en cours. Vos donn\u00e9es restent accessibles et exportables.',
+  },
 ];
 
 export default function FAQSection() {
@@ -88,6 +103,34 @@ export default function FAQSection() {
   const filtered = activeCategory === 'all'
     ? FAQ_ITEMS
     : FAQ_ITEMS.filter((item) => item.category === activeCategory);
+
+  // Inject FAQPage JSON-LD structured data for SEO
+  useEffect(() => {
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
+    };
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.id = 'faq-jsonld';
+    script.textContent = JSON.stringify(jsonLd);
+    // Remove existing if re-rendered
+    const existing = document.getElementById('faq-jsonld');
+    if (existing) existing.remove();
+    document.head.appendChild(script);
+    return () => {
+      const el = document.getElementById('faq-jsonld');
+      if (el) el.remove();
+    };
+  }, []);
 
   return (
     <section id="faq" className="py-16 sm:py-24 bg-white">

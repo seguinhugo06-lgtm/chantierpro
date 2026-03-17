@@ -101,7 +101,7 @@ export function Toast({
         {action && (
           <button
             onClick={action.onClick}
-            className="ml-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/30 hover:bg-white/40 border border-white/30 transition-colors"
+            className="ml-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/30 hover:bg-white/40 border border-white/30 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {action.label}
           </button>
@@ -202,7 +202,7 @@ export function Snackbar({
         {action && (
           <button
             onClick={action.onClick}
-            className="text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-wide"
+            className="text-sm font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-wide focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded"
           >
             {action.label}
           </button>

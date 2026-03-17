@@ -1182,7 +1182,7 @@ export default function Dashboard({
     <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
       {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
-        userName={entreprise?.nom?.split(' ')[0] || 'Artisan'}
+        userName={user?.user_metadata?.prenom || user?.user_metadata?.first_name || entreprise?.nom?.split(' ')[0] || 'Artisan'}
         activeChantiers={stats.chantiersActifs}
         isDark={isDark}
         couleur={couleur}
@@ -1195,6 +1195,58 @@ export default function Dashboard({
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto">
+
+        {/* ========== PROFILE COMPLETION BANNER — TOP PRIORITY when < 50% ========== */}
+        {profileCompletude < 50 && (
+          <section className="px-4 sm:px-6 pb-4">
+            <div className={`rounded-xl border p-4 ${
+              profileCompletude < 30
+                ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
+                : isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+            }`}>
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
+                  profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-600'
+                }`}>
+                  {profileCompletude}%
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+                    Complétez votre profil entreprise
+                  </p>
+                  <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {missingRequiredFields.length > 0
+                      ? `${missingRequiredFields.length} info${missingRequiredFields.length > 1 ? 's' : ''} obligatoire${missingRequiredFields.length > 1 ? 's' : ''} manquante${missingRequiredFields.length > 1 ? 's' : ''} · Vos documents ne sont pas conformes`
+                      : 'Ajoutez vos informations complémentaires pour des documents professionnels'
+                    }
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigateToSettingsTab(missingRequiredFields[0]?.tab || 'identite', missingRequiredFields[0]?.key)}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: couleur }}
+                >
+                  Compléter →
+                </button>
+              </div>
+              {missingRequiredFields.length > 0 && (
+                <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-wrap gap-1.5">
+                  {missingRequiredFields.map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => navigateToSettingsTab(f.tab, f.key)}
+                      className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                        isDark ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700' : 'bg-white/80 text-slate-600 hover:bg-white'
+                      }`}
+                    >
+                      ✗ {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ========== URGENT ACTION BANNER ========== */}
         {urgentAction && (
@@ -1410,7 +1462,9 @@ export default function Dashboard({
             });
           });
 
-          const sorted = actions.sort((a, b) => a.priority - b.priority).slice(0, 5);
+          const allSorted = actions.sort((a, b) => a.priority - b.priority);
+          const sorted = allSorted.slice(0, 3);
+          const totalActions = allSorted.length;
           if (sorted.length === 0) return null;
 
           const priorityBg = {
@@ -1486,6 +1540,14 @@ export default function Dashboard({
                       </div>
                     );
                   })}
+                  {totalActions > 3 && (
+                    <button
+                      onClick={() => setPage?.('devis')}
+                      className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      Voir toutes les {totalActions} actions →
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
@@ -1499,7 +1561,7 @@ export default function Dashboard({
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
               { icon: HardHat, label: '+ Chantier', action: () => { setCreateMode?.((p) => ({ ...p, chantier: true })); setPage?.('chantiers'); } },
               { icon: ClipboardList, label: '+ Mémo', action: () => setPage?.('memos') },
-              { icon: Settings, label: 'Paramètres', action: () => setPage?.('settings') },
+              { icon: FileText, label: '+ Devis rapide', action: () => setPage?.('devis') },
             ].map((s) => (
               <button
                 key={s.label}
@@ -1624,8 +1686,8 @@ export default function Dashboard({
           />
         </section>
 
-        {/* ========== PROFILE COMPLETION BANNER — visible when < 80% ========== */}
-        {profileCompletude < 80 && (
+        {/* ========== PROFILE COMPLETION BANNER — visible when >= 50% and < 80% (< 50% shown above KPIs) ========== */}
+        {profileCompletude >= 50 && profileCompletude < 80 && (
           <section className="px-4 sm:px-6 pb-4">
             <div className={`rounded-xl border p-4 ${
               profileCompletude < 30

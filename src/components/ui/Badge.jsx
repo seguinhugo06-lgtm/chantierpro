@@ -57,7 +57,7 @@ export const Badge = React.forwardRef(
         {...props}
       >
         {dot && (
-          <span className={cn('w-1.5 h-1.5 rounded-full', dotColors[variant])} />
+          <span className={cn('w-1.5 h-1.5 rounded-full', dotColors[variant])} aria-hidden="true" />
         )}
         {children}
       </span>
