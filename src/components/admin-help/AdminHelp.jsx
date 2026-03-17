@@ -259,7 +259,7 @@ export default function AdminHelp({
                   <button
                     key={action.id}
                     onClick={() => setActiveSection(action.id)}
-                    className={`p-5 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-lg hover:scale-[1.02] hover:border-slate-300 dark:hover:border-slate-500 active:scale-98 cursor-pointer`}
+                    className={`p-5 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-lg hover:scale-[1.02] hover:border-slate-300 active:scale-98 cursor-pointer`}
                   >
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-sm" style={{ backgroundColor: `${action.color}20` }}>
                       <action.icon size={24} style={{ color: action.color }} />
@@ -407,7 +407,7 @@ export default function AdminHelp({
                     >
                       <span className="text-sm font-medium flex-1">{faq.q}</span>
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${expandedFaq === i ? 'rotate-90' : ''}`} style={{ backgroundColor: expandedFaq === i ? `${couleur}20` : (isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)') }}>
-                        <ChevronRight size={22} className={`transition-all ${expandedFaq === i ? '' : (isDark ? 'text-slate-300' : 'text-slate-500')} group-hover:text-slate-700 dark:group-hover:text-slate-200`} style={expandedFaq === i ? { color: couleur } : {}} />
+                        <ChevronRight size={22} className={`transition-all ${expandedFaq === i ? '' : (isDark ? 'text-slate-300' : 'text-slate-500')} group-hover:text-slate-700`} style={expandedFaq === i ? { color: couleur } : {}} />
                       </div>
                     </button>
                     {expandedFaq === i && (

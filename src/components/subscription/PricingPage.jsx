@@ -22,21 +22,21 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 function PricingToggle({ billing, setBilling }) {
   return (
     <div className="flex items-center justify-center gap-4 mt-8">
-      <span className={`text-sm font-semibold transition-colors ${billing === 'monthly' ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+      <span className={`text-sm font-semibold transition-colors ${billing === 'monthly' ? 'text-slate-900' : 'text-slate-400'}`}>
         Mensuel
       </span>
       <button
         onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-        className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+        className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300'}`}
         aria-label="Basculer entre facturation mensuelle et annuelle"
       >
         <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${billing === 'yearly' ? 'translate-x-7' : 'translate-x-0.5'}`} />
       </button>
-      <span className={`text-sm font-semibold transition-colors ${billing === 'yearly' ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+      <span className={`text-sm font-semibold transition-colors ${billing === 'yearly' ? 'text-slate-900' : 'text-slate-400'}`}>
         Annuel
       </span>
       {billing === 'yearly' && (
-        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">
+        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
           Economisez {YEARLY_DISCOUNT}%
         </span>
       )}
@@ -107,13 +107,13 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
       </span>
 
       {/* Target audience */}
-      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">{plan.target}</p>
+      <p className="text-sm text-slate-500 mt-2">{plan.target}</p>
 
       {/* Price */}
       <div className="mt-5 mb-6">
         {plan.priceMonthly === 0 ? (
           <div>
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">Gratuit</p>
+            <p className="text-3xl font-bold text-slate-900">Gratuit</p>
             <p className="text-sm text-slate-500 mt-1">Pour toujours</p>
           </div>
         ) : (
@@ -144,7 +144,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
         disabled={isCurrent || isLoading}
         className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
           isCurrent
-            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-default'
+            ? 'bg-slate-100 text-slate-400 cursor-default'
             : isPopular
               ? 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:shadow-orange-500/25'
               : isRecommended
@@ -169,7 +169,7 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
       </button>
 
       {/* Features separator */}
-      <div className="border-t border-slate-200 dark:border-slate-700 my-6" />
+      <div className="border-t border-slate-200 my-6" />
 
       {/* Feature list */}
       <ul className="space-y-2.5">
@@ -178,9 +178,9 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
             {feat.included ? (
               <Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
             ) : (
-              <X size={16} className="text-slate-300 dark:text-slate-600 flex-shrink-0 mt-0.5" />
+              <X size={16} className="text-slate-300 flex-shrink-0 mt-0.5" />
             )}
-            <span className={feat.included ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}>
+            <span className={feat.included ? 'text-slate-700' : 'text-slate-400'}>
               {feat.name}
             </span>
           </li>

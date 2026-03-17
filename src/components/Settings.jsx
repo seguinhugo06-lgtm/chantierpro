@@ -1357,8 +1357,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Factures */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                      <FileSpreadsheet size={20} className="text-blue-600 dark:text-blue-400" />
+                    <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+                      <FileSpreadsheet size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Factures (CSV)</h3>
@@ -1381,8 +1381,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Depenses */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                      <FileSpreadsheet size={20} className="text-amber-600 dark:text-amber-400" />
+                    <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
+                      <FileSpreadsheet size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Dépenses (CSV)</h3>
@@ -1405,8 +1405,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* FEC */}
                 <div className={`${cardBg} rounded-xl border p-4 sm:col-span-2`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                      <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                    <div className={`p-2 rounded-lg ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
+                      <FileText size={20} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>

@@ -201,8 +201,8 @@ export default function AvoirCreationModal({
         {/* Header */}
         <div className="sticky top-0 z-10 px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-100 dark:bg-red-900/40">
-              <RotateCcw size={18} className="text-red-600 dark:text-red-400" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-100">
+              <RotateCcw size={18} className="text-red-600" />
             </div>
             <div>
               <h2 className={`text-lg font-bold ${textPrimary}`}>Créer un avoir</h2>

@@ -308,7 +308,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
                     </button>
                     <button
                       onClick={() => { onDelete?.(message.id); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50"
                     >
                       <Trash2 size={12} /> Supprimer
                     </button>

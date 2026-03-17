@@ -110,10 +110,10 @@ const CHANGELOG = [
 ];
 
 const typeConfig = {
-  new: { label: 'Nouveau', icon: Sparkles, color: 'emerald', bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
-  improve: { label: 'Amélioré', icon: Zap, color: 'blue', bg: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-  fix: { label: 'Corrigé', icon: Bug, color: 'amber', bg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  security: { label: 'Sécurité', icon: Shield, color: 'red', bg: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+  new: { label: 'Nouveau', icon: Sparkles, color: 'emerald', bg: 'bg-emerald-100 text-emerald-700' },
+  improve: { label: 'Amélioré', icon: Zap, color: 'blue', bg: 'bg-blue-100 text-blue-700' },
+  fix: { label: 'Corrigé', icon: Bug, color: 'amber', bg: 'bg-amber-100 text-amber-700' },
+  security: { label: 'Sécurité', icon: Shield, color: 'red', bg: 'bg-red-100 text-red-700' },
 };
 
 export default function Changelog({ isDark, couleur, setPage }) {

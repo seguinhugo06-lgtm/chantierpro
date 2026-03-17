@@ -122,7 +122,7 @@ function PreviewTooltip({ children, devis, client }) {
       </div>
       {isVisible && (
         <div
-          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-900 dark:bg-gray-800 text-white rounded-lg shadow-xl min-w-[220px] animate-fade-in"
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 bg-gray-900 text-white rounded-lg shadow-xl min-w-[220px] animate-fade-in"
           role="tooltip"
         >
           <div className="space-y-2 text-sm">
@@ -161,7 +161,7 @@ function PreviewTooltip({ children, devis, client }) {
             </div>
           </div>
           {/* Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900 dark:border-t-gray-800" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
         </div>
       )}
     </div>
@@ -180,17 +180,17 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-md shadow-xl border border-gray-200 dark:border-slate-700 animate-slide-up"
+        className="bg-white rounded-xl w-full max-w-md shadow-xl border border-gray-200 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -202,7 +202,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100 dark:border-slate-700">
+        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
           <Button variant="ghost" onClick={onClose} disabled={isLoading}>
             Annuler
           </Button>
@@ -248,7 +248,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
       isLoading={isLoading}
     >
       <div className="space-y-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600">
           Devis <span className="font-medium">{normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
@@ -259,8 +259,8 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
             className={cn(
               'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors',
               method === 'email'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                : 'border-gray-200 dark:border-slate-600 hover:border-gray-300'
+                ? 'border-primary-500 bg-primary-50 text-primary-700'
+                : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <Mail className="w-4 h-4" />
@@ -271,8 +271,8 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
             className={cn(
               'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors',
               method === 'sms'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                : 'border-gray-200 dark:border-slate-600 hover:border-gray-300'
+                ? 'border-primary-500 bg-primary-50 text-primary-700'
+                : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <MessageSquare className="w-4 h-4" />
@@ -282,14 +282,14 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
 
         {/* Message textarea */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Message
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={5}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white text-sm resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -312,32 +312,32 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
       isLoading={isLoading}
     >
       <div className="space-y-4">
-        <div className="p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+        <div className="p-4 bg-gray-50 rounded-lg">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/30">
-              <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            <div className="p-2 rounded-lg bg-primary-100">
+              <FileText className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <p className="font-medium text-gray-900 dark:text-white">
+              <p className="font-medium text-gray-900">
                 {normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600">
                 {client?.nom || 'Client inconnu'}
               </p>
-              <p className="text-lg font-bold text-primary-600 dark:text-primary-400 mt-1">
+              <p className="text-lg font-bold text-primary-600 mt-1">
                 {formatMoney(devis?.total_ttc)}
               </p>
             </div>
           </div>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600">
           Cette action va créer une facture à partir de ce devis. Le devis sera marqué comme accepté.
         </p>
 
-        <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          <span className="text-sm text-blue-700 dark:text-blue-300">
+        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+          <CheckCircle className="w-4 h-4 text-blue-600" />
+          <span className="text-sm text-blue-700">
             Toutes les lignes du devis seront copiées
           </span>
         </div>
@@ -489,18 +489,18 @@ function DevisCard({
  */
 function DevisCardSkeleton() {
   return (
-    <div className="p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm animate-pulse">
+    <div className="p-4 rounded-lg border border-gray-200 shadow-sm animate-pulse">
       <div className="flex items-start justify-between mb-2">
         <div className="space-y-2">
-          <div className="h-4 w-40 rounded bg-gray-200 dark:bg-slate-700" />
-          <div className="h-3 w-32 rounded bg-gray-100 dark:bg-slate-800" />
+          <div className="h-4 w-40 rounded bg-gray-200" />
+          <div className="h-3 w-32 rounded bg-gray-100" />
         </div>
       </div>
-      <div className="h-6 w-24 rounded bg-gray-200 dark:bg-slate-700 mb-3" />
+      <div className="h-6 w-24 rounded bg-gray-200 mb-3" />
       <div className="flex gap-2">
-        <div className="h-8 flex-1 rounded bg-gray-100 dark:bg-slate-800" />
-        <div className="h-8 flex-1 rounded bg-gray-100 dark:bg-slate-800" />
-        <div className="h-8 flex-1 rounded bg-gray-100 dark:bg-slate-800" />
+        <div className="h-8 flex-1 rounded bg-gray-100" />
+        <div className="h-8 flex-1 rounded bg-gray-100" />
+        <div className="h-8 flex-1 rounded bg-gray-100" />
       </div>
     </div>
   );
@@ -759,7 +759,7 @@ function DevisWidget({
         <WidgetContent className="overflow-y-auto" style={{ maxHeight: '420px' }}>
           {error ? (
             <div className="text-center py-6">
-              <p className="text-sm text-red-600 dark:text-red-400 mb-3">
+              <p className={cn('text-sm mb-3', isDark ? 'text-red-400' : 'text-red-600')}>
                 {error}
               </p>
               <Button

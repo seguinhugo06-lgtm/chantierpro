@@ -112,7 +112,7 @@ export const Avatar = React.forwardRef(
         {showStatus && (
           <span
             className={cn(
-              'absolute bottom-0 right-0 block rounded-full ring-2 ring-white dark:ring-slate-800',
+              'absolute bottom-0 right-0 block rounded-full ring-2 ring-white',
               statusColors[status],
               size === 'xs' && 'h-1.5 w-1.5',
               size === 'sm' && 'h-2 w-2',
@@ -141,7 +141,7 @@ export const AvatarGroup = ({ children, max = 4, size = 'md', className }) => {
       {visibleChildren.map((child, index) => (
         <div
           key={index}
-          className="ring-2 ring-white dark:ring-slate-800 rounded-full"
+          className="ring-2 ring-white rounded-full"
           style={{ zIndex: visibleChildren.length - index }}
         >
           {React.cloneElement(child, { size })}
@@ -150,7 +150,7 @@ export const AvatarGroup = ({ children, max = 4, size = 'md', className }) => {
       {remainingCount > 0 && (
         <div
           className={cn(
-            'flex items-center justify-center rounded-full bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300 font-medium ring-2 ring-white dark:ring-slate-800',
+            'flex items-center justify-center rounded-full bg-gray-200 text-gray-600 font-medium ring-2 ring-white',
             sizeStyles[size]
           )}
           style={{ zIndex: 0 }}

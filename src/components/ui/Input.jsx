@@ -149,8 +149,8 @@ const Input = forwardRef(({
     'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
-    'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',
-    'placeholder:text-gray-400 dark:placeholder:text-slate-500'
+    isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
+    isDark ? 'placeholder:text-slate-500' : 'placeholder:text-gray-400'
   );
 
   const themeClasses = isDark
@@ -158,9 +158,9 @@ const Input = forwardRef(({
     : 'bg-white border-gray-200 text-gray-900';
 
   const stateClasses = error
-    ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-100 dark:focus:ring-danger-900/30'
+    ? isDark ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-900/30' : 'border-danger-500 focus:border-danger-500 focus:ring-danger-100'
     : success
-    ? 'border-success-500 focus:border-success-500 focus:ring-success-100 dark:focus:ring-success-900/30'
+    ? isDark ? 'border-success-500 focus:border-success-500 focus:ring-success-900/30' : 'border-success-500 focus:border-success-500 focus:ring-success-100'
     : isDark
     ? 'focus:border-primary-500 focus:ring-primary-900/30'
     : 'focus:border-primary-500 focus:ring-primary-100';
@@ -293,7 +293,7 @@ const Input = forwardRef(({
         {error && (
           <p
             id={errorId}
-            className="text-sm text-danger-600 dark:text-danger-400 flex items-center gap-1"
+            className={cn('text-sm flex items-center gap-1', isDark ? 'text-danger-400' : 'text-danger-600')}
             role="alert"
           >
             <AlertCircle size={14} className="flex-shrink-0" aria-hidden="true" />
@@ -402,8 +402,8 @@ export const Textarea = forwardRef(({
     'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
-    'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',
-    'placeholder:text-gray-400 dark:placeholder:text-slate-500',
+    isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
+    isDark ? 'placeholder:text-slate-500' : 'placeholder:text-gray-400',
     !resize && 'resize-none'
   );
 
@@ -545,7 +545,7 @@ export const Select = forwardRef(({
     'text-sm sm:text-sm',
     'transition-all duration-200',
     'focus:outline-none focus:ring-2 focus:ring-offset-0',
-    'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-slate-800',
+    isDark ? 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800' : 'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50',
     'appearance-none cursor-pointer'
   );
 

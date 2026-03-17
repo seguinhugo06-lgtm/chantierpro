@@ -391,12 +391,12 @@ export default function SmartTemplateWizard({
                     <span className="text-xl">{SMART_TEMPLATES[expandedMetier].icon}</span>
                     <span className={`font-semibold ${textPrimary}`}>{SMART_TEMPLATES[expandedMetier].nom}</span>
                     {SMART_TEMPLATES[expandedMetier].creditImpot && (
-                      <span className="ml-auto px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400">
+                      <span className={`ml-auto px-2 py-0.5 rounded-full text-xs ${isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'}`}>
                         Credit impot 50%
                       </span>
                     )}
                   </div>
-                  <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                  <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
                     {getMissions(expandedMetier).map((mission) => (
                       <button
                         key={mission.id}
@@ -405,7 +405,7 @@ export default function SmartTemplateWizard({
                       >
                         <div className="flex-1">
                           <p className={`text-sm font-medium ${textPrimary}`}>{mission.nom}</p>
-                          <p className="text-xs text-orange-600 dark:text-orange-400 font-medium mt-0.5">
+                          <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
                             {formatPriceRange(mission)}
                           </p>
                         </div>
@@ -502,7 +502,7 @@ export default function SmartTemplateWizard({
               {SMART_TEMPLATES[selectedMetier?.id]?.creditImpot && (
                 <div className={`p-3 rounded-xl flex items-center gap-3 ${isDark ? 'bg-green-900/30' : 'bg-green-50'}`}>
                   <Leaf className="w-5 h-5 text-green-600" />
-                  <p className="text-sm text-green-700 dark:text-green-400">
+                  <p className={`text-sm ${isDark ? 'text-green-400' : 'text-green-700'}`}>
                     <strong>Credit d'impot 50%</strong> - Service a la personne
                   </p>
                 </div>

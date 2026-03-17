@@ -273,7 +273,7 @@ export default function DevisExpressModal({
         <div className={`p-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             {step > 1 && (
-              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textSecondary}`}>
+              <button onClick={handleBack} aria-label="Retour" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900' : ''} ${bgHover} ${textSecondary}`}>
                 <ChevronLeft size={20} />
               </button>
             )}
@@ -290,7 +290,7 @@ export default function DevisExpressModal({
               </p>
             </div>
           </div>
-          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${bgHover} ${textMuted}`}>
+          <button onClick={handleClose} aria-label="Fermer" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'focus-visible:ring-offset-slate-900' : ''} ${bgHover} ${textMuted}`}>
             <X size={20} />
           </button>
         </div>
@@ -745,7 +745,7 @@ export default function DevisExpressModal({
           <div className={`p-4 border-t ${borderColor}`}>
             {/* Error message */}
             {creationError && (
-              <div className="mb-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-start gap-2">
+              <div className={`mb-3 p-3 rounded-xl border text-sm flex items-start gap-2 ${isDark ? 'bg-red-900/30 border-red-800 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
                 <X size={16} className="shrink-0 mt-0.5" />
                 <span>{creationError}</span>
               </div>

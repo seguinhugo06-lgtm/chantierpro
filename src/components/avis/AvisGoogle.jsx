@@ -75,7 +75,7 @@ function ConfigPanel({ config, setConfig, isDark, onClose }) {
         <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
           Configuration Google Avis
         </h3>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
+        <button onClick={onClose} className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
           <X size={18} className="text-slate-400" />
         </button>
       </div>
@@ -186,7 +186,7 @@ function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, 
         </div>
         <div className="flex items-center gap-2">
           {isSent ? (
-            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+            <span className={`flex items-center gap-1 text-xs font-medium ${isDark ? 'text-green-400' : 'text-green-600'}`}>
               <CheckCircle size={14} />
               Envoyé
             </span>
@@ -232,7 +232,7 @@ function AvisRequestCard({ chantier, client, avisData, config, isDark, couleur, 
               onClick={handleCopy}
               className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-colors ${
                 copied
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  ? (isDark ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700')
                   : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -369,7 +369,7 @@ export default function AvisGoogle({ chantiers = [], clients = [], entreprise = 
             </p>
             <button
               onClick={() => setShowConfig(true)}
-              className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400 hover:underline"
+              className={`mt-2 text-xs font-medium hover:underline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}
             >
               Configurer maintenant
             </button>

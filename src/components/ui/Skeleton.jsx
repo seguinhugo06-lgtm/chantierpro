@@ -13,7 +13,7 @@ export const Skeleton = React.forwardRef(
       <div
         ref={ref}
         className={cn(
-          'animate-pulse bg-gray-200 dark:bg-slate-700',
+          'animate-pulse bg-gray-200',
           variants[variant],
           className
         )}
@@ -62,7 +62,7 @@ export const SkeletonAvatar = ({ size = 'md', className }) => {
 SkeletonAvatar.displayName = 'SkeletonAvatar';
 
 export const SkeletonCard = ({ className }) => (
-  <div className={cn('p-4 rounded-xl border border-gray-200 dark:border-slate-700', className)}>
+  <div className={cn('p-4 rounded-xl border border-gray-200', className)}>
     <div className="flex items-center gap-4 mb-4">
       <SkeletonAvatar />
       <div className="flex-1 space-y-2">
@@ -79,7 +79,7 @@ SkeletonCard.displayName = 'SkeletonCard';
 export const SkeletonTable = ({ rows = 5, columns = 4, className }) => (
   <div className={cn('space-y-3', className)}>
     {/* Header */}
-    <div className="flex gap-4 pb-3 border-b border-gray-200 dark:border-slate-700">
+    <div className="flex gap-4 pb-3 border-b border-gray-200">
       {Array.from({ length: columns }).map((_, i) => (
         <Skeleton key={i} className="h-4 flex-1" />
       ))}

@@ -27,10 +27,10 @@ function formatDaysRemaining(days) {
 }
 
 function getDaysRemainingColor(days) {
-  if (days <= 0) return 'text-red-600 dark:text-red-400';
-  if (days <= 30) return 'text-red-500 dark:text-red-400';
-  if (days <= 60) return 'text-orange-600 dark:text-orange-400';
-  return 'text-orange-500 dark:text-orange-400';
+  if (days <= 0) return 'text-red-600';
+  if (days <= 30) return 'text-red-500';
+  if (days <= 60) return 'text-orange-600';
+  return 'text-orange-500';
 }
 
 // ── Urgent Warranty Item ────────────────────────────────────────────────────────

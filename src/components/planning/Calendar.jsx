@@ -199,11 +199,11 @@ function RescheduleModal({
       <ModalBody>
         <div className="space-y-4">
           {/* Chantier info */}
-          <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
-            <p className="font-medium text-gray-900 dark:text-white">
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="font-medium text-gray-900">
               {chantier.nom}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500">
               {chantier.client_nom}
             </p>
           </div>
@@ -211,14 +211,14 @@ function RescheduleModal({
           {/* New dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nouvelle date debut</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs text-gray-500 mb-1">Nouvelle date debut</p>
+              <p className="text-sm font-medium text-gray-900">
                 {formatDate(newStart)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nouvelle date fin</p>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs text-gray-500 mb-1">Nouvelle date fin</p>
+              <p className="text-sm font-medium text-gray-900">
                 {formatDate(newEnd)}
               </p>
             </div>
@@ -226,19 +226,19 @@ function RescheduleModal({
 
           {/* Conflicts warning */}
           {conflicts && conflicts.length > 0 && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                  <p className="text-sm font-medium text-red-800">
                     Conflit detecte !
                   </p>
-                  <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+                  <p className="text-xs text-red-600 mt-1">
                     {conflicts.length} chantier{conflicts.length > 1 ? 's' : ''} utilise{conflicts.length > 1 ? 'nt' : ''} la meme equipe sur cette periode :
                   </p>
                   <ul className="mt-2 space-y-1">
                     {conflicts.map((c) => (
-                      <li key={c.id} className="text-xs text-red-600 dark:text-red-300">
+                      <li key={c.id} className="text-xs text-red-600">
                         • {c.nom} ({c.client_nom})
                       </li>
                     ))}
@@ -675,7 +675,7 @@ export default function Calendar({
       const isRainy = dayWeather?.rain > 0;
 
       return (
-        <div className={cn('w-full', isRainy && 'bg-amber-50 dark:bg-amber-900/10')}>
+        <div className={cn('w-full', isRainy && 'bg-amber-50')}>
           <div className="flex items-center justify-between p-1">
             <span className={cn(
               'text-sm font-medium',
@@ -724,7 +724,7 @@ export default function Calendar({
           <Button variant="outline" size="sm" onClick={handleNext}>
             <ChevronRight className="w-4 h-4" />
           </Button>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white ml-2 capitalize">
+          <h2 className="text-lg font-semibold text-gray-900 ml-2 capitalize">
             {dateRangeText}
           </h2>
         </div>
@@ -732,7 +732,7 @@ export default function Calendar({
         {/* View switcher & actions */}
         <div className="flex items-center gap-2">
           {/* View buttons */}
-          <div className="flex items-center p-1 bg-gray-100 dark:bg-slate-800 rounded-lg">
+          <div className="flex items-center p-1 bg-gray-100 rounded-lg">
             {['month', 'week', 'day'].map((v) => (
               <button
                 key={v}
@@ -740,8 +740,8 @@ export default function Calendar({
                 className={cn(
                   'px-3 py-1.5 text-sm font-medium rounded-md transition-all',
                   currentView === v
-                    ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 )}
               >
                 {v === 'month' ? 'Mois' : v === 'week' ? 'Semaine' : 'Jour'}
@@ -763,32 +763,32 @@ export default function Calendar({
       <div className="flex flex-wrap items-center gap-4 mb-4 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.planifie.bg }} />
-          <span className="text-gray-600 dark:text-gray-400">Planifie</span>
+          <span className="text-gray-600">Planifie</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.en_cours.bg }} />
-          <span className="text-gray-600 dark:text-gray-400">En cours</span>
+          <span className="text-gray-600">En cours</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.termine.bg }} />
-          <span className="text-gray-600 dark:text-gray-400">Termine</span>
+          <span className="text-gray-600">Termine</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.en_retard.bg }} />
-          <span className="text-gray-600 dark:text-gray-400">En retard</span>
+          <span className="text-gray-600">En retard</span>
         </div>
         <div className="flex items-center gap-1.5 ml-auto">
           <AlertTriangle className="w-3 h-3 text-red-500" />
-          <span className="text-gray-600 dark:text-gray-400">Conflit equipe</span>
+          <span className="text-gray-600">Conflit equipe</span>
         </div>
         <div className="flex items-center gap-1.5">
           <CloudRain className="w-3 h-3 text-amber-500" />
-          <span className="text-gray-600 dark:text-gray-400">Meteo pluie</span>
+          <span className="text-gray-600">Meteo pluie</span>
         </div>
       </div>
 
       {/* Calendar */}
-      <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="flex-1 min-h-0 bg-white rounded-lg border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
@@ -867,30 +867,30 @@ export function CalendarSkeleton() {
       {/* Header skeleton */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="h-9 w-9 bg-gray-200 dark:bg-slate-700 rounded" />
-          <div className="h-9 w-24 bg-gray-200 dark:bg-slate-700 rounded" />
-          <div className="h-9 w-9 bg-gray-200 dark:bg-slate-700 rounded" />
-          <div className="h-6 w-40 bg-gray-200 dark:bg-slate-700 rounded ml-2" />
+          <div className="h-9 w-9 bg-gray-200 rounded" />
+          <div className="h-9 w-24 bg-gray-200 rounded" />
+          <div className="h-9 w-9 bg-gray-200 rounded" />
+          <div className="h-6 w-40 bg-gray-200 rounded ml-2" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-9 w-48 bg-gray-200 dark:bg-slate-700 rounded" />
-          <div className="h-9 w-36 bg-gray-200 dark:bg-slate-700 rounded" />
+          <div className="h-9 w-48 bg-gray-200 rounded" />
+          <div className="h-9 w-36 bg-gray-200 rounded" />
         </div>
       </div>
 
       {/* Calendar skeleton */}
-      <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+      <div className="flex-1 bg-white rounded-lg border border-gray-200 p-4">
         {/* Days header */}
         <div className="grid grid-cols-7 gap-2 mb-4">
           {[...Array(7)].map((_, i) => (
-            <div key={i} className="h-8 bg-gray-100 dark:bg-slate-800 rounded" />
+            <div key={i} className="h-8 bg-gray-100 rounded" />
           ))}
         </div>
 
         {/* Calendar grid */}
         <div className="grid grid-cols-7 gap-2">
           {[...Array(35)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-50 dark:bg-slate-800 rounded" />
+            <div key={i} className="h-24 bg-gray-50 rounded" />
           ))}
         </div>
       </div>

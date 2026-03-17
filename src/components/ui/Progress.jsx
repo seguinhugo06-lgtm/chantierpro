@@ -40,11 +40,11 @@ export const Progress = React.forwardRef(
       <div className={cn('w-full', className)} ref={ref} {...props}>
         {(showLabel || label) && (
           <div className="flex justify-between items-center mb-1">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-sm font-medium text-gray-700">
               {label}
             </span>
             {showLabel && (
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <span className="text-sm font-medium text-gray-600">
                 {Math.round(percentage)}%
               </span>
             )}
@@ -52,7 +52,7 @@ export const Progress = React.forwardRef(
         )}
         <div
           className={cn(
-            'w-full rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden',
+            'w-full rounded-full bg-gray-200 overflow-hidden',
             sizeStyles[size]
           )}
           role="progressbar"
@@ -133,7 +133,7 @@ export const CircularProgress = React.forwardRef(
             cy={svgSize / 2}
             r={radius}
             fill="none"
-            className="stroke-gray-200 dark:stroke-slate-700"
+            className="stroke-gray-200"
             strokeWidth={actualStroke}
           />
           {/* Progress circle */}
@@ -151,7 +151,7 @@ export const CircularProgress = React.forwardRef(
           />
         </svg>
         {showLabel && (
-          <span className="absolute text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <span className="absolute text-sm font-semibold text-gray-700">
             {Math.round(percentage)}%
           </span>
         )}

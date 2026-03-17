@@ -36,15 +36,15 @@ function UsageBar({ resource, current, limit, icon: Icon, label, unit }) {
       : 'bg-emerald-500';
 
   const textColor = isDanger
-    ? 'text-red-600 dark:text-red-400'
+    ? 'text-red-600'
     : isWarning
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-slate-600 dark:text-slate-400';
+      ? 'text-amber-600'
+      : 'text-slate-600';
 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-1.5 text-slate-600">
           <Icon size={12} />
           <span>{label}</span>
         </div>
@@ -52,7 +52,7 @@ function UsageBar({ resource, current, limit, icon: Icon, label, unit }) {
           {current}{unit ? ` ${unit}` : ''} / {limit}{unit ? ` ${unit}` : ''}
         </span>
       </div>
-      <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColor}`}
           style={{ width: `${Math.min(100, percent)}%` }}
@@ -122,7 +122,7 @@ export default function UsageAlerts({ isDark, couleur }) {
 
       {/* Trial warning */}
       {isTrial && trialDays <= 3 && (
-        <div className="mb-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
+        <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
           ⏰ Votre essai se termine dans {trialDays} jour{trialDays > 1 ? 's' : ''}. Choisissez un plan pour continuer.
         </div>
       )}
@@ -149,7 +149,7 @@ export default function UsageAlerts({ isDark, couleur }) {
 
       {/* Upgrade nudge when close to limits */}
       {warnings.length > 0 && !isTrial && (
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+        <div className="mt-3 pt-3 border-t border-slate-100">
           <button
             onClick={() => openUpgradeModal()}
             className="w-full text-center text-xs text-orange-500 hover:text-orange-600 font-medium transition-colors"
@@ -179,7 +179,7 @@ export function UsageBadge() {
   if (atLimit === 0) return null;
 
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700">
       {atLimit} limite{atLimit > 1 ? 's' : ''} atteinte{atLimit > 1 ? 's' : ''}
     </span>
   );

@@ -143,8 +143,8 @@ const PlanLimitsWidget = memo(function PlanLimitsWidget({ isDark, couleur }) {
         {isTrial && (
           <div className={`mb-4 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
             daysLeft <= 3
-              ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-              : 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300'
+              ? 'bg-red-50 text-red-700'
+              : 'bg-orange-50 text-orange-700'
           }`}>
             <Sparkles size={14} />
             <span>

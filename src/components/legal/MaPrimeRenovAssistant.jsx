@@ -35,11 +35,11 @@ const LOGEMENT_TYPES = [
 const IDF_DEPARTMENTS = ['75', '77', '78', '91', '92', '93', '94', '95'];
 
 const STATUS_COLORS = {
-  en_preparation: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300', label: 'En préparation' },
-  depose: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-700 dark:text-blue-300', label: 'Déposé' },
-  en_instruction: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-700 dark:text-yellow-300', label: 'En instruction' },
-  accepte: { bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300', label: 'Accepté' },
-  refuse: { bg: 'bg-red-100 dark:bg-red-900', text: 'text-red-700 dark:text-red-300', label: 'Refusé' }
+  en_preparation: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'En préparation' },
+  depose: { bg: 'bg-blue-100', dark: 'bg-blue-900/30 text-blue-400', text: 'text-blue-700', label: 'Déposé' },
+  en_instruction: { bg: 'bg-yellow-100', dark: 'bg-yellow-900/30 text-yellow-400', text: 'text-yellow-700', label: 'En instruction' },
+  accepte: { bg: 'bg-green-100', dark: 'bg-green-900/30 text-green-400', text: 'text-green-700', label: 'Accepté' },
+  refuse: { bg: 'bg-red-100', dark: 'bg-red-900/30 text-red-400', text: 'text-red-700', label: 'Refusé' }
 };
 
 // ============ DEMO DATA ============
@@ -129,7 +129,7 @@ function StepProgress({ currentStep, steps, isDark }) {
         {steps.map(step => (
           <span key={step.id} className={`
             ${currentStep >= step.id
-              ? 'text-emerald-600 dark:text-emerald-400 font-medium'
+              ? 'text-emerald-600 font-medium'
               : isDark ? 'text-gray-500' : 'text-gray-400'}
           `}>
             {step.label}
@@ -145,10 +145,10 @@ function StepProgress({ currentStep, steps, isDark }) {
  */
 function Alert({ type, message, onClose, isDark }) {
   const styles = {
-    error: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300',
-    warning: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300',
-    success: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300',
-    info: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+    error: 'bg-red-50 border-red-200 text-red-700',
+    warning: 'bg-yellow-50 border-yellow-200 text-yellow-700',
+    success: 'bg-green-50 border-green-200 text-green-700',
+    info: 'bg-blue-50 border-blue-200 text-blue-700'
   };
 
   const icons = {
@@ -231,7 +231,7 @@ function EligibilityStep({ data, onChange, errors, isDark }) {
               key={type.value}
               className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                 data.typeLogement === type.value
-                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                  ? 'border-emerald-500 bg-emerald-50'
                   : isDark
                     ? 'border-gray-600 hover:border-gray-500'
                     : 'border-gray-200 hover:border-gray-300'
@@ -250,9 +250,9 @@ function EligibilityStep({ data, onChange, errors, isDark }) {
                 {type.note && <span className="text-xs ml-2 text-gray-500">({type.note})</span>}
               </span>
               {type.eligible ? (
-                <span className="text-xs text-green-600 dark:text-green-400">Éligible</span>
+                <span className="text-xs text-green-600">Éligible</span>
               ) : (
-                <span className="text-xs text-red-600 dark:text-red-400">Non éligible</span>
+                <span className="text-xs text-red-600">Non éligible</span>
               )}
             </label>
           ))}
@@ -278,7 +278,7 @@ function EligibilityStep({ data, onChange, errors, isDark }) {
           } focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500`}
         />
         {isIDF && (
-          <p className="mt-1 text-sm text-blue-600 dark:text-blue-400">
+          <p className="mt-1 text-sm text-blue-600">
             📍 Île-de-France détectée (plafonds spécifiques)
           </p>
         )}
@@ -442,7 +442,7 @@ function TravauxStep({ data, onChange, category, isDark }) {
                   key={key}
                   className={`p-4 rounded-lg border transition-all ${
                     isSelected
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                      ? 'border-emerald-500 bg-emerald-50'
                       : isDark
                         ? 'border-gray-600 hover:border-gray-500'
                         : 'border-gray-200 hover:border-gray-300'
@@ -497,7 +497,7 @@ function TravauxStep({ data, onChange, category, isDark }) {
                             </span>
                           </div>
                           <div className="flex-1 text-right">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                            <span className="text-emerald-600 font-semibold">
                               Aide estimée : {formatCurrency(aideEstimee)}
                             </span>
                           </div>
@@ -528,7 +528,7 @@ function TravauxStep({ data, onChange, category, isDark }) {
           <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Total aide estimée :
           </span>
-          <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+          <span className="text-2xl font-bold text-emerald-600">
             {formatCurrency(totalAide)}
           </span>
         </div>
@@ -562,7 +562,7 @@ function RGEStep({ company, isDark, isDemo }) {
           <div className="flex items-start gap-4">
             <div className="text-4xl">✅</div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">
+              <h3 className="text-lg font-semibold text-green-700">
                 Votre entreprise est certifiée RGE
               </h3>
               <p className={`mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -577,7 +577,7 @@ function RGEStep({ company, isDark, isDemo }) {
                   <span className="font-medium">Valide jusqu'au:</span>{' '}
                   {new Date(company.rge_validite).toLocaleDateString('fr-FR')}
                   {expiresIn < 90 && (
-                    <span className="ml-2 text-yellow-600 dark:text-yellow-400">
+                    <span className="ml-2 text-yellow-600">
                       (expire dans {expiresIn} jours)
                     </span>
                   )}
@@ -621,7 +621,7 @@ function RGEStep({ company, isDark, isDemo }) {
           <div className="flex items-start gap-4">
             <div className="text-4xl">❌</div>
             <div>
-              <h3 className="text-lg font-semibold text-red-700 dark:text-red-400">
+              <h3 className="text-lg font-semibold text-red-700">
                 Certification RGE requise
               </h3>
               <p className={`mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -635,7 +635,7 @@ function RGEStep({ company, isDark, isDemo }) {
                   href="https://www.qualit-enr.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                  className="text-blue-600 hover:underline text-sm"
                 >
                   → Comment obtenir la certification RGE
                 </a>
@@ -644,7 +644,7 @@ function RGEStep({ company, isDark, isDemo }) {
                   href="https://www.qualibat.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                  className="text-blue-600 hover:underline text-sm"
                 >
                   → Qualibat - Organisme de certification
                 </a>
@@ -808,7 +808,7 @@ function DevisStep({ data, onChange, company, category, isDark, onGenerateDevis 
         </div>
 
         <div className={`pt-4 border-t ${isDark ? 'border-gray-600' : 'border-gray-200'}`}>
-          <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="flex justify-between font-semibold text-emerald-600">
             <span>Total aide MaPrimeRénov' estimée</span>
             <span>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(totalAide)}</span>
           </div>
@@ -834,7 +834,7 @@ function DevisStep({ data, onChange, company, category, isDark, onGenerateDevis 
         disabled={generating || !clientInfo.nom || !clientInfo.email}
         className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
           generating || !clientInfo.nom || !clientInfo.email
-            ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
             : 'bg-emerald-500 hover:bg-emerald-600 text-white'
         }`}
       >
@@ -895,7 +895,7 @@ function DocumentsStep({ data, company, category, isDark, onSendEmail, onComplet
         <div className="flex items-center gap-3">
           <span className="text-3xl">🎉</span>
           <div>
-            <p className="font-semibold text-green-700 dark:text-green-400">
+            <p className="font-semibold text-green-700">
               Dossier MaPrimeRénov' prêt !
             </p>
             <p className={`text-sm ${isDark ? 'text-green-300' : 'text-green-600'}`}>
@@ -923,7 +923,7 @@ function DocumentsStep({ data, company, category, isDark, onSendEmail, onComplet
                 <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {doc.label}
                 </p>
-                <p className={`text-sm ${doc.ready ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                <p className={`text-sm ${doc.ready ? 'text-green-600' : 'text-yellow-600'}`}>
                   {doc.ready ? '✓ Prêt' : '⏳ En attente'}
                 </p>
               </div>
@@ -934,7 +934,7 @@ function DocumentsStep({ data, company, category, isDark, onSendEmail, onComplet
                   ? isDark
                     ? 'bg-gray-600 text-white hover:bg-gray-500'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-300 text-gray-400 cursor-not-allowed'
               }`}
               disabled={!doc.ready}
             >
@@ -982,7 +982,7 @@ function DocumentsStep({ data, company, category, isDark, onSendEmail, onComplet
             sent
               ? 'bg-green-500 text-white cursor-default'
               : sending
-                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-500 hover:bg-blue-600 text-white'
           }`}
         >

@@ -81,26 +81,26 @@ export default function UpgradeModal() {
       />
 
       {/* Modal — slides up on mobile */}
-      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_300ms_ease-out]">
+      <div className="relative w-full max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_300ms_ease-out]">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="px-6 pt-6 pb-4 border-b border-slate-200">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
                 <Lock size={20} className="text-orange-500" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                <h2 className="text-xl font-bold text-slate-900">
                   {context.title}
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-500 mt-0.5">
                   {context.subtitle}
                 </p>
               </div>
             </div>
             <button
               onClick={closeUpgradeModal}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
             >
               <X size={18} />
             </button>
@@ -112,9 +112,9 @@ export default function UpgradeModal() {
           {/* Current plan indicator */}
           {currentPlanId === 'gratuit' && (
             <div className="sm:col-span-full mb-2">
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
                 <CurIcon size={14} style={{ color: currentPlan.color }} />
-                <span>Plan actuel : <strong className="text-slate-700 dark:text-slate-300">{currentPlan.name}</strong></span>
+                <span>Plan actuel : <strong className="text-slate-700">{currentPlan.name}</strong></span>
                 {currentPlan.priceMonthly === 0 && <span>— Gratuit</span>}
               </div>
             </div>
@@ -133,8 +133,8 @@ export default function UpgradeModal() {
                 key={plan.id}
                 className={`rounded-xl border-2 p-5 relative transition-all ${
                   isRecommended
-                    ? 'border-orange-300 dark:border-orange-600 shadow-sm'
-                    : 'border-slate-200 dark:border-slate-700'
+                    ? 'border-orange-300 shadow-sm'
+                    : 'border-slate-200'
                 }`}
               >
                 {isRecommended && (
@@ -171,7 +171,7 @@ export default function UpgradeModal() {
                     </p>
                   )}
                   {billing === 'yearly' && (
-                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700">
                       Economisez {YEARLY_DISCOUNT}%
                     </span>
                   )}
@@ -181,9 +181,9 @@ export default function UpgradeModal() {
                     <li key={i} className="flex items-center gap-2 text-xs">
                       <Check size={14} className="text-green-500 flex-shrink-0" />
                       <span
-                        className={`text-slate-600 dark:text-slate-300 ${
+                        className={`text-slate-600 ${
                           context.highlight && f.name.toLowerCase().includes(context.highlight.replace('_', ' '))
-                            ? 'font-semibold text-orange-600 dark:text-orange-400'
+                            ? 'font-semibold text-orange-600'
                             : ''
                         }`}
                       >
@@ -223,16 +223,16 @@ export default function UpgradeModal() {
 
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-3 px-6 py-2">
-          <span className={`text-xs font-medium ${billing === 'monthly' ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+          <span className={`text-xs font-medium ${billing === 'monthly' ? 'text-slate-900' : 'text-slate-400'}`}>
             Mensuel
           </span>
           <button
             onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-            className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+            className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300'}`}
           >
             <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
-          <span className={`text-xs font-medium ${billing === 'yearly' ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+          <span className={`text-xs font-medium ${billing === 'yearly' ? 'text-slate-900' : 'text-slate-400'}`}>
             Annuel
           </span>
         </div>
@@ -241,7 +241,7 @@ export default function UpgradeModal() {
         <div className="px-6 pb-6 mt-2">
           <button
             onClick={closeUpgradeModal}
-            className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition-colors"
+            className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 underline transition-colors"
           >
             Plus tard
           </button>

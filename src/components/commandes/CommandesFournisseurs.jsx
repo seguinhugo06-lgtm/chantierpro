@@ -616,7 +616,7 @@ export default function CommandesFournisseurs({
                           )}
                           <button
                             onClick={() => handleDelete(cmd.id)}
-                            className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
                             title="Supprimer"
                           >
                             <Trash2 size={16} />
@@ -906,7 +906,7 @@ export default function CommandesFournisseurs({
                       </div>
                       <button
                         onClick={() => removeLigne(ligne.id)}
-                        className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-colors mt-0.5"
+                        className="p-1.5 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors mt-0.5"
                         title="Supprimer la ligne"
                       >
                         <Trash2 size={14} />
@@ -1025,7 +1025,7 @@ export default function CommandesFournisseurs({
               <div className="flex items-center gap-2 mt-1">
                 <StatutBadge statut={cmd.statut} />
                 {isLate && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                     <AlertTriangle size={12} />
                     En retard
                   </span>
@@ -1097,7 +1097,7 @@ export default function CommandesFournisseurs({
             {cmd.statut !== 'annulee' && cmd.statut !== 'livree' && (
               <button
                 onClick={() => handleStatusChange(cmd, 'annulee')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 text-red-600 dark:border-red-700 dark:text-red-400 text-sm font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 text-red-600 text-sm font-medium transition-colors hover:bg-red-50"
               >
                 <XCircle size={14} />
                 Annuler
@@ -1105,7 +1105,7 @@ export default function CommandesFournisseurs({
             )}
             <button
               onClick={() => handleDelete(cmd.id)}
-              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
               title="Supprimer"
             >
               <Trash2 size={16} />

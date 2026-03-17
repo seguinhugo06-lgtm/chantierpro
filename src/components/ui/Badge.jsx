@@ -2,15 +2,15 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 
 // WCAG AA compliant variant styles
-const variantStyles = {
-  default: 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-slate-700 dark:text-gray-100 dark:border-slate-600',
-  secondary: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700 dark:text-gray-200 dark:border-slate-600',
-  success: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800',
-  warning: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800',
-  danger: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
-  info: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-  primary: 'bg-primary-100 text-primary-800 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-800',
-};
+const getVariantStyles = (isDark) => ({
+  default: isDark ? 'bg-slate-700 text-gray-100 border-slate-600' : 'bg-gray-100 text-gray-800 border-gray-200',
+  secondary: isDark ? 'bg-slate-700 text-gray-200 border-slate-600' : 'bg-gray-100 text-gray-700 border-gray-200',
+  success: isDark ? 'bg-green-900/30 text-green-300 border-green-800' : 'bg-green-100 text-green-800 border-green-200',
+  warning: isDark ? 'bg-orange-900/30 text-orange-300 border-orange-800' : 'bg-orange-100 text-orange-800 border-orange-200',
+  danger: isDark ? 'bg-red-900/30 text-red-300 border-red-800' : 'bg-red-100 text-red-800 border-red-200',
+  info: isDark ? 'bg-blue-900/30 text-blue-300 border-blue-800' : 'bg-blue-100 text-blue-800 border-blue-200',
+  primary: isDark ? 'bg-primary-900/30 text-primary-300 border-primary-800' : 'bg-primary-100 text-primary-800 border-primary-200',
+});
 
 // WCAG AA compliant dot colors
 const dotColors = {
@@ -36,11 +36,13 @@ export const Badge = React.forwardRef(
       size = 'sm',
       dot = false,
       pill = true,
+      isDark = false,
       children,
       ...props
     },
     ref
   ) => {
+    const variantStyles = getVariantStyles(isDark);
     return (
       <span
         ref={ref}

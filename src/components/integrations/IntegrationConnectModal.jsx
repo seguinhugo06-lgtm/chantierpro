@@ -252,7 +252,7 @@ const IntegrationConnectModal = memo(function IntegrationConnectModal({
 
           {/* Error message */}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl">
+            <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-3 rounded-xl">
               <AlertCircle size={16} />
               {error}
             </div>

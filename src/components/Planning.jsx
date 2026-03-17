@@ -942,7 +942,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                   </div>
                 )}
-                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <div className={`divide-y ${isDark ? 'divide-slate-700/50' : 'divide-slate-100'}`}>
                   {HOURS.map(hour => {
                     const hourStr = `${String(hour).padStart(2, '0')}:00`;
                     const hourEvents = timedOnlyEvts.filter(ev => {

@@ -48,17 +48,15 @@ function KPICard({ label, value, icon: Icon, color, isDark, modeDiscret }) {
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG = {
-  rapproche: { label: 'Rapproché', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-  suggere: { label: 'Suggéré', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: AlertTriangle },
-  ignore: { label: 'Ignoré', color: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400', icon: XCircle },
-  non_rapproche: { label: 'Non rapproché', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400', icon: Eye },
+  rapproche: { label: 'Rapproché', color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  suggere: { label: 'Suggéré', color: 'bg-amber-100 text-amber-700', icon: AlertTriangle },
+  ignore: { label: 'Ignoré', color: 'bg-slate-100 text-slate-500', icon: XCircle },
+  non_rapproche: { label: 'Non rapproché', color: 'bg-blue-50 text-blue-600', icon: Eye },
 };
 
 function StatusBadge({ statut, isDark }) {
   const config = STATUS_CONFIG[statut] || STATUS_CONFIG.non_rapproche;
-  const colorClass = isDark
-    ? config.color.split(' ').filter(c => c.startsWith('dark:')).map(c => c.replace('dark:', '')).join(' ')
-    : config.color.split(' ').filter(c => !c.startsWith('dark:')).join(' ');
+  const colorClass = config.color;
 
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
@@ -389,15 +387,15 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
 
         {/* Stats badges */}
         <div className={`hidden sm:flex items-center gap-2 text-xs ${tc.textMuted}`}>
-          <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+          <span className="px-2 py-1 rounded-full bg-green-100 text-green-700">
             {stats.rapproches} rapprochées
           </span>
           {stats.suggeres > 0 && (
-            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700">
               {stats.suggeres} à vérifier
             </span>
           )}
-          <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+          <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-600">
             {stats.nonRapproches} en attente
           </span>
         </div>
@@ -609,7 +607,7 @@ export default function BankModule({ devis, depenses, clients, entreprise, paiem
                                 )}
                                 <button
                                   onClick={() => { deleteTransaction(tx.id); setActionMenuTxId(null); }}
-                                  className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500"
+                                  className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-red-50 text-red-500"
                                 >
                                   <Trash2 size={12} />
                                   Supprimer

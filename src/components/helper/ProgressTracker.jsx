@@ -217,7 +217,7 @@ export default function ProgressTracker({
                   <span
                     className={`font-medium ${
                       isCompleted
-                        ? 'text-green-600 dark:text-green-400'
+                        ? 'text-green-600'
                         : isDark
                         ? 'text-white'
                         : 'text-gray-900'

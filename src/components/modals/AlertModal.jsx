@@ -20,25 +20,25 @@ export default function AlertModal({
   const typeConfig = {
     info: {
       icon: Info,
-      bgColor: 'bg-primary-100 dark:bg-primary-900/30',
+      bgColor: 'bg-primary-100',
       iconColor: 'text-primary-500',
       buttonColor: 'bg-primary-500 hover:bg-primary-600'
     },
     warning: {
       icon: AlertTriangle,
-      bgColor: 'bg-warning-100 dark:bg-warning-900/30',
+      bgColor: 'bg-warning-100',
       iconColor: 'text-warning-500',
       buttonColor: 'bg-warning-500 hover:bg-warning-600'
     },
     error: {
       icon: XCircle,
-      bgColor: 'bg-danger-100 dark:bg-danger-900/30',
+      bgColor: 'bg-danger-100',
       iconColor: 'text-danger-500',
       buttonColor: 'bg-danger-500 hover:bg-danger-600'
     },
     success: {
       icon: CheckCircle,
-      bgColor: 'bg-success-100 dark:bg-success-900/30',
+      bgColor: 'bg-success-100',
       iconColor: 'text-success-500',
       buttonColor: 'bg-success-500 hover:bg-success-600'
     }
@@ -54,11 +54,11 @@ export default function AlertModal({
           <Icon size={24} className={config.iconColor} />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-slate-900">
             {title}
           </h3>
           {message && (
-            <p className="mt-2 text-slate-600 dark:text-slate-300">
+            <p className="mt-2 text-slate-600">
               {message}
             </p>
           )}

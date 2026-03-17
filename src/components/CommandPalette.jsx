@@ -442,7 +442,7 @@ export default function CommandPalette({
               {query && (
                 <button
                   onClick={() => setQuery('')}
-                  className={`p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 ${textMuted}`}
+                  className={`p-1 rounded-md hover:bg-slate-100 ${textMuted}`}
                 >
                   <X size={18} />
                 </button>
@@ -486,7 +486,7 @@ export default function CommandPalette({
                       exit={{ opacity: 0, x: 10 }}
                       transition={{ duration: 0.1, delay: Math.min(currentIndex * 0.02, 0.1) }}
                       className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2.5 mx-1 rounded-xl transition-colors ${
-                        isSelected ? selectedBg : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                        isSelected ? selectedBg : 'hover:bg-slate-50/50'
                       }`}
                       style={isSelected ? { backgroundColor: isDark ? '#334155' : '#f1f5f9' } : {}}
                       onMouseEnter={() => setSelectedIndex(currentIndex)}

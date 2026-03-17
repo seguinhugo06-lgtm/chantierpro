@@ -269,7 +269,7 @@ function MiniDonut({ data, size = 48, thickness = 6, tooltip }) {
 
       {/* Center percentage */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+        <span className="text-[10px] font-bold text-gray-500">
           {percentage}%
         </span>
       </div>
@@ -281,13 +281,13 @@ function MiniDonut({ data, size = 48, thickness = 6, tooltip }) {
           className="
             absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2
             px-3 py-2 text-xs font-medium
-            text-white bg-gray-900 dark:bg-gray-700
+            text-white bg-gray-900
             rounded-lg shadow-lg whitespace-nowrap
             animate-fade-in
           "
         >
           {tooltip}
-          <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900 dark:border-l-gray-700" />
+          <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-900" />
         </div>
       )}
     </div>
@@ -317,13 +317,13 @@ function Tooltip({ content, children }) {
           className="
             absolute z-50 left-full ml-2 top-1/2 -translate-y-1/2
             px-3 py-2 text-xs font-medium
-            text-white bg-gray-900 dark:bg-gray-700
+            text-white bg-gray-900
             rounded-lg shadow-lg whitespace-nowrap
             animate-fade-in
           "
         >
           {content}
-          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
         </div>
       )}
     </div>

@@ -450,7 +450,7 @@ function NotificationDropdown({
                   onClick={() => onNotificationClick(notification)}
                   className={cn(
                     'w-full px-4 py-3 flex items-start gap-3 text-left transition-colors',
-                    'hover:bg-gray-50 dark:hover:bg-slate-700',
+                    'hover:bg-gray-50',
                     !notification.read && (isDark ? 'bg-slate-700/50' : 'bg-primary-50/50')
                   )}
                   role="menuitem"
@@ -509,7 +509,7 @@ function NotificationDropdown({
             onClick={onClose}
             className={cn(
               'w-full text-center text-sm font-medium py-2 rounded-lg transition-colors',
-              'text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+              'text-primary-600 hover:bg-primary-50'
             )}
           >
             Voir toutes les notifications
@@ -612,7 +612,7 @@ function UserMenuDropdown({
               className={cn(
                 'w-full px-4 py-2.5 flex items-center gap-3 text-left transition-colors',
                 item.variant === 'danger'
-                  ? 'text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/20'
+                  ? 'text-danger-600 hover:bg-danger-50'
                   : isDark
                   ? 'text-gray-300 hover:bg-slate-700'
                   : 'text-gray-700 hover:bg-gray-50',

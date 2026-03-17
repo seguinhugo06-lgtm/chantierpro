@@ -204,7 +204,7 @@ export function BuyerProposalModal({
               <label className={cn(
                 'flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors',
                 modeRetrait === 'pickup'
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  ? 'border-primary-500 bg-primary-50'
                   : isDark ? 'border-slate-600 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-50'
               )}>
                 <input
@@ -226,7 +226,7 @@ export function BuyerProposalModal({
                 <label className={cn(
                   'flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors',
                   modeRetrait === 'delivery'
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                    ? 'border-primary-500 bg-primary-50'
                     : isDark ? 'border-slate-600 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-50'
                 )}>
                   <input

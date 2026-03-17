@@ -29,27 +29,27 @@ import { Button } from './Button';
  * @property {React.ReactNode} [icon] - Custom icon
  */
 
-// Variant configurations
-const variantConfig = {
+// Variant configurations (isDark-aware)
+const getVariantConfig = (isDark) => ({
   danger: {
     icon: AlertTriangle,
-    iconBg: 'bg-red-100 dark:bg-red-900/30',
-    iconColor: 'text-red-600 dark:text-red-400',
+    iconBg: isDark ? 'bg-red-900/30' : 'bg-red-100',
+    iconColor: isDark ? 'text-red-400' : 'text-red-600',
     confirmVariant: 'danger',
   },
   warning: {
     icon: AlertCircle,
-    iconBg: 'bg-amber-100 dark:bg-amber-900/30',
-    iconColor: 'text-amber-600 dark:text-amber-400',
+    iconBg: isDark ? 'bg-amber-900/30' : 'bg-amber-100',
+    iconColor: isDark ? 'text-amber-400' : 'text-amber-600',
     confirmVariant: 'primary',
   },
   info: {
     icon: Info,
-    iconBg: 'bg-blue-100 dark:bg-blue-900/30',
-    iconColor: 'text-blue-600 dark:text-blue-400',
+    iconBg: isDark ? 'bg-blue-900/30' : 'bg-blue-100',
+    iconColor: isDark ? 'text-blue-400' : 'text-blue-600',
     confirmVariant: 'primary',
   },
-};
+});
 
 /**
  * ActionConfirmModal - Confirmation dialog for actions
@@ -78,8 +78,10 @@ export function ActionConfirmModal({
   variant = 'danger',
   isLoading = false,
   icon: customIcon,
+  isDark = false,
 }) {
   const [loading, setLoading] = React.useState(false);
+  const variantConfig = getVariantConfig(isDark);
   const config = variantConfig[variant] || variantConfig.danger;
   const IconComponent = customIcon || config.icon;
 
@@ -128,10 +130,10 @@ export function ActionConfirmModal({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            <h3 className={cn('text-lg font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
               {title}
             </h3>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
               {typeof message === 'string' ? <p>{message}</p> : message}
             </div>
           </div>
@@ -229,11 +231,11 @@ export function ConvertConfirmModal({
             Le devis <strong>{devisNumber}</strong> sera converti en facture.
           </p>
           {devisMontant && (
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-500">
               Montant : <strong>{devisMontant}</strong>
             </p>
           )}
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 mt-2">
             Le devis sera marqué comme accepté.
           </p>
         </div>

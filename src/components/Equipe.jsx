@@ -1701,7 +1701,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/40">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-emerald-900/40' : 'bg-emerald-100'}`}>
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
                 Équipe active maintenant
@@ -2038,7 +2038,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   return (
                     <motion.div
                       key={e.id}
-                      className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl hover:border-slate-300 dark:hover:border-slate-500 transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
+                      className={`${cardBg} rounded-2xl border shadow-sm overflow-hidden group hover:shadow-xl ${isDark ? 'hover:border-slate-500' : 'hover:border-slate-300'} transition-all ${isCurrentlyTiming ? 'ring-2' : ''}`}
                       style={isCurrentlyTiming ? { ringColor: couleur } : {}}
                       initial={{ opacity: 0.7, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2219,15 +2219,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <div className="flex flex-wrap gap-1.5 mt-3">
                               {e.decennale_expiration ? (
                                 new Date(e.decennale_expiration) < new Date()
-                                  ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Décennale expirée</span>
+                                  ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'}`}>Décennale expirée</span>
                                   : new Date(e.decennale_expiration) < new Date(Date.now() + 30 * 24 * 3600 * 1000)
-                                    ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Décennale expire bientôt</span>
-                                    : <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Décennale OK</span>
+                                    ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Décennale expire bientôt</span>
+                                    : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Décennale OK</span>
                               ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>Décennale ?</span>}
                               {e.urssaf_date ? (
                                 (Date.now() - new Date(e.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000
-                                  ? <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">URSSAF &gt;6 mois</span>
-                                  : <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">URSSAF OK</span>
+                                  ? <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>URSSAF &gt;6 mois</span>
+                                  : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>URSSAF OK</span>
                               ) : <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>URSSAF ?</span>}
                             </div>
                           </>
@@ -2892,11 +2892,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <td className={`px-4 py-3 text-sm text-right font-bold ${textPrimary}`}>{p.heures}h</td>
                               <td className="px-4 py-3 text-center">
                                 {p.verrouille ? (
-                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Verrouillé</span>
+                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>Verrouillé</span>
                                 ) : p.approuve ? (
-                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Validé</span>
+                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Validé</span>
                                 ) : (
-                                  <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">En attente</span>
+                                  <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>En attente</span>
                                 )}
                               </td>
                             </tr>
@@ -4376,7 +4376,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className={`p-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <h3 className={`font-semibold ${textPrimary}`}>Détail des coûts par sous-traitant</h3>
               </div>
-              <div className="divide-y divide-slate-200 dark:divide-slate-700">
+              <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-slate-200'}`}>
                 {sousTraitantsList.length === 0 ? (
                   <div className="p-8 text-center">
                     <UserCheck size={40} className={`mx-auto mb-3 ${textMuted} opacity-40`} />
@@ -4388,7 +4388,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   const expired = st.decennale_expiration && new Date(st.decennale_expiration) < new Date();
                   const urssafOld = st.urssaf_date && (Date.now() - new Date(st.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000;
                   return (
-                    <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors`}>
+                    <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-slate-50'} transition-colors`}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-sm">
                           {st.nom?.[0]}{st.prenom?.[0] || ''}
@@ -4403,16 +4403,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {st.tarif_type === 'forfait' && st.tarif_forfait ? `${parseFloat(st.tarif_forfait).toLocaleString('fr-FR')} € forfait` : `${st.tauxHoraire || '?'} €/h`}
                         </span>
                         {expired ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Décennale expirée</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'}`}>Décennale expirée</span>
                         ) : expiring ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Décennale expire bientôt</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Décennale expire bientôt</span>
                         ) : st.decennale_expiration ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Décennale OK</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>Décennale OK</span>
                         ) : null}
                         {urssafOld ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">URSSAF &gt;6 mois</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>URSSAF &gt;6 mois</span>
                         ) : st.urssaf_date ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">URSSAF OK</span>
+                          <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>URSSAF OK</span>
                         ) : null}
                       </div>
                       <button

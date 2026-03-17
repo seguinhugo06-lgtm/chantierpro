@@ -714,7 +714,7 @@ export default function SituationsTravaux({
                         <span className={`text-sm font-semibold ${textPrimary}`}>
                           Situation n\u00b0{sit.numero}
                           {sit.isDGD && (
-                            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
                               DGD
                             </span>
                           )}

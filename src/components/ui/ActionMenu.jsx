@@ -82,6 +82,7 @@ export function ActionMenu({
   triggerClassName,
   disabled = false,
   ariaLabel = 'Actions',
+  isDark = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -255,7 +256,7 @@ export function ActionMenu({
       return (
         <div
           key={`sep-${index}`}
-          className="my-1 h-px bg-gray-200 dark:bg-slate-700"
+          className={`my-1 h-px ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`}
           role="separator"
         />
       );
@@ -296,11 +297,11 @@ export function ActionMenu({
             'w-full flex items-center gap-2 rounded-md transition-colors',
             itemSizes[size],
             action.disabled && 'opacity-50 cursor-not-allowed',
-            !action.disabled && !action.danger && 'hover:bg-gray-100 dark:hover:bg-slate-700',
-            !action.disabled && action.danger && 'hover:bg-red-50 dark:hover:bg-red-900/20',
-            action.danger ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200',
-            isActive && !action.danger && 'bg-gray-100 dark:bg-slate-700',
-            isActive && action.danger && 'bg-red-50 dark:bg-red-900/20'
+            !action.disabled && !action.danger && (isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'),
+            !action.disabled && action.danger && (isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'),
+            action.danger ? (isDark ? 'text-red-400' : 'text-red-600') : (isDark ? 'text-gray-200' : 'text-gray-700'),
+            isActive && !action.danger && (isDark ? 'bg-slate-700' : 'bg-gray-100'),
+            isActive && action.danger && (isDark ? 'bg-red-900/20' : 'bg-red-50')
           )}
           aria-haspopup={hasSubmenu ? 'menu' : undefined}
           aria-expanded={hasSubmenu ? isSubmenuOpen : undefined}
@@ -310,7 +311,7 @@ export function ActionMenu({
           )}
           <span className="flex-1 text-left">{action.label}</span>
           {action.shortcut && (
-            <kbd className="ml-auto text-xs text-gray-400 dark:text-gray-500 font-mono">
+            <kbd className={`ml-auto text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
               {action.shortcut}
             </kbd>
           )}
@@ -322,8 +323,8 @@ export function ActionMenu({
           <div
             className={cn(
               'absolute top-0 left-full ml-1 z-50',
-              'bg-white dark:bg-slate-800 rounded-lg shadow-lg',
-              'border border-gray-200 dark:border-slate-700',
+              isDark ? 'bg-slate-800' : 'bg-white', 'rounded-lg shadow-lg',
+              isDark ? 'border border-slate-700' : 'border border-gray-200',
               'py-1',
               menuSizes[size]
             )}
@@ -351,7 +352,7 @@ export function ActionMenu({
         className={cn(
           'inline-flex items-center justify-center rounded-lg p-1.5',
           'transition-colors duration-150',
-          'hover:bg-gray-100 dark:hover:bg-slate-700',
+          isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
           disabled && 'opacity-50 cursor-not-allowed',
           triggerClassName
@@ -370,8 +371,8 @@ export function ActionMenu({
           className={cn(
             'absolute z-50 mt-1',
             align === 'right' ? 'right-0' : 'left-0',
-            'bg-white dark:bg-slate-800 rounded-lg shadow-lg',
-            'border border-gray-200 dark:border-slate-700',
+            isDark ? 'bg-slate-800' : 'bg-white', 'rounded-lg shadow-lg',
+            isDark ? 'border border-slate-700' : 'border border-gray-200',
             'py-1',
             'animate-fade-in',
             menuSizes[size]

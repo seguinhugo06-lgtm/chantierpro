@@ -363,19 +363,19 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       green: {
         icon: ShieldCheck,
         label: 'Conforme',
-        bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+        bg: 'bg-emerald-100 text-emerald-700',
         dot: 'bg-emerald-500'
       },
       yellow: {
         icon: ShieldAlert,
         label: 'Expire bientôt',
-        bg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        bg: 'bg-amber-100 text-amber-700',
         dot: 'bg-amber-500'
       },
       red: {
         icon: ShieldOff,
         label: 'Non conforme',
-        bg: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        bg: 'bg-red-100 text-red-700',
         dot: 'bg-red-500'
       }
     };
@@ -417,12 +417,12 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     if (!dateExpiration) return <span className={`text-xs ${textMuted}`}>Pas de date</span>;
     const days = daysUntil(dateExpiration);
     if (days < 0) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Expiré</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Expiré</span>;
     }
     if (days < 30) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Expire bientôt</span>;
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Expire bientôt</span>;
     }
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Valide</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Valide</span>;
   };
 
   // Get documents expiring within 30 days
@@ -671,7 +671,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                         onChange={e => setForm(p => ({ ...p, attestationUrssaf: e.target.checked }))}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
+                      <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500" />
                     </label>
                     <span className={`text-sm ${textPrimary}`}>Attestation reçue</span>
                   </div>
@@ -783,7 +783,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                     <button
                       type="button"
                       onClick={() => removeDocument(doc.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -948,7 +948,7 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
             </button>
             <button
               onClick={() => handleDelete(selected.id)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border border-red-200 text-red-600 font-medium hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors"
             >
               <Trash2 size={16} />
             </button>
@@ -1154,10 +1154,10 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
                   {ch.statut && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       ch.statut === 'en_cours'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        ? 'bg-blue-100 text-blue-700'
                         : ch.statut === 'termine'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-600'
                     }`}>
                       {ch.statut === 'en_cours' ? 'En cours' : ch.statut === 'termine' ? 'Termine' : ch.statut}
                     </span>
@@ -1193,13 +1193,13 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
     <div className="space-y-6">
       {/* Compliance alert banner */}
       {stats.alertes > 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800">
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200">
           <AlertTriangle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+            <p className="text-sm font-semibold text-red-700">
               {stats.alertes} sous-traitant{stats.alertes > 1 ? 's' : ''} avec documents expirés ou manquants
             </p>
-            <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+            <p className="text-xs text-red-600/80/80 mt-0.5">
               Vérifiez la conformité de vos sous-traitants pour éviter tout risque juridique.
             </p>
           </div>
@@ -1207,13 +1207,13 @@ export default function SousTraitantsModule({ chantiers = [], isDark = false, co
       )}
 
       {stats.alertesJaunes > 0 && stats.alertes === 0 && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200">
           <AlertTriangle size={20} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            <p className="text-sm font-semibold text-amber-700">
               {stats.alertesJaunes} sous-traitant{stats.alertesJaunes > 1 ? 's' : ''} avec documents expirant sous 30 jours
             </p>
-            <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
+            <p className="text-xs text-amber-600/80/80 mt-0.5">
               Pensez à demander le renouvellement des documents.
             </p>
           </div>

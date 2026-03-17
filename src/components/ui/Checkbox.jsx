@@ -86,7 +86,7 @@ export const Checkbox = React.forwardRef(
               sizes.box,
               checked || indeterminate
                 ? 'bg-primary-500 border-primary-500 text-white'
-                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600',
+                : 'bg-white border-gray-300',
               disabled && 'opacity-50 cursor-not-allowed',
               !disabled && 'cursor-pointer'
             )}
@@ -111,7 +111,7 @@ export const Checkbox = React.forwardRef(
                 htmlFor={checkboxId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900 dark:text-white',
+                  'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -119,7 +119,7 @@ export const Checkbox = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500">
                 {description}
               </span>
             )}
@@ -183,7 +183,7 @@ export const Radio = React.forwardRef(
               sizes.box,
               checked
                 ? 'border-primary-500'
-                : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600',
+                : 'bg-white border-gray-300',
               disabled && 'opacity-50 cursor-not-allowed',
               !disabled && 'cursor-pointer'
             )}
@@ -214,7 +214,7 @@ export const Radio = React.forwardRef(
                 htmlFor={radioId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900 dark:text-white',
+                  'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -222,7 +222,7 @@ export const Radio = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500">
                 {description}
               </span>
             )}

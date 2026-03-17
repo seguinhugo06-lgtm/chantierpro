@@ -324,7 +324,7 @@ function StatCard({ icon: Icon, label, value, subValue, color = 'gray', isDark, 
       <p className={cn(
         'text-xl font-bold',
         highlight
-          ? color === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
+          ? color === 'red' ? 'text-red-600' : 'text-amber-600'
           : isDark ? 'text-white' : 'text-gray-900'
       )}>
         {value}
@@ -366,8 +366,8 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
               <span className={cn(
                 'px-2 py-0.5 rounded-full text-[10px] font-semibold',
                 isCritical
-                  ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-amber-100 text-amber-700'
               )}>
                 {days}j de retard
               </span>
@@ -398,7 +398,7 @@ function InvoiceRow({ facture, client, onView, onRelance, isDark }) {
       </div>
 
       {/* Actions - Improved button styling */}
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dashed border-gray-200 dark:border-slate-700">
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dashed border-gray-200">
         <ActionButton
           icon={Eye}
           label="Voir"
@@ -562,8 +562,8 @@ export function EncaisserModal({
               : 'bg-red-50 border-red-200'
           )}>
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={20} className="text-red-600" />
               </div>
               <div className="flex-1">
                 <h4 className={cn(
@@ -925,8 +925,8 @@ export function CeMoisModal({
                   <div className={cn(
                     'inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full text-xs font-semibold',
                     periodStats.tendance >= 0
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
                   )}>
                     {periodStats.tendance >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                     {periodStats.tendance >= 0 ? '+' : ''}{periodStats.tendance}% {trendLabels[period]}
@@ -949,10 +949,10 @@ export function CeMoisModal({
                     <p className={cn(
                       'text-3xl font-bold',
                       periodStats.tauxMarge >= 30
-                        ? 'text-emerald-600 dark:text-emerald-400'
+                        ? 'text-emerald-600'
                         : periodStats.tauxMarge >= 15
                           ? isDark ? 'text-white' : 'text-gray-900'
-                          : 'text-red-600 dark:text-red-400'
+                          : 'text-red-600'
                     )}>
                       {Math.round(periodStats.tauxMarge || 0)}%
                     </p>
@@ -1048,9 +1048,9 @@ export function CeMoisModal({
                     >
                       <p className={cn(
                         'text-2xl font-bold',
-                        item.color === 'green' && 'text-emerald-600 dark:text-emerald-400',
-                        item.color === 'blue' && 'text-blue-600 dark:text-blue-400',
-                        item.color === 'red' && 'text-red-600 dark:text-red-400',
+                        item.color === 'green' && 'text-emerald-600',
+                        item.color === 'blue' && 'text-blue-600',
+                        item.color === 'red' && 'text-red-600',
                         item.color === 'gray' && (isDark ? 'text-gray-400' : 'text-gray-600')
                       )}>
                         {item.count}
@@ -1063,7 +1063,7 @@ export function CeMoisModal({
                 </div>
 
                 {/* Conversion funnel */}
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+                <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
                       Taux de conversion
@@ -1081,7 +1081,7 @@ export function CeMoisModal({
                       <span className={cn(
                         'text-sm font-semibold',
                         (periodStats.tauxConversion || 0) >= 50
-                          ? 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-emerald-600'
                           : isDark ? 'text-white' : 'text-gray-900'
                       )}>
                         {formatConversion(periodStats.tauxConversion || 0)}

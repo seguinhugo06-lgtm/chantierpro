@@ -296,7 +296,7 @@ export default function IAInputStep({
           disabled={currentText.length < 10}
           className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-semibold transition-all ${
             currentText.length < 10
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
+              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
               : 'text-white hover:shadow-lg hover:brightness-110'
           }`}
           style={currentText.length >= 10 ? { backgroundColor: couleur } : {}}

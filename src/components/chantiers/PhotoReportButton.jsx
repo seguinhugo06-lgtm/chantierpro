@@ -153,8 +153,8 @@ export default function PhotoReportButton({
           disabled={isGenerating}
           className={cn(
             'p-2 rounded-lg transition-colors',
-            'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white',
-            'hover:bg-gray-100 dark:hover:bg-slate-800',
+            'text-gray-600 hover:text-gray-900',
+            'hover:bg-gray-100',
             isGenerating && 'opacity-50 cursor-not-allowed',
             className
           )}
@@ -177,7 +177,7 @@ export default function PhotoReportButton({
           disabled={isGenerating}
           className={cn(
             'w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors',
-            'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800',
+            'text-gray-700 hover:bg-gray-100',
             isGenerating && 'opacity-50 cursor-not-allowed',
             className
           )}
@@ -227,7 +227,7 @@ export default function PhotoReportButton({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4"
+              className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4"
             >
               <div className="text-center">
                 <div className="relative w-20 h-20 mx-auto mb-4">
@@ -240,7 +240,7 @@ export default function PhotoReportButton({
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="6"
-                      className="text-gray-200 dark:text-slate-700"
+                      className="text-gray-200"
                     />
                     <circle
                       cx="40"
@@ -255,15 +255,15 @@ export default function PhotoReportButton({
                       className="text-orange-500 transition-all duration-300"
                     />
                   </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-900 dark:text-white">
+                  <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-900">
                     {progress}%
                   </span>
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Generation en cours
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600">
                   {progressMessage}
                 </p>
               </div>
@@ -286,20 +286,20 @@ export default function PhotoReportButton({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden"
+              className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <Check className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                    <h3 className="font-semibold text-gray-900">
                       Rapport genere!
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500">
                       {reportResult.photoCount} photos - {reportResult.pageCount} pages
                     </p>
                   </div>
@@ -308,7 +308,7 @@ export default function PhotoReportButton({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -347,7 +347,7 @@ export default function PhotoReportButton({
                       <Mail className="w-4 h-4" />
                     )}
                     Envoyer au client
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    <span className="text-xs text-gray-500 ml-1">
                       ({clientEmail})
                     </span>
                   </Button>
@@ -356,7 +356,7 @@ export default function PhotoReportButton({
 
               {/* Filename */}
               <div className="px-4 pb-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center truncate">
+                <p className="text-xs text-gray-500 text-center truncate">
                   {reportResult.filename}
                 </p>
               </div>
@@ -374,20 +374,20 @@ export default function PhotoReportButton({
             exit={{ opacity: 0, y: 10 }}
             className="fixed bottom-4 right-4 z-50 max-w-sm"
           >
-            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                <p className="text-sm font-medium text-red-800">
                   Erreur de generation
                 </p>
-                <p className="text-sm text-red-600 dark:text-red-300 mt-1">
+                <p className="text-sm text-red-600 mt-1">
                   {error}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
-                className="text-red-400 hover:text-red-600 dark:hover:text-red-200"
+                className="text-red-400 hover:text-red-600"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -404,6 +404,6 @@ export default function PhotoReportButton({
  */
 export function PhotoReportButtonSkeleton() {
   return (
-    <div className="h-10 w-40 rounded-lg bg-gray-200 dark:bg-slate-700 animate-pulse" />
+    <div className="h-10 w-40 rounded-lg bg-gray-200 animate-pulse" />
   );
 }

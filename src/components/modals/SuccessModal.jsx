@@ -40,7 +40,7 @@ export default function SuccessModal({
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', delay: 0.1, bounce: 0.5 }}
-        className="w-20 h-20 mx-auto bg-success-100 dark:bg-success-900/30 rounded-full flex items-center justify-center"
+        className="w-20 h-20 mx-auto bg-success-100 rounded-full flex items-center justify-center"
       >
         <motion.div
           initial={{ scale: 0, rotate: -180 }}
@@ -56,7 +56,7 @@ export default function SuccessModal({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="mt-6 text-xl font-bold text-slate-900 dark:text-white"
+        className="mt-6 text-xl font-bold text-slate-900"
       >
         {title}
       </motion.h3>
@@ -67,7 +67,7 @@ export default function SuccessModal({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-2 text-slate-600 dark:text-slate-300"
+          className="mt-2 text-slate-600"
         >
           {message}
         </motion.p>
@@ -102,11 +102,11 @@ export default function SuccessModal({
           transition={{ delay: 0.7 }}
           className="mt-4"
         >
-          <p className="text-sm text-slate-400 dark:text-slate-500">
+          <p className="text-sm text-slate-400">
             Fermeture automatique...
           </p>
           <motion.div
-            className="mt-2 h-1 bg-success-200 dark:bg-success-800 rounded-full overflow-hidden"
+            className="mt-2 h-1 bg-success-200 rounded-full overflow-hidden"
           >
             <motion.div
               className="h-full bg-success-500"

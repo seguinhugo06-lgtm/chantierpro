@@ -72,13 +72,13 @@ export function FeatureUsageBadge({ resource, showIfUnlimited = false }) {
   // Color coding
   let colorClass;
   if (isUnlimited) {
-    colorClass = 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400';
+    colorClass = 'bg-slate-100 text-slate-600';
   } else if (percent >= 100) {
-    colorClass = 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400 font-bold';
+    colorClass = 'bg-red-100 text-red-800 font-bold';
   } else if (percent >= 70) {
-    colorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400';
+    colorClass = 'bg-orange-100 text-orange-800';
   } else {
-    colorClass = 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400';
+    colorClass = 'bg-green-100 text-green-800';
   }
 
   const handleClick = (e) => {

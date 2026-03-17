@@ -395,7 +395,7 @@ export default function DevisWizard({
         {/* Draft restored banner */}
         {draftRestored && (
           <div className="mx-5 mt-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between animate-slide-up">
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+            <div className={`flex items-center gap-2 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
               <RotateCcw size={16} />
               <span className="text-sm font-medium">Brouillon restauré</span>
             </div>
@@ -416,7 +416,7 @@ export default function DevisWizard({
                 setStep(1);
                 setDraftRestored(false);
               }}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              className={`text-xs hover:underline ${isDark ? 'text-blue-400' : 'text-blue-600'}`}
             >
               Recommencer
             </button>

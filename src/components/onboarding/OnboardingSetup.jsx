@@ -244,7 +244,7 @@ export default function OnboardingSetup({
                     onClick={() => setData({ ...data, metier: metier.id })}
                     className={`p-4 rounded-xl border-2 transition-all hover:scale-105 active:scale-95 ${
                       data.metier === metier.id
-                        ? 'border-2 bg-orange-50 dark:bg-orange-900/20'
+                        ? 'border-2 bg-orange-50'
                         : isDark
                         ? 'bg-gray-800 border-gray-700 hover:border-gray-500'
                         : 'bg-white border-gray-200 hover:border-gray-300'
@@ -293,7 +293,7 @@ export default function OnboardingSetup({
                       onClick={() => setData({ ...data, taille: taille.id })}
                       className={`w-full p-4 rounded-xl border-2 text-left transition-all hover:scale-[1.02] active:scale-[0.98] ${
                         isSelected
-                          ? 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                          ? 'bg-green-50 border-green-500'
                           : isDark
                           ? 'bg-gray-800 border-gray-700 hover:border-gray-500'
                           : 'bg-white border-gray-200 hover:border-gray-300'

@@ -876,8 +876,8 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
                   <span className={cn(
                     'inline-flex px-1.5 py-0.5 rounded text-xs font-medium mr-1',
                     ex.scope === 'client'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-blue-100 text-blue-700'
                   )}>
                     {ex.scope === 'client' ? 'Client' : 'Document'}
                   </span>

@@ -80,7 +80,7 @@ export const Switch = React.forwardRef(
             sizes.track,
             checked
               ? 'bg-primary-500'
-              : 'bg-gray-200 dark:bg-slate-600',
+              : 'bg-gray-200',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
           {...props}
@@ -104,7 +104,7 @@ export const Switch = React.forwardRef(
                 htmlFor={switchId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900 dark:text-white',
+                  'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -112,7 +112,7 @@ export const Switch = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-sm text-gray-500">
                 {description}
               </span>
             )}

@@ -18,10 +18,10 @@ const positionStyles = {
 };
 
 const arrowStyles = {
-  top: 'top-full left-1/2 -translate-x-1/2 border-t-gray-900 dark:border-t-slate-700 border-x-transparent border-b-transparent',
-  bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-gray-900 dark:border-b-slate-700 border-x-transparent border-t-transparent',
-  left: 'left-full top-1/2 -translate-y-1/2 border-l-gray-900 dark:border-l-slate-700 border-y-transparent border-r-transparent',
-  right: 'right-full top-1/2 -translate-y-1/2 border-r-gray-900 dark:border-r-slate-700 border-y-transparent border-l-transparent',
+  top: 'top-full left-1/2 -translate-x-1/2 border-t-gray-900  border-x-transparent border-b-transparent',
+  bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-gray-900  border-x-transparent border-t-transparent',
+  left: 'left-full top-1/2 -translate-y-1/2 border-l-gray-900  border-y-transparent border-r-transparent',
+  right: 'right-full top-1/2 -translate-y-1/2 border-r-gray-900  border-y-transparent border-l-transparent',
 };
 
 export const Tooltip = React.forwardRef(
@@ -82,7 +82,7 @@ export const Tooltip = React.forwardRef(
             role="tooltip"
             className={cn(
               'absolute z-[9999] px-3 py-1.5',
-              'bg-gray-900 dark:bg-slate-700 text-white text-xs font-medium',
+              'bg-gray-900 text-white text-xs font-medium',
               'rounded-lg shadow-lg',
               'whitespace-nowrap',
               'transition-all duration-150 pointer-events-none',

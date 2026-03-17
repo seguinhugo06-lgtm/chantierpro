@@ -111,7 +111,7 @@ export default function ICalExportCard({ isDark, couleur }) {
         <div className="px-4 pb-4">
           <div className={`p-3 rounded-lg flex items-start gap-2 ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
             <AlertCircle size={14} className="text-red-500 mt-0.5" />
-            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-xs text-red-600">{error}</p>
           </div>
         </div>
       ) : (
@@ -130,7 +130,7 @@ export default function ICalExportCard({ isDark, couleur }) {
                 onClick={handleCopy}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
                   copied
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    ? 'bg-emerald-100 text-emerald-700'
                     : 'text-white'
                 }`}
                 style={!copied ? { backgroundColor: couleur } : undefined}

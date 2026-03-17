@@ -115,14 +115,14 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, loading, devisNumero }
       </ModalHeader>
       <ModalBody>
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 p-2 rounded-full bg-red-100 dark:bg-red-900/30">
-            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+          <div className="flex-shrink-0 p-2 rounded-full bg-red-100">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-900 dark:text-white">
+            <p className="text-sm text-gray-900">
               Voulez-vous vraiment supprimer le devis <strong>{devisNumero}</strong> ?
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               Cette action est irréversible.
             </p>
           </div>
@@ -157,11 +157,11 @@ function ConvertToFactureModal({ isOpen, onClose, onConfirm, loading, devis }) {
         <ModalTitle>Convertir en facture</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 mb-4">
           Une facture sera créée à partir du devis <strong>{devis?.numero}</strong> avec les mêmes lignes et montants.
         </p>
-        <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
-          <p className="text-sm text-gray-900 dark:text-white font-medium">
+        <div className="p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-900 font-medium">
             Montant TTC : {formatCurrency(devis?.total_ttc)}
           </p>
         </div>
@@ -481,19 +481,19 @@ export default function DevisQuickActionsModal({
         <ModalBody>
           {loading ? (
             <div className="animate-pulse space-y-4">
-              <div className="h-4 w-3/4 bg-gray-200 dark:bg-slate-700 rounded" />
-              <div className="h-4 w-1/2 bg-gray-200 dark:bg-slate-700 rounded" />
-              <div className="h-20 bg-gray-100 dark:bg-slate-800 rounded-lg" />
+              <div className="h-4 w-3/4 bg-gray-200 rounded" />
+              <div className="h-4 w-1/2 bg-gray-200 rounded" />
+              <div className="h-20 bg-gray-100 rounded-lg" />
             </div>
           ) : devisData ? (
             <div className="space-y-4">
               {/* Devis Info Card */}
-              <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-lg space-y-3">
+              <div className="p-4 bg-gray-50 rounded-lg space-y-3">
                 {/* Client */}
                 <div className="flex items-center gap-2 text-sm">
                   <User className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">Client :</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
+                  <span className="text-gray-600">Client :</span>
+                  <span className="font-medium text-gray-900">
                     {clientData?.nom || clientData?.entreprise || 'Client inconnu'}
                     {clientData?.prenom && ` ${clientData.prenom}`}
                   </span>
@@ -502,8 +502,8 @@ export default function DevisQuickActionsModal({
                 {/* Montant */}
                 <div className="flex items-center gap-2 text-sm">
                   <Euro className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">Montant :</span>
-                  <span className="font-bold text-gray-900 dark:text-white">
+                  <span className="text-gray-600">Montant :</span>
+                  <span className="font-bold text-gray-900">
                     {formatCurrency(devisData.total_ttc)}
                   </span>
                 </div>
@@ -511,7 +511,7 @@ export default function DevisQuickActionsModal({
                 {/* Statut */}
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">Statut :</span>
+                  <span className="text-gray-600">Statut :</span>
                   <Badge
                     variant="secondary"
                     className={cn(statusInfo?.colors.bg, statusInfo?.colors.text)}
@@ -524,7 +524,7 @@ export default function DevisQuickActionsModal({
               {/* Lignes preview */}
               {devisData.lignes && devisData.lignes.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Lignes
                   </p>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto">
@@ -533,16 +533,16 @@ export default function DevisQuickActionsModal({
                         key={ligne.id || index}
                         className="flex items-center justify-between text-sm"
                       >
-                        <span className="text-gray-700 dark:text-gray-300 truncate flex-1 mr-2">
+                        <span className="text-gray-700 truncate flex-1 mr-2">
                           • {ligne.description || ligne.designation || 'Ligne'}
                         </span>
-                        <span className="text-gray-900 dark:text-white font-medium whitespace-nowrap">
+                        <span className="text-gray-900 font-medium whitespace-nowrap">
                           {formatCurrency(ligne.montant || ligne.total)}
                         </span>
                       </div>
                     ))}
                     {devisData.lignes.length > 5 && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                      <p className="text-xs text-gray-500 italic">
                         + {devisData.lignes.length - 5} autres lignes
                       </p>
                     )}
@@ -552,7 +552,7 @@ export default function DevisQuickActionsModal({
 
               {/* Quick Actions */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                   Actions rapides
                 </p>
                 <div className="space-y-2">
@@ -600,7 +600,7 @@ export default function DevisQuickActionsModal({
               </div>
             </div>
           ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+            <p className="text-center text-gray-500 py-8">
               Devis introuvable
             </p>
           )}

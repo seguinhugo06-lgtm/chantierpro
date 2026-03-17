@@ -20,10 +20,10 @@ import {
 const PRIORITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 
 const PRIORITY_COLORS = {
-  critical: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', label: 'Critique' },
-  high: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', label: 'Urgent' },
-  medium: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', label: 'Normal' },
-  low: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Amical' },
+  critical: { bg: 'bg-red-100', text: 'text-red-700', label: 'Critique' },
+  high: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Urgent' },
+  medium: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Normal' },
+  low: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Amical' },
 };
 
 /**

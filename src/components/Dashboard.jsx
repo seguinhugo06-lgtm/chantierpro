@@ -1309,7 +1309,7 @@ export default function Dashboard({
                   {formatMoney(stats.caCeMois, modeDiscret)}
                 </p>
                 {stats.caCeMoisTendance != null && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/15 dark:text-emerald-400' : 'text-red-600 bg-red-50 dark:bg-red-500/15 dark:text-red-400'}`}>
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? (isDark ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-50') : (isDark ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-50')}`}>
                     {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
                   </span>
                 )}

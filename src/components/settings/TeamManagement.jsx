@@ -212,12 +212,12 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   // Role badge color
   const roleBadge = (role) => {
     const colors = {
-      owner: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-      admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-      comptable: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-      chef_chantier: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-      ouvrier: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-      readonly: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
+      owner: 'bg-amber-100 text-amber-800',
+      admin: 'bg-blue-100 text-blue-800',
+      comptable: 'bg-purple-100 text-purple-800',
+      chef_chantier: 'bg-emerald-100 text-emerald-800',
+      ouvrier: 'bg-slate-100 text-slate-700',
+      readonly: 'bg-slate-100 text-slate-500',
     };
     return colors[role] || colors.readonly;
   };
@@ -347,7 +347,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
         <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <h3 className={`font-semibold text-sm ${textPrimary}`}>Membres actifs</h3>
         </div>
-        <div className="divide-y divide-slate-200 dark:divide-slate-700">
+        <div className="divide-y divide-slate-200">
           {members.map(member => {
             const isMe = member.user_id === currentUserId;
             const displayName = getMemberDisplayName({ ...member, isCurrentUser: isMe }, currentUserEmail);
@@ -402,7 +402,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               Invitations en attente ({pendingInvitations.length})
             </h3>
           </div>
-          <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          <div className="divide-y divide-slate-200">
             {pendingInvitations.map(inv => (
               <div key={inv.id} className="px-4 py-3 flex items-center gap-3">
                 <Clock size={16} className="text-amber-500 flex-shrink-0" />
@@ -444,7 +444,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
               Historique ({pastInvitations.length})
             </span>
           </summary>
-          <div className="divide-y divide-slate-200 dark:divide-slate-700">
+          <div className="divide-y divide-slate-200">
             {pastInvitations.slice(0, 10).map(inv => (
               <div key={inv.id} className="px-4 py-2.5 flex items-center gap-3">
                 {inv.status === 'accepted' ? (

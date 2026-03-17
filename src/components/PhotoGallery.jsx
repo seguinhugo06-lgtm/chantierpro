@@ -235,8 +235,8 @@ export default function PhotoGallery({
             onClick={() => fileInputRef.current?.click()}
             className={`${cardBg} rounded-xl border p-6 text-center hover:shadow-lg transition-all`}
           >
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100 dark:bg-blue-900/30">
-              <Upload size={32} className="text-blue-600 dark:text-blue-400" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-blue-100">
+              <Upload size={32} className="text-blue-600" />
             </div>
             <h3 className={`font-semibold mb-1 ${textPrimary}`}>Importer</h3>
             <p className={`text-sm ${textMuted}`}>Depuis la galerie</p>
@@ -273,7 +273,7 @@ export default function PhotoGallery({
           <img
             src={selectedPhoto.imageData}
             alt={selectedPhoto.description || 'Photo chantier'}
-            className="w-full max-h-[60vh] object-contain bg-slate-100 dark:bg-slate-900"
+            className="w-full max-h-[60vh] object-contain bg-slate-100"
           />
         </div>
 

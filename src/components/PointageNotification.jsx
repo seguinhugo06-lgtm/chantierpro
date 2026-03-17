@@ -67,7 +67,7 @@ export default function PointageNotification({
           className={`${cardBg} rounded-2xl shadow-2xl overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
         >
           {/* Progress bar */}
-          <div className="h-1 bg-slate-200 dark:bg-slate-700">
+          <div className="h-1 bg-slate-200">
             <motion.div
               className="h-full"
               style={{ backgroundColor: couleur }}
@@ -96,7 +96,7 @@ export default function PointageNotification({
                   Arrive sur site
                 </span>
                 {distance && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                     {formatDistance(distance)}
                   </span>
                 )}
@@ -216,8 +216,8 @@ export function PointageReminderNotification({
         <div className={`${cardBg} rounded-2xl shadow-2xl overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           {/* Header */}
           <div className="p-4 flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <Clock size={24} className="text-amber-600 dark:text-amber-400" />
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Clock size={24} className="text-amber-600" />
             </div>
 
             <div className="flex-1">
@@ -230,7 +230,7 @@ export function PointageReminderNotification({
               </p>
             </div>
 
-            <button onClick={onDismiss} aria-label="Fermer la notification" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+            <button onClick={onDismiss} aria-label="Fermer la notification" className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
               <X size={20} className={textSecondary} />
             </button>
           </div>

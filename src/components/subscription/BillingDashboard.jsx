@@ -215,7 +215,7 @@ export default function BillingDashboard({ isDark, couleur }) {
               return (
                 <div
                   key={key}
-                  className={`rounded-xl p-3 border ${isDanger ? 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10' : isWarning ? 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10' : isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-100 bg-slate-50'}`}
+                  className={`rounded-xl p-3 border ${isDanger ? (isDark ? 'border-red-500/30 bg-red-900/10' : 'border-red-200 bg-red-50/50') : isWarning ? 'border-amber-200 bg-amber-50/50' : isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-100 bg-slate-50'}`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon size={12} className={textSecondary} />
@@ -225,7 +225,7 @@ export default function BillingDashboard({ isDark, couleur }) {
                     {isUnlimited ? '∞' : `${current}/${limit}`}
                   </div>
                   {!isUnlimited && limit > 0 && (
-                    <div className="mt-1.5 h-1 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                    <div className="mt-1.5 h-1 bg-slate-200 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
                         style={{ width: `${Math.min(100, percent)}%` }}
@@ -246,7 +246,7 @@ export default function BillingDashboard({ isDark, couleur }) {
             <span className={billing === 'monthly' ? textPrimary : textSecondary}>Mensuel</span>
             <button
               onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-orange-500' : 'bg-slate-300'}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
@@ -277,7 +277,7 @@ export default function BillingDashboard({ isDark, couleur }) {
                 <div className="flex items-center gap-2 mb-2">
                   <Icon size={16} style={{ color: p.color }} />
                   <span className={`font-semibold text-sm ${textPrimary}`}>{p.name}</span>
-                  {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 font-medium">Actuel</span>}
+                  {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">Actuel</span>}
                   {p.badge && !isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold">{p.badge}</span>}
                 </div>
                 <div className={`text-2xl font-bold ${textPrimary}`}>
@@ -289,9 +289,9 @@ export default function BillingDashboard({ isDark, couleur }) {
                   disabled={isCurrent || loadingAction === pid || pid === 'gratuit'}
                   className={`w-full mt-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     isCurrent
-                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-default'
+                      ? 'bg-slate-100 text-slate-400 cursor-default'
                       : pid === 'gratuit'
-                        ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-default'
+                        ? 'bg-slate-100 text-slate-400 cursor-default'
                         : 'text-white hover:opacity-90'
                   }`}
                   style={(!isCurrent && pid !== 'gratuit') ? { backgroundColor: couleur || '#f97316' } : {}}
@@ -310,14 +310,14 @@ export default function BillingDashboard({ isDark, couleur }) {
           <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>Gestion de l'abonnement</h3>
 
           {sub?.cancel_at_period_end ? (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="text-amber-500" size={20} />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  <p className="text-sm font-medium text-amber-700">
                     Annulation programmée
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                  <p className="text-xs text-amber-600">
                     Votre plan restera actif jusqu'à la fin de la période de facturation.
                   </p>
                 </div>
@@ -332,11 +332,11 @@ export default function BillingDashboard({ isDark, couleur }) {
               </button>
             </div>
           ) : showCancelConfirm ? (
-            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-3">
+            <div className="p-4 rounded-xl bg-red-50 border border-red-200">
+              <p className="text-sm font-medium text-red-700 mb-3">
                 Êtes-vous sûr de vouloir annuler votre abonnement ?
               </p>
-              <p className="text-xs text-red-600 dark:text-red-500 mb-4">
+              <p className="text-xs text-red-600 mb-4">
                 Vous perdrez l'accès aux fonctionnalités Pro à la fin de la période.
               </p>
               <div className="flex gap-2">

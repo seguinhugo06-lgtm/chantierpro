@@ -17,32 +17,38 @@ import { Button } from '../ui/Button';
  */
 
 // Priority-based styling configurations
-const priorityConfig = {
+const getPriorityConfig = (isDark) => ({
   high: {
-    container: 'bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-l-4 border-l-blue-500',
+    container: isDark
+      ? 'bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-l-4 border-l-blue-500'
+      : 'bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-l-blue-500',
     iconBg: 'bg-blue-500',
     iconColor: 'text-white',
-    title: 'text-blue-700 dark:text-blue-400',
-    value: 'text-blue-700 dark:text-blue-400',
+    title: isDark ? 'text-blue-400' : 'text-blue-700',
+    value: isDark ? 'text-blue-400' : 'text-blue-700',
     button: 'primary',
   },
   medium: {
-    container: 'bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-l-4 border-l-primary-500',
+    container: isDark
+      ? 'bg-gradient-to-r from-primary-900/20 to-primary-800/20 border-l-4 border-l-primary-500'
+      : 'bg-gradient-to-r from-primary-50 to-primary-100 border-l-4 border-l-primary-500',
     iconBg: 'bg-primary-500',
     iconColor: 'text-white',
-    title: 'text-primary-700 dark:text-primary-400',
-    value: 'text-primary-700 dark:text-primary-400',
+    title: isDark ? 'text-primary-400' : 'text-primary-700',
+    value: isDark ? 'text-primary-400' : 'text-primary-700',
     button: 'secondary',
   },
   low: {
-    container: 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 border-l-4 border-l-gray-400',
-    iconBg: 'bg-gray-500 dark:bg-gray-600',
+    container: isDark
+      ? 'bg-gradient-to-r from-gray-800/50 to-gray-700/50 border-l-4 border-l-gray-400'
+      : 'bg-gradient-to-r from-gray-50 to-gray-100 border-l-4 border-l-gray-400',
+    iconBg: isDark ? 'bg-gray-600' : 'bg-gray-500',
     iconColor: 'text-white',
-    title: 'text-gray-600 dark:text-gray-400',
-    value: 'text-gray-700 dark:text-gray-300',
+    title: isDark ? 'text-gray-400' : 'text-gray-600',
+    value: isDark ? 'text-gray-300' : 'text-gray-700',
     button: 'outline',
   },
-};
+});
 
 /**
  * ActionBanner - Priority action banner for dashboard
@@ -60,6 +66,7 @@ const ActionBanner = React.forwardRef(
       ctaLabel,
       ctaAction,
       onDismiss,
+      isDark = false,
       className,
       ...props
     },
@@ -67,6 +74,7 @@ const ActionBanner = React.forwardRef(
   ) => {
     const [isVisible, setIsVisible] = React.useState(false);
     const [isExiting, setIsExiting] = React.useState(false);
+    const priorityConfig = getPriorityConfig(isDark);
     const config = priorityConfig[priority] || priorityConfig.medium;
 
     // Slide-in animation on mount
@@ -102,7 +110,7 @@ const ActionBanner = React.forwardRef(
           <button
             type="button"
             onClick={handleDismiss}
-            className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-black/20 transition-colors"
+            className={cn('absolute top-3 right-3 p-1.5 rounded-lg text-gray-400 transition-colors', isDark ? 'hover:text-gray-300 hover:bg-black/20' : 'hover:text-gray-600 hover:bg-white/50')}
             aria-label="Fermer"
           >
             <X className="w-4 h-4" />
@@ -138,7 +146,7 @@ const ActionBanner = React.forwardRef(
               </p>
 
               {/* Description */}
-              <p className="text-base font-medium text-gray-900 dark:text-white">
+              <p className={cn('text-base font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                 {description}
               </p>
 

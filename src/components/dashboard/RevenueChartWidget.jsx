@@ -69,13 +69,13 @@ function formatFullMoney(amount) {
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-        <p className="text-lg font-bold text-gray-900 dark:text-white">
+      <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-200">
+        <p className="text-xs text-gray-500 mb-1">{label}</p>
+        <p className="text-lg font-bold text-gray-900">
           {formatFullMoney(payload[0].value)}
         </p>
         {payload[0].payload.invoiceCount > 0 && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             {payload[0].payload.invoiceCount} facture{payload[0].payload.invoiceCount > 1 ? 's' : ''}
           </p>
         )}

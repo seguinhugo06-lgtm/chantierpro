@@ -86,21 +86,21 @@ export default function TrialEndModal() {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[trialEndSlideUp_400ms_ease-out]">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[trialEndSlideUp_400ms_ease-out]">
         {/* Header */}
         <div className="px-6 pt-6 pb-4">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-bold text-slate-900">
                 Votre essai est terminé
               </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 mt-1">
                 Voici ce que vous avez accompli pendant votre essai
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors"
+              className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
             >
               <X size={18} />
             </button>
@@ -108,8 +108,8 @@ export default function TrialEndModal() {
         </div>
 
         {/* Usage summary */}
-        <div className="mx-6 p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/10 border border-orange-100 dark:border-orange-800/30">
-          <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase tracking-wider mb-3">
+        <div className="mx-6 p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100/30">
+          <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-3">
             Pendant votre essai
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -122,7 +122,7 @@ export default function TrialEndModal() {
 
         {/* Comparison */}
         <div className="px-6 py-5">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
             Ce qui change avec le plan Gratuit
           </p>
           <div className="space-y-2">
@@ -136,8 +136,8 @@ export default function TrialEndModal() {
               { feature: 'Relances automatiques', gratuit: false, artisan: true },
               { feature: 'Pipeline commercial', gratuit: false, artisan: true },
             ].map((row, i) => (
-              <div key={i} className="flex items-center text-xs py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                <span className="flex-1 text-slate-600 dark:text-slate-300">{row.feature}</span>
+              <div key={i} className="flex items-center text-xs py-1.5 border-b border-slate-100 last:border-0">
+                <span className="flex-1 text-slate-600">{row.feature}</span>
                 <span className="w-20 text-center">
                   {typeof row.gratuit === 'boolean' ? (
                     row.gratuit
@@ -153,7 +153,7 @@ export default function TrialEndModal() {
                       ? <Check size={14} className="text-green-500 mx-auto" />
                       : <X size={14} className="text-red-400 mx-auto" />
                   ) : (
-                    <span className="text-orange-600 dark:text-orange-400 font-semibold">{row.artisan}</span>
+                    <span className="text-orange-600 font-semibold">{row.artisan}</span>
                   )}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export default function TrialEndModal() {
           </button>
           <button
             onClick={handleClose}
-            className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 transition-colors"
           >
             Continuer avec le plan Gratuit
           </button>
@@ -193,7 +193,7 @@ export default function TrialEndModal() {
 
 function StatCard({ icon: Icon, label, value, color }) {
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/70 dark:bg-slate-800/50">
+    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/70/50">
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
         style={{ backgroundColor: color + '15' }}
@@ -201,8 +201,8 @@ function StatCard({ icon: Icon, label, value, color }) {
         <Icon size={15} style={{ color }} />
       </div>
       <div>
-        <p className="text-lg font-bold text-slate-900 dark:text-white leading-none">{value}</p>
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{label}</p>
+        <p className="text-lg font-bold text-slate-900 leading-none">{value}</p>
+        <p className="text-[10px] text-slate-500 mt-0.5">{label}</p>
       </div>
     </div>
   );

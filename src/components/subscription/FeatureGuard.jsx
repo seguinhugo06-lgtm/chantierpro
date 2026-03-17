@@ -72,16 +72,16 @@ function LockedOverlay({ feature, onUpgrade }) {
   const planName = getMinPlanNameForFeature(feature);
 
   return (
-    <div className="relative rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-800/50 p-8 text-center">
+    <div className="relative rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50/50 p-8 text-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+        <div className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center">
           <Lock className="w-6 h-6 text-slate-400" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">
+          <h3 className="text-lg font-semibold text-slate-700">
             Fonctionnalité réservée au plan {planName}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Passez au plan {planName} pour débloquer cette fonctionnalité.
           </p>
         </div>
@@ -113,16 +113,16 @@ function LimitOverlay({ resource, current, max, onUpgrade }) {
   const label = RESOURCE_LABELS[resource] || resource;
 
   return (
-    <div className="rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-900/20 p-6 text-center">
+    <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 text-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
           <Lock className="w-5 h-5 text-amber-500" />
         </div>
         <div>
-          <h3 className="text-base font-semibold text-slate-700 dark:text-slate-200">
+          <h3 className="text-base font-semibold text-slate-700">
             Limite atteinte : {current}/{max} {label}
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Votre plan actuel est limité à {max} {label} par mois.
           </p>
         </div>
@@ -151,8 +151,8 @@ export function UpgradeBadge({ feature, className = '' }) {
   const minPlan = getMinPlanForFeature(feature);
   const label = minPlan === 'equipe' ? 'ÉQUIPE' : 'ARTISAN';
   const bgClass = minPlan === 'equipe'
-    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
-    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400';
+    ? 'bg-purple-100 text-purple-700'
+    : 'bg-amber-100 text-amber-700';
 
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full ${bgClass} ${className}`}>

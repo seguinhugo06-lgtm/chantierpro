@@ -66,14 +66,14 @@ function KanbanCard({ devis, client, isDark, couleur, onOpenDevis, onDragStart }
         isDark
           ? 'bg-slate-800 border-slate-700 hover:border-slate-500'
           : 'bg-white border-slate-200 hover:border-slate-300'
-      } ${isVeryLate ? 'border-red-300 dark:border-red-700' : isLate ? 'border-amber-300 dark:border-amber-700' : ''}`}
+      } ${isVeryLate ? 'border-red-300' : isLate ? 'border-amber-300' : ''}`}
     >
       {/* Header: numero + grip */}
       <div className="flex items-center justify-between mb-2">
         <span className={`text-xs font-mono font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {devis.numero || '—'}
         </span>
-        <GripVertical size={14} className="text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <GripVertical size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Client name */}
@@ -139,7 +139,7 @@ function KanbanColumn({ column, cards, clients, isDark, couleur, onOpenDevis, on
     <div
       className={`flex flex-col min-w-[240px] max-w-[280px] flex-1 rounded-2xl border transition-all ${
         isDragOver
-          ? 'ring-2 ring-offset-2 dark:ring-offset-slate-900'
+          ? 'ring-2 ring-offset-2'
           : ''
       } ${isDark ? 'border-slate-700' : 'border-slate-200'}`}
       style={isDragOver ? { ringColor: column.color } : {}}
@@ -390,7 +390,7 @@ export default function PipelineKanban({
             onClick={() => setShowRefused(!showRefused)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               showRefused
-                ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                ? 'bg-red-50 border-red-200 text-red-600'
                 : isDark ? 'border-slate-700 text-slate-400 hover:text-slate-200' : 'border-slate-200 text-slate-500 hover:text-slate-700'
             }`}
           >

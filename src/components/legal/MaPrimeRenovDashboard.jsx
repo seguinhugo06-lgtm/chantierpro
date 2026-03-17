@@ -325,7 +325,7 @@ function DossierDetailModal({ dossier, isDark, onClose, onUpdateStatus }) {
             <div className="grid grid-cols-2 gap-4">
               <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-600' : 'bg-white'} border ${isDark ? 'border-gray-500' : 'border-gray-200'}`}>
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Montant estimé</p>
-                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                <p className="text-xl font-bold text-emerald-600">
                   {formatCurrency(dossier.montant_aide_estime)}
                 </p>
               </div>
@@ -333,9 +333,9 @@ function DossierDetailModal({ dossier, isDark, onClose, onUpdateStatus }) {
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Montant accordé</p>
                 <p className={`text-xl font-bold ${
                   dossier.montant_aide_accorde > 0
-                    ? 'text-green-600 dark:text-green-400'
+                    ? 'text-green-600'
                     : dossier.montant_aide_accorde === 0
-                      ? 'text-red-600 dark:text-red-400'
+                      ? 'text-red-600'
                       : isDark ? 'text-gray-400' : 'text-gray-500'
                 }`}>
                   {dossier.montant_aide_accorde !== null ? formatCurrency(dossier.montant_aide_accorde) : 'En attente'}
@@ -651,14 +651,14 @@ export default function MaPrimeRenovDashboard({
           icon="📁"
           label="Dossiers totaux"
           value={stats.total}
-          color="bg-blue-100 dark:bg-blue-900/30"
+          color="bg-blue-100"
           isDark={isDark}
         />
         <StatCard
           icon="⏳"
           label="En cours"
           value={stats.enCours}
-          color="bg-yellow-100 dark:bg-yellow-900/30"
+          color="bg-yellow-100"
           isDark={isDark}
         />
         <StatCard
@@ -666,7 +666,7 @@ export default function MaPrimeRenovDashboard({
           label="Acceptés"
           value={stats.acceptes}
           subvalue={`${stats.total > 0 ? Math.round((stats.acceptes / stats.total) * 100) : 0}% de réussite`}
-          color="bg-green-100 dark:bg-green-900/30"
+          color="bg-green-100"
           isDark={isDark}
         />
         <StatCard
@@ -674,7 +674,7 @@ export default function MaPrimeRenovDashboard({
           label="Aides obtenues"
           value={formatCurrency(stats.totalAideAccordee)}
           subvalue={`sur ${formatCurrency(stats.totalAideEstimee)} estimées`}
-          color="bg-emerald-100 dark:bg-emerald-900/30"
+          color="bg-emerald-100"
           isDark={isDark}
         />
       </div>
@@ -794,7 +794,7 @@ export default function MaPrimeRenovDashboard({
           <div className="flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
-              <p className="font-medium text-yellow-700 dark:text-yellow-400">
+              <p className="font-medium text-yellow-700">
                 Dossiers en attente prolongée
               </p>
               <p className={`text-sm ${isDark ? 'text-yellow-300' : 'text-yellow-600'}`}>

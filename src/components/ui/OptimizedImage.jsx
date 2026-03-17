@@ -187,7 +187,7 @@ const OptimizedImage = React.forwardRef(
           <div
             className={cn(
               'absolute inset-0 flex items-center justify-center',
-              'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500'
+              'bg-gray-100 text-gray-400'
             )}
           >
             <svg
@@ -273,7 +273,7 @@ export function Avatar({
       <div
         className={cn(
           'flex items-center justify-center rounded-full',
-          'bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
+          'bg-gray-200 text-gray-600',
           'font-medium text-sm',
           className
         )}

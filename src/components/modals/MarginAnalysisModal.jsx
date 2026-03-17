@@ -58,7 +58,7 @@ const MARGIN_THRESHOLDS = {
 function getMarginColor(margin, isDark = false) {
   if (margin < MARGIN_THRESHOLDS.CRITICAL) {
     return {
-      text: 'text-red-600 dark:text-red-400',
+      text: 'text-red-600',
       bg: isDark ? 'bg-red-900/30' : 'bg-red-100',
       hex: '#ef4444',
       label: 'Critique',
@@ -66,7 +66,7 @@ function getMarginColor(margin, isDark = false) {
   }
   if (margin < MARGIN_THRESHOLDS.WARNING) {
     return {
-      text: 'text-amber-600 dark:text-amber-400',
+      text: 'text-amber-600',
       bg: isDark ? 'bg-amber-900/30' : 'bg-amber-100',
       hex: '#f59e0b',
       label: 'Attention',
@@ -74,14 +74,14 @@ function getMarginColor(margin, isDark = false) {
   }
   if (margin < MARGIN_THRESHOLDS.GOOD) {
     return {
-      text: 'text-blue-600 dark:text-blue-400',
+      text: 'text-blue-600',
       bg: isDark ? 'bg-blue-900/30' : 'bg-blue-100',
       hex: '#3b82f6',
       label: 'Correct',
     };
   }
   return {
-    text: 'text-emerald-600 dark:text-emerald-400',
+    text: 'text-emerald-600',
     bg: isDark ? 'bg-emerald-900/30' : 'bg-emerald-100',
     hex: '#10b981',
     label: 'Excellent',
@@ -560,7 +560,7 @@ export function MarginAnalysisModal({
                   </div>
 
                   {/* Budget bar */}
-                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-slate-700">
+                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <span className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-500')}>
                         Consommation du budget

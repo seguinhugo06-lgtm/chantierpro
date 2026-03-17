@@ -200,7 +200,7 @@ export default function RelanceTimelineWidget({
         )}
 
         {isExcluded && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
             <Ban className="w-3 h-3" />
             Exclu
           </span>
@@ -224,7 +224,7 @@ export default function RelanceTimelineWidget({
                     entry.type === 'executed'
                       ? (RELANCE_STATUS_COLORS[entry.status]?.bg || 'bg-blue-100')
                       : entry.isDue
-                        ? 'bg-amber-100 dark:bg-amber-900/30'
+                        ? 'bg-amber-100'
                         : (isDark ? 'bg-slate-700' : 'bg-slate-100')
                   )}
                 >
@@ -233,7 +233,7 @@ export default function RelanceTimelineWidget({
                     entry.type === 'executed'
                       ? (RELANCE_STATUS_COLORS[entry.status]?.text || 'text-blue-600')
                       : entry.isDue
-                        ? 'text-amber-600 dark:text-amber-400'
+                        ? 'text-amber-600'
                         : textMuted
                   )} />
                 </div>
@@ -273,14 +273,14 @@ export default function RelanceTimelineWidget({
                       day: 'numeric', month: 'short', year: 'numeric',
                     })}
                     {entry.execution.opened_at && (
-                      <span className="ml-2 text-green-600 dark:text-green-400">
+                      <span className="ml-2 text-green-600">
                         Ouvert le {new Date(entry.execution.opened_at).toLocaleDateString('fr-FR', {
                           day: 'numeric', month: 'short',
                         })}
                       </span>
                     )}
                     {entry.execution.clicked_at && (
-                      <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                      <span className="ml-2 text-emerald-600">
                         Cliqué le {new Date(entry.execution.clicked_at).toLocaleDateString('fr-FR', {
                           day: 'numeric', month: 'short',
                         })}
@@ -297,7 +297,7 @@ export default function RelanceTimelineWidget({
                 {entry.type === 'future' && (
                   <div className={cn('text-xs mt-0.5', textMuted)}>
                     {entry.isDue ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      <span className="text-amber-600 font-medium">
                         En retard de {Math.abs(entry.daysUntilDue)} jour{Math.abs(entry.daysUntilDue) !== 1 ? 's' : ''}
                       </span>
                     ) : entry.dueDate ? (

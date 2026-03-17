@@ -25,20 +25,20 @@ function ChartTooltip({ active, payload, total }) {
   const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : 0;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg px-3 py-2 text-sm">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm">
       <div className="flex items-center gap-2 mb-1">
         <span
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: entry.payload.color }}
         />
-        <span className="font-medium text-gray-900 dark:text-white">
+        <span className="font-medium text-gray-900">
           {entry.name}
         </span>
       </div>
-      <div className="text-gray-600 dark:text-gray-300">
+      <div className="text-gray-600">
         {formatPrice(entry.value)}
       </div>
-      <div className="text-gray-400 dark:text-gray-500 text-xs">
+      <div className="text-gray-400 text-xs">
         {pct}% du total
       </div>
     </div>

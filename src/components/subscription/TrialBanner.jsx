@@ -68,54 +68,54 @@ function getBannerState(daysLeft, isTrial, isFree) {
 
 const BANNER_CONFIG = {
   info: {
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    text: 'text-blue-700 dark:text-blue-300',
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-700',
     icon: Clock,
     iconColor: 'text-blue-500',
     getMessage: (days) => `Essai gratuit · ${days} jours restants`,
     cta: 'Choisir un plan',
-    ctaColor: 'text-blue-600 dark:text-blue-400 hover:text-blue-700'
+    ctaColor: 'text-blue-600 hover:text-blue-700'
   },
   warning: {
-    bg: 'bg-orange-50 dark:bg-orange-900/20',
-    border: 'border-orange-200 dark:border-orange-800',
-    text: 'text-orange-700 dark:text-orange-300',
+    bg: 'bg-orange-50',
+    border: 'border-orange-200',
+    text: 'text-orange-700',
     icon: AlertTriangle,
     iconColor: 'text-orange-500',
     getMessage: (days) => `Plus que ${days} jour${days > 1 ? 's' : ''} d'essai gratuit`,
     cta: 'Activer mon plan',
-    ctaColor: 'text-orange-600 dark:text-orange-400 hover:text-orange-700 font-bold'
+    ctaColor: 'text-orange-600 hover:text-orange-700 font-bold'
   },
   last_day: {
-    bg: 'bg-red-50 dark:bg-red-900/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-700 dark:text-red-300',
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    text: 'text-red-700',
     icon: AlertTriangle,
     iconColor: 'text-red-500',
     getMessage: () => 'Dernier jour d\'essai',
     cta: 'Activez maintenant pour ne rien perdre',
-    ctaColor: 'text-red-600 dark:text-red-400 hover:text-red-700 font-bold'
+    ctaColor: 'text-red-600 hover:text-red-700 font-bold'
   },
   expired: {
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    border: 'border-red-300 dark:border-red-700',
-    text: 'text-red-800 dark:text-red-200',
+    bg: 'bg-red-100',
+    border: 'border-red-300',
+    text: 'text-red-800',
     icon: AlertTriangle,
     iconColor: 'text-red-600',
     getMessage: () => 'Votre essai est terminé',
     cta: 'Choisir un plan pour continuer',
-    ctaColor: 'text-red-700 dark:text-red-300 hover:text-red-800 font-bold underline'
+    ctaColor: 'text-red-700 hover:text-red-800 font-bold underline'
   },
   downgrade: {
-    bg: 'bg-slate-50 dark:bg-slate-800/50',
-    border: 'border-slate-200 dark:border-slate-700',
-    text: 'text-slate-600 dark:text-slate-400',
+    bg: 'bg-slate-50/50',
+    border: 'border-slate-200',
+    text: 'text-slate-600',
     icon: null,
     iconColor: '',
     getMessage: () => 'Plan Gratuit actif',
     cta: 'En savoir plus',
-    ctaColor: 'text-slate-700 dark:text-slate-300 hover:text-slate-900'
+    ctaColor: 'text-slate-700 hover:text-slate-900'
   }
 };
 
@@ -189,7 +189,7 @@ export default function TrialBanner() {
         </div>
         <button
           onClick={handleDismiss}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all flex-shrink-0"
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/50/50 transition-all flex-shrink-0"
           aria-label="Fermer la bannière"
         >
           <X size={16} />

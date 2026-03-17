@@ -1496,7 +1496,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
           {alertesStock.length > 0 && !stockAlertsDismissed && (
             <div className={`rounded-2xl p-4 ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-2"><AlertTriangle size={18} /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
+                <span className={`font-semibold flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}><AlertTriangle size={18} /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
                 <div className="flex items-center gap-2">
                   <button onClick={() => {
                     if ('Notification' in window && Notification.permission === 'default') {
@@ -2405,7 +2405,7 @@ export default function Catalogue({ catalogue, setCatalogue, addCatalogueItem: a
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <button onClick={() => toggleFavori(item.id)} title="Retirer des favoris" aria-label="Retirer des favoris" aria-pressed="true"
-                          className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+                          className={`p-1.5 rounded-lg text-amber-500 transition-colors ${isDark ? 'hover:bg-amber-500/10' : 'hover:bg-amber-50'}`}>
                           <Star size={16} fill="currentColor" />
                         </button>
                         <button onClick={() => startEdit(item)} title="Modifier"

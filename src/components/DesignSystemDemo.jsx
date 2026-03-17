@@ -35,23 +35,23 @@ export default function DesignSystemDemo() {
   const [selectValue, setSelectValue] = useState('');
 
   return (
-    <div className="p-8 space-y-12 bg-gray-50 dark:bg-slate-900 min-h-screen">
+    <div className="p-8 space-y-12 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
           BatiGesti Design System
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
+        <p className="text-gray-600 mb-8">
           Composants UI de base pour l'application
         </p>
 
         {/* BUTTONS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Buttons
           </h2>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               Variants
             </h3>
             <div className="flex flex-wrap gap-4">
@@ -64,7 +64,7 @@ export default function DesignSystemDemo() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               Sizes
             </h3>
             <div className="flex items-center gap-4">
@@ -75,7 +75,7 @@ export default function DesignSystemDemo() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               With Icons
             </h3>
             <div className="flex flex-wrap gap-4">
@@ -86,7 +86,7 @@ export default function DesignSystemDemo() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               States & Icon Buttons
             </h3>
             <div className="flex flex-wrap items-center gap-4">
@@ -101,7 +101,7 @@ export default function DesignSystemDemo() {
 
         {/* FORM COMPONENTS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Form Components
           </h2>
 
@@ -155,7 +155,7 @@ export default function DesignSystemDemo() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
               Switch, Checkbox & Radio
             </h3>
             <div className="flex flex-wrap gap-8">
@@ -206,7 +206,7 @@ export default function DesignSystemDemo() {
 
         {/* BADGES */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Badges
           </h2>
 
@@ -224,7 +224,7 @@ export default function DesignSystemDemo() {
 
         {/* TABS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Tabs
           </h2>
 
@@ -237,28 +237,28 @@ export default function DesignSystemDemo() {
             </TabsList>
             <TabsContent value="details">
               <Card padding="md">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600">
                   Contenu de l'onglet Details. Les informations principales du chantier.
                 </p>
               </Card>
             </TabsContent>
             <TabsContent value="factures">
               <Card padding="md">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600">
                   Liste des factures associees au chantier.
                 </p>
               </Card>
             </TabsContent>
             <TabsContent value="documents">
               <Card padding="md">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600">
                   Documents et pieces jointes.
                 </p>
               </Card>
             </TabsContent>
             <TabsContent value="historique">
               <Card padding="md">
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-gray-600">
                   Historique des modifications et evenements.
                 </p>
               </Card>
@@ -268,7 +268,7 @@ export default function DesignSystemDemo() {
 
         {/* TOOLTIPS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Tooltips
           </h2>
 
@@ -293,7 +293,7 @@ export default function DesignSystemDemo() {
 
         {/* ALERTS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Alerts
           </h2>
 
@@ -315,21 +315,21 @@ export default function DesignSystemDemo() {
 
         {/* PROGRESS & LOADING */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Progress & Loading
           </h2>
 
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Progression</span>
-                <span className="font-medium text-gray-900 dark:text-white">65%</span>
+                <span className="text-gray-600">Progression</span>
+                <span className="font-medium text-gray-900">65%</span>
               </div>
               <Progress value={65} />
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
                 Skeleton Loading
               </h3>
               <div className="flex items-center gap-4">
@@ -345,7 +345,7 @@ export default function DesignSystemDemo() {
 
         {/* CARDS */}
         <section className="space-y-6 mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Cards
           </h2>
 
@@ -353,7 +353,7 @@ export default function DesignSystemDemo() {
             <Card>
               <CardHeader title="Card Default" description="With header and footer" />
               <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">Contenu de la card.</p>
+                <p className="text-gray-600">Contenu de la card.</p>
               </CardContent>
               <CardFooter>
                 <Button size="sm">Action</Button>
@@ -366,7 +366,7 @@ export default function DesignSystemDemo() {
                 action={<Badge variant="success">Actif</Badge>}
               />
               <CardContent>
-                <p className="text-gray-600 dark:text-gray-400">Hover pour voir l'effet.</p>
+                <p className="text-gray-600">Hover pour voir l'effet.</p>
               </CardContent>
             </Card>
 
@@ -374,8 +374,8 @@ export default function DesignSystemDemo() {
               <div className="flex items-center gap-4">
                 <Avatar name="Jean Dupont" size="lg" />
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Jean Dupont</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Client depuis 2023</p>
+                  <p className="font-semibold text-gray-900">Jean Dupont</p>
+                  <p className="text-sm text-gray-500">Client depuis 2023</p>
                 </div>
               </div>
             </Card>
@@ -384,7 +384,7 @@ export default function DesignSystemDemo() {
 
         {/* COLOR PALETTE */}
         <section className="space-y-6">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-slate-700 pb-2">
+          <h2 className="text-xl font-semibold text-gray-800 border-b border-gray-200 pb-2">
             Color Palette
           </h2>
 
@@ -397,7 +397,7 @@ export default function DesignSystemDemo() {
               { name: 'Gray', colors: ['bg-gray-500', 'bg-gray-700', 'bg-gray-100'] },
             ].map((palette) => (
               <div key={palette.name} className="space-y-2">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{palette.name}</p>
+                <p className="text-sm font-medium text-gray-700">{palette.name}</p>
                 <div className="space-y-1">
                   {palette.colors.map((color, i) => (
                     <div key={color} className={`h-8 rounded ${color} flex items-center justify-center text-xs ${i < 2 ? 'text-white' : 'text-gray-700'}`}>

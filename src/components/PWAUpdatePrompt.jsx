@@ -439,14 +439,14 @@ export function OfflineIndicator({ className }) {
     <div
       className={cn(
         'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium',
-        'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+        isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-800',
         className
       )}
     >
       <WifiOff className="w-3 h-3" />
       Hors ligne
       {pendingSyncCount > 0 && (
-        <span className="px-1.5 py-0.5 rounded-full bg-amber-200 dark:bg-amber-800 text-[10px]">
+        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isDark ? 'bg-amber-800' : 'bg-amber-200'}`}>
           {pendingSyncCount}
         </span>
       )}

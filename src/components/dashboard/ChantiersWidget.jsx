@@ -59,64 +59,64 @@ const WIND_ALERT_THRESHOLD = 40; // km/h
 const WIND_DISPLAY_THRESHOLD = 30; // km/h
 
 // Status configurations with border colors
-const statusConfig = {
+const getStatusConfig = (isDark) => ({
   prospect: {
     color: 'bg-blue-500',
     borderColor: 'border-l-blue-500',
-    textColor: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50/50 dark:bg-blue-900/10',
+    textColor: isDark ? 'text-blue-400' : 'text-blue-600',
+    bgColor: isDark ? 'bg-blue-900/10' : 'bg-blue-50/50',
     label: 'Prévu',
     icon: Clock,
   },
   en_cours: {
     color: 'bg-green-500',
     borderColor: 'border-l-green-500',
-    textColor: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-50/50 dark:bg-green-900/10',
+    textColor: isDark ? 'text-green-400' : 'text-green-600',
+    bgColor: isDark ? 'bg-green-900/10' : 'bg-green-50/50',
     label: 'En cours',
     icon: HardHat,
   },
   termine: {
     color: 'bg-gray-400',
     borderColor: 'border-l-gray-400',
-    textColor: 'text-gray-600 dark:text-gray-400',
-    bgColor: 'bg-gray-50/50 dark:bg-gray-800/30',
+    textColor: isDark ? 'text-gray-400' : 'text-gray-600',
+    bgColor: isDark ? 'bg-gray-800/30' : 'bg-gray-50/50',
     label: 'Terminé',
     icon: CheckCircle2,
   },
   en_retard: {
     color: 'bg-red-500',
     borderColor: 'border-l-red-500',
-    textColor: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-50/50 dark:bg-red-900/10',
+    textColor: isDark ? 'text-red-400' : 'text-red-600',
+    bgColor: isDark ? 'bg-red-900/10' : 'bg-red-50/50',
     label: 'En retard',
     icon: AlertCircle,
   },
   abandonne: {
     color: 'bg-red-400',
     borderColor: 'border-l-red-400',
-    textColor: 'text-red-500 dark:text-red-400',
-    bgColor: 'bg-red-50/30 dark:bg-red-900/10',
+    textColor: isDark ? 'text-red-400' : 'text-red-500',
+    bgColor: isDark ? 'bg-red-900/10' : 'bg-red-50/30',
     label: 'Abandonné',
     icon: AlertTriangle,
   },
   archive: {
     color: 'bg-slate-400',
     borderColor: 'border-l-slate-400',
-    textColor: 'text-slate-500 dark:text-slate-400',
-    bgColor: 'bg-slate-50/50 dark:bg-slate-800/30',
+    textColor: isDark ? 'text-slate-400' : 'text-slate-500',
+    bgColor: isDark ? 'bg-slate-800/30' : 'bg-slate-50/50',
     label: 'Archivé',
     icon: CheckCircle2,
   },
   brouillon: {
     color: 'bg-slate-300',
     borderColor: 'border-l-slate-300',
-    textColor: 'text-slate-500 dark:text-slate-400',
-    bgColor: 'bg-slate-50/50 dark:bg-slate-800/20',
+    textColor: isDark ? 'text-slate-400' : 'text-slate-500',
+    bgColor: isDark ? 'bg-slate-800/20' : 'bg-slate-50/50',
     label: 'Brouillon',
     icon: Clock,
   },
-};
+});
 
 // Weather icon mapping with emojis
 const weatherIcons = {
@@ -360,7 +360,8 @@ function WeatherAlert({ weather, isDark = false }) {
  */
 function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDark = false }) {
   const effectiveStatus = getEffectiveStatus(chantier);
-  const config = statusConfig[effectiveStatus] || statusConfig.en_cours;
+  const statusCfg = getStatusConfig(isDark);
+  const config = statusCfg[effectiveStatus] || statusCfg.en_cours;
   const hasAlert = hasWeatherAlert(weather);
 
   // Extract location display
@@ -416,11 +417,10 @@ function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDa
         <div
           className={cn(
             'flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center',
-            isDark ? config.bgColor.replace('dark:', '').replace(/bg-\w+-50\/50/g, '') : config.bgColor.split(' ')[0],
-            isDark && config.bgColor.includes('dark:') && config.bgColor.split('dark:')[1]?.split(' ')[0]
+            config.bgColor
           )}
         >
-          <config.icon className={cn('w-3.5 h-3.5', isDark ? config.textColor.split('dark:')[1] : config.textColor.split(' ')[0])} />
+          <config.icon className={cn('w-3.5 h-3.5', config.textColor)} />
         </div>
 
         {/* Info */}
@@ -540,19 +540,19 @@ function DaySeparator({ date, isDark = false }) {
  */
 function ChantierCardSkeleton() {
   return (
-    <div className="p-3 rounded-lg border-l-4 border-l-gray-300 bg-gray-50 dark:bg-slate-800/50 animate-pulse">
+    <div className="p-3 rounded-lg border-l-4 border-l-gray-300 bg-gray-50 animate-pulse">
       <div className="flex items-start gap-2 mb-2">
-        <div className="w-2.5 h-2.5 rounded-full bg-gray-200 dark:bg-slate-700 mt-1.5" />
+        <div className="w-2.5 h-2.5 rounded-full bg-gray-200 mt-1.5" />
         <div className="flex-1 space-y-1.5">
-          <div className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-700" />
-          <div className="h-3 w-1/2 rounded bg-gray-100 dark:bg-slate-800" />
+          <div className="h-4 w-3/4 rounded bg-gray-200" />
+          <div className="h-3 w-1/2 rounded bg-gray-100" />
         </div>
       </div>
       <div className="ml-4.5 space-y-2">
-        <div className="h-4 w-40 rounded bg-gray-100 dark:bg-slate-800" />
+        <div className="h-4 w-40 rounded bg-gray-100" />
         <div className="flex gap-2">
-          <div className="w-8 h-8 rounded bg-gray-100 dark:bg-slate-800" />
-          <div className="w-8 h-8 rounded bg-gray-100 dark:bg-slate-800" />
+          <div className="w-8 h-8 rounded bg-gray-100" />
+          <div className="w-8 h-8 rounded bg-gray-100" />
         </div>
       </div>
     </div>
@@ -803,7 +803,7 @@ export default function ChantiersWidget({
       <WidgetContent className="max-h-[320px] overflow-y-auto">
         {error ? (
           <div className="text-center py-6">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+            <p className={cn('text-sm mb-3', isDark ? 'text-red-400' : 'text-red-600')}>{error}</p>
             <Button variant="outline" size="sm" onClick={fetchUpcomingChantiers}>
               <RefreshCw className="w-4 h-4 mr-1.5" />
               Réessayer

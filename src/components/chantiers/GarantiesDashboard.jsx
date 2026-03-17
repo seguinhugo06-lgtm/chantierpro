@@ -27,10 +27,10 @@ import GarantieProgressBar from './GarantieProgressBar';
 // ── Status badge config ────────────────────────────────────────────────────────
 
 const STATUS_BADGES = {
-  active: { label: 'Active', icon: '🟢', color: 'text-green-700 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-900/20 dark:border-green-800' },
-  expireSoon: { label: 'Expire bientot', icon: '🟠', color: 'text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-900/20 dark:border-orange-800' },
-  expiree: { label: 'Expiree', icon: '🔴', color: 'text-red-700 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-900/20 dark:border-red-800' },
-  litige: { label: 'En litige', icon: '⚖️', color: 'text-purple-700 bg-purple-50 border-purple-200 dark:text-purple-400 dark:bg-purple-900/20 dark:border-purple-800' },
+  active: { label: 'Active', icon: '🟢', color: 'text-green-700 bg-green-50 border-green-200' },
+  expireSoon: { label: 'Expire bientot', icon: '🟠', color: 'text-orange-700 bg-orange-50 border-orange-200' },
+  expiree: { label: 'Expiree', icon: '🔴', color: 'text-red-700 bg-red-50 border-red-200' },
+  litige: { label: 'En litige', icon: '⚖️', color: 'text-purple-700 bg-purple-50 border-purple-200' },
 };
 
 function getWarrantyStatus(garantie) {

@@ -69,9 +69,9 @@ const CATEGORIES = [
 
 // Condition/state options
 const ETATS = [
-  { id: 'neuf', label: 'Neuf', color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400' },
-  { id: 'bon_etat', label: 'Bon état', color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400' },
-  { id: 'usage', label: "Traces d'usage", color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400' },
+  { id: 'neuf', label: 'Neuf', color: 'text-green-600 bg-green-100' },
+  { id: 'bon_etat', label: 'Bon état', color: 'text-blue-600 bg-blue-100' },
+  { id: 'usage', label: "Traces d'usage", color: 'text-amber-600 bg-amber-100' },
 ];
 
 // Distance options
@@ -492,7 +492,7 @@ function FilterDropdown({ label, isOpen, onToggle, onClose, children, isDark, ha
         className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
           isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50',
-          hasActiveFilters && 'border-primary-500 text-primary-600 dark:text-primary-400'
+          hasActiveFilters && 'border-primary-500 text-primary-600'
         )}
       >
         {label}
@@ -1119,7 +1119,7 @@ export default function Marketplace({
           className={cn(
             'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors',
             locationEnabled
-              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
               : isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
           )}
         >
@@ -1275,7 +1275,7 @@ export default function Marketplace({
           className={cn(
             'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors',
             livraisonOnly
-              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
               : isDark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
           )}
         >

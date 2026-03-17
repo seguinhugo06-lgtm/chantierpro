@@ -111,7 +111,7 @@ function ConversationCard({
           <Avatar user={conversation.other_user} size="md" />
           {/* Online indicator - would be real-time in production */}
           {hasUnread && (
-            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-800 rounded-full" />
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
           )}
         </div>
 
@@ -121,7 +121,7 @@ function ConversationCard({
             <p className={cn('font-medium text-sm truncate', textPrimary, hasUnread && 'font-semibold')}>
               {conversation.other_user?.nom || 'Utilisateur'}
             </p>
-            <span className={cn('text-xs flex-shrink-0 ml-2', hasUnread ? 'text-primary-600 dark:text-primary-400 font-medium' : textMuted)}>
+            <span className={cn('text-xs flex-shrink-0 ml-2', hasUnread ? 'text-primary-600 font-medium' : textMuted)}>
               {formatMessageTime(conversation.last_message_at)}
             </span>
           </div>

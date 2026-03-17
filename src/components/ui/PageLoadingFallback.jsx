@@ -19,7 +19,7 @@ function SkeletonLine({ className, ...props }) {
   return (
     <div
       className={cn(
-        'h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse',
+        'h-4 bg-gray-200 rounded animate-pulse',
         className
       )}
       {...props}
@@ -34,7 +34,7 @@ function SkeletonBox({ className, ...props }) {
   return (
     <div
       className={cn(
-        'bg-gray-200 dark:bg-slate-700 rounded-xl animate-pulse',
+        'bg-gray-200 rounded-xl animate-pulse',
         className
       )}
       {...props}

@@ -16,12 +16,12 @@ import { cn } from '../../lib/utils';
 
 // ============ CARD VARIANTS ============
 
-const cardVariants = {
-  default: 'bg-white border border-gray-100 shadow-sm dark:bg-slate-800 dark:border-slate-700/50',
-  elevated: 'bg-white shadow-md dark:bg-slate-800',
-  outlined: 'bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700',
+const getCardVariants = (isDark) => ({
+  default: isDark ? 'bg-slate-800 border border-slate-700/50 shadow-sm' : 'bg-white border border-gray-100 shadow-sm',
+  elevated: isDark ? 'bg-slate-800 shadow-md' : 'bg-white shadow-md',
+  outlined: isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200',
   ghost: 'bg-transparent',
-};
+});
 
 const cardPadding = {
   none: '',
@@ -40,6 +40,7 @@ export const Card = React.forwardRef(
       variant = 'default',
       padding = 'none',
       hoverable = false,
+      isDark = false,
       children,
       ...props
     },
@@ -50,7 +51,7 @@ export const Card = React.forwardRef(
         ref={ref}
         className={cn(
           'rounded-2xl transition-all duration-200',
-          cardVariants[variant],
+          getCardVariants(isDark)[variant],
           cardPadding[padding],
           hoverable && 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer',
           className
@@ -78,12 +79,12 @@ export const CardHeader = React.forwardRef(
           <>
             <div className="space-y-1">
               {title && (
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-base font-semibold text-gray-900">
                   {title}
                 </h3>
               )}
               {description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500">
                   {description}
                 </p>
               )}
@@ -121,7 +122,7 @@ export const CardFooter = React.forwardRef(
         ref={ref}
         className={cn(
           'flex items-center p-5 sm:p-6 pt-0',
-          bordered && 'pt-5 sm:pt-6 mt-0 border-t border-gray-100 dark:border-slate-700/50',
+          bordered && 'pt-5 sm:pt-6 mt-0 border-t border-gray-100',
           className
         )}
         {...props}
@@ -140,14 +141,14 @@ export function CardSkeleton({ className, rows = 3 }) {
         <div className="space-y-3">
           {Array.from({ length: rows }).map((_, i) => (
             <div key={i} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700" />
+              <div className="w-10 h-10 rounded-xl bg-gray-100" />
               <div className="flex-1 space-y-2">
                 <div
-                  className="h-4 rounded-md bg-gray-100 dark:bg-slate-700"
+                  className="h-4 rounded-md bg-gray-100"
                   style={{ width: `${60 + Math.random() * 40}%` }}
                 />
                 <div
-                  className="h-3 rounded bg-gray-50 dark:bg-slate-800"
+                  className="h-3 rounded bg-gray-50"
                   style={{ width: `${40 + Math.random() * 30}%` }}
                 />
               </div>

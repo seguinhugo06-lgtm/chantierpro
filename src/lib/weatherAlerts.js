@@ -1060,16 +1060,16 @@ export function getWeatherIconName(iconCode) {
  * @param {WeatherImpact} impact - Impact level
  * @returns {string} Tailwind color class
  */
-export function getImpactColor(impact) {
+export function getImpactColor(impact, isDark = false) {
   switch (impact) {
     case 'critique':
-      return 'text-red-600 bg-red-100 dark:bg-red-900/30';
+      return isDark ? 'text-red-600 bg-red-900/30' : 'text-red-600 bg-red-100';
     case 'modere':
-      return 'text-orange-600 bg-orange-100 dark:bg-orange-900/30';
+      return isDark ? 'text-orange-600 bg-orange-900/30' : 'text-orange-600 bg-orange-100';
     case 'faible':
-      return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30';
+      return isDark ? 'text-yellow-600 bg-yellow-900/30' : 'text-yellow-600 bg-yellow-100';
     default:
-      return 'text-gray-600 bg-gray-100 dark:bg-gray-900/30';
+      return isDark ? 'text-gray-600 bg-gray-900/30' : 'text-gray-600 bg-gray-100';
   }
 }
 

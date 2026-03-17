@@ -135,11 +135,11 @@ function DonutTooltip({ active, payload }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">
+      <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
+        <p className="text-sm font-medium text-gray-900">
           {data.label}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-gray-500">
           {formatCurrency(data.value)} ({data.count} facture{data.count > 1 ? 's' : ''})
         </p>
       </div>
@@ -347,7 +347,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
         <ModalTitle>Factures à relancer</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 mb-4">
           {factures.length} facture{factures.length > 1 ? 's' : ''} impayée{factures.length > 1 ? 's' : ''} depuis plus de 60 jours
         </p>
 
@@ -360,22 +360,22 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
             return (
               <div
                 key={facture.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-lg"
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-gray-900">
                     {formatDevisNumber(facture)}
                     <span className="text-gray-400 mx-1">•</span>
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-gray-600">
                       {client?.nom || 'Client inconnu'}
                     </span>
                   </p>
-                  <p className="text-xs text-red-600 dark:text-red-400">
+                  <p className="text-xs text-red-600">
                     {days} jours de retard
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  <span className="text-sm font-bold text-gray-900">
                     {formatCurrency(facture.total_ttc)}
                   </span>
                   <Button
@@ -591,7 +591,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
         <WidgetContent>
           {error ? (
             <div className="text-center py-6">
-              <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+              <p className="text-sm text-red-600 mb-3">{error}</p>
               <Button variant="outline" size="sm" onClick={fetchUnpaidData}>
                 <RefreshCw className="w-4 h-4 mr-1.5" />
                 Réessayer

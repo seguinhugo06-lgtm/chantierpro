@@ -370,7 +370,7 @@ export default function WebhookConfigPage({ userId, isDark, couleur, showToast, 
                       </button>
                       <button
                         onClick={() => handleDelete(webhook.id)}
-                        className="p-1.5 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="p-1.5 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-50"
                         title="Supprimer"
                       >
                         <Trash2 size={14} />

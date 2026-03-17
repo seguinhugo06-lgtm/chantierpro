@@ -70,14 +70,19 @@ export const STATUS_LABELS = {
   disputed: 'Litige',
 };
 
-// Status colors
+// Status colors (light/dark variants)
 export const STATUS_COLORS = {
-  pending: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
-  confirmed: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
-  in_progress: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
-  completed: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
-  cancelled: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400' },
-  disputed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  pending: { bg: 'bg-amber-100', bgDark: 'bg-amber-900/30', text: 'text-amber-700', textDark: 'text-amber-400' },
+  confirmed: { bg: 'bg-blue-100', bgDark: 'bg-blue-900/30', text: 'text-blue-700', textDark: 'text-blue-400' },
+  in_progress: { bg: 'bg-purple-100', bgDark: 'bg-purple-900/30', text: 'text-purple-700', textDark: 'text-purple-400' },
+  completed: { bg: 'bg-green-100', bgDark: 'bg-green-900/30', text: 'text-green-700', textDark: 'text-green-400' },
+  cancelled: { bg: 'bg-gray-100', bgDark: 'bg-gray-800', text: 'text-gray-600', textDark: 'text-gray-400' },
+  disputed: { bg: 'bg-red-100', bgDark: 'bg-red-900/30', text: 'text-red-700', textDark: 'text-red-400' },
+};
+
+export const getTransactionStatusColors = (status, isDark) => {
+  const c = STATUS_COLORS[status] || STATUS_COLORS.pending;
+  return { bg: isDark ? c.bgDark : c.bg, text: isDark ? c.textDark : c.text };
 };
 
 // Transaction steps

@@ -593,7 +593,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
             </div>
             <button
               onClick={handleDelete}
-              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
               aria-label="Supprimer cette tâche définitivement"
             >
               <Trash2 size={18} />
@@ -1751,7 +1751,7 @@ export default function MemosPage({
             {hasActiveFilters && (
               <button
                 onClick={() => { setFilterCategory(''); setFilterPriority(''); setSearchQuery(''); }}
-                className="text-xs px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+                className="text-xs px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50"
               >
                 Réinitialiser
               </button>

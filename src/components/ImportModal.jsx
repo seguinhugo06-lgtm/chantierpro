@@ -455,7 +455,7 @@ export default function ImportModal({
                     <motion.div
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm"
+                      className={`flex items-center gap-2 p-3 rounded-xl text-sm ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}
                     >
                       <AlertCircle size={16} className="shrink-0" />
                       {error}
@@ -661,7 +661,7 @@ export default function ImportModal({
                       </>
                     ) : (
                       <>
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-red-50 dark:bg-red-900/20">
+                        <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
                           <AlertCircle size={32} className="text-red-500" />
                         </div>
                         <p className={`text-lg font-bold ${textPrimary}`}>

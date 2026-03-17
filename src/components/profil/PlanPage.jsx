@@ -124,7 +124,7 @@ export default function PlanPage({ isDark, couleur = '#f97316' }) {
                 <div className="flex items-center gap-2">
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
                   {sub?.cancel_at_period_end ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
                       ANNULATION PRÉVUE
                     </span>
                   ) : (

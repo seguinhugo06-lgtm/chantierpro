@@ -2,32 +2,32 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
 
-const variantStyles = {
+const getVariantStyles = (isDark) => ({
   info: {
-    container: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800',
+    container: isDark ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200',
     icon: 'text-blue-500',
-    title: 'text-blue-800 dark:text-blue-300',
-    description: 'text-blue-700 dark:text-blue-400',
+    title: isDark ? 'text-blue-300' : 'text-blue-800',
+    description: isDark ? 'text-blue-400' : 'text-blue-700',
   },
   success: {
-    container: 'bg-success-50 border-success-200 dark:bg-success-900/20 dark:border-success-800',
+    container: isDark ? 'bg-success-900/20 border-success-800' : 'bg-success-50 border-success-200',
     icon: 'text-success-500',
-    title: 'text-success-800 dark:text-success-300',
-    description: 'text-success-700 dark:text-success-400',
+    title: isDark ? 'text-success-300' : 'text-success-800',
+    description: isDark ? 'text-success-400' : 'text-success-700',
   },
   warning: {
-    container: 'bg-warning-50 border-warning-200 dark:bg-warning-900/20 dark:border-warning-800',
+    container: isDark ? 'bg-warning-900/20 border-warning-800' : 'bg-warning-50 border-warning-200',
     icon: 'text-warning-500',
-    title: 'text-warning-800 dark:text-warning-300',
-    description: 'text-warning-700 dark:text-warning-400',
+    title: isDark ? 'text-warning-300' : 'text-warning-800',
+    description: isDark ? 'text-warning-400' : 'text-warning-700',
   },
   danger: {
-    container: 'bg-danger-50 border-danger-200 dark:bg-danger-900/20 dark:border-danger-800',
+    container: isDark ? 'bg-danger-900/20 border-danger-800' : 'bg-danger-50 border-danger-200',
     icon: 'text-danger-500',
-    title: 'text-danger-800 dark:text-danger-300',
-    description: 'text-danger-700 dark:text-danger-400',
+    title: isDark ? 'text-danger-300' : 'text-danger-800',
+    description: isDark ? 'text-danger-400' : 'text-danger-700',
   },
-};
+});
 
 const variantIcons = {
   info: Info,
@@ -47,12 +47,13 @@ export const Alert = React.forwardRef(
       dismissible = false,
       onDismiss,
       action,
+      isDark = false,
       ...props
     },
     ref
   ) => {
     const [isVisible, setIsVisible] = React.useState(true);
-    const styles = variantStyles[variant];
+    const styles = getVariantStyles(isDark)[variant];
     const IconComponent = icon || variantIcons[variant];
 
     const handleDismiss = () => {
@@ -101,7 +102,7 @@ export const Alert = React.forwardRef(
             onClick={handleDismiss}
             className={cn(
               'flex-shrink-0 p-1 rounded-lg transition-colors',
-              'hover:bg-black/5 dark:hover:bg-white/10',
+              isDark ? 'hover:bg-white/10' : 'hover:bg-black/5',
               styles.icon
             )}
             aria-label="Fermer"

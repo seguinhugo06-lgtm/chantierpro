@@ -102,7 +102,7 @@ const ConsolidatedWidget = memo(function ConsolidatedWidget({
       {/* Progress bar */}
       {!modeDiscret && stats.totalCA > 0 && (
         <div className="px-5 pb-3">
-          <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700">
+          <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100">
             {stats.list
               .filter(s => s.ca > 0)
               .map(s => (

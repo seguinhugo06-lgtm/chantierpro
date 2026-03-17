@@ -43,12 +43,12 @@ import { Tooltip } from './Tooltip';
 // Variant styles
 const variantStyles = {
   ghost:
-    'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-slate-700 dark:hover:text-gray-200',
+    'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
   outline:
-    'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-gray-300 dark:hover:bg-slate-800',
+    'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50',
   primary:
-    'bg-primary-500 text-white hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700',
-  danger: 'bg-transparent text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20',
+    'bg-primary-500 text-white hover:bg-primary-600',
+  danger: 'bg-transparent text-red-600 hover:bg-red-50',
 };
 
 // Size styles for icon buttons
@@ -245,7 +245,7 @@ export function QuickActionsRow({ left, right, className }) {
 export function ActionDivider({ className }) {
   return (
     <div
-      className={cn('h-4 w-px bg-gray-200 dark:bg-slate-700', className)}
+      className={cn('h-4 w-px bg-gray-200', className)}
       role="separator"
     />
   );

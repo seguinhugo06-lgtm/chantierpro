@@ -48,10 +48,10 @@ const CORPS_METIER = [
 ];
 
 const GRAVITE_OPTIONS = [
-  { value: 'mineur', label: 'Mineur', classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' },
-  { value: 'modere', label: 'Modéré', classes: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300' },
-  { value: 'majeur', label: 'Majeur', classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
-  { value: 'critique', label: 'Critique', classes: 'bg-red-200 text-red-900 animate-pulse dark:bg-red-900/60 dark:text-red-200' },
+  { value: 'mineur', label: 'Mineur', classes: 'bg-yellow-100 text-yellow-800' },
+  { value: 'modere', label: 'Modéré', classes: 'bg-orange-100 text-orange-800' },
+  { value: 'majeur', label: 'Majeur', classes: 'bg-red-100 text-red-800' },
+  { value: 'critique', label: 'Critique', classes: 'bg-red-200 text-red-900 animate-pulse' },
 ];
 
 /** Return a localStorage key scoped to the given chantier ID. */
@@ -479,7 +479,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); handleDelete(rapport.id); }}
-                className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                className="p-2 rounded-lg hover:bg-red-100 transition-colors"
                 title="Supprimer"
               >
                 <Trash2 size={16} className="text-red-500" />
@@ -628,7 +628,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
             )}
 
             {/* External workers */}
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div className="pt-2 border-t border-slate-200">
               <p className={`text-xs font-medium ${textSecondary} mb-2`}>Intervenants externes</p>
               {draft.intervenantsExternes.map((ext) => (
                 <div key={ext.id} className="flex items-center gap-2 mb-2">
@@ -639,7 +639,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                     placeholder="Nom de l'intervenant"
                     className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                   />
-                  <button onClick={() => removeExterne(ext.id)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">
+                  <button onClick={() => removeExterne(ext.id)} className="p-1 text-red-500 hover:bg-red-50 rounded">
                     <X size={14} />
                   </button>
                 </div>
@@ -667,7 +667,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                         rows={2}
                         className={`flex-1 rounded-md border px-3 py-2 text-sm resize-none ${inputCls}`}
                       />
-                      <button onClick={() => removeTravail(travail.id)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0">
+                      <button onClick={() => removeTravail(travail.id)} className="p-1 text-red-500 hover:bg-red-50 rounded flex-shrink-0">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -744,7 +744,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                           placeholder="Description de l'incident"
                           className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                         />
-                        <button onClick={() => removeIncident(incident.id)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex-shrink-0">
+                        <button onClick={() => removeIncident(incident.id)} className="p-1 text-red-500 hover:bg-red-50 rounded flex-shrink-0">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -777,7 +777,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                     </div>
                   ))}
                 </div>
-                <button onClick={addIncident} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-red-600 dark:text-red-400 hover:underline">
+                <button onClick={addIncident} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:underline">
                   <Plus size={14} /> Ajouter incident
                 </button>
               </div>
@@ -814,7 +814,7 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
                       placeholder="Fournisseur"
                       className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${inputCls}`}
                     />
-                    <button onClick={() => removeMateriau(mat.id)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded self-center flex-shrink-0">
+                    <button onClick={() => removeMateriau(mat.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded self-center flex-shrink-0">
                       <Trash2 size={14} />
                     </button>
                   </div>

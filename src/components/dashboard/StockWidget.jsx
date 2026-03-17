@@ -252,28 +252,28 @@ function OrderModal({ isOpen, onClose, alert, onConfirm }) {
       <ModalBody>
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Stock actuel : <span className="font-medium text-gray-900 dark:text-white">{alert.currentQuantity} {alert.unit}</span>
+            <p className="text-sm text-gray-600 mb-3">
+              Stock actuel : <span className="font-medium text-gray-900">{alert.currentQuantity} {alert.unit}</span>
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Quantite a commander
             </label>
             <input
               type="number"
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900"
               min="1"
             />
           </div>
 
-          <div className="p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500">
               Stock apres commande :
-              <span className="font-medium text-gray-900 dark:text-white ml-1">
+              <span className="font-medium text-gray-900 ml-1">
                 {alert.currentQuantity + quantity} {alert.unit}
               </span>
             </p>
@@ -315,26 +315,26 @@ function GroupPurchaseModal({ isOpen, onClose, opportunity }) {
       </ModalHeader>
       <ModalBody>
         <div className="space-y-4">
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm font-medium text-green-800">
               Economie potentielle : {formatCurrency(opportunity.savings)} (-{opportunity.discountPercent}%)
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <p className="text-sm font-medium text-gray-700 mb-2">
               Produits inclus ({opportunity.products.length})
             </p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {opportunity.products.map((product) => (
                 <div
                   key={product.productId}
-                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-800 rounded"
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded"
                 >
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-sm text-gray-700">
                     {product.productName}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  <span className="text-sm font-medium text-gray-900">
                     {product.quantity} x {formatCurrency(product.unitPrice)}
                   </span>
                 </div>
@@ -342,22 +342,22 @@ function GroupPurchaseModal({ isOpen, onClose, opportunity }) {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+          <div className="pt-3 border-t border-gray-200">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-500 dark:text-gray-400">Sous-total</span>
-              <span className="text-gray-500 dark:text-gray-400 line-through">
+              <span className="text-gray-500">Sous-total</span>
+              <span className="text-gray-500 line-through">
                 {formatCurrency(opportunity.totalWithoutDiscount)}
               </span>
             </div>
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-500 dark:text-gray-400">Remise (-{opportunity.discountPercent}%)</span>
-              <span className="text-green-600 dark:text-green-400">
+              <span className="text-gray-500">Remise (-{opportunity.discountPercent}%)</span>
+              <span className="text-green-600">
                 -{formatCurrency(opportunity.savings)}
               </span>
             </div>
-            <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
-              <span className="text-gray-900 dark:text-white">Total</span>
-              <span className="text-gray-900 dark:text-white">
+            <div className="flex justify-between text-base font-bold mt-2 pt-2 border-t border-gray-200">
+              <span className="text-gray-900">Total</span>
+              <span className="text-gray-900">
                 {formatCurrency(opportunity.totalWithDiscount)}
               </span>
             </div>
@@ -511,7 +511,7 @@ export default function StockWidget({ userId, className, setPage, isDark = false
         <WidgetContent className="space-y-4">
           {error ? (
             <div className="text-center py-6">
-              <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
+              <p className="text-sm text-red-600 mb-3">{error}</p>
               <Button variant="outline" size="sm" onClick={fetchData}>
                 <RefreshCw className="w-4 h-4 mr-1.5" />
                 Réessayer
@@ -647,14 +647,14 @@ export function StockWidgetSkeleton() {
           {/* Alerts skeleton */}
           <div className="space-y-2">
             {[1, 2].map((i) => (
-              <div key={i} className="h-24 rounded-lg bg-gray-100 dark:bg-slate-800" />
+              <div key={i} className="h-24 rounded-lg bg-gray-100" />
             ))}
           </div>
 
           {/* Predictions skeleton */}
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-6 rounded bg-gray-100 dark:bg-slate-800" />
+              <div key={i} className="h-6 rounded bg-gray-100" />
             ))}
           </div>
         </div>

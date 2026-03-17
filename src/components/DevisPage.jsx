@@ -2261,7 +2261,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   />
                 )}
                 {needsFollowUp(selected) && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400 font-medium">⏰ Relancer</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>⏰ Relancer</span>
                 )}
                 {(() => {
                   const legal = getLegalIssues();
@@ -3039,7 +3039,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   <span>{formatMoney(pen.total)}</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-orange-200 dark:border-orange-700">
+              <div className={`flex items-center justify-between mt-3 pt-2 border-t ${isDark ? 'border-orange-700' : 'border-orange-200'}`}>
                 <p className={`text-[10px] ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
                   Art. L441-10 C. com. — Échéance : {pen.echeance.toLocaleDateString('fr-FR')}
                 </p>

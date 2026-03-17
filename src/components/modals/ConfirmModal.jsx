@@ -43,9 +43,9 @@ export default function ConfirmModal({
   };
 
   const iconColors = {
-    danger: 'bg-danger-100 dark:bg-danger-900/30 text-danger-500',
-    warning: 'bg-warning-100 dark:bg-warning-900/30 text-warning-500',
-    primary: 'bg-primary-100 dark:bg-primary-900/30 text-primary-500'
+    danger: 'bg-danger-100 text-danger-500',
+    warning: 'bg-warning-100 text-warning-500',
+    primary: 'bg-primary-100 text-primary-500'
   };
 
   return (
@@ -55,10 +55,10 @@ export default function ConfirmModal({
           <AlertTriangle size={24} />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-slate-900">
             {title}
           </h3>
-          <p className="mt-2 text-slate-600 dark:text-slate-300">
+          <p className="mt-2 text-slate-600">
             {message}
           </p>
         </div>
@@ -68,7 +68,7 @@ export default function ConfirmModal({
         <button
           onClick={onClose}
           disabled={isLoading}
-          className="px-4 py-2.5 rounded-xl font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+          className="px-4 py-2.5 rounded-xl font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
         >
           {cancelText}
         </button>

@@ -172,8 +172,8 @@ function ChannelOption({ value, selected, onChange, icon: Icon, label, descripti
       className={cn(
         'flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
         selected
-          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600',
+          ? 'border-primary-500 bg-primary-50'
+          : 'border-gray-200 hover:border-gray-300',
         disabled && 'opacity-50 cursor-not-allowed'
       )}
     >
@@ -191,7 +191,7 @@ function ChannelOption({ value, selected, onChange, icon: Icon, label, descripti
           'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5',
           selected
             ? 'border-primary-500 bg-primary-500'
-            : 'border-gray-300 dark:border-slate-600'
+            : 'border-gray-300'
         )}
       >
         {selected && <Check className="w-3 h-3 text-white" />}
@@ -199,7 +199,7 @@ function ChannelOption({ value, selected, onChange, icon: Icon, label, descripti
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Icon className={cn('w-4 h-4', selected ? 'text-primary-600' : 'text-gray-500')} />
-          <span className={cn('font-medium', selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-300')}>
+          <span className={cn('font-medium', selected ? 'text-primary-700' : 'text-gray-700')}>
             {label}
           </span>
           {recommended && (
@@ -209,7 +209,7 @@ function ChannelOption({ value, selected, onChange, icon: Icon, label, descripti
           )}
         </div>
         {description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
         )}
       </div>
     </label>
@@ -221,7 +221,7 @@ function ChannelOption({ value, selected, onChange, icon: Icon, label, descripti
 function RelanceHistorySection({ history }) {
   if (!history || history.length === 0) {
     return (
-      <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+      <div className="text-sm text-gray-500 italic">
         Aucune relance envoyée
       </div>
     );
@@ -235,14 +235,14 @@ function RelanceHistorySection({ history }) {
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-sm">
         <History className="w-4 h-4 text-gray-400" />
-        <span className="text-gray-600 dark:text-gray-300">
+        <span className="text-gray-600">
           Dernière relance : {formatRelativeTime(daysSinceLast)}
-          <span className="text-gray-400 dark:text-gray-500 ml-1">
+          <span className="text-gray-400 ml-1">
             ({lastRelance.channel === 'email' ? 'Email' : 'SMS'})
           </span>
         </span>
       </div>
-      <div className="text-sm text-gray-500 dark:text-gray-400">
+      <div className="text-sm text-gray-500">
         Relances totales : {history.length}
       </div>
     </div>
@@ -476,14 +476,14 @@ export default function RelanceModal({
 
       <ModalBody className="space-y-5">
         {/* Item Summary */}
-        <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-2">
+        <div className="bg-gray-50/50 rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-gray-400" />
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="font-medium text-gray-900">
               {item.client?.nom || 'Client'}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-gray-400" />
               <span>
@@ -495,7 +495,7 @@ export default function RelanceModal({
               <span className="font-semibold">{formatCurrency(item.montant)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
             <Clock className="w-4 h-4" />
             <span>
               Envoyé {formatRelativeTime(daysSinceSent)}
@@ -510,7 +510,7 @@ export default function RelanceModal({
 
         {/* Channel Selection */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-gray-700">
             Canal de relance
           </label>
           <div className="space-y-2">
@@ -548,7 +548,7 @@ export default function RelanceModal({
         {/* Message */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Message {isCustomizing && '(personnalisé)'}
             </label>
             {channel === 'sms' && (
@@ -572,13 +572,13 @@ export default function RelanceModal({
             rows={channel === 'sms' ? 4 : 8}
             className={cn(
               'w-full px-4 py-3 rounded-xl border transition-colors',
-              'text-sm text-gray-900 dark:text-white',
-              'bg-white dark:bg-slate-800',
-              'placeholder-gray-400 dark:placeholder-gray-500',
+              'text-sm text-gray-900',
+              'bg-white',
+              'placeholder-gray-400',
               'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
               isOverLimit
-                ? 'border-red-300 dark:border-red-700'
-                : 'border-gray-200 dark:border-slate-700'
+                ? 'border-red-300'
+                : 'border-gray-200'
             )}
           />
 
@@ -587,7 +587,7 @@ export default function RelanceModal({
               <button
                 type="button"
                 onClick={handleResetTemplate}
-                className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                className="text-xs text-primary-600 hover:underline flex items-center gap-1"
               >
                 <Edit3 className="w-3 h-3" />
                 Réinitialiser le template
@@ -596,7 +596,7 @@ export default function RelanceModal({
               <button
                 type="button"
                 onClick={() => setIsCustomizing(true)}
-                className="text-xs text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+                className="text-xs text-primary-600 hover:underline flex items-center gap-1"
               >
                 <Edit3 className="w-3 h-3" />
                 Personnaliser le message
@@ -607,14 +607,14 @@ export default function RelanceModal({
 
         {/* Error Display */}
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-700 dark:text-red-300">
+          <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg text-sm text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* History */}
-        <div className="pt-3 border-t border-gray-200 dark:border-slate-700">
+        <div className="pt-3 border-t border-gray-200">
           <RelanceHistorySection history={history} />
         </div>
       </ModalBody>

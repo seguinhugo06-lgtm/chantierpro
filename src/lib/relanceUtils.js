@@ -23,11 +23,16 @@ export const RELANCE_STATUS_LABELS = {
 };
 
 export const RELANCE_STATUS_COLORS = {
-  sent: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
-  failed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
-  opened: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', dot: 'bg-green-500' },
-  clicked: { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
-  cancelled: { bg: 'bg-gray-100 dark:bg-gray-900/30', text: 'text-gray-500 dark:text-gray-400', dot: 'bg-gray-400' },
+  sent: { bg: 'bg-blue-100', bgDark: 'bg-blue-900/30', text: 'text-blue-700', textDark: 'text-blue-300', dot: 'bg-blue-500' },
+  failed: { bg: 'bg-red-100', bgDark: 'bg-red-900/30', text: 'text-red-700', textDark: 'text-red-300', dot: 'bg-red-500' },
+  opened: { bg: 'bg-green-100', bgDark: 'bg-green-900/30', text: 'text-green-700', textDark: 'text-green-300', dot: 'bg-green-500' },
+  clicked: { bg: 'bg-emerald-100', bgDark: 'bg-emerald-900/30', text: 'text-emerald-700', textDark: 'text-emerald-300', dot: 'bg-emerald-500' },
+  cancelled: { bg: 'bg-gray-100', bgDark: 'bg-gray-900/30', text: 'text-gray-500', textDark: 'text-gray-400', dot: 'bg-gray-400' },
+};
+
+export const getRelanceStatusColors = (status, isDark) => {
+  const c = RELANCE_STATUS_COLORS[status] || RELANCE_STATUS_COLORS.cancelled;
+  return { bg: isDark ? c.bgDark : c.bg, text: isDark ? c.textDark : c.text, dot: c.dot };
 };
 
 export const EXCLUSION_REASONS = {
@@ -434,10 +439,15 @@ export function calculateClientPaymentScore(clientId, factures = [], executions 
 }
 
 export const CLIENT_SCORE_CONFIG = {
-  bon: { label: 'Bon payeur', color: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30', icon: '✅' },
-  moyen: { label: 'Payeur moyen', color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30', icon: '⚠️' },
-  mauvais: { label: 'Payeur lent', color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30', icon: '🔴' },
-  inconnu: { label: 'Pas de données', color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800', icon: '—' },
+  bon: { label: 'Bon payeur', color: 'text-green-600', bg: 'bg-green-100', bgDark: 'bg-green-900/30', icon: '✅' },
+  moyen: { label: 'Payeur moyen', color: 'text-amber-600', bg: 'bg-amber-100', bgDark: 'bg-amber-900/30', icon: '⚠️' },
+  mauvais: { label: 'Payeur lent', color: 'text-red-600', bg: 'bg-red-100', bgDark: 'bg-red-900/30', icon: '🔴' },
+  inconnu: { label: 'Pas de données', color: 'text-gray-500', bg: 'bg-gray-100', bgDark: 'bg-gray-800', icon: '—' },
+};
+
+export const getClientScoreBg = (score, isDark) => {
+  const c = CLIENT_SCORE_CONFIG[score] || CLIENT_SCORE_CONFIG.inconnu;
+  return isDark ? c.bgDark : c.bg;
 };
 
 // ============ EMAIL TEMPLATE BUILDER ============
