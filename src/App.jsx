@@ -1235,21 +1235,7 @@ export default function App() {
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Send ONLY CGU fields to Supabase (not the entire entreprise object)
-    if (entrepriseId) {
-      try {
-        await ctxUpdateEntreprise(entrepriseId, cguData);
-      } catch (err) {
-        // Fallback: direct Supabase update with only CGU columns
-        if (supabase) {
-          await supabase.from('entreprise').update({
-            cgu_accepted_at: now,
-            cgu_version: version,
-          }).eq('id', entrepriseId);
-        }
-      }
-    }
-    // Update local state
+    // Persist to entreprises table via context (toSupabase maps cguAcceptedAt → cgu_accepted_at)
     setEntreprise(prev => ({ ...prev, ...cguData }));
   };
 
@@ -1313,7 +1299,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1333,20 +1319,22 @@ export default function App() {
             ))}
             {/* Devis IA — sub-item right under Devis & Factures */}
             <button
-              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start pl-7 pr-3 md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              onClick={() => { setPage('ia-devis'); setSidebarOpen(false); try { localStorage.setItem('cp_ia_devis_visited', '1'); } catch(e) {} }}
+              className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start pl-7 pr-3 md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-700'}`}
               style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
               title="Devis IA"
             >
               <Sparkles size={14} className="flex-shrink-0" aria-hidden="true" />
               <span className="flex-1 text-left md:hidden xl:inline">Devis IA</span>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold md:hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+              {!localStorage.getItem('cp_ia_devis_visited') && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold md:hidden xl:inline-block ${page === 'ia-devis' ? 'bg-white/20 text-white' : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'}`}>NEW</span>
+              )}
             </button>
             {nav.slice(2, 4).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1376,7 +1364,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1403,14 +1391,20 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
               >
                 <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left truncate md:hidden xl:inline">{n.label}</span>
-                {n.badge > 0 && (
+                {n.badge > 0 && n.id === 'settings' ? (
+                  <span
+                    className="w-2 h-2 rounded-full md:hidden xl:inline-block flex-shrink-0"
+                    style={{ background: page === n.id ? 'rgba(255,255,255,0.5)' : (n.badgeColor || '#f97316') }}
+                    title={n.badgeTitle}
+                  />
+                ) : n.badge > 0 ? (
                   <span
                     className="px-1.5 py-0.5 text-white text-[10px] rounded-full min-w-[20px] text-center font-semibold md:hidden xl:inline-block"
                     style={{ background: page === n.id ? 'rgba(255,255,255,0.25)' : (n.badgeColor || '#ef4444') }}
@@ -1418,7 +1412,7 @@ export default function App() {
                   >
                     {n.badge > 99 ? '99+' : n.badge}
                   </span>
-                )}
+                ) : null}
               </button>
             ))}
           </nav>
@@ -1433,7 +1427,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1449,16 +1443,16 @@ export default function App() {
         <div className={`flex-shrink-0 p-2 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'} space-y-1`}>
           <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
-              title={modeDiscret ? 'Désactiver mode discret — Afficher les montants' : 'Activer mode discret — Masquer tous les montants (€) à l\'écran'}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-700'}`}
+              title={modeDiscret ? 'Désactiver mode confidentiel — Afficher les montants' : 'Activer mode confidentiel — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
-              <span className="md:hidden xl:inline text-xs">Discret</span>
+              <span className="md:hidden xl:inline text-xs">Confidentiel</span>
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-300' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-700'}`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
@@ -1467,7 +1461,7 @@ export default function App() {
           </div>
           <button
             onClick={handleSignOut}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ${isDark ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-500 hover:bg-red-50 hover:text-red-500'}`}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ${isDark ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-600 hover:bg-red-50 hover:text-red-500'}`}
           >
             <LogOut size={13} />
             <span className="md:hidden xl:inline">Déconnexion</span>
@@ -1572,9 +1566,9 @@ export default function App() {
               <HelpCircle size={18} />
             </button>
 
-            {/* Mode discret toggle — hidden on small mobile, visible sm+ */}
+            {/* Mode confidentiel toggle — hidden on small mobile, visible sm+ */}
             <button
-              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode discret activé — Montants masqués' : 'Mode discret désactivé — Montants visibles', 'info'); }}
+              onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
               className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-200 text-slate-600'}`}
               style={modeDiscret ? {background: couleur} : {}}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
@@ -2281,7 +2275,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
             <p className={`text-sm ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>Dans Paramètres, ajoutez votre logo et choisissez votre couleur. Vos devis auront un aspect professionnel unique.</p>
           </div>
           <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>📊 Mode discret</h4>
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>📊 Mode confidentiel</h4>
             <p className={`text-sm ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>Cliquez sur l'œil pour masquer les montants. Pratique quand un client regarde votre écran !</p>
           </div>
         </div>

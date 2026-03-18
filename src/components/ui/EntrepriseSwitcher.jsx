@@ -90,7 +90,7 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
     return (
       <button
         onClick={() => onNavigateSettings?.()}
-        className={`group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-all ${isDark ? 'hover:bg-slate-800/80' : 'hover:bg-slate-100'}`}
+        className="group flex items-center gap-3 flex-1 min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
         title="Mon profil"
       >
         <div
@@ -100,11 +100,11 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
           <Building2 size={18} className="text-white" />
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={nom}>
+          <p className="text-white font-semibold text-sm truncate" title={nom}>
             {nom}
           </p>
           {user?.email && (
-            <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</p>
+            <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
           )}
         </div>
       </button>
@@ -197,7 +197,7 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
             />
           </div>
           {user?.email && (
-            <p className="text-slate-500 text-[11px] truncate">{user.email}</p>
+            <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
           )}
         </div>
       </button>
@@ -227,7 +227,7 @@ function DropdownContent({ entreprises, activeId, isDark, onSwitch, onSettings }
     <div className="py-2">
       {/* Header */}
       <div className={`px-4 py-2 text-xs font-medium uppercase tracking-wider ${
-        isDark ? 'text-slate-500' : 'text-gray-400'
+        isDark ? 'text-slate-500' : 'text-gray-500'
       }`}>
         Mes entreprises
       </div>
@@ -260,7 +260,7 @@ function DropdownContent({ entreprises, activeId, isDark, onSwitch, onSettings }
                 <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {ent.nom}
                 </p>
-                <p className={`text-[11px] truncate ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                <p className={`text-[11px] truncate ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
                   {[ent.formeJuridique, ent.ville].filter(Boolean).join(' · ') || 'Entreprise'}
                 </p>
               </div>

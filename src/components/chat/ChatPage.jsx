@@ -528,15 +528,15 @@ const ChatPage = memo(function ChatPage({
             </div>
             <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Bienvenue dans la Messagerie</h3>
             <p className={`text-sm mb-8 ${textMuted} text-center max-w-sm`}>
-              Communiquez avec votre equipe en 3 etapes simples
+              Communiquez avec votre équipe en 3 étapes simples
             </p>
 
             {/* 3-step onboarding */}
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 max-w-lg w-full">
               {[
-                { icon: MessageSquarePlus, title: 'Creez un canal', desc: 'Par equipe, chantier ou sujet' },
-                { icon: Users, title: 'Invitez vos collegues', desc: 'Ajoutez les membres concernes' },
-                { icon: Zap, title: 'Echangez en direct', desc: 'Messages, fichiers et reactions' },
+                { icon: MessageSquarePlus, title: 'Créez un canal', desc: 'Par équipe, chantier ou sujet' },
+                { icon: Users, title: 'Invitez vos collègues', desc: 'Ajoutez les membres concernés' },
+                { icon: Zap, title: 'Échangez en direct', desc: 'Messages, fichiers et réactions' },
               ].map((step, i) => (
                 <div key={i} className={`flex-1 flex flex-col items-center text-center p-4 rounded-xl ${
                   isDark ? 'bg-slate-800/60' : 'bg-gray-50'
@@ -556,7 +556,7 @@ const ChatPage = memo(function ChatPage({
               style={{ background: couleur }}
             >
               <MessageSquarePlus size={18} />
-              Creer mon premier canal
+              Créer mon premier canal
             </button>
           </div>
         )}
