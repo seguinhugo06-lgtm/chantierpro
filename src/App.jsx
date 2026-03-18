@@ -107,7 +107,7 @@ const getThemeClasses = (isDark) => ({
   text: isDark ? "text-slate-100" : "text-slate-900",
   textSecondary: isDark ? "text-slate-200" : "text-slate-700",
   textMuted: isDark ? "text-slate-300" : "text-slate-500",
-  bg: isDark ? "bg-slate-900" : "bg-slate-50",
+  bg: isDark ? "bg-slate-900" : "bg-slate-100",
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
 
@@ -1470,7 +1470,7 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
         <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'}`}>
 
