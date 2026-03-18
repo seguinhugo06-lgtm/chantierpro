@@ -64,18 +64,20 @@ function formatFullMoney(amount) {
 }
 
 /**
- * Custom tooltip
+ * Custom tooltip — dark mode aware
  */
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, isDark }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-200">
-        <p className="text-xs text-gray-500 mb-1">{label}</p>
-        <p className="text-lg font-bold text-gray-900">
-          {formatFullMoney(payload[0].value)}
-        </p>
+      <div className={`px-4 py-3 rounded-xl shadow-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+        <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+        {payload.map((p, i) => (
+          <p key={i} className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            {p.name === 'revenue' ? 'CA' : p.name}: {formatFullMoney(p.value)}
+          </p>
+        ))}
         {payload[0].payload.invoiceCount > 0 && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
             {payload[0].payload.invoiceCount} facture{payload[0].payload.invoiceCount > 1 ? 's' : ''}
           </p>
         )}
@@ -210,7 +212,7 @@ function ProgressRing({ value, max, color, size = 48, strokeWidth = 4, isDark })
 /**
  * RevenueChartWidget Component
  */
-export default function RevenueChartWidget({ setPage, isDark = false, className }) {
+export default function RevenueChartWidget({ setPage, isDark = false, couleur = '#3b82f6', className }) {
   const { devis = [] } = useDevis();
 
   // Calculate monthly revenue data
@@ -461,9 +463,9 @@ export default function RevenueChartWidget({ setPage, isDark = false, className 
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={couleur} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={couleur} stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
@@ -484,7 +486,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, className 
                       tickFormatter={formatMoney}
                       domain={[0, maxRevenue * 1.1]}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<CustomTooltip isDark={isDark} />} />
                     <ReferenceLine
                       y={stats.monthlyGoal}
                       stroke="#10b981"
@@ -500,22 +502,22 @@ export default function RevenueChartWidget({ setPage, isDark = false, className 
                     <Area
                       type="monotone"
                       dataKey="revenue"
-                      stroke="#3b82f6"
+                      stroke={couleur}
                       strokeWidth={2.5}
-                      fill="url(#revenueGradient)"
+                      fill="url(#colorRevenue)"
                       dot={(props) => {
                         const { cx, cy, payload } = props;
                         if (payload.isCurrent) {
                           return (
                             <g key={`dot-${payload.label}`}>
-                              <circle cx={cx} cy={cy} r={6} fill="#3b82f6" />
-                              <circle cx={cx} cy={cy} r={3} fill="#fff" />
+                              <circle cx={cx} cy={cy} r={6} fill={couleur} />
+                              <circle cx={cx} cy={cy} r={3} fill={isDark ? '#1e293b' : '#fff'} />
                             </g>
                           );
                         }
-                        return <circle key={`dot-${payload.label}`} cx={cx} cy={cy} r={3} fill="#3b82f6" />;
+                        return <circle key={`dot-${payload.label}`} cx={cx} cy={cy} r={3} fill={couleur} />;
                       }}
-                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#fff' }}
+                      activeDot={{ r: 6, stroke: couleur, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

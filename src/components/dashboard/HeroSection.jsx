@@ -26,22 +26,38 @@ export default function HeroSection({
   const greeting = useMemo(() => getGreeting(), []);
   const formattedDate = useMemo(() => getFormattedDate(), []);
 
-  // Build contextual recap parts
-  const recapParts = useMemo(() => {
-    const parts = [];
+  // Build contextual recap badges
+  const recapBadges = useMemo(() => {
+    const badges = [];
     if (actionsCount > 0) {
-      parts.push(`${actionsCount} action${actionsCount > 1 ? 's' : ''} en cours`);
+      badges.push({
+        label: `${actionsCount} action${actionsCount > 1 ? 's' : ''} en cours`,
+        lightBg: 'bg-blue-50 text-blue-700',
+        darkBg: 'bg-blue-500/10 text-blue-400',
+      });
     }
     if (facturesEnRetard > 0) {
-      parts.push(`${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard`);
+      badges.push({
+        label: `${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard`,
+        lightBg: 'bg-red-50 text-red-700',
+        darkBg: 'bg-red-500/10 text-red-400',
+      });
     }
     if (devisEnAttente > 0) {
-      parts.push(`${devisEnAttente} devis en attente`);
+      badges.push({
+        label: `${devisEnAttente} devis en attente`,
+        lightBg: 'bg-orange-50 text-orange-700',
+        darkBg: 'bg-orange-500/10 text-orange-400',
+      });
     }
     if (memosAujourdhui > 0) {
-      parts.push(`${memosAujourdhui} memo${memosAujourdhui > 1 ? 's' : ''} du jour`);
+      badges.push({
+        label: `${memosAujourdhui} memo${memosAujourdhui > 1 ? 's' : ''} du jour`,
+        lightBg: 'bg-violet-50 text-violet-700',
+        darkBg: 'bg-violet-500/10 text-violet-400',
+      });
     }
-    return parts;
+    return badges;
   }, [actionsCount, facturesEnRetard, devisEnAttente, memosAujourdhui]);
 
   return (
@@ -49,23 +65,31 @@ export default function HeroSection({
       className="px-4 sm:px-6 pt-5 pb-4"
       style={{
         background: isDark
-          ? `linear-gradient(135deg, ${couleur}08 0%, transparent 60%)`
-          : `linear-gradient(135deg, ${couleur}0a 0%, transparent 60%)`,
+          ? `linear-gradient(135deg, ${couleur}0c 0%, transparent 60%)`
+          : `linear-gradient(135deg, ${couleur}0c 0%, transparent 60%)`,
       }}
     >
       <div className="max-w-7xl mx-auto">
         {/* Greeting */}
-        <h1 className={`text-xl sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h1 className={`text-2xl sm:text-3xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {greeting},{' '}
           <span style={{ color: couleur }}>{userName}</span>
-          {' '}👋
         </h1>
 
-        {/* Contextual Recap */}
-        {recapParts.length > 0 && (
-          <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-            {recapParts.join(' · ')}
-          </p>
+        {/* Contextual Recap Badges */}
+        {recapBadges.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap mt-2">
+            {recapBadges.map((badge) => (
+              <span
+                key={badge.label}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  isDark ? badge.darkBg : badge.lightBg
+                }`}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
         )}
 
         {/* Metadata Row */}

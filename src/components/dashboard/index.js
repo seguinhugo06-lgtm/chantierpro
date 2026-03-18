@@ -49,5 +49,8 @@ export { default as ActivityFeedWidget } from './ActivityFeedWidget';
 // Consolidated Widget (multi-entreprise)
 export { default as ConsolidatedWidget } from './ConsolidatedWidget';
 
+// KPI Grid (sparkline-based)
+export { default as KPIGrid } from './KPIGrid';
+
 // KPI Modals
 export { EncaisserModal, CeMoisModal } from './KPIModals';

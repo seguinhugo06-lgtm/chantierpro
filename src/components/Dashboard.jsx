@@ -93,6 +93,8 @@ import {
   ActivityFeedWidget,
   // Consolidated Widget (multi-entreprise)
   ConsolidatedWidget,
+  // KPI Grid
+  KPIGrid,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -1282,7 +1284,7 @@ export default function Dashboard({
             <button
               onClick={() => setPage('ia-devis')}
               className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none"
-              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)`, boxShadow: `0 4px 14px ${couleur}30` }}
+              style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed, #3b82f6)' : 'linear-gradient(135deg, #8b5cf6, #3b82f6)', boxShadow: '0 4px 14px rgba(139,92,246,0.3)' }}
             >
               <div className="relative z-10">
                 <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-2">
@@ -1313,66 +1315,29 @@ export default function Dashboard({
         </section>
         )}
 
-        {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
-        {canSeeFinances && <section className="px-4 sm:px-6 pb-4">
-          <div className="grid grid-cols-2 gap-3">
-            {/* À encaisser */}
-            <button
-              onClick={() => setEncaisserModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
-              style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                  <Wallet size={14} style={{ color: couleur }} />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
-              </div>
-              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatMoney(stats.enAttente, modeDiscret)}
-              </p>
-              {stats.facturesEnAttente?.length > 0 && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente
-                </p>
-              )}
-              {stats.montantOverdue > 0 && (
-                <p className="text-[11px] text-red-500 font-medium mt-0.5">
-                  dont {formatMoney(stats.montantOverdue, modeDiscret)} en retard +30j
-                </p>
-              )}
-            </button>
+        {/* ========== KPI GRID — 4 modern KPI cards ========== */}
+        {canSeeFinances && !stats.isNewUser && (
+          <section className="px-4 sm:px-6 pb-4">
+            <KPIGrid
+              stats={{
+                caMois: stats.caCeMois || 0,
+                caPrevious: stats.caMoisDernier || 0,
+                aEncaisser: stats.enAttente || 0,
+                nbFacturesAttente: stats.facturesEnAttente?.length || 0,
+                margeAvg: stats.tauxMarge || 0,
+                chantiersActifs: stats.chantiersActifs || 0,
+                chantiersTotal: (safeChantiers || []).length,
+              }}
+              isDark={isDark}
+              couleur={couleur}
+              setPage={setPage}
+              modeDiscret={modeDiscret}
+            />
+          </section>
+        )}
 
-            {/* Ce mois — CA encaissé (factures payées TTC ce mois) */}
-            <button
-              onClick={() => setCeMoisModalOpen(true)}
-              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
-              style={{ borderLeftWidth: '3px', borderLeftColor: stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? '#10b981' : '#ef4444') : '#10b981' }}
-              title="Factures payées ce mois (TTC)"
-            >
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15') : 'bg-emerald-500/15'}`}>
-                  <TrendingUp size={14} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
-                </div>
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {formatMoney(stats.caCeMois, modeDiscret)}
-                </p>
-                {stats.caCeMoisTendance != null && (
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? (isDark ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-50') : (isDark ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-50')}`}>
-                    {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
-                  </span>
-                )}
-              </div>
-              {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {stats.caCeMoisTendanceLabel}
-                </p>
-              )}
-            </button>
-          </div>
+        {/* ========== AVOIRS & SITUATIONS — contextual alerts ========== */}
+        {canSeeFinances && <section className="px-4 sm:px-6 pb-4">
           {/* Avoirs ce mois — shown only if avoirs exist */}
           {stats.avoirsCeMois > 0 && (
             <button
@@ -1409,6 +1374,17 @@ export default function Dashboard({
             </button>
           )}
         </section>}
+
+        {/* ========== REVENUE CHART — Full width, finance roles only ========== */}
+        {canSeeFinances && isWidgetVisible('revenue') && (
+          <section className="px-4 sm:px-6 pb-4">
+            <RevenueChartWidget
+              setPage={setPage}
+              isDark={isDark}
+              couleur={couleur}
+            />
+          </section>
+        )}
 
         {/* ========== ACTIONS DU JOUR — Unified priority list ========== */}
         {(() => {
@@ -1573,10 +1549,10 @@ export default function Dashboard({
                 }`}
               >
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
                   style={{ background: `${couleur}12` }}
                 >
-                  <s.icon size={16} style={{ color: couleur }} />
+                  <s.icon size={20} style={{ color: couleur }} />
                 </div>
                 <span className="leading-none">{s.label}</span>
               </button>
@@ -1917,16 +1893,6 @@ export default function Dashboard({
             couleur={couleur}
           />
         </section>
-
-        {/* Revenue Chart - Full width — finance roles only */}
-        {canSeeFinances && isWidgetVisible('revenue') && (
-          <section className="px-4 sm:px-6 pb-8">
-            <RevenueChartWidget
-              setPage={setPage}
-              isDark={isDark}
-            />
-          </section>
-        )}
 
         {/* Operational Widgets Grid */}
         <section className="px-4 sm:px-6 pb-10">
