@@ -1235,7 +1235,21 @@ export default function App() {
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Persist to entreprises table via context (toSupabase maps cguAcceptedAt → cgu_accepted_at)
+    // Send ONLY CGU fields to Supabase (not the entire entreprise object)
+    if (entrepriseId) {
+      try {
+        await ctxUpdateEntreprise(entrepriseId, cguData);
+      } catch (err) {
+        // Fallback: direct Supabase update with only CGU columns
+        if (supabase) {
+          await supabase.from('entreprise').update({
+            cgu_accepted_at: now,
+            cgu_version: version,
+          }).eq('id', entrepriseId);
+        }
+      }
+    }
+    // Update local state
     setEntreprise(prev => ({ ...prev, ...cguData }));
   };
 
