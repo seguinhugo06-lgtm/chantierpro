@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Landmark, Copy, Receipt, BarChart3, CreditCard, Users, Plug, Database, FolderOpen, Building, Sliders, Home, Smartphone, Fuel, Archive } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -24,33 +24,33 @@ import IntegrationsHub from './integrations/IntegrationsHub';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
-  { id: 'entreprise', label: 'Mon entreprise', icon: Zap, tabs: [
-    { key: 'identite', label: 'Identité', icon: Building2 },
-    { key: 'legal', label: 'Légal', icon: FileCheck },
-    { key: 'assurances', label: 'Assurances', icon: Shield },
-    { key: 'banque', label: 'Banque', icon: Landmark },
+  { id: 'entreprise', label: '⚡ Mon entreprise', tabs: [
+    { key: 'identite', label: '🏢 Identité' },
+    { key: 'legal', label: '📋 Légal' },
+    { key: 'assurances', label: '🛡️ Assurances' },
+    { key: 'banque', label: '🏦 Banque' },
   ]},
-  { id: 'documents', label: 'Documents', icon: FileText, tabs: [
-    { key: 'documents', label: 'Documents', icon: FileText },
-    { key: 'templates', label: 'Modèles', icon: Copy },
-    { key: 'facture2026', label: 'Facture 2026', icon: Receipt },
-    { key: 'relances', label: 'Relances', icon: BellRing },
+  { id: 'documents', label: '📄 Documents', tabs: [
+    { key: 'documents', label: '📄 Documents' },
+    { key: 'templates', label: '📋 Modèles' },
+    { key: 'facture2026', label: '🧾 Facture 2026' },
+    { key: 'relances', label: '📨 Relances' },
   ]},
-  { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
-    { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
-    { key: 'rentabilite', label: 'Rentabilité', icon: BarChart3 },
-    { key: 'paiements', label: 'Paiements', icon: CreditCard },
+  { id: 'finance', label: '💶 Finance', tabs: [
+    { key: 'comptabilite', label: '🧮 Comptabilité' },
+    { key: 'rentabilite', label: '📊 Rentabilité' },
+    { key: 'paiements', label: '💳 Paiements' },
   ]},
-  { id: 'equipe', label: 'Équipe', icon: Users, tabs: [
-    { key: 'team', label: 'Équipe & Accès', icon: Users },
+  { id: 'equipe', label: '👥 Équipe', tabs: [
+    { key: 'team', label: '👥 Équipe & Accès' },
   ]},
-  { id: 'integrations', label: 'Intégrations', icon: Plug, tabs: [
-    { key: 'integrations', label: 'Intégrations', icon: Plug },
+  { id: 'integrations', label: '🔗 Intégrations', tabs: [
+    { key: 'integrations', label: '🔗 Intégrations' },
   ]},
-  { id: 'avance', label: 'Avancé', icon: Sliders, tabs: [
-    { key: 'donnees', label: 'Données', icon: Database },
-    { key: 'administratif', label: 'Administratif', icon: FolderOpen },
-    { key: 'multi', label: 'Multi-entreprise', icon: Building },
+  { id: 'avance', label: '⚙️ Avancé', tabs: [
+    { key: 'donnees', label: '💾 Données' },
+    { key: 'administratif', label: '📁 Administratif' },
+    { key: 'multi', label: '🏗️ Multi-entreprise' },
   ]},
 ];
 
@@ -65,12 +65,12 @@ const WIZARD_STEPS_DEF = [
 
 // ── Frais de structure charge items ─────────────────────────────────────────
 const FRAIS_ITEMS = [
-  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: Home },
-  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: Shield },
-  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: Smartphone },
-  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: Calculator },
-  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: Fuel },
-  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: Archive },
+  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '🏠' },
+  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: '🛡️' },
+  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: '📱' },
+  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '🧮' },
+  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: '⛽' },
+  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '📦' },
 ];
 
 // Villes RCS principales France
@@ -435,7 +435,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <ArrowLeft size={20} />
             </button>
           )}
-          <h1 className={`text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Paramètres</h1>
           {/* Auto-save status indicator */}
           {saveStatus && (
             <span className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
@@ -452,17 +452,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           )}
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowExportModal(true)}
-            className={`px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-            title="Exporter vos devis et factures au format CSV pour votre comptable"
-          >
-            <BarChart3 size={16} /> Export comptable
-          </button>
           <div className="relative">
             <button
               onClick={() => completude < 100 ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
+              className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-xl border transition-all ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm ${completude < 100 ? 'cursor-pointer hover:shadow-md' : ''}`}
               title={completude < 100 ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
             >
               <div className="text-right shrink-0">
@@ -542,21 +535,34 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         </div>
       ))}
 
-      {completude < 80 && (
-        <div className={`rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+      {completude < 50 && (
+        <div className={`rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border-2 ${isDark ? 'bg-amber-900/20 border-amber-700/50' : 'bg-amber-50 border-amber-200'}`}>
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            <span className="text-xl shrink-0">📝</span>
+            <AlertCircle size={24} className={`shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
             <div className="min-w-0">
-              <p className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Complétez votre profil</p>
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Complétez vos informations pour générer des documents conformes. Progression : {completude}%</p>
+              <p className={`font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{'Profil incomplet (' + completude + '%)'}</p>
+              <p className={`text-sm ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
+                {missingRequired.length > 0
+                  ? missingRequired.length + ' champ' + (missingRequired.length > 1 ? 's' : '') + ' obligatoire' + (missingRequired.length > 1 ? 's' : '') + ' manquant' + (missingRequired.length > 1 ? 's' : '') + '.'
+                  : 'Completez vos informations pour un profil professionnel.'}
+              </p>
             </div>
           </div>
           <button
-            onClick={() => { setShowSetupWizard(true); setWizardStep(0); }}
-            className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0"
+            onClick={() => {
+              const firstMissing = missingRequired[0] || missingFields[0];
+              if (firstMissing) {
+                setTab(firstMissing.tab);
+                setTimeout(() => {
+                  const el = document.getElementById('settings-field-' + firstMissing.key);
+                  if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+                }, 150);
+              }
+            }}
+            className="self-end sm:self-auto px-4 py-2 text-white rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shrink-0 min-h-[44px]"
             style={{ background: couleur }}
           >
-            🪄 Assistant config
+            {'Compl\u00e9ter'}
           </button>
         </div>
       )}
@@ -574,10 +580,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
               >
-                <span className="flex items-center gap-1.5">
-                  {group.icon && <group.icon size={15} />}
-                  {group.label}
-                </span>
+                {group.label}
                 {activeInGroup && (
                   <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ backgroundColor: entreprise.couleur }} />
                 )}
@@ -622,10 +625,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  {group.icon && <group.icon size={16} />}
-                  {group.label}
-                </span>
+                <span>{group.label}</span>
                 <div className="flex items-center gap-2">
                   {activeInGroup && !isOpen && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
@@ -679,7 +679,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                       </span>
                     ) : (
-                      <Building2 size={28} className="text-slate-300" />
+                      <span className="text-3xl text-slate-300">🏢</span>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -757,11 +757,21 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
-                <input id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
+                <div className="relative">
+                  <input id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={e => updateEntreprise(p => ({...p, tel: e.target.value}))} />
+                  {entreprise.tel && /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((entreprise.tel || '').trim()) && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
-                <input id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
+                <div className="relative">
+                  <input id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={e => updateEntreprise(p => ({...p, email: e.target.value}))} />
+                  {entreprise.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((entreprise.email || '').trim()) && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Site web</label>
@@ -784,12 +794,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
-                <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                <div className="relative">
+                  <input id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={e => updateEntreprise(p => ({...p, siret: e.target.value}))} />
+                  {entreprise.siret && validateSIRET(entreprise.siret) && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
+                  )}
+                </div>
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
                   <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
-                )}
-                {entreprise.siret && validateSIRET(entreprise.siret) && (
-                  <p className="text-xs text-green-600 mt-1">“ Format valide</p>
                 )}
               </div>
               <div>
@@ -1199,7 +1211,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><BarChart3 size={18} /> Calcul de Rentabilité</h3>
+          <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div className="flex items-end gap-3 flex-wrap">
               <div>
@@ -1218,11 +1230,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {/* Mini-wizard frais de structure */}
             {showFraisCalc && (
               <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-semibold flex items-center gap-1.5 ${textPrimary}`}><Calculator size={15} /> Calculez votre taux réel</p>
+                <p className={`text-sm font-semibold ${textPrimary}`}>🧮 Calculez votre taux réel</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {FRAIS_ITEMS.map(item => (
                     <div key={item.key}>
-                      <label className={`flex items-center gap-1.5 text-xs font-medium mb-1 ${textSecondary}`}><item.icon size={13} /> {item.label}</label>
+                      <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>{item.icon} {item.label}</label>
                       <input
                         type="number"
                         placeholder={item.placeholder}
@@ -1357,8 +1369,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Factures */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
-                      <FileSpreadsheet size={20} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+                    <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                      <FileSpreadsheet size={20} className="text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Factures (CSV)</h3>
@@ -1381,8 +1393,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* CSV Depenses */}
                 <div className={`${cardBg} rounded-xl border p-4`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
-                      <FileSpreadsheet size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                      <FileSpreadsheet size={20} className="text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Dépenses (CSV)</h3>
@@ -1405,8 +1417,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 {/* FEC */}
                 <div className={`${cardBg} rounded-xl border p-4 sm:col-span-2`}>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-100'}`}>
-                      <FileText size={20} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+                    <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                      <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
                       <h3 className={`font-semibold ${textPrimary}`}>Fichier FEC</h3>
@@ -1894,7 +1906,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{background: `${entreprise.couleur}20`}}><Building2 size={28} style={{ color: entreprise.couleur }} /></div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}>🏢</div>
               )}
               <div>
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>

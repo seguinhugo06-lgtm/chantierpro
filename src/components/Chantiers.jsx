@@ -210,8 +210,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
   const [filterStatus, setFilterStatus] = useState('all'); // all, en_cours, prospect, termine
   const [filterClient, setFilterClient] = useState(''); // Filter by client_id
   const [searchQuery, setSearchQuery] = useState(''); // Text search
-  const [viewMode, setViewModeRaw] = useState(() => localStorage.getItem('cp_chantiers_view') || 'list'); // list, map, or gantt
-  const setViewMode = useCallback((mode) => { setViewModeRaw(mode); try { localStorage.setItem('cp_chantiers_view', mode); } catch {} }, []);
+  const [viewMode, setViewMode] = useState('list'); // list, map, or gantt
   const [ganttTasks, setGanttTasks] = useState(() => {
     try { return JSON.parse(localStorage.getItem('cp_gantt_tasks') || '[]'); } catch { return []; }
   });
@@ -498,7 +497,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-1">
                   {/* Desktop: icon buttons visible */}
                   <div className="hidden sm:flex items-center gap-1">
-                    <button onClick={() => setEditingChantier(ch)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Modifier">
+                    <button onClick={() => setEditingChantier(ch)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Modifier">
                       <Edit3 size={16} className={textMuted} />
                     </button>
                     <button
@@ -508,29 +507,29 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         showToast(`Chantier dupliqué : "${clone.nom}"`, 'success');
                         if (newCh?.id) setView(newCh.id);
                       }}
-                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Dupliquer"
+                      className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Dupliquer"
                     >
                       <Copy size={16} className={textMuted} />
                     </button>
                     {(ch.statut === 'en_cours' || ch.statut === 'termine') && !chantierReception && (
-                      <button onClick={() => setShowReceptionForm(true)} className={`p-2 ${isDark ? 'hover:bg-blue-900/50' : 'hover:bg-blue-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Réceptionner le chantier">
+                      <button onClick={() => setShowReceptionForm(true)} className={`p-2 ${isDark ? 'hover:bg-blue-900/50' : 'hover:bg-blue-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Réceptionner le chantier">
                         <Shield size={16} className="text-blue-500" />
                       </button>
                     )}
                     {ch.statut === 'en_cours' && (
-                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier marqué comme terminé ✅', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Terminer le chantier', message: `Marquer "${ch.nom}" comme terminé ? La date de fin sera mise à aujourd'hui.` }); if (confirmed) { updateChantier(ch.id, { statut: 'termine', date_fin: new Date().toISOString().split('T')[0] }); showToast('Chantier marqué comme terminé ✅', 'success'); } }} className={`p-2 ${isDark ? 'hover:bg-emerald-900/50' : 'hover:bg-emerald-50'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Marquer comme terminé">
                         <CheckCircle size={16} className="text-emerald-500" />
                       </button>
                     )}
                     {ch.statut !== 'archive' && (
-                      <button onClick={async () => { const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Chantier archivé', 'success'); setView(null); } }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`} title="Archiver">
+                      <button onClick={async () => { const confirmed = await confirm({ title: 'Archiver', message: `Archiver le chantier "${ch.nom}" ? Il ne sera plus visible dans la liste active.` }); if (confirmed) { updateChantier(ch.id, { statut: 'archive' }); showToast('Chantier archivé', 'success'); setView(null); } }} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`} title="Archiver">
                         <Archive size={16} className={textMuted} />
                       </button>
                     )}
                   </div>
                   {/* Mobile: ⋮ dropdown menu with labels */}
                   <div className="relative sm:hidden">
-                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center`}>
+                    <button onClick={() => setShowMobileActions(prev => prev === ch.id ? null : ch.id)} className={`p-2 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} rounded-lg min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center`}>
                       <MoreVertical size={18} className={textMuted} />
                     </button>
                     {showMobileActions === ch.id && (
@@ -1028,7 +1027,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                         <label htmlFor="task-critical" className={`text-sm ${textPrimary}`}>Tâche prioritaire</label>
                       </div>
                       <div className="flex gap-2 pt-2">
-                        <button onClick={() => deleteTask(editingTask.id)} className="px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 text-sm font-medium"><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
+                        <button onClick={() => deleteTask(editingTask.id)} className="px-4 py-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-sm font-medium"><Trash2 size={16} className="inline mr-1" /> Supprimer</button>
                         <div className="flex-1" />
                         <button onClick={() => setEditingTask(null)} className={`px-4 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>Annuler</button>
                         <button onClick={() => updateTask(editingTask.id, { text: editingTask.text, phase: editingTask.phase, critical: editingTask.critical })} className="px-4 py-2 rounded-xl text-white text-sm font-medium" style={{ background: couleur }}>Sauvegarder</button>
@@ -1097,9 +1096,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Avancement</span>
                   <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                    <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : avancement < 100 ? '#22c55e' : '#10b981' }} />
+                    <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, avancement)}%`, background: couleur }} />
                   </div>
-                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }}>{avancement}%</span>
+                  <span className={`text-[10px] font-bold tabular-nums w-8 text-right`} style={{ color: couleur }}>{avancement}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-medium w-16 ${textMuted}`}>Budget</span>
@@ -1426,7 +1425,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'photos' && (
-          <div role="tabpanel" id="panel-photos" aria-labelledby="tab-photos" className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-photos" aria-labelledby="tab-photos" className={`${cardBg} rounded-2xl border p-3 sm:p-5`}>
             {/* Header with bigger touch targets for photo buttons */}
             <div className="flex justify-between items-start mb-4 flex-wrap gap-3">
               <div>
@@ -1802,7 +1801,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
         )}
 
         {activeTab === 'memos' && (
-          <div role="tabpanel" id="panel-memos" aria-labelledby="tab-memos" className={`${cardBg} rounded-2xl border p-5`}>
+          <div role="tabpanel" id="panel-memos" aria-labelledby="tab-memos" className={`${cardBg} rounded-2xl border p-3 sm:p-5`}>
             <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><ClipboardList size={18} style={{ color: couleur }} /> Mémos</h3>
             {(() => {
               const chantierMemos = memos.filter(m => m.chantier_id === ch.id);
@@ -1918,7 +1917,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`text-xs px-2 py-0.5 rounded ${msg.type === 'email' ? 'bg-blue-100 text-blue-700' : msg.type === 'sms' ? 'bg-green-100 text-green-700' : msg.type === 'appel' ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-600'}`}>{msg.type === 'email' ? 'Email' : msg.type === 'sms' ? 'SMS' : msg.type === 'appel' ? 'Appel' : 'Note'}</span>
                       <span className={`text-xs ${textMuted}`}>{new Date(msg.date).toLocaleDateString('fr-FR')} - {new Date(msg.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} aria-label="Supprimer le message" className="ml-auto p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center text-red-400 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"><X size={16} /></button>
+                      <button onClick={() => updateChantier(ch.id, { messages: ch.messages.filter(m => m.id !== msg.id) })} aria-label="Supprimer le message" className="ml-auto p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center text-red-400 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"><X size={16} /></button>
                     </div>
                     <p className={`text-sm ${textPrimary}`}>{msg.content}</p>
                   </div>
@@ -2833,7 +2832,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             else if (isAndroid) window.open(`geo:0,0?q=${address}`, '_blank');
                             else window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                           }}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
                           style={{ backgroundColor: couleur }}
                           title="GPS"
                         >
@@ -2980,7 +2979,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={filterClient}
                     onChange={(e) => setFilterClient(e.target.value)}
-                    className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="">Tous les clients</option>
                     {clients.map(c => (
@@ -2993,7 +2992,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className={`px-2 py-1 rounded-lg text-xs border ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs border min-h-[36px] ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-white border-slate-200 text-slate-600'}`}
                   >
                     <option value="recent">Plus récent</option>
                     <option value="name">Nom A-Z</option>
@@ -3211,9 +3210,9 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   {ch.statut === 'en_cours' && (avancement > 0 || allTasks.length > 0) && (
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }} />
+                        <div className={`h-full rounded-full transition-all ${avancement > 0 ? 'min-w-[4px]' : ''}`} style={{ width: `${Math.min(100, Math.max(3, avancement))}%`, background: couleur }} />
                       </div>
-                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: avancement === 0 ? '#94a3b8' : avancement <= 30 ? '#f97316' : avancement <= 70 ? couleur : '#10b981' }}>{avancement}%</span>
+                      <span className="text-xs font-semibold tabular-nums whitespace-nowrap" style={{ color: couleur }}>{avancement}%</span>
                     </div>
                   )}
                   {ch.statut !== 'en_cours' && <div className="flex-1" />}
@@ -3343,7 +3342,7 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                   <h3 className={`text-lg font-bold ${textPrimary}`}>Gestion des tâches</h3>
                   <p className={`text-sm ${textMuted}`}>{pendingTasks.length} en cours · {completedTasks.length} terminées</p>
                 </div>
-                <button onClick={() => setShowTaskModal(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                <button onClick={() => setShowTaskModal(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
                   <X size={20} className={textMuted} />
                 </button>
               </div>
@@ -3396,10 +3395,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                             {task.done && <Check size={14} className="text-red-500" />}
                           </button>
                           <span className={`flex-1 text-sm ${task.done ? 'line-through opacity-50' : ''} ${isDark ? 'text-red-400' : 'text-red-700'}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Retirer de prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-red-900/50' : 'hover:bg-red-100'}`} title="Retirer critique">
                             <AlertCircle size={16} className="text-red-500" />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -3420,10 +3419,10 @@ export default function Chantiers({ chantiers, addChantier, updateChantier, clie
                           <button onClick={() => toggleTask(task.id)}
                             className={`w-6 h-6 rounded-md border-2 flex-shrink-0 ${isDark ? 'border-slate-500' : 'border-slate-300'}`} />
                           <span className={`flex-1 text-sm ${textPrimary}`}>{task.text}</span>
-                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
+                          <button onClick={() => toggleCritical(task.id)} aria-label="Marquer comme prioritaire" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`} title="Marquer critique">
                             <AlertCircle size={16} />
                           </button>
-                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                          <button onClick={() => deleteTask(task.id)} aria-label="Supprimer la tâche" className={`p-2.5 min-w-[44px] min-h-[44px] rounded flex items-center justify-center opacity-50 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
                             <Trash2 size={16} />
                           </button>
                         </div>

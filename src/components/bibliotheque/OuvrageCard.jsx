@@ -291,10 +291,10 @@ const OuvrageCard = React.memo(function OuvrageCard({
         />
       </div>
 
-      {/* Tags */}
+      {/* Tags — limited to 3 visible */}
       {tags && tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
-          {tags.map((tag) => (
+          {tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
               className={`text-xs px-2 py-0.5 rounded-full ${
@@ -306,6 +306,18 @@ const OuvrageCard = React.memo(function OuvrageCard({
               {tag}
             </span>
           ))}
+          {tags.length > 3 && (
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full cursor-pointer ${
+                isDark
+                  ? 'bg-gray-700 text-gray-400 hover:text-gray-200'
+                  : 'bg-gray-100 text-gray-500 hover:text-gray-700'
+              }`}
+              title={tags.slice(3).join(', ')}
+            >
+              +{tags.length - 3}
+            </span>
+          )}
         </div>
       )}
     </div>

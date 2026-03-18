@@ -158,8 +158,11 @@ function MemoItem({
           {memo.due_date && (
             <span className={`inline-flex items-center gap-1 text-xs ${dateColor}`}>
               <Calendar size={10} />
-              {formatDateFR(memo.due_date)}
-              {memo.due_time && <span>à {formatTimeFR(memo.due_time)}</span>}
+              {isOverdue(memo) ? (() => {
+                const diffDays = Math.ceil((new Date(today() + 'T00:00:00') - new Date(memo.due_date + 'T00:00:00')) / 86400000);
+                return `En retard de ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+              })() : formatDateFR(memo.due_date)}
+              {memo.due_time && !isOverdue(memo) && <span>à {formatTimeFR(memo.due_time)}</span>}
             </span>
           )}
           {category && (
@@ -593,7 +596,7 @@ function MemoDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, cou
             </div>
             <button
               onClick={handleDelete}
-              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
+              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
               aria-label="Supprimer cette tâche définitivement"
             >
               <Trash2 size={18} />
@@ -1308,8 +1311,10 @@ export default function MemosPage({
     const isCollapsed = collapsedSections[key];
     const Icon = icon;
 
+    const sectionBg = key === 'overdue' ? (isDark ? 'bg-red-900/20 rounded-xl p-2' : 'bg-red-50 rounded-xl p-2') : '';
+
     return (
-      <div key={key} className="mb-3">
+      <div key={key} className={`mb-3 ${sectionBg}`}>
         <div className="flex items-center gap-1">
           <button
             onClick={() => toggleSection(key)}
@@ -1751,7 +1756,7 @@ export default function MemosPage({
             {hasActiveFilters && (
               <button
                 onClick={() => { setFilterCategory(''); setFilterPriority(''); setSearchQuery(''); }}
-                className="text-xs px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50"
+                className="text-xs px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
               >
                 Réinitialiser
               </button>

@@ -65,7 +65,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
   const textMuted = isDark ? "text-slate-400" : "text-slate-600";
 
   const [date, setDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState('month'); // 'month' | 'week' | 'day'
+  const [viewMode, setViewMode] = useState(() => window.innerWidth < 640 ? 'week' : 'month'); // default to week on mobile
   const [showAdd, setShowAdd] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -473,11 +473,11 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           })()}</span>
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <button onClick={goToToday} className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
+          <button onClick={goToToday} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 min-h-[36px] active:scale-95 transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'} ${textSecondary}`}>
             Aujourd'hui
           </button>
           <select
-            className={`px-2 py-1 border rounded-lg text-xs shrink-0 max-w-[100px] ${inputBg}`}
+            className={`px-2.5 py-1.5 border rounded-lg text-xs shrink-0 max-w-[100px] min-h-[36px] ${inputBg}`}
             value={filterEmploye}
             onChange={e => setFilterEmploye(e.target.value)}
             aria-label="Filtrer par collaborateur"
@@ -489,7 +489,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             )}
           </select>
           <select
-            className={`px-2 py-1 border rounded-lg text-xs shrink-0 max-w-[100px] ${inputBg}`}
+            className={`px-2.5 py-1.5 border rounded-lg text-xs shrink-0 max-w-[100px] min-h-[36px] ${inputBg}`}
             value={filterTypes.size === 0 ? '' : filterTypes.size === 1 ? [...filterTypes][0] : '__multi__'}
             onChange={e => {
               const val = e.target.value;
@@ -509,16 +509,16 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </button>
           )}
           <div className={`flex rounded-lg overflow-hidden border shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-            <button onClick={() => { setViewMode('month'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
-            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
-            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
-            <button onClick={() => setViewMode('agenda')} className={`px-2 py-1 text-xs whitespace-nowrap ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
+            <button onClick={() => { setViewMode('month'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'month' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'month' ? { background: couleur } : {}}>Mois</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('week'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'week' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'week' ? { background: couleur } : {}}>Sem.</button>
+            <button onClick={() => { const today = new Date(); if (date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()) setDate(today); setViewMode('day'); }} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'day' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'day' ? { background: couleur } : {}}>Jour</button>
+            <button onClick={() => setViewMode('agenda')} className={`px-2.5 py-1.5 text-xs whitespace-nowrap min-h-[36px] transition-colors ${viewMode === 'agenda' ? 'text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-white text-slate-500'}`} style={viewMode === 'agenda' ? { background: couleur } : {}}>Agenda</button>
           </div>
           <div className="relative">
             <button onClick={() => setShowPlanningSettings(!showPlanningSettings)}
-              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] sm:min-w-[36px] sm:min-h-[36px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
               title="Paramètres horaires" aria-label="Paramètres horaires">
-              <Settings size={14} />
+              <Settings size={16} />
             </button>
             {showPlanningSettings && (
               <div className={`absolute right-0 top-full mt-2 z-40 rounded-xl border shadow-xl p-4 w-56 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
@@ -550,8 +550,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <button onClick={() => {
             setForm(f => ({ ...emptyForm, date: formatLocalDate(new Date()), time: getNextHalfHour() }));
             setShowAdd(true);
-          }} className="w-9 h-9 sm:w-auto sm:h-8 sm:px-3 text-white rounded-lg flex items-center justify-center sm:gap-1.5 hover:shadow-lg transition-all text-xs" style={{background: couleur}}>
-            <Plus size={14} /><span className="hidden sm:inline">Événement</span>
+          }} className="w-10 h-10 sm:w-auto sm:h-10 sm:px-3 text-white rounded-xl flex items-center justify-center sm:gap-1.5 hover:shadow-lg transition-all active:scale-95 text-xs" style={{background: couleur}}>
+            <Plus size={16} /><span className="hidden sm:inline">Événement</span>
           </button>
           )}
         </div>
@@ -563,7 +563,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           {viewMode !== 'agenda' ? (
             <button
               onClick={() => setDate(viewMode === 'month' ? new Date(year, month - 1) : viewMode === 'day' ? new Date(date.getTime() - 86400000) : new Date(date.getTime() - 7 * 86400000))}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
               aria-label={viewMode === 'month' ? 'Mois précédent' : viewMode === 'day' ? 'Jour précédent' : 'Semaine précédente'}
             >
               <ChevronLeft size={20} className={textPrimary} />
@@ -575,7 +575,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           {viewMode !== 'agenda' ? (
             <button
               onClick={() => setDate(viewMode === 'month' ? new Date(year, month + 1) : viewMode === 'day' ? new Date(date.getTime() + 86400000) : new Date(date.getTime() + 7 * 86400000))}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-700 active:bg-slate-600' : 'hover:bg-slate-100 active:bg-slate-200'}`}
               aria-label={viewMode === 'month' ? 'Mois suivant' : viewMode === 'day' ? 'Jour suivant' : 'Semaine suivante'}
             >
               <ChevronRight size={20} className={textPrimary} />
@@ -942,7 +942,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                     </div>
                   </div>
                 )}
-                <div className={`divide-y ${isDark ? 'divide-slate-700/50' : 'divide-slate-100'}`}>
+                <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   {HOURS.map(hour => {
                     const hourStr = `${String(hour).padStart(2, '0')}:00`;
                     const hourEvents = timedOnlyEvts.filter(ev => {
@@ -1212,8 +1212,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
       {showDetail && (() => {
         const TypeIcon = TYPE_ICONS[showDetail.type] || Calendar;
         return (
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
-            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-xl w-full max-w-sm shadow-2xl max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }} onClick={() => setShowDetail(null)} role="dialog" aria-modal="true" aria-label="Détail de l'événement">
+            <div ref={detailModalRef} className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
               <div className={`px-4 py-3 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -1225,8 +1225,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
                       <h2 className={`font-bold text-sm ${textPrimary}`}>{editMode ? 'Modifier' : showDetail.title}</h2>
                     </div>
                   </div>
-                  <button onClick={() => setShowDetail(null)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
-                    <X size={16} className={textMuted} />
+                  <button onClick={() => setShowDetail(null)} className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}>
+                    <X size={18} className={textMuted} />
                   </button>
                 </div>
               </div>
@@ -1496,8 +1496,8 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
           <div className={`relative w-full max-w-md h-full overflow-y-auto shadow-2xl ${isDark ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
             <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
               <h2 className={`text-base font-bold ${textPrimary}`}>Nouvel événement</h2>
-              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
-                <X size={18} />
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+                <X size={20} />
               </button>
             </div>
             <div className="p-4 space-y-4">
@@ -1517,7 +1517,7 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
               {/* Title */}
               <div>
                 <label className={`block text-xs font-medium mb-1 ${textPrimary}`}>Titre *</label>
-                <input className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Ex: RDV devis M. Dupont" autoFocus />
+                <input className={`w-full px-3 py-2.5 border rounded-lg text-sm min-h-[44px] ${inputBg}`} value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} placeholder="Ex: RDV devis M. Dupont" autoFocus />
               </div>
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-3">
@@ -1666,9 +1666,9 @@ export default function Planning({ events, setEvents, addEvent, updateEvent: upd
             </div>
             {/* Footer sticky */}
             <div className={`sticky bottom-0 flex gap-3 px-4 py-3 border-t ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
-              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-2.5 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Annuler</button>
-              <button onClick={submit} className="flex-1 py-2.5 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-1.5" style={{background: couleur}}>
-                <Check size={14} /> Créer
+              <button onClick={() => { setShowAdd(false); setQuickAdd(null); setForm(emptyForm); }} className={`flex-1 py-3 rounded-xl text-sm font-medium min-h-[44px] active:scale-95 transition-all ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>Annuler</button>
+              <button onClick={submit} className="flex-1 py-3 text-white rounded-xl text-sm font-medium min-h-[44px] flex items-center justify-center gap-1.5 active:scale-95 transition-all" style={{background: couleur}}>
+                <Check size={16} /> Créer
               </button>
             </div>
           </div>

@@ -1949,13 +1949,13 @@ export default function TresorerieModule({
       {/* ── KPI Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Solde actuel" value={formatMoney(soldeActuel)} icon={Wallet}
-          trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel < 0 ? '#ef4444' : soldeActuel < (settings.seuilAlerte || 5000) ? '#f97316' : '#10b981'} accent={couleur} isDark={isDark} />
+          trend={modeDiscret ? undefined : trendSolde} trendLabel="vs mois dernier" color={soldeActuel < 0 ? '#ef4444' : soldeActuel < (settings.seuilAlerte || 5000) ? '#f97316' : '#3b82f6'} accent={couleur} isDark={isDark} />
         <KpiCard label="Entrées prévues" value={formatMoney(entreesPrevues)} icon={ArrowDown}
-          color="#3b82f6" trendLabel="Factures impayées + prévisions" isDark={isDark} />
+          color="#10b981" trendLabel="Factures impayées + prévisions" isDark={isDark} />
         <KpiCard label="Sorties prévues" value={formatMoney(sortiesPrevues)} icon={ArrowUp}
-          color="#f59e0b" trendLabel="Charges + prévisions" isDark={isDark} />
+          color="#ef4444" trendLabel="Charges + prévisions" isDark={isDark} />
         <KpiCard label="Projection fin de mois" value={formatMoney(projectionFinMois)} icon={TrendingUp}
-          color={projectionFinMois < 0 ? '#ef4444' : projectionFinMois < (settings.seuilAlerte || 5000) ? '#f97316' : '#10b981'} trendLabel="Solde + entrées - sorties" isDark={isDark} />
+          color={projectionFinMois < 0 ? '#ef4444' : projectionFinMois < (settings.seuilAlerte || 5000) ? '#f97316' : couleur} trendLabel="Solde + entrées - sorties" isDark={isDark} />
       </div>
 
       {/* ── TVA déductible auto-calculée (Feature 5 — Aperçu only) ──── */}

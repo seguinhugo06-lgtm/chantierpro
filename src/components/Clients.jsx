@@ -1737,7 +1737,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               aria-label="Rechercher un client"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className={`w-full pl-8 pr-8 py-1.5 border rounded-xl text-sm ${inputBg}`}
+              className={`w-full pl-8 pr-8 py-2 border rounded-xl text-sm ${inputBg}`}
             />
             {search && (
               <button onClick={() => setSearch('')} className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-red-400`}>
@@ -1823,7 +1823,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
               <button
                 key={opt.key}
                 onClick={() => setFilterStatus(opt.key)}
-                className={`px-2 py-1 rounded-lg text-xs whitespace-nowrap transition-colors ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
+                className={`px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors min-h-[36px] active:scale-95 ${filterStatus === opt.key ? 'text-white' : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
                 style={filterStatus === opt.key ? { background: couleur } : {}}
               >
                 {opt.label}

@@ -50,9 +50,9 @@ export default function HeroSection({ onSignup }) {
   const textOpacity = useTransform(scrollY, [0, 400], [1, 0]);
   const textScale = useTransform(scrollY, [0, 400], [1, 0.95]);
 
-  const headlineWords = ['Gérez', 'vos', 'chantiers,'];
-  const headlineAccent = ['devis', 'et', 'factures'];
-  const headlineEnd = ['en', 'quelques', 'clics'];
+  const headlineWords = ['Pilotez', 'vos', 'chantiers,'];
+  const headlineAccent = ['boostez', 'votre', 'rentabilité'];
+  const headlineEnd = ['sans', 'effort.'];
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-white via-orange-50/30 to-white">
@@ -163,8 +163,8 @@ export default function HeroSection({ onSignup }) {
               animate="visible"
               className="text-base sm:text-lg text-slate-500 mb-8 max-w-lg leading-relaxed"
             >
-              L'outil tout-en-un con&ccedil;u par et pour les artisans du b&acirc;timent.
-              Cr&eacute;ez un devis en 2 minutes, suivez vos chantiers, g&eacute;rez votre tr&eacute;sorerie.
+              Devis, factures, chantiers, tr&eacute;sorerie — tout au m&ecirc;me endroit.
+              L'outil con&ccedil;u par et pour les artisans du b&acirc;timent, qui vous fait gagner 2h par jour.
             </motion.p>
 
             {/* CTA buttons */}
@@ -182,7 +182,7 @@ export default function HeroSection({ onSignup }) {
                 {/* Shimmer effect */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <span className="relative flex items-center gap-2">
-                  Essayer gratuitement
+                  Démarrer mon essai gratuit
                   <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </button>
@@ -191,7 +191,7 @@ export default function HeroSection({ onSignup }) {
                 className="w-full sm:w-auto px-7 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
               >
                 <Play size={16} className="text-orange-500" />
-                D&eacute;couvrir les fonctionnalit&eacute;s
+                Voir une d&eacute;mo
               </a>
             </motion.div>
 
@@ -204,9 +204,9 @@ export default function HeroSection({ onSignup }) {
               className="flex flex-wrap items-center gap-4 sm:gap-5 text-slate-500 text-xs"
             >
               {[
-                { icon: CheckCircle, text: 'Gratuit pour d\u00e9marrer', color: 'text-green-500' },
-                { icon: Shield, text: 'Conforme 2026', color: 'text-blue-500' },
-                { icon: CheckCircle, text: 'H\u00e9berg\u00e9 en France', color: 'text-green-500' },
+                { icon: CheckCircle, text: 'Gratuit pour d\u00e9marrer — sans carte bancaire', color: 'text-green-500' },
+                { icon: Shield, text: 'Conforme facturation 2026', color: 'text-blue-500' },
+                { icon: CheckCircle, text: 'Donn\u00e9es h\u00e9berg\u00e9es en France', color: 'text-green-500' },
               ].map((badge) => (
                 <div key={badge.text} className="flex items-center gap-1.5">
                   <badge.icon size={14} className={badge.color} />

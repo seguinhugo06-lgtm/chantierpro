@@ -15,7 +15,7 @@ const PLANS = [
     name: 'Gratuit',
     monthly: 0,
     yearly: 0,
-    description: 'Pour d\u00e9marrer et tester',
+    description: 'Id\u00e9al pour d\u00e9marrer — cr\u00e9ez vos premiers devis en minutes',
     features: [
       '5 devis / mois',
       '10 clients',
@@ -23,7 +23,7 @@ const PLANS = [
       'Planning basique',
       'Catalogue 50 articles',
     ],
-    cta: 'Commencer gratuitement',
+    cta: 'Commencer gratuitement — 0 \u20ac',
     highlighted: false,
   },
   {
@@ -31,7 +31,7 @@ const PLANS = [
     name: 'Artisan',
     monthly: 14.90,
     yearly: 149,
-    description: 'Pour l\'artisan ind\u00e9pendant',
+    description: 'Pour les pros qui veulent gagner du temps au quotidien',
     features: [
       'Devis & factures illimit\u00e9s',
       'Clients illimit\u00e9s',
@@ -42,16 +42,16 @@ const PLANS = [
       'Conformit\u00e9 Facture 2026',
       'Catalogue complet',
     ],
-    cta: 'Essayer 14 jours gratuit',
+    cta: 'Essayer gratuitement 14 jours',
     highlighted: true,
-    badge: 'Populaire',
+    badge: 'Le plus populaire',
   },
   {
     id: 'equipe',
     name: '\u00c9quipe',
     monthly: 29.90,
     yearly: 299,
-    description: 'Pour les entreprises',
+    description: 'G\u00e9rez votre \u00e9quipe et vos chantiers sans stress',
     features: [
       'Tout Artisan inclus',
       'Jusqu\'\u00e0 10 utilisateurs',

@@ -8,8 +8,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import {
-  MessageCircle, MessageSquarePlus, Plus, Search, Users, Hash, Building2, X,
-  ArrowLeft, Settings, UserPlus, Info, Loader2, Menu, Zap, ChevronRight,
+  MessageCircle, Plus, Search, Users, Hash, Building2, X,
+  ArrowLeft, Settings, UserPlus, Info, Loader2, Menu,
+  MessageSquarePlus, Zap,
 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
@@ -70,7 +71,7 @@ const ChatPage = memo(function ChatPage({
   // ── Active channel ────────────────────────────────────────────────────────
 
   const activeChannel = useMemo(() =>
-    (channels || []).find(c => c.id === activeChannelId),
+    channels.find(c => c.id === activeChannelId),
     [channels, activeChannelId]
   );
 
@@ -80,7 +81,7 @@ const ChatPage = memo(function ChatPage({
     if (!userId) return;
     try {
       const data = await loadChannels(supabase, { userId, orgId });
-      setChannels(data || []);
+      setChannels(data);
     } catch (err) {
       console.error('[ChatPage] Load channels error:', err);
     } finally {
@@ -375,7 +376,6 @@ const ChatPage = memo(function ChatPage({
 
   const bgClass = isDark ? 'bg-slate-900' : 'bg-gray-50';
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDark ? 'text-slate-300' : 'text-gray-600';
   const textMuted = isDark ? 'text-slate-400' : 'text-gray-500';
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -519,38 +519,44 @@ const ChatPage = memo(function ChatPage({
             />
           </>
         ) : (
-          /* No channel selected */
-          <div className="flex-1 flex flex-col items-center justify-center px-6">
-            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6`} style={{ background: `${couleur}15` }}>
-              <MessageCircle size={36} style={{ color: couleur }} />
+          /* No channel selected — onboarding empty state */
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 ${
+              isDark ? 'bg-slate-800' : 'bg-gray-100'
+            }`}>
+              <MessageCircle size={36} className={textMuted} />
             </div>
-            <h3 className={`text-xl font-bold ${textPrimary}`}>Messagerie d'équipe</h3>
-            <p className={`text-sm mt-2 ${textMuted} text-center max-w-sm`}>
-              Créez des canaux par chantier ou par équipe pour centraliser vos échanges en temps réel.
+            <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Bienvenue dans la Messagerie</h3>
+            <p className={`text-sm mb-8 ${textMuted} text-center max-w-sm`}>
+              Communiquez avec votre equipe en 3 etapes simples
             </p>
+
             {/* 3-step onboarding */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 mt-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 max-w-lg w-full">
               {[
-                { icon: MessageSquarePlus, label: 'Créez un canal' },
-                { icon: Users, label: 'Invitez votre équipe' },
-                { icon: Zap, label: 'Échangez en direct' },
+                { icon: MessageSquarePlus, title: 'Creez un canal', desc: 'Par equipe, chantier ou sujet' },
+                { icon: Users, title: 'Invitez vos collegues', desc: 'Ajoutez les membres concernes' },
+                { icon: Zap, title: 'Echangez en direct', desc: 'Messages, fichiers et reactions' },
               ].map((step, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  {i > 0 && <ChevronRight size={14} className={`${textMuted} hidden sm:block`} />}
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                    <step.icon size={16} style={{ color: couleur }} />
-                    <span className={`text-xs font-medium ${textSecondary}`}>{step.label}</span>
+                <div key={i} className={`flex-1 flex flex-col items-center text-center p-4 rounded-xl ${
+                  isDark ? 'bg-slate-800/60' : 'bg-gray-50'
+                }`}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: `${couleur}15`, color: couleur }}>
+                    <step.icon size={20} />
                   </div>
+                  <p className={`text-sm font-semibold ${textPrimary}`}>{step.title}</p>
+                  <p className={`text-xs mt-0.5 ${textMuted}`}>{step.desc}</p>
                 </div>
               ))}
             </div>
+
             <button
               onClick={() => setShowNewChannel(true)}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 hover:opacity-90 transition-opacity active:scale-95"
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center gap-2 hover:shadow-lg transition-all"
               style={{ background: couleur }}
             >
-              <Plus size={16} />
-              Créer mon premier canal
+              <MessageSquarePlus size={18} />
+              Creer mon premier canal
             </button>
           </div>
         )}
