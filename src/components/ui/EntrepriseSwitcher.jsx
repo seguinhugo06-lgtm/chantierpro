@@ -100,11 +100,11 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
           <Building2 size={18} className="text-white" />
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-white font-semibold text-sm truncate" title={nom}>
+          <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={nom}>
             {nom}
           </p>
           {user?.email && (
-            <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
+            <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</p>
           )}
         </div>
       </button>
@@ -188,23 +188,23 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
         </div>
         <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-1">
-            <p className="text-white font-semibold text-sm truncate" title={nom}>
+            <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={nom}>
               {nom}
             </p>
             <ChevronDown
               size={12}
-              className={`flex-shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              className={`flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
             />
           </div>
           {user?.email && (
-            <p className="text-slate-400 text-[11px] truncate">{user.email}</p>
+            <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{user.email}</p>
           )}
         </div>
       </button>
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 right-0 mt-2 rounded-2xl border shadow-xl z-50 overflow-hidden bg-slate-800 border-slate-700"
+          className={`absolute top-full left-0 right-0 mt-2 rounded-2xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
         >
           <DropdownContent
             entreprises={entreprises}
