@@ -242,8 +242,6 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
   let query = supabase
     .from('entreprise')
     .select('*')
-    .is('archived_at', null)
-    .order('ordre', { ascending: true })
     .order('created_at', { ascending: true });
 
   if (orgId && orgId !== 'demo-org-id') {
@@ -252,13 +250,30 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
     query = query.eq('user_id', userId);
   }
 
-  const { data, error } = await query;
+  let { data, error } = await query;
+
+  // If archived_at column doesn't exist yet, retry without it
+  if (error && error.code === '42703') {
+    console.warn('[entrepriseService] archived_at column missing, querying without filter');
+    let retryQuery = supabase
+      .from('entreprise')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (orgId && orgId !== 'demo-org-id') retryQuery = retryQuery.eq('organization_id', orgId);
+    else if (userId) retryQuery = retryQuery.eq('user_id', userId);
+    const retry = await retryQuery;
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) {
     console.error('[entrepriseService] loadEntreprises error:', error);
     return [];
   }
 
-  return (data || []).map(fromSupabase);
+  // Filter archived client-side if column exists
+  const filtered = (data || []).filter(row => !row.archived_at);
+  return filtered.map(fromSupabase);
 }
 
 /**
@@ -275,8 +290,7 @@ export async function getActiveEntreprise(supabase, { userId, orgId } = {}) {
   let query = supabase
     .from('entreprise')
     .select('*')
-    .eq('is_active', true)
-    .is('archived_at', null);
+    .eq('is_active', true);
 
   if (orgId && orgId !== 'demo-org-id') {
     query = query.eq('organization_id', orgId);
