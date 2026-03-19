@@ -127,6 +127,9 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-label="Changer d'entreprise"
           className={`flex items-center gap-2 min-w-0 rounded-xl px-2 py-1.5 transition-colors ${
             isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'
           }`}
@@ -177,6 +180,9 @@ const EntrepriseSwitcher = memo(function EntrepriseSwitcher({
     <div className="relative flex-1 min-w-0" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        aria-label="Changer d'entreprise"
         className="group flex items-center gap-3 flex-1 w-full min-w-0 rounded-xl -m-1 p-2 transition-all hover:bg-slate-800/80"
         title="Changer d'entreprise"
       >

@@ -124,10 +124,20 @@ function MobileCard({ row, columns, onClick, titleKey, subtitleKey, isDark, coul
   const titleValue = titleCol?.render ? titleCol.render(row[titleCol.key], row) : row[titleCol?.key];
   const subtitleValue = subtitleCol?.render ? subtitleCol.render(row[subtitleCol.key], row) : row[subtitleCol?.key];
 
+  const handleKeyDown = (e) => {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
-      className={`rounded-xl border-2 overflow-hidden transition-all ${cardBg} ${onClick ? 'active:scale-[0.98]' : ''}`}
+      className={`rounded-xl border-2 overflow-hidden transition-all ${cardBg} ${onClick ? 'active:scale-[0.98] cursor-pointer' : ''}`}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? handleKeyDown : undefined}
     >
       {/* Card Header - Always visible */}
       <div className="p-4">
@@ -150,6 +160,8 @@ function MobileCard({ row, columns, onClick, titleKey, subtitleKey, isDark, coul
                 e.stopPropagation();
                 setExpanded(!expanded);
               }}
+              aria-label="Voir details"
+              aria-expanded={expanded}
               className={`p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${
                 isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'
               }`}

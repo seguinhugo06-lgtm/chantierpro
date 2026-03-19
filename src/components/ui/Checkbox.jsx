@@ -40,12 +40,14 @@ export const Checkbox = React.forwardRef(
       disabled = false,
       label,
       description,
+      isDark = false,
       id,
       ...props
     },
     ref
   ) => {
     const checkboxId = id || React.useId();
+    const descriptionId = description ? `${checkboxId}-desc` : undefined;
     const sizes = sizeStyles[size];
     const inputRef = React.useRef(null);
 
@@ -76,6 +78,7 @@ export const Checkbox = React.forwardRef(
             checked={checked}
             disabled={disabled}
             onChange={handleChange}
+            aria-describedby={descriptionId}
             className="sr-only peer"
             {...props}
           />
@@ -111,7 +114,7 @@ export const Checkbox = React.forwardRef(
                 htmlFor={checkboxId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900',
+                  isDark ? 'text-slate-100' : 'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -119,7 +122,10 @@ export const Checkbox = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500">
+              <span
+                id={descriptionId}
+                className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-500')}
+              >
                 {description}
               </span>
             )}
@@ -145,6 +151,7 @@ export const Radio = React.forwardRef(
       disabled = false,
       label,
       description,
+      isDark = false,
       name,
       value,
       id,
@@ -153,6 +160,7 @@ export const Radio = React.forwardRef(
     ref
   ) => {
     const radioId = id || React.useId();
+    const descriptionId = description ? `${radioId}-desc` : undefined;
     const sizes = sizeStyles[size];
 
     const handleChange = (e) => {
@@ -173,6 +181,7 @@ export const Radio = React.forwardRef(
             checked={checked}
             disabled={disabled}
             onChange={handleChange}
+            aria-describedby={descriptionId}
             className="sr-only peer"
             {...props}
           />
@@ -214,7 +223,7 @@ export const Radio = React.forwardRef(
                 htmlFor={radioId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900',
+                  isDark ? 'text-slate-100' : 'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -222,7 +231,10 @@ export const Radio = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500">
+              <span
+                id={descriptionId}
+                className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-500')}
+              >
                 {description}
               </span>
             )}

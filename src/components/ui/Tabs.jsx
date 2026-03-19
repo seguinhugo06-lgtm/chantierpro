@@ -110,7 +110,9 @@ export const TabsTrigger = React.forwardRef(
         ref={ref}
         type="button"
         role="tab"
+        id={`tab-${value}`}
         aria-selected={isSelected}
+        aria-controls={`tabpanel-${value}`}
         aria-disabled={disabled}
         disabled={disabled}
         onClick={handleClick}
@@ -141,6 +143,8 @@ export const TabsContent = React.forwardRef(
       <div
         ref={ref}
         role="tabpanel"
+        id={`tabpanel-${value}`}
+        aria-labelledby={`tab-${value}`}
         tabIndex={0}
         className={cn(
           'mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-lg',

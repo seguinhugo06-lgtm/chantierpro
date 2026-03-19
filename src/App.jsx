@@ -1257,7 +1257,9 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900' : 'bg-white border-r border-slate-200'} transform transition-all duration-200 flex flex-col
+      <aside
+        aria-label="Navigation principale"
+        className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900' : 'bg-white border-r border-slate-200'} transform transition-all duration-200 flex flex-col
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}

@@ -250,7 +250,6 @@ const Input = forwardRef(({
                   ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               )}
-              tabIndex={-1}
               aria-label="Effacer"
             >
               <X size={16} />
@@ -268,7 +267,6 @@ const Input = forwardRef(({
                   ? 'text-slate-400 hover:text-slate-200'
                   : 'text-gray-400 hover:text-gray-600'
               )}
-              tabIndex={-1}
               aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

@@ -40,12 +40,14 @@ export const Switch = React.forwardRef(
       disabled = false,
       label,
       description,
+      isDark = false,
       id,
       ...props
     },
     ref
   ) => {
     const switchId = id || React.useId();
+    const descriptionId = description ? `${switchId}-desc` : undefined;
     const sizes = sizeStyles[size];
 
     const handleClick = () => {
@@ -70,6 +72,7 @@ export const Switch = React.forwardRef(
           id={switchId}
           aria-checked={checked}
           aria-disabled={disabled}
+          aria-describedby={descriptionId}
           disabled={disabled}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
@@ -104,7 +107,7 @@ export const Switch = React.forwardRef(
                 htmlFor={switchId}
                 className={cn(
                   'text-sm font-medium cursor-pointer',
-                  'text-gray-900',
+                  isDark ? 'text-slate-100' : 'text-gray-900',
                   disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
@@ -112,7 +115,10 @@ export const Switch = React.forwardRef(
               </label>
             )}
             {description && (
-              <span className="text-sm text-gray-500">
+              <span
+                id={descriptionId}
+                className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-500')}
+              >
                 {description}
               </span>
             )}
