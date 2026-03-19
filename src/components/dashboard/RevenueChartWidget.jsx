@@ -64,20 +64,18 @@ function formatFullMoney(amount) {
 }
 
 /**
- * Custom tooltip — dark mode aware
+ * Custom tooltip
  */
-function CustomTooltip({ active, payload, label, isDark }) {
+function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div className={`px-4 py-3 rounded-xl shadow-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-        <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {p.name === 'revenue' ? 'CA' : p.name}: {formatFullMoney(p.value)}
-          </p>
-        ))}
+      <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-200">
+        <p className="text-xs text-gray-500 mb-1">{label}</p>
+        <p className="text-lg font-bold text-gray-900">
+          {formatFullMoney(payload[0].value)}
+        </p>
         {payload[0].payload.invoiceCount > 0 && (
-          <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className="text-xs text-gray-500 mt-1">
             {payload[0].payload.invoiceCount} facture{payload[0].payload.invoiceCount > 1 ? 's' : ''}
           </p>
         )}
@@ -463,15 +461,15 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={couleur} stopOpacity={0.3} />
-                        <stop offset="95%" stopColor={couleur} stopOpacity={0.02} />
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={couleur} stopOpacity={0.25} />
+                        <stop offset="100%" stopColor={couleur} stopOpacity={0.01} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid
-                      strokeDasharray="3 3"
+                      strokeDasharray="4 4"
                       vertical={false}
-                      stroke={isDark ? '#334155' : '#e5e7eb'}
+                      stroke={isDark ? '#1e293b' : '#f1f5f9'}
                     />
                     <XAxis
                       dataKey="label"
@@ -486,7 +484,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                       tickFormatter={formatMoney}
                       domain={[0, maxRevenue * 1.1]}
                     />
-                    <Tooltip content={<CustomTooltip isDark={isDark} />} />
+                    <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine
                       y={stats.monthlyGoal}
                       stroke="#10b981"
@@ -504,20 +502,21 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                       dataKey="revenue"
                       stroke={couleur}
                       strokeWidth={2.5}
-                      fill="url(#colorRevenue)"
+                      strokeLinecap="round"
+                      fill="url(#revenueGradient)"
                       dot={(props) => {
                         const { cx, cy, payload } = props;
                         if (payload.isCurrent) {
                           return (
                             <g key={`dot-${payload.label}`}>
                               <circle cx={cx} cy={cy} r={6} fill={couleur} />
-                              <circle cx={cx} cy={cy} r={3} fill={isDark ? '#1e293b' : '#fff'} />
+                              <circle cx={cx} cy={cy} r={3} fill="#fff" />
                             </g>
                           );
                         }
                         return <circle key={`dot-${payload.label}`} cx={cx} cy={cy} r={3} fill={couleur} />;
                       }}
-                      activeDot={{ r: 6, stroke: couleur, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }}
+                      activeDot={{ r: 6, stroke: couleur, strokeWidth: 2, fill: '#fff' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

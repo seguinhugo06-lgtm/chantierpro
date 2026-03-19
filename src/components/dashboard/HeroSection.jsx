@@ -1,7 +1,6 @@
 /**
- * HeroSection Component — Greeting header with gradient background
- * Greeting + date + active chantiers count.
- * Urgent action banner moved to Dashboard.jsx for layout flexibility.
+ * HeroSection Component — Compact greeting header with contextual badges
+ * Linear/Stripe-inspired minimal design.
  */
 
 import { useMemo } from 'react';
@@ -33,56 +32,49 @@ export default function HeroSection({
       badges.push({
         label: `${actionsCount} action${actionsCount > 1 ? 's' : ''} en cours`,
         lightBg: 'bg-blue-50 text-blue-700',
-        darkBg: 'bg-blue-500/10 text-blue-400',
+        darkBg: 'bg-blue-500/15 text-blue-400',
       });
     }
     if (facturesEnRetard > 0) {
       badges.push({
         label: `${facturesEnRetard} facture${facturesEnRetard > 1 ? 's' : ''} en retard`,
-        lightBg: 'bg-red-50 text-red-700',
-        darkBg: 'bg-red-500/10 text-red-400',
+        lightBg: 'bg-rose-50 text-rose-700',
+        darkBg: 'bg-rose-500/15 text-rose-400',
       });
     }
     if (devisEnAttente > 0) {
       badges.push({
         label: `${devisEnAttente} devis en attente`,
-        lightBg: 'bg-orange-50 text-orange-700',
-        darkBg: 'bg-orange-500/10 text-orange-400',
+        lightBg: 'bg-amber-50 text-amber-700',
+        darkBg: 'bg-amber-500/15 text-amber-400',
       });
     }
     if (memosAujourdhui > 0) {
       badges.push({
         label: `${memosAujourdhui} memo${memosAujourdhui > 1 ? 's' : ''} du jour`,
         lightBg: 'bg-violet-50 text-violet-700',
-        darkBg: 'bg-violet-500/10 text-violet-400',
+        darkBg: 'bg-violet-500/15 text-violet-400',
       });
     }
     return badges;
   }, [actionsCount, facturesEnRetard, devisEnAttente, memosAujourdhui]);
 
   return (
-    <section
-      className="px-4 sm:px-6 pt-5 pb-4"
-      style={{
-        background: isDark
-          ? `linear-gradient(135deg, ${couleur}0c 0%, transparent 60%)`
-          : `linear-gradient(135deg, ${couleur}0c 0%, transparent 60%)`,
-      }}
-    >
+    <section className="px-4 sm:px-6 py-4 sm:py-5">
       <div className="max-w-7xl mx-auto">
         {/* Greeting */}
-        <h1 className={`text-2xl sm:text-3xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {greeting},{' '}
           <span style={{ color: couleur }}>{userName}</span>
         </h1>
 
         {/* Contextual Recap Badges */}
         {recapBadges.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap mt-2">
+          <div className="flex items-center gap-2 flex-wrap mt-2.5">
             {recapBadges.map((badge) => (
               <span
                 key={badge.label}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
                   isDark ? badge.darkBg : badge.lightBg
                 }`}
               >
@@ -120,7 +112,7 @@ export default function HeroSection({
 
 export function HeroSectionSkeleton({ isDark = false }) {
   return (
-    <section className={`px-4 sm:px-6 pt-5 pb-4 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+    <section className={`px-4 sm:px-6 py-4 sm:py-5 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
       <div className="max-w-7xl mx-auto animate-pulse">
         <div className={`h-7 w-56 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />
         <div className={`h-4 w-40 rounded-md mt-2 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />

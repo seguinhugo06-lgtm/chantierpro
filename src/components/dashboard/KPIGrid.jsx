@@ -1,5 +1,6 @@
 /**
  * KPIGrid Component — 4 KPI cards with sparklines/progress bars
+ * Premium Linear/Stripe-inspired design.
  * Displays CA, encaissements, marge, chantiers actifs.
  */
 
@@ -26,41 +27,40 @@ function TrendBadge({ value, isDark }) {
   if (value == null || isNaN(value)) return null;
   const isPositive = value >= 0;
   const bg = isPositive
-    ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50')
-    : (isDark ? 'bg-red-500/10' : 'bg-red-50');
-  const text = isPositive
-    ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-    : (isDark ? 'text-red-400' : 'text-red-600');
+    ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
+    : (isDark ? 'bg-rose-500/15 text-rose-400' : 'bg-rose-50 text-rose-600');
   const Icon = isPositive ? TrendingUp : TrendingDown;
 
   return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold ${bg}`}>
       <Icon size={12} />
       {isPositive ? '+' : ''}{Math.round(value)}%
     </span>
   );
 }
 
-function Sparkline({ data, couleur }) {
+function Sparkline({ data, color }) {
   const gradientId = useMemo(() => `spark-${Math.random().toString(36).slice(2, 8)}`, []);
 
   return (
-    <div className="h-[35px] w-full mt-2">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[32px] w-full mt-2">
+      <ResponsiveContainer width="100%" height={32}>
         <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={couleur} stopOpacity={0.25} />
-              <stop offset="100%" stopColor={couleur} stopOpacity={0.02} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <Area
             type="monotone"
             dataKey="v"
-            stroke={couleur}
+            stroke={color}
             strokeWidth={1.5}
             fill={`url(#${gradientId})`}
-            isAnimationActive={false}
+            dot={false}
+            isAnimationActive={true}
+            animationDuration={800}
           />
         </AreaChart>
       </ResponsiveContainer>
@@ -68,43 +68,48 @@ function Sparkline({ data, couleur }) {
   );
 }
 
-function ProgressBar({ value, max, couleur, isDark }) {
+function ProgressBar({ value, max, color, isDark }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
     <div className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
       <div
-        className="h-2 rounded-full transition-all"
-        style={{ width: `${pct}%`, background: couleur }}
+        className="h-2 rounded-full transition-all duration-500"
+        style={{ width: `${pct}%`, background: color }}
       />
     </div>
   );
 }
 
-function KPICardItem({ icon: Icon, label, value, trend, children, isDark, couleur, onClick }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isDark, onClick, modeDiscret }) {
+  const cardBg = isDark
+    ? 'bg-slate-800/80 border-slate-700/50'
+    : 'bg-white border-slate-200/60 shadow-sm';
   const labelColor = isDark ? 'text-slate-400' : 'text-slate-500';
   const valueColor = isDark ? 'text-white' : 'text-slate-900';
 
   return (
     <div
-      className={`rounded-2xl shadow-sm border transition-all hover:shadow-md cursor-pointer p-4 sm:p-5 ${cardBg}`}
+      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer ${cardBg}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: `${couleur}15` }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${iconColor}12` }}
         >
-          <Icon size={20} style={{ color: couleur }} />
+          <Icon size={20} style={{ color: iconColor }} />
         </div>
         {trend != null && <TrendBadge value={trend} isDark={isDark} />}
       </div>
 
-      <p className={`text-xs font-medium uppercase tracking-wide mt-3 ${labelColor}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wider mt-3 ${labelColor}`}>
         {label}
       </p>
 
-      <p className={`text-2xl sm:text-3xl font-bold mt-1 ${valueColor}`}>
+      <p
+        className={`text-2xl sm:text-[28px] font-extrabold tracking-tight mt-0.5 ${valueColor}`}
+        style={modeDiscret ? { filter: 'blur(6px)', userSelect: 'none' } : undefined}
+      >
         {value}
       </p>
 
@@ -139,7 +144,7 @@ export default function KPIGrid({
   const sparkEncaisser = useMemo(() => generateSparkData(aEncaisser || 3000), [aEncaisser]);
 
   const formatMontant = (v) => {
-    if (modeDiscret) return '\u2022\u2022\u2022\u2022';
+    if (modeDiscret) return '\u2022 \u2022 \u2022 \u2022';
     return currencyFormat.format(v);
   };
 
@@ -150,55 +155,58 @@ export default function KPIGrid({
       {/* CA ce mois */}
       <KPICardItem
         icon={Wallet}
+        iconColor="#10b981"
         label="CA ce mois"
         value={formatMontant(caMois)}
         trend={caTrend}
         isDark={isDark}
-        couleur={couleur}
+        modeDiscret={modeDiscret}
         onClick={() => setPage && setPage('tresorerie')}
       >
-        <Sparkline data={sparkCA} couleur={couleur} />
+        <Sparkline data={sparkCA} color="#10b981" />
       </KPICardItem>
 
       {/* A encaisser */}
       <KPICardItem
         icon={Receipt}
+        iconColor="#f59e0b"
         label="A encaisser"
         value={formatMontant(aEncaisser)}
         isDark={isDark}
-        couleur={couleur}
-        onClick={() => setPage && setPage('devis')}
+        modeDiscret={modeDiscret}
+        onClick={() => setPage && setPage('factures')}
       >
         {nbFacturesAttente > 0 && (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2 ${badgeBg}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium mt-2 ${badgeBg}`}>
             {nbFacturesAttente} facture{nbFacturesAttente > 1 ? 's' : ''}
           </span>
         )}
-        <Sparkline data={sparkEncaisser} couleur={couleur} />
+        <Sparkline data={sparkEncaisser} color="#f59e0b" />
       </KPICardItem>
 
       {/* Marge moyenne */}
       <KPICardItem
         icon={BarChart3}
+        iconColor="#3b82f6"
         label="Marge moyenne"
-        value={modeDiscret ? '\u2022\u2022\u2022\u2022' : `${Math.round(margeAvg)}%`}
+        value={modeDiscret ? '\u2022 \u2022 \u2022 \u2022' : `${Math.round(margeAvg)}%`}
         isDark={isDark}
-        couleur={couleur}
+        modeDiscret={modeDiscret}
         onClick={() => setPage && setPage('chantiers')}
       >
-        <ProgressBar value={margeAvg} max={100} couleur={couleur} isDark={isDark} />
+        <ProgressBar value={margeAvg} max={100} color="#3b82f6" isDark={isDark} />
       </KPICardItem>
 
       {/* Chantiers actifs */}
       <KPICardItem
         icon={HardHat}
+        iconColor={couleur}
         label="Chantiers actifs"
         value={`${chantiersActifs}/${chantiersTotal}`}
         isDark={isDark}
-        couleur={couleur}
         onClick={() => setPage && setPage('chantiers')}
       >
-        <ProgressBar value={chantiersActifs} max={chantiersTotal || 1} couleur={couleur} isDark={isDark} />
+        <ProgressBar value={chantiersActifs} max={chantiersTotal || 1} color={couleur} isDark={isDark} />
       </KPICardItem>
     </div>
   );
