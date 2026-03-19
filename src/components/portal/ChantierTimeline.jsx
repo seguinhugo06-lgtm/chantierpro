@@ -184,6 +184,7 @@ export default function ChantierTimeline({ chantier, onViewPhotos }) {
                   src={latestPhoto.thumbnail_url || latestPhoto.url}
                   alt={latestPhoto.description || 'Photo du chantier'}
                   className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">

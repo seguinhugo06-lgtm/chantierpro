@@ -10,6 +10,17 @@ import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 
 const DEMO_KEY = 'batigesti_chat';
 
+// ── Table availability guard ────────────────────────────────────────────────────
+// Chat tables (chat_channels, chat_messages, chat_members, chat_reactions) may
+// not exist yet in the database.  When a query fails because the table is missing
+// we log a warning and return a safe fallback so the rest of the UI keeps working.
+
+function isTableMissing(error) {
+  if (!error) return false;
+  const msg = (error.message || error.details || '').toLowerCase();
+  return msg.includes('could not find') || msg.includes('does not exist') || msg.includes('relation') || error.code === '42P01';
+}
+
 // ── Field mappings ──────────────────────────────────────────────────────────────
 
 function channelFromSupabase(row) {
@@ -307,31 +318,42 @@ export async function loadChannels(supabase, { userId, orgId }) {
     return data.channels;
   }
 
-  // Get channels where user is a member
-  const query = supabase
-    .from('chat_channels')
-    .select(`
-      *,
-      chat_members!inner(
-        user_id, role, muted, unread_count, last_read_at, joined_at, left_at
-      )
-    `)
-    .eq('chat_members.user_id', userId)
-    .is('chat_members.left_at', null)
-    .eq('is_archived', false)
-    .order('last_message_at', { ascending: false, nullsFirst: false });
+  try {
+    // Get channels where user is a member
+    const query = supabase
+      .from('chat_channels')
+      .select(`
+        *,
+        chat_members!inner(
+          user_id, role, muted, unread_count, last_read_at, joined_at, left_at
+        )
+      `)
+      .eq('chat_members.user_id', userId)
+      .is('chat_members.left_at', null)
+      .eq('is_archived', false)
+      .order('last_message_at', { ascending: false, nullsFirst: false });
 
-  const { data, error } = await query;
-  if (error) throw error;
+    const { data, error } = await query;
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat tables not available:', error.message);
+        return [];
+      }
+      throw error;
+    }
 
-  return (data || []).map(row => {
-    const myMembership = row.chat_members?.find(m => m.user_id === userId);
-    return {
-      ...channelFromSupabase(row),
-      unreadCount: myMembership?.unread_count || 0,
-      muted: myMembership?.muted || false,
-    };
-  });
+    return (data || []).map(row => {
+      const myMembership = row.chat_members?.find(m => m.user_id === userId);
+      return {
+        ...channelFromSupabase(row),
+        unreadCount: myMembership?.unread_count || 0,
+        muted: myMembership?.muted || false,
+      };
+    });
+  } catch (err) {
+    console.warn('[chatService] loadChannels failed, returning empty:', err.message);
+    return [];
+  }
 }
 
 /**
@@ -368,39 +390,50 @@ export async function createChannel(supabase, { userId, orgId, name, type, descr
     return newChannel;
   }
 
-  const channelData = withOrgScope({
-    name,
-    type,
-    description: description || null,
-    chantier_id: chantierId || null,
-  }, userId, orgId);
+  try {
+    const channelData = withOrgScope({
+      name,
+      type,
+      description: description || null,
+      chantier_id: chantierId || null,
+    }, userId, orgId);
 
-  const { data: channel, error } = await supabase
-    .from('chat_channels')
-    .insert(channelData)
-    .select()
-    .single();
+    const { data: channel, error } = await supabase
+      .from('chat_channels')
+      .insert(channelData)
+      .select()
+      .single();
 
-  if (error) throw error;
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_channels table not available:', error.message);
+        return null;
+      }
+      throw error;
+    }
 
-  // Add creator as admin
-  const members = [
-    { channel_id: channel.id, user_id: userId, role: 'admin' },
-    ...(memberIds || []).map(uid => ({ channel_id: channel.id, user_id: uid, role: 'member' })),
-  ];
+    // Add creator as admin
+    const members = [
+      { channel_id: channel.id, user_id: userId, role: 'admin' },
+      ...(memberIds || []).map(uid => ({ channel_id: channel.id, user_id: uid, role: 'member' })),
+    ];
 
-  await supabase.from('chat_members').insert(members);
+    await supabase.from('chat_members').insert(members);
 
-  // Add system message
-  await supabase.from('chat_messages').insert({
-    channel_id: channel.id,
-    user_id: userId,
-    content: 'a créé le canal',
-    content_type: 'system',
-    system_event: 'channel_created',
-  });
+    // Add system message
+    await supabase.from('chat_messages').insert({
+      channel_id: channel.id,
+      user_id: userId,
+      content: 'a créé le canal',
+      content_type: 'system',
+      system_event: 'channel_created',
+    });
 
-  return channelFromSupabase(channel);
+    return channelFromSupabase(channel);
+  } catch (err) {
+    console.warn('[chatService] createChannel failed:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -441,21 +474,32 @@ export async function getOrCreateDirectChannel(supabase, { userId, otherUserId, 
     return newChannel;
   }
 
-  const { data: channelId, error } = await supabase.rpc('get_or_create_direct_channel', {
-    p_other_user_id: otherUserId,
-    p_org_id: orgId || null,
-  });
+  try {
+    const { data: channelId, error } = await supabase.rpc('get_or_create_direct_channel', {
+      p_other_user_id: otherUserId,
+      p_org_id: orgId || null,
+    });
 
-  if (error) throw error;
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat tables not available for DM:', error.message);
+        return null;
+      }
+      throw error;
+    }
 
-  // Fetch the full channel
-  const { data: channel } = await supabase
-    .from('chat_channels')
-    .select('*')
-    .eq('id', channelId)
-    .single();
+    // Fetch the full channel
+    const { data: channel } = await supabase
+      .from('chat_channels')
+      .select('*')
+      .eq('id', channelId)
+      .single();
 
-  return channelFromSupabase(channel);
+    return channelFromSupabase(channel);
+  } catch (err) {
+    console.warn('[chatService] getOrCreateDirectChannel failed:', err.message);
+    return null;
+  }
 }
 
 // ── Messages ────────────────────────────────────────────────────────────────────
@@ -484,31 +528,42 @@ export async function loadMessages(supabase, { channelId, cursor, limit = 30 }) 
     };
   }
 
-  let query = supabase
-    .from('chat_messages')
-    .select(`
-      *,
-      chat_reactions(id, user_id, emoji, created_at)
-    `)
-    .eq('channel_id', channelId)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  try {
+    let query = supabase
+      .from('chat_messages')
+      .select(`
+        *,
+        chat_reactions(id, user_id, emoji, created_at)
+      `)
+      .eq('channel_id', channelId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-  if (cursor) {
-    query = query.lt('created_at', cursor);
+    if (cursor) {
+      query = query.lt('created_at', cursor);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_messages table not available:', error.message);
+        return { messages: [], hasMore: false, nextCursor: null };
+      }
+      throw error;
+    }
+
+    const messages = (data || []).map(messageFromSupabase).reverse();
+
+    return {
+      messages,
+      hasMore: (data || []).length === limit,
+      nextCursor: data?.length > 0 ? data[data.length - 1].created_at : null,
+    };
+  } catch (err) {
+    console.warn('[chatService] loadMessages failed:', err.message);
+    return { messages: [], hasMore: false, nextCursor: null };
   }
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  const messages = (data || []).map(messageFromSupabase).reverse();
-
-  return {
-    messages,
-    hasMore: (data || []).length === limit,
-    nextCursor: data?.length > 0 ? data[data.length - 1].created_at : null,
-  };
 }
 
 /**
@@ -546,27 +601,38 @@ export async function sendMessage(supabase, { channelId, userId, content, conten
     return msg;
   }
 
-  const messageData = {
-    channel_id: channelId,
-    user_id: userId,
-    content,
-    content_type: contentType,
-    attachments: attachments || [],
-    voice_duration_ms: voiceDurationMs || null,
-    reply_to_id: replyToId || null,
-  };
+  try {
+    const messageData = {
+      channel_id: channelId,
+      user_id: userId,
+      content,
+      content_type: contentType,
+      attachments: attachments || [],
+      voice_duration_ms: voiceDurationMs || null,
+      reply_to_id: replyToId || null,
+    };
 
-  const { data: msg, error } = await supabase
-    .from('chat_messages')
-    .insert(messageData)
-    .select(`
-      *,
-      chat_reactions(id, user_id, emoji, created_at)
-    `)
-    .single();
+    const { data: msg, error } = await supabase
+      .from('chat_messages')
+      .insert(messageData)
+      .select(`
+        *,
+        chat_reactions(id, user_id, emoji, created_at)
+      `)
+      .single();
 
-  if (error) throw error;
-  return messageFromSupabase(msg);
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_messages table not available:', error.message);
+        return null;
+      }
+      throw error;
+    }
+    return messageFromSupabase(msg);
+  } catch (err) {
+    console.warn('[chatService] sendMessage failed:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -587,16 +653,27 @@ export async function editMessage(supabase, { messageId, content, userId }) {
     throw new Error('Message non trouvé');
   }
 
-  const { data: msg, error } = await supabase
-    .from('chat_messages')
-    .update({ content, edited_at: new Date().toISOString() })
-    .eq('id', messageId)
-    .eq('user_id', userId)
-    .select()
-    .single();
+  try {
+    const { data: msg, error } = await supabase
+      .from('chat_messages')
+      .update({ content, edited_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .eq('user_id', userId)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return messageFromSupabase(msg);
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_messages table not available:', error.message);
+        return null;
+      }
+      throw error;
+    }
+    return messageFromSupabase(msg);
+  } catch (err) {
+    console.warn('[chatService] editMessage failed:', err.message);
+    return null;
+  }
 }
 
 /**
@@ -617,11 +694,15 @@ export async function deleteMessage(supabase, { messageId, userId }) {
     return;
   }
 
-  await supabase
-    .from('chat_messages')
-    .update({ deleted_at: new Date().toISOString(), content: null })
-    .eq('id', messageId)
-    .eq('user_id', userId);
+  try {
+    await supabase
+      .from('chat_messages')
+      .update({ deleted_at: new Date().toISOString(), content: null })
+      .eq('id', messageId)
+      .eq('user_id', userId);
+  } catch (err) {
+    console.warn('[chatService] deleteMessage failed:', err.message);
+  }
 }
 
 // ── Reactions ───────────────────────────────────────────────────────────────────
@@ -647,32 +728,37 @@ export async function toggleReaction(supabase, { messageId, userId, emoji }) {
     return [];
   }
 
-  // Check if reaction exists
-  const { data: existing } = await supabase
-    .from('chat_reactions')
-    .select('id')
-    .eq('message_id', messageId)
-    .eq('user_id', userId)
-    .eq('emoji', emoji)
-    .maybeSingle();
+  try {
+    // Check if reaction exists
+    const { data: existing } = await supabase
+      .from('chat_reactions')
+      .select('id')
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
+      .maybeSingle();
 
-  if (existing) {
-    await supabase.from('chat_reactions').delete().eq('id', existing.id);
-  } else {
-    await supabase.from('chat_reactions').insert({
-      message_id: messageId,
-      user_id: userId,
-      emoji,
-    });
+    if (existing) {
+      await supabase.from('chat_reactions').delete().eq('id', existing.id);
+    } else {
+      await supabase.from('chat_reactions').insert({
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+      });
+    }
+
+    // Return updated reactions
+    const { data: reactions } = await supabase
+      .from('chat_reactions')
+      .select('*')
+      .eq('message_id', messageId);
+
+    return (reactions || []).map(reactionFromSupabase);
+  } catch (err) {
+    console.warn('[chatService] toggleReaction failed:', err.message);
+    return [];
   }
-
-  // Return updated reactions
-  const { data: reactions } = await supabase
-    .from('chat_reactions')
-    .select('*')
-    .eq('message_id', messageId);
-
-  return (reactions || []).map(reactionFromSupabase);
 }
 
 // ── Read status ─────────────────────────────────────────────────────────────────
@@ -689,7 +775,11 @@ export async function markChannelRead(supabase, { channelId, userId }) {
     return;
   }
 
-  await supabase.rpc('mark_channel_read', { p_channel_id: channelId });
+  try {
+    await supabase.rpc('mark_channel_read', { p_channel_id: channelId });
+  } catch (err) {
+    console.warn('[chatService] markChannelRead failed:', err.message);
+  }
 }
 
 export async function getTotalUnreadCount(supabase) {
@@ -711,14 +801,25 @@ export async function loadChannelMembers(supabase, { channelId }) {
     return data.members[channelId] || [];
   }
 
-  const { data, error } = await supabase
-    .from('chat_members')
-    .select('*')
-    .eq('channel_id', channelId)
-    .is('left_at', null);
+  try {
+    const { data, error } = await supabase
+      .from('chat_members')
+      .select('*')
+      .eq('channel_id', channelId)
+      .is('left_at', null);
 
-  if (error) throw error;
-  return (data || []).map(memberFromSupabase);
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_members table not available:', error.message);
+        return [];
+      }
+      throw error;
+    }
+    return (data || []).map(memberFromSupabase);
+  } catch (err) {
+    console.warn('[chatService] loadChannelMembers failed:', err.message);
+    return [];
+  }
 }
 
 export async function addChannelMember(supabase, { channelId, userId, addedByUserId }) {
@@ -740,21 +841,25 @@ export async function addChannelMember(supabase, { channelId, userId, addedByUse
     return;
   }
 
-  await supabase.from('chat_members').insert({
-    channel_id: channelId,
-    user_id: userId,
-    role: 'member',
-  });
+  try {
+    await supabase.from('chat_members').insert({
+      channel_id: channelId,
+      user_id: userId,
+      role: 'member',
+    });
 
-  // System message
-  await supabase.from('chat_messages').insert({
-    channel_id: channelId,
-    user_id: addedByUserId,
-    content: 'a ajouté un membre',
-    content_type: 'system',
-    system_event: 'member_added',
-    system_metadata: { added_user_id: userId },
-  });
+    // System message
+    await supabase.from('chat_messages').insert({
+      channel_id: channelId,
+      user_id: addedByUserId,
+      content: 'a ajouté un membre',
+      content_type: 'system',
+      system_event: 'member_added',
+      system_metadata: { added_user_id: userId },
+    });
+  } catch (err) {
+    console.warn('[chatService] addChannelMember failed:', err.message);
+  }
 }
 
 export async function removeChannelMember(supabase, { channelId, userId }) {
@@ -767,11 +872,15 @@ export async function removeChannelMember(supabase, { channelId, userId }) {
     return;
   }
 
-  await supabase
-    .from('chat_members')
-    .update({ left_at: new Date().toISOString() })
-    .eq('channel_id', channelId)
-    .eq('user_id', userId);
+  try {
+    await supabase
+      .from('chat_members')
+      .update({ left_at: new Date().toISOString() })
+      .eq('channel_id', channelId)
+      .eq('user_id', userId);
+  } catch (err) {
+    console.warn('[chatService] removeChannelMember failed:', err.message);
+  }
 }
 
 // ── Search ──────────────────────────────────────────────────────────────────────
@@ -792,23 +901,34 @@ export async function searchMessages(supabase, { query, userId, limit = 20 }) {
     return results.slice(0, limit);
   }
 
-  const { data, error } = await supabase
-    .from('chat_messages')
-    .select(`
-      *,
-      chat_channels!inner(name, type)
-    `)
-    .textSearch('search_vector', query, { type: 'websearch', config: 'french' })
-    .is('deleted_at', null)
-    .limit(limit);
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select(`
+        *,
+        chat_channels!inner(name, type)
+      `)
+      .textSearch('search_vector', query, { type: 'websearch', config: 'french' })
+      .is('deleted_at', null)
+      .limit(limit);
 
-  if (error) throw error;
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat tables not available for search:', error.message);
+        return [];
+      }
+      throw error;
+    }
 
-  return (data || []).map(row => ({
-    ...messageFromSupabase(row),
-    channelName: row.chat_channels?.name,
-    channelType: row.chat_channels?.type,
-  }));
+    return (data || []).map(row => ({
+      ...messageFromSupabase(row),
+      channelName: row.chat_channels?.name,
+      channelType: row.chat_channels?.type,
+    }));
+  } catch (err) {
+    console.warn('[chatService] searchMessages failed:', err.message);
+    return [];
+  }
 }
 
 // ── Channel operations ──────────────────────────────────────────────────────────
@@ -824,19 +944,30 @@ export async function updateChannel(supabase, { channelId, updates, userId }) {
     return ch;
   }
 
-  const { data, error } = await supabase
-    .from('chat_channels')
-    .update({
-      ...(updates.name !== undefined && { name: updates.name }),
-      ...(updates.description !== undefined && { description: updates.description }),
-      ...(updates.isArchived !== undefined && { is_archived: updates.isArchived }),
-    })
-    .eq('id', channelId)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('chat_channels')
+      .update({
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.description !== undefined && { description: updates.description }),
+        ...(updates.isArchived !== undefined && { is_archived: updates.isArchived }),
+      })
+      .eq('id', channelId)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return channelFromSupabase(data);
+    if (error) {
+      if (isTableMissing(error)) {
+        console.warn('[chatService] chat_channels table not available:', error.message);
+        return null;
+      }
+      throw error;
+    }
+    return channelFromSupabase(data);
+  } catch (err) {
+    console.warn('[chatService] updateChannel failed:', err.message);
+    return null;
+  }
 }
 
 export async function archiveChannel(supabase, { channelId, userId }) {
@@ -853,11 +984,15 @@ export async function toggleMuteChannel(supabase, { channelId, userId, muted }) 
     return;
   }
 
-  await supabase
-    .from('chat_members')
-    .update({ muted })
-    .eq('channel_id', channelId)
-    .eq('user_id', userId);
+  try {
+    await supabase
+      .from('chat_members')
+      .update({ muted })
+      .eq('channel_id', channelId)
+      .eq('user_id', userId);
+  } catch (err) {
+    console.warn('[chatService] toggleMuteChannel failed:', err.message);
+  }
 }
 
 // ── File upload for chat ────────────────────────────────────────────────────────

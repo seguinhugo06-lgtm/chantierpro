@@ -183,6 +183,7 @@ export default function PhotoGallery({ isOpen, onClose, photos = [], chantierNam
                         alt={photo.description || 'Photo'}
                         className="w-full h-full object-cover transition-transform group-hover:scale-110"
                         loading="lazy"
+                        onError={(e) => { e.target.style.display = 'none'; }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                         <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -260,6 +261,7 @@ export default function PhotoGallery({ isOpen, onClose, photos = [], chantierNam
             alt={selectedPhoto.description || 'Photo'}
             className="max-w-[90vw] max-h-[85vh] object-contain"
             onClick={(e) => e.stopPropagation()}
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
 
           {/* Caption */}

@@ -154,6 +154,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
                   alt={message.attachments[0].name}
                   className="rounded-xl max-w-full max-h-64 object-cover cursor-pointer"
                   loading="lazy"
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
               )}
               {message.content && (

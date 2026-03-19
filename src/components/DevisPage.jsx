@@ -3100,7 +3100,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
               <div className={`flex justify-between items-start mb-6 pb-6 border-b ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
                 <div className="flex items-center gap-3">
                   {entreprise?.logo ? (
-                    <img src={entreprise.logo} className="h-12 rounded-lg object-cover" alt={entreprise?.nom || ''} />
+                    <img src={entreprise.logo} className="h-12 rounded-lg object-cover" alt={entreprise?.nom || ''} onError={(e) => { e.target.style.display = 'none'; }} />
                   ) : (
                     <div className="w-12 h-12 rounded-lg flex items-center justify-center text-lg font-bold" style={{background: `${couleur}20`, color: couleur}}>
                       {(entreprise?.nom || 'E').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}

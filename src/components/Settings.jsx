@@ -673,7 +673,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; const file = e.dataTransfer.files?.[0]; if (file) { const fakeEvent = { target: { files: [file] } }; handleLogoUpload(fakeEvent); } }}
                   className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all ${isDark ? 'bg-slate-700' : 'bg-slate-50'}`}>
                     {entreprise.logo ? (
-                      <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" />
+                      <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
                     ) : entreprise.nom ? (
                       <span className="text-2xl font-bold" style={{ color: entreprise.couleur || '#64748b' }}>
                         {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -1900,7 +1900,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-4">
               {entreprise.logo ? (
-                <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" />
+                <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
               ) : entreprise.nom ? (
                 <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold" style={{ background: `${entreprise.couleur}20`, color: entreprise.couleur }}>
                   {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -2008,7 +2008,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Logo</label>
                       <div className="flex items-center gap-3">
                         {entreprise.logo ? (
-                          <img src={entreprise.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain border" />
+                          <img src={entreprise.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain border" onError={(e) => { e.target.style.display = 'none'; }} />
                         ) : (
                           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: entreprise.couleur || couleur }}>
                             {(entreprise.nom || 'E').charAt(0).toUpperCase()}

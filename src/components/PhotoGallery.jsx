@@ -274,6 +274,7 @@ export default function PhotoGallery({
             src={selectedPhoto.imageData}
             alt={selectedPhoto.description || 'Photo chantier'}
             className="w-full max-h-[60vh] object-contain bg-slate-100"
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
         </div>
 
@@ -359,6 +360,7 @@ export default function PhotoGallery({
               src={compareMode.before.imageData}
               alt="Avant"
               className="w-full h-64 object-cover"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
             <div className="p-4">
               <p className={`text-sm ${textMuted}`}>{new Date(compareMode.before.date).toLocaleDateString('fr-FR')}</p>
@@ -393,6 +395,7 @@ export default function PhotoGallery({
               src={compareMode.after.imageData}
               alt="Apres"
               className="w-full h-64 object-cover"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
             <div className="p-4">
               <p className={`text-sm ${textMuted}`}>{new Date(compareMode.after.date).toLocaleDateString('fr-FR')}</p>
@@ -537,6 +540,7 @@ export default function PhotoGallery({
                     src={photo.imageData}
                     alt={photo.description || 'Photo'}
                     className="w-full h-40 object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; }}
                   />
                   <span
                     className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium text-white"
@@ -572,6 +576,7 @@ export default function PhotoGallery({
                   src={photo.imageData}
                   alt={photo.description || 'Photo'}
                   className="w-20 h-20 object-cover rounded-lg"
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
