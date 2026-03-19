@@ -742,6 +742,7 @@ function PhotoThumbnail({ photo, onRemove, onRetry, onClick }) {
             src={photo.thumbnail}
             alt="Photo chantier"
             className="w-full h-full object-cover"
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -914,6 +915,7 @@ function PhotoLightbox({ photo, onClose }) {
             src={photo.file ? URL.createObjectURL(photo.file) : photo.thumbnail}
             alt="Photo chantier"
             className="max-w-full max-h-full object-contain rounded-lg"
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
         )}
       </div>

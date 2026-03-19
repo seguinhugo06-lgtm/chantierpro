@@ -1378,7 +1378,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {allPhotos.map(p => (
                       <div key={p.id} className="relative group cursor-pointer" onClick={() => { if (setSelectedChantier && p.chantierId) { setSelectedChantier(p.chantierId); setPage?.('chantiers'); } }}>
-                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} />
+                        <img src={p.src} className="w-full h-24 object-cover rounded-xl" alt={`Photo du chantier ${p.chantierNom}`} onError={(e) => { e.target.style.display = 'none'; }} />
                         <p className={`text-xs ${textMuted} mt-1 truncate`}>{p.chantierNom}</p>
                       </div>
                     ))}

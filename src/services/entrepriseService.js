@@ -158,7 +158,8 @@ export function toSupabase(data) {
   if (data.tvaDefaut !== undefined) result.tva_defaut = data.tvaDefaut;
   if (data.validiteDevis !== undefined) result.validite_devis = data.validiteDevis;
   if (data.delaiPaiement !== undefined) result.delai_paiement = data.delaiPaiement;
-  if (data.acompteDefaut !== undefined) result.acompte_defaut = data.acompteDefaut;
+  // Note: acompte_defaut column does not exist in DB — keep locally only
+  // if (data.acompteDefaut !== undefined) result.acompte_defaut = data.acompteDefaut;
   if (data.tauxFraisStructure !== undefined) result.taux_frais_structure = data.tauxFraisStructure;
   if (data.cgv !== undefined) result.cgv = data.cgv;
   if (data.mentionDevis !== undefined) result.mention_devis = data.mentionDevis;
@@ -682,7 +683,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
       // Initialize counters from existing document numbers
       await _initCountersFromExisting(supabase, defaultEnt.id, userId);
     } catch (e) {
-      console.error('[entrepriseService] Backfill failed:', e);
+      console.warn('[entrepriseService] Backfill failed (entreprise_id column may not exist yet), skipping:', e.message || e);
     }
   }
 

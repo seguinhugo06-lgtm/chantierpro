@@ -78,7 +78,7 @@ const INDICATOR_CONFIG = [
     icon: AlertTriangle,
     color: '#ef4444',
     advice: 'Réduisez vos impayés en envoyant des relances régulières.',
-    page: 'factures',
+    page: 'devis',
   },
   {
     key: 'conformite',

@@ -209,7 +209,7 @@ export default function FacturePaymentPage({ paymentToken }) {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 mb-4">
           <div className="flex items-center gap-4">
             {entreprise?.logo_url ? (
-              <img src={entreprise.logo_url} alt={entreprise.nom} className="w-14 h-14 object-contain rounded-xl bg-slate-50 p-1" />
+              <img src={entreprise.logo_url} alt={entreprise.nom} className="w-14 h-14 object-contain rounded-xl bg-slate-50 p-1" onError={(e) => { e.target.style.display = 'none'; }} />
             ) : (
               <div className="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center"><Building2 className="w-7 h-7 text-orange-500" /></div>
             )}

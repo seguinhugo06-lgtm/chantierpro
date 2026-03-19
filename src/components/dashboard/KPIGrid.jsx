@@ -167,7 +167,7 @@ export default function KPIGrid({
         value={formatMontant(aEncaisser)}
         isDark={isDark}
         couleur={couleur}
-        onClick={() => setPage && setPage('factures')}
+        onClick={() => setPage && setPage('devis')}
       >
         {nbFacturesAttente > 0 && (
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-2 ${badgeBg}`}>

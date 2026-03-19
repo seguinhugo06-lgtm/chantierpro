@@ -150,7 +150,7 @@ export default function LabelsManager({ entreprise, updateEntreprise, isDark, co
             return (
               <div key={label.id} className={`flex items-center gap-4 p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
                 {label.logo && (
-                  <img src={label.logo} alt={label.nom} className="w-10 h-10 object-contain rounded" />
+                  <img src={label.logo} alt={label.nom} className="w-10 h-10 object-contain rounded" onError={(e) => { e.target.style.display = 'none'; }} />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ export default function LabelsManager({ entreprise, updateEntreprise, isDark, co
               <div>
                 <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-slate-200' : ''}`}>Logo</label>
                 <div className="flex items-center gap-3">
-                  {form.logo && <img src={form.logo} alt="Logo" className="w-10 h-10 object-contain rounded border" />}
+                  {form.logo && <img src={form.logo} alt="Logo" className="w-10 h-10 object-contain rounded border" onError={(e) => { e.target.style.display = 'none'; }} />}
                   <label className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl cursor-pointer text-sm ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                     <Upload size={14} />Changer
                     <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />

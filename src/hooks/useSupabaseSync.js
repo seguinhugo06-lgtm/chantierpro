@@ -970,12 +970,20 @@ export async function loadAllData(userId, orgId, entrepriseId) {
     const scoped = (table) => scopeToOrg(supabase.from(table).select('*'), orgId, userId);
 
     // Helper: scope to org + optionally filter by entreprise_id
-    const scopedWithEntreprise = (table) => {
+    // Falls back to query without entreprise_id if column doesn't exist (error 42703)
+    const scopedWithEntreprise = async (table) => {
       let query = scopeToOrg(supabase.from(table).select('*'), orgId, userId);
       if (entrepriseId) {
         query = query.eq('entreprise_id', entrepriseId);
       }
-      return query;
+      const result = await query;
+      // If entreprise_id column doesn't exist, retry without the filter
+      if (result.error && result.error.code === '42703' && entrepriseId) {
+        console.warn(`[useSupabaseSync] entreprise_id column not found on ${table}, retrying without filter`);
+        const fallbackQuery = scopeToOrg(supabase.from(table).select('*'), orgId, userId);
+        return fallbackQuery;
+      }
+      return result;
     };
 
     const [
@@ -1032,10 +1040,10 @@ export async function loadAllData(userId, orgId, entrepriseId) {
       scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
     ]);
 
-    // Log any query errors from core tables
-    if (clientsRes.error) console.error('⚠️ Supabase clients query error:', clientsRes.error.message);
-    if (chantiersRes.error) console.error('⚠️ Supabase chantiers query error:', chantiersRes.error.message);
-    if (devisRes.error) console.error('⚠️ Supabase devis query error:', devisRes.error.message);
+    // Log any query errors from core tables (warn, not error — non-blocking)
+    if (clientsRes.error) console.warn('[useSupabaseSync] clients query issue:', clientsRes.error.message);
+    if (chantiersRes.error) console.warn('[useSupabaseSync] chantiers query issue:', chantiersRes.error.message);
+    if (devisRes.error) console.warn('[useSupabaseSync] devis query issue:', devisRes.error.message);
 
     const data = {
       clients: (clientsRes.data || []).map(FIELD_MAPPINGS.clients.fromSupabase),
@@ -1156,7 +1164,17 @@ export async function getNextNumero(type, userId, localDevis = [], entrepriseId 
       if (entrepriseId) {
         query = query.eq('entreprise_id', entrepriseId);
       }
-      const { data } = await query;
+      let { data, error: queryError } = await query;
+      // If entreprise_id column doesn't exist, retry without filter
+      if (queryError && queryError.code === '42703' && entrepriseId) {
+        console.warn('[useSupabaseSync] entreprise_id column not found on devis for numero query, retrying without filter');
+        const fallback = await supabase
+          .from('devis')
+          .select('numero')
+          .eq('user_id', userId)
+          .like('numero', likePattern);
+        data = fallback.data;
+      }
       if (data && data.length > 0) {
         supabaseMax = data.reduce((max, row) => {
           const m = (row.numero || '').match(pattern);

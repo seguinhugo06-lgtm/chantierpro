@@ -205,16 +205,20 @@ export async function executeRelance(doc, client, step, entreprise, options = {}
 
     if (!isDemo && userId) {
       const scopedData = withOrgScope(executionData, userId, orgId);
-      const { data, error } = await supabase
-        .from('relance_executions')
-        .insert(scopedData)
-        .select('id')
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('relance_executions')
+          .insert(scopedData)
+          .select('id')
+          .single();
 
-      if (error) {
-        console.error('Failed to save relance execution:', error);
-      } else {
-        executionId = data?.id;
+        if (error) {
+          console.warn('[relanceEngine] relance_executions table not available, skipping save:', error.message);
+        } else {
+          executionId = data?.id;
+        }
+      } catch (e) {
+        console.warn('[relanceEngine] relance_executions insert failed, skipping:', e.message);
       }
 
       // Update last_reminder_sent_at on the document
@@ -337,15 +341,23 @@ export async function createExclusion(scope, { documentId, clientId, reason, not
     return { id, ...data };
   }
 
-  const scopedData = withOrgScope(data, userId, orgId);
-  const { data: result, error } = await supabase
-    .from('relance_exclusions')
-    .insert(scopedData)
-    .select()
-    .single();
+  try {
+    const scopedData = withOrgScope(data, userId, orgId);
+    const { data: result, error } = await supabase
+      .from('relance_exclusions')
+      .insert(scopedData)
+      .select()
+      .single();
 
-  if (error) throw error;
-  return result;
+    if (error) {
+      console.warn('[relanceEngine] relance_exclusions table not available, skipping:', error.message);
+      return { id: `local-excl-${Date.now()}`, ...data };
+    }
+    return result;
+  } catch (e) {
+    console.warn('[relanceEngine] createExclusion failed, returning local fallback:', e.message);
+    return { id: `local-excl-${Date.now()}`, ...data };
+  }
 }
 
 /**
@@ -361,12 +373,18 @@ export async function removeExclusion(exclusionId, userId) {
     return;
   }
 
-  const { error } = await supabase
-    .from('relance_exclusions')
-    .delete()
-    .eq('id', exclusionId);
+  try {
+    const { error } = await supabase
+      .from('relance_exclusions')
+      .delete()
+      .eq('id', exclusionId);
 
-  if (error) throw error;
+    if (error) {
+      console.warn('[relanceEngine] relance_exclusions delete not available, skipping:', error.message);
+    }
+  } catch (e) {
+    console.warn('[relanceEngine] removeExclusion failed, skipping:', e.message);
+  }
 }
 
 // ============ DATA LOADING ============
@@ -379,19 +397,24 @@ export async function loadExecutions(userId, orgId) {
     return JSON.parse(localStorage.getItem('cp_relance_executions') || '[]');
   }
 
-  let query = supabase
-    .from('relance_executions')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    let query = supabase
+      .from('relance_executions')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  query = scopeToOrg(query, orgId, userId);
-  const { data, error } = await query;
+    query = scopeToOrg(query, orgId, userId);
+    const { data, error } = await query;
 
-  if (error) {
-    console.error('Failed to load relance executions:', error);
+    if (error) {
+      console.warn('[relanceEngine] relance_executions table not available, skipping:', error.message);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    console.warn('[relanceEngine] loadExecutions failed, returning empty:', e.message);
     return [];
   }
-  return data || [];
 }
 
 /**
@@ -402,19 +425,24 @@ export async function loadExclusions(userId, orgId) {
     return JSON.parse(localStorage.getItem('cp_relance_exclusions') || '[]');
   }
 
-  let query = supabase
-    .from('relance_exclusions')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    let query = supabase
+      .from('relance_exclusions')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  query = scopeToOrg(query, orgId, userId);
-  const { data, error } = await query;
+    query = scopeToOrg(query, orgId, userId);
+    const { data, error } = await query;
 
-  if (error) {
-    console.error('Failed to load relance exclusions:', error);
+    if (error) {
+      console.warn('[relanceEngine] relance_exclusions table not available, skipping:', error.message);
+      return [];
+    }
+    return data || [];
+  } catch (e) {
+    console.warn('[relanceEngine] loadExclusions failed, returning empty:', e.message);
     return [];
   }
-  return data || [];
 }
 
 /**

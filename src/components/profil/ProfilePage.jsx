@@ -279,7 +279,7 @@ export default function ProfilePage({
               style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
             >
               {entreprise.logo
-                ? <img src={entreprise.logo} alt="" className="w-full h-full object-cover" />
+                ? <img src={entreprise.logo} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                 : initials
               }
             </div>

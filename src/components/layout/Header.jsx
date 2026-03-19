@@ -343,6 +343,7 @@ function UserAvatar({ user, size = 'md' }) {
         src={user.avatar}
         alt={user.name || 'User'}
         className={cn(sizeClasses[size], 'rounded-full object-cover')}
+        onError={(e) => { e.target.style.display = 'none'; }}
       />
     );
   }
