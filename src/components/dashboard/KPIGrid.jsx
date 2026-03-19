@@ -43,7 +43,7 @@ function Sparkline({ data, color }) {
   const gradientId = useMemo(() => `spark-${Math.random().toString(36).slice(2, 8)}`, []);
 
   return (
-    <div className="h-[32px] w-full mt-2">
+    <div className="h-[32px] w-full mt-2" aria-hidden="true">
       <ResponsiveContainer width="100%" height={32}>
         <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
           <defs>
@@ -71,7 +71,13 @@ function Sparkline({ data, color }) {
 function ProgressBar({ value, max, color, isDark }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
-    <div className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+    <div
+      className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}
+      role="progressbar"
+      aria-valuenow={Math.round(pct)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
       <div
         className="h-2 rounded-full transition-all duration-500"
         style={{ width: `${pct}%`, background: color }}
@@ -88,9 +94,11 @@ function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isD
   const valueColor = isDark ? 'text-white' : 'text-slate-900';
 
   return (
-    <div
-      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer ${cardBg}`}
+    <button
+      type="button"
+      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left w-full ${cardBg}`}
       onClick={onClick}
+      aria-label={`${label} : ${value}`}
     >
       <div className="flex items-start justify-between">
         <div
@@ -114,7 +122,7 @@ function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isD
       </p>
 
       {children}
-    </div>
+    </button>
   );
 }
 
@@ -161,7 +169,7 @@ export default function KPIGrid({
         trend={caTrend}
         isDark={isDark}
         modeDiscret={modeDiscret}
-        onClick={() => setPage && setPage('tresorerie')}
+        onClick={() => setPage && setPage('finances')}
       >
         <Sparkline data={sparkCA} color="#10b981" />
       </KPICardItem>
@@ -174,7 +182,7 @@ export default function KPIGrid({
         value={formatMontant(aEncaisser)}
         isDark={isDark}
         modeDiscret={modeDiscret}
-        onClick={() => setPage && setPage('factures')}
+        onClick={() => setPage && setPage('devis')}
       >
         {nbFacturesAttente > 0 && (
           <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium mt-2 ${badgeBg}`}>
