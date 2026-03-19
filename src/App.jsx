@@ -107,7 +107,7 @@ const getThemeClasses = (isDark) => ({
   text: isDark ? "text-slate-100" : "text-slate-900",
   textSecondary: isDark ? "text-slate-200" : "text-slate-700",
   textMuted: isDark ? "text-slate-300" : "text-slate-500",
-  bg: isDark ? "bg-slate-900" : "bg-slate-100",
+  bg: isDark ? "bg-slate-900" : "bg-slate-50",
   border: isDark ? "border-slate-700" : "border-slate-200",
 });
 
@@ -1010,7 +1010,7 @@ export default function App() {
       <LandingPage
         couleur={entreprise.couleur || '#f97316'}
         onLogin={() => setShowLanding(false)}
-        onSignUp={() => { setShowLanding(false); setShowSignUp(true); }}
+        onSignup={() => { setShowLanding(false); setShowSignUp(true); }}
         onNavigate={(p) => { setPage(p); setShowLanding(false); }}
       />
       <CookieConsent isDark={false} couleur={entreprise.couleur || '#f97316'} />
@@ -1228,14 +1228,22 @@ export default function App() {
   const unreadNotifs = notifications.filter(n => !n.read);
 
   // LEGAL-001: CGU acceptance check — block app until accepted or when version changes
-  const needsCguAcceptance = !isDemo && user && (
+  const needsCguAcceptance = !isDemo && user && entrepriseId && (
     !entreprise.cguAcceptedAt || entreprise.cguVersion !== CGU_VERSION
   );
 
   const handleCguAccept = async (version) => {
     const now = new Date().toISOString();
     const cguData = { cguAcceptedAt: now, cguVersion: version };
-    // Persist to entreprises table via context (toSupabase maps cguAcceptedAt → cgu_accepted_at)
+    // Persist ONLY CGU fields to entreprises table (avoid sending entire object with unmapped columns)
+    if (entrepriseId) {
+      try {
+        await ctxUpdateEntreprise(entrepriseId, cguData);
+      } catch (err) {
+        // Silently continue — local state update below ensures UI unblocks
+      }
+    }
+    // Also update local state so the modal closes immediately
     setEntreprise(prev => ({ ...prev, ...cguData }));
   };
 
@@ -1257,9 +1265,7 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside
-        aria-label="Navigation principale"
-        className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900' : 'bg-white border-r border-slate-200'} transform transition-all duration-200 flex flex-col
+      <aside className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900' : 'bg-white border-r border-slate-200'} transform transition-all duration-200 flex flex-col
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
@@ -1472,7 +1478,7 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
         <header className={`sticky top-0 z-30 backdrop-blur border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'}`}>
 

@@ -59,15 +59,25 @@ export default function LandingNav({ onLogin, onSignup }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const scrollTo = (href) => {
-    setMenuOpen(false);
+  const scrollTo = (href, fromMobile = false) => {
     setDropdownOpen(false);
     if (href.startsWith('/')) {
+      setMenuOpen(false);
       window.location.href = href;
       return;
     }
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
+    if (fromMobile && menuOpen) {
+      // Close mobile menu first, then scroll after exit animation completes
+      setMenuOpen(false);
+      setTimeout(() => {
+        const el = document.querySelector(href);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    } else {
+      setMenuOpen(false);
+      const el = document.querySelector(href);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleDropdownEnter = () => {
@@ -222,7 +232,7 @@ export default function LandingNav({ onLogin, onSignup }) {
               {NAV_LINKS.map((link) => (
                 <button
                   key={link.href}
-                  onClick={() => scrollTo(link.href)}
+                  onClick={() => scrollTo(link.href, true)}
                   className="w-full text-left px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg font-medium"
                 >
                   {link.label}

@@ -158,8 +158,7 @@ export function toSupabase(data) {
   if (data.tvaDefaut !== undefined) result.tva_defaut = data.tvaDefaut;
   if (data.validiteDevis !== undefined) result.validite_devis = data.validiteDevis;
   if (data.delaiPaiement !== undefined) result.delai_paiement = data.delaiPaiement;
-  // Note: acompte_defaut column does not exist in DB — keep locally only
-  // if (data.acompteDefaut !== undefined) result.acompte_defaut = data.acompteDefaut;
+  // NOTE: acompte_defaut column does not exist in DB — do NOT map it
   if (data.tauxFraisStructure !== undefined) result.taux_frais_structure = data.tauxFraisStructure;
   if (data.cgv !== undefined) result.cgv = data.cgv;
   if (data.mentionDevis !== undefined) result.mention_devis = data.mentionDevis;
@@ -243,6 +242,8 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
   let query = supabase
     .from('entreprise')
     .select('*')
+    .is('archived_at', null)
+    .order('ordre', { ascending: true })
     .order('created_at', { ascending: true });
 
   if (orgId && orgId !== 'demo-org-id') {
@@ -251,30 +252,13 @@ export async function loadEntreprises(supabase, { userId, orgId } = {}) {
     query = query.eq('user_id', userId);
   }
 
-  let { data, error } = await query;
-
-  // If archived_at column doesn't exist yet, retry without it
-  if (error && error.code === '42703') {
-    console.warn('[entrepriseService] archived_at column missing, querying without filter');
-    let retryQuery = supabase
-      .from('entreprise')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (orgId && orgId !== 'demo-org-id') retryQuery = retryQuery.eq('organization_id', orgId);
-    else if (userId) retryQuery = retryQuery.eq('user_id', userId);
-    const retry = await retryQuery;
-    data = retry.data;
-    error = retry.error;
-  }
-
+  const { data, error } = await query;
   if (error) {
     console.error('[entrepriseService] loadEntreprises error:', error);
     return [];
   }
 
-  // Filter archived client-side if column exists
-  const filtered = (data || []).filter(row => !row.archived_at);
-  return filtered.map(fromSupabase);
+  return (data || []).map(fromSupabase);
 }
 
 /**
@@ -291,7 +275,8 @@ export async function getActiveEntreprise(supabase, { userId, orgId } = {}) {
   let query = supabase
     .from('entreprise')
     .select('*')
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .is('archived_at', null);
 
   if (orgId && orgId !== 'demo-org-id') {
     query = query.eq('organization_id', orgId);
@@ -683,7 +668,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
       // Initialize counters from existing document numbers
       await _initCountersFromExisting(supabase, defaultEnt.id, userId);
     } catch (e) {
-      console.warn('[entrepriseService] Backfill failed (entreprise_id column may not exist yet), skipping:', e.message || e);
+      console.error('[entrepriseService] Backfill failed:', e);
     }
   }
 
