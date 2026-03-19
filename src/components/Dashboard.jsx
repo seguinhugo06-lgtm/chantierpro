@@ -93,8 +93,6 @@ import {
   ActivityFeedWidget,
   // Consolidated Widget (multi-entreprise)
   ConsolidatedWidget,
-  // KPI Grid
-  KPIGrid,
   // KPI Modals
   EncaisserModal,
   CeMoisModal,
@@ -1181,7 +1179,7 @@ export default function Dashboard({
   }
 
   return (
-    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
+    <div className={`pb-20 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
       {/* ========== HERO SECTION — Compact greeting ========== */}
       <HeroSection
         userName={user?.user_metadata?.prenom || user?.user_metadata?.first_name || entreprise?.nom?.split(' ')[0] || 'Artisan'}
@@ -1196,11 +1194,11 @@ export default function Dashboard({
       />
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1440px] mx-auto">
 
         {/* ========== PROFILE COMPLETION BANNER — TOP PRIORITY when < 50% ========== */}
         {profileCompletude < 50 && (
-          <section className="px-4 sm:px-6 pb-4">
+          <section className="px-4 sm:px-6 mb-6">
             <div className={`rounded-xl border p-4 ${
               profileCompletude < 30
                 ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
@@ -1252,7 +1250,7 @@ export default function Dashboard({
 
         {/* ========== URGENT ACTION BANNER ========== */}
         {urgentAction && (
-          <section className="px-4 sm:px-6 pb-3">
+          <section className="px-4 sm:px-6 mb-6">
             <div className={`rounded-xl overflow-hidden border-l-4 border-red-500 shadow-md ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
               <div className="p-4">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
@@ -1278,66 +1276,110 @@ export default function Dashboard({
 
         {/* ========== HERO DUO — Devis IA + Devis Express — hidden for non-devis roles ========== */}
         {canCreateDevis && (
-        <section className="px-4 sm:px-6 pb-3">
+        <section className="px-4 sm:px-6 pb-6">
           <div className="grid grid-cols-2 gap-3">
-            {/* Devis IA */}
+            {/* Devis IA — subtle violet gradient */}
             <button
               onClick={() => setPage('ia-devis')}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none"
-              style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed, #3b82f6)' : 'linear-gradient(135deg, #8b5cf6, #3b82f6)', boxShadow: '0 4px 14px rgba(139,92,246,0.3)' }}
+              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 outline-none border ${
+                isDark
+                  ? 'border-violet-500/30'
+                  : 'border-violet-200/50'
+              }`}
+              style={{ background: isDark ? 'linear-gradient(135deg, #7c3aed15, #3b82f615)' : 'linear-gradient(135deg, #7c3aed15, #3b82f615)' }}
             >
               <div className="relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-2">
-                  <MessageCircle size={20} className="text-white" />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 ${isDark ? 'bg-violet-500/20' : 'bg-violet-100'}`}>
+                  <MessageCircle size={20} className={isDark ? 'text-violet-400' : 'text-violet-600'} />
                 </div>
-                <p className="font-bold text-sm sm:text-base leading-tight">Devis IA</p>
-                <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">Décrivez vos travaux</p>
+                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis IA</p>
+                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Décrivez vos travaux</p>
               </div>
-              <Sparkles size={52} className="absolute -bottom-2 -right-2 text-white/[0.07] pointer-events-none" />
+              <Sparkles size={48} className={`absolute -bottom-2 -right-2 pointer-events-none ${isDark ? 'text-violet-400/10' : 'text-violet-300/20'}`} />
             </button>
 
-            {/* Devis Express */}
+            {/* Devis Express — accent border */}
             <button
               onClick={() => setShowDevisExpress(true)}
-              className="relative overflow-hidden rounded-2xl p-4 sm:p-5 text-left min-h-[88px] text-white transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 outline-none"
-              style={{ background: 'linear-gradient(135deg, #FF8C00, #FF6B00)', boxShadow: '0 4px 14px rgba(255,107,0,0.25)' }}
+              className={`relative overflow-hidden rounded-xl p-4 sm:p-5 text-left min-h-[88px] transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 outline-none border`}
+              style={{
+                borderColor: `${couleur}30`,
+                background: isDark ? `${couleur}08` : `${couleur}05`,
+              }}
             >
               <div className="relative z-10">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-2">
-                  <Zap size={20} className="text-white" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ background: `${couleur}15` }}>
+                  <Zap size={20} style={{ color: couleur }} />
                 </div>
-                <p className="font-bold text-sm sm:text-base leading-tight">Devis Express</p>
-                <p className="text-[10px] sm:text-xs text-white/70 mt-0.5 truncate">3 clics, c'est chiffré</p>
+                <p className={`font-semibold text-sm sm:text-base leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>Devis Express</p>
+                <p className={`text-[10px] sm:text-xs mt-0.5 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>3 clics, c'est chiffré</p>
               </div>
-              <FileText size={48} className="absolute -bottom-1 -right-1 text-white/[0.07] pointer-events-none" />
+              <FileText size={44} className={`absolute -bottom-1 -right-1 pointer-events-none ${isDark ? 'text-white/5' : 'text-gray-900/5'}`} />
             </button>
           </div>
         </section>
         )}
 
-        {/* ========== KPI GRID — 4 modern KPI cards ========== */}
-        {canSeeFinances && !stats.isNewUser && (
-          <section className="px-4 sm:px-6 pb-4">
-            <KPIGrid
-              stats={{
-                caMois: stats.caCeMois || 0,
-                caPrevious: stats.caMoisDernier || 0,
-                aEncaisser: stats.enAttente || 0,
-                nbFacturesAttente: stats.facturesEnAttente?.length || 0,
-                margeAvg: stats.tauxMarge || 0,
-                chantiersActifs: stats.chantiersActifs || 0,
-                chantiersTotal: (safeChantiers || []).length,
-              }}
-              isDark={isDark}
-              couleur={couleur}
-              setPage={setPage}
-              modeDiscret={modeDiscret}
-            />
-          </section>
-        )}
+        {/* ========== MINI KPI DUO — À encaisser + Ce mois — hidden for non-finance roles ========== */}
+        {canSeeFinances && <section className="px-4 sm:px-6 pb-6">
+          <div className="grid grid-cols-2 gap-3">
+            {/* À encaisser */}
+            <button
+              onClick={() => setEncaisserModalOpen(true)}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              style={{ borderLeftWidth: '3px', borderLeftColor: couleur }}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                  <Wallet size={14} style={{ color: couleur }} />
+                </div>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>À encaisser</span>
+              </div>
+              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {formatMoney(stats.enAttente, modeDiscret)}
+              </p>
+              {stats.facturesEnAttente?.length > 0 && (
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {stats.facturesEnAttente.length} facture{stats.facturesEnAttente.length > 1 ? 's' : ''} en attente
+                </p>
+              )}
+              {stats.montantOverdue > 0 && (
+                <p className="text-[11px] text-red-500 font-medium mt-0.5">
+                  dont {formatMoney(stats.montantOverdue, modeDiscret)} en retard +30j
+                </p>
+              )}
+            </button>
 
-        {/* ========== AVOIRS & SITUATIONS — contextual alerts ========== */}
-        {canSeeFinances && <section className="px-4 sm:px-6 pb-4">
+            {/* Ce mois — CA encaissé (factures payées TTC ce mois) */}
+            <button
+              onClick={() => setCeMoisModalOpen(true)}
+              className={`rounded-xl border p-3.5 text-left transition-all hover:shadow-md hover:-translate-y-0.5 outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isDark ? 'bg-slate-800 border-slate-700 focus-visible:ring-orange-400' : 'bg-white border-slate-200 focus-visible:ring-orange-500'}`}
+              style={{ borderLeftWidth: '3px', borderLeftColor: stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? '#10b981' : '#ef4444') : '#10b981' }}
+              title="Factures payées ce mois (TTC)"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15') : 'bg-emerald-500/15'}`}>
+                  <TrendingUp size={14} className={stats.caCeMoisTendance != null ? (stats.caCeMoisTendance >= 0 ? 'text-emerald-500' : 'text-red-500') : 'text-emerald-500'} />
+                </div>
+                <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ce mois</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  {formatMoney(stats.caCeMois, modeDiscret)}
+                </p>
+                {stats.caCeMoisTendance != null && (
+                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${stats.caCeMoisTendance >= 0 ? (isDark ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-50') : (isDark ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-50')}`}>
+                    {stats.caCeMoisTendance >= 0 ? '↗' : '↘'} {stats.caCeMoisTendance >= 0 ? '+' : ''}{stats.caCeMoisTendance}%
+                  </span>
+                )}
+              </div>
+              {stats.caCeMoisTendance == null && stats.caCeMoisTendanceLabel && (
+                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {stats.caCeMoisTendanceLabel}
+                </p>
+              )}
+            </button>
+          </div>
           {/* Avoirs ce mois — shown only if avoirs exist */}
           {stats.avoirsCeMois > 0 && (
             <button
@@ -1375,18 +1417,7 @@ export default function Dashboard({
           )}
         </section>}
 
-        {/* ========== REVENUE CHART — Full width, finance roles only ========== */}
-        {canSeeFinances && isWidgetVisible('revenue') && (
-          <section className="px-4 sm:px-6 pb-4">
-            <RevenueChartWidget
-              setPage={setPage}
-              isDark={isDark}
-              couleur={couleur}
-            />
-          </section>
-        )}
-
-        {/* ========== ACTIONS DU JOUR — Unified priority list ========== */}
+        {/* ========== ACTIONS DU JOUR — Linear-style action cards ========== */}
         {(() => {
           const actions = [];
 
@@ -1460,15 +1491,15 @@ export default function Dashboard({
           };
 
           return (
-            <section className="px-4 sm:px-6 pb-4">
-              <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <section className="px-4 sm:px-6 mb-6">
+              <div className={`rounded-xl border p-4 ${isDark ? 'bg-[#111] border-[#262626]' : 'bg-white border-gray-200/70'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <ClipboardList size={16} style={{ color: couleur }} />
-                    <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    <ClipboardList size={15} style={{ color: couleur }} />
+                    <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Actions du jour
                     </h2>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-[#1a1a1a] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                       {sorted.length}
                     </span>
                   </div>
@@ -1479,37 +1510,26 @@ export default function Dashboard({
                     return (
                       <div
                         key={item.id}
-                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-xl transition-all ${priorityBg[item.color] || ''} ${priorityHover[item.color] || ''}`}
-                        style={{ borderLeft: `3px solid ${borderColor}` }}
+                        className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-lg transition-all duration-150 ${
+                          isDark ? 'hover:bg-[#1a1a1a]' : 'hover:bg-[#fafafa]'
+                        } border ${isDark ? 'border-[#262626]' : 'border-gray-200/70'}`}
+                        style={{ borderLeftWidth: '2px', borderLeftColor: borderColor }}
                       >
                         {item.iconComponent && (
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${borderColor}20` }}>
-                            <item.iconComponent size={14} style={{ color: borderColor }} />
-                          </div>
+                          <item.iconComponent size={14} style={{ color: borderColor }} className="flex-shrink-0" />
                         )}
                         <div className="flex-1 min-w-0 w-[calc(100%-3rem)] sm:w-auto">
-                          <div className="flex items-center gap-2">
-                            <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-900'}`} title={item.title}>
-                              {item.title}
-                            </p>
-                            <span
-                              className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: `${borderColor}18`,
-                                color: borderColor,
-                              }}
-                            >
-                              {priorityLabels[item.color] || ''}
-                            </span>
-                          </div>
-                          <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={item.subtitle}>
+                          <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`} title={item.title}>
+                            {item.title}
+                          </p>
+                          <p className={`text-xs truncate ${isDark ? 'text-gray-500' : 'text-gray-500'}`} title={item.subtitle}>
                             {item.subtitle}
                           </p>
                         </div>
                         <button
                           onClick={item.action}
-                          className="ml-auto px-3 py-1.5 min-h-[36px] sm:min-h-[44px] rounded-lg text-xs font-semibold text-white transition-all active:scale-95 hover:shadow-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                          style={{ backgroundColor: couleur, '--tw-ring-color': couleur }}
+                          className={`ml-auto rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
+                          style={{ backgroundColor: `${couleur}15`, color: couleur, '--tw-ring-color': couleur }}
                         >
                           {item.actionLabel}
                         </button>
@@ -1531,7 +1551,7 @@ export default function Dashboard({
         })()}
 
         {/* ========== SECONDARY SHORTCUTS — compact 4-icon bar ========== */}
-        <section className="px-4 sm:px-6 pb-4">
+        <section className="px-4 sm:px-6 mb-6">
           <div className="flex gap-2">
             {[
               { icon: Users, label: '+ Client', action: () => { setCreateMode?.((p) => ({ ...p, client: true })); setPage?.('clients'); } },
@@ -1561,7 +1581,7 @@ export default function Dashboard({
         </section>
 
         {/* ========== CHANTIERS EN COURS — top 3 with progress bars ========== */}
-        <section className="px-4 sm:px-6 pb-4">
+        <section className="px-4 sm:px-6 mb-6">
           {chantiersEnCours.length > 0 ? (
             <div className={`rounded-2xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center justify-between mb-3">
@@ -1598,20 +1618,25 @@ export default function Dashboard({
                         </p>
                       </div>
                       {/* UX-002: Chantiers filtrés "en_cours" → toujours afficher l'avancement, jamais "Non démarré" */}
-                      <span className={`text-xs font-bold ml-2 flex-shrink-0 ${!ch.avancement ? (isDark ? 'text-slate-400' : 'text-slate-500') : ''}`} style={ch.avancement ? { color: couleur } : undefined}>
+                      <span className={`text-xs font-bold ml-2 flex-shrink-0 flex items-center gap-1 ${!ch.avancement ? (isDark ? 'text-slate-400' : 'text-slate-500') : ch.avancement >= 100 ? 'text-emerald-500' : ''}`} style={ch.avancement && ch.avancement < 100 ? { color: ch.avancement >= 71 ? '#10b981' : ch.avancement >= 31 ? couleur : '#3b82f6' } : undefined}>
+                        {ch.avancement >= 100 && <CheckCircle size={12} />}
                         {ch.avancement || 0}%
                       </span>
                     </div>
-                    <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${Math.max(ch.avancement > 0 ? 4 : 0, Math.min(100, ch.avancement))}%`,
-                          background: ch.avancement >= 80
-                            ? 'linear-gradient(90deg, #10b981, #34d399)'
-                            : ch.avancement >= 40
-                              ? `linear-gradient(90deg, ${couleur}, ${couleur}cc)`
-                              : `linear-gradient(90deg, ${couleur}99, ${couleur}66)`,
+                          background: ch.avancement >= 100
+                            ? '#10b981'
+                            : ch.avancement >= 71
+                              ? '#10b981'
+                              : ch.avancement >= 31
+                                ? couleur
+                                : ch.avancement >= 1
+                                  ? '#3b82f6'
+                                  : isDark ? '#334155' : '#cbd5e1',
                         }}
                       />
                     </div>
@@ -1650,7 +1675,7 @@ export default function Dashboard({
         </section>
 
         {/* ========== ONBOARDING — shows for new users, auto-dismisses ========== */}
-        <section className="px-4 sm:px-6 pb-4">
+        <section className="px-4 sm:px-6 mb-6">
           <OnboardingChecklist
             clients={clients}
             chantiers={chantiers}
@@ -1664,7 +1689,7 @@ export default function Dashboard({
 
         {/* ========== PROFILE COMPLETION BANNER — visible when >= 50% and < 80% (< 50% shown above KPIs) ========== */}
         {profileCompletude >= 50 && profileCompletude < 80 && (
-          <section className="px-4 sm:px-6 pb-4">
+          <section className="px-4 sm:px-6 mb-6">
             <div className={`rounded-xl border p-4 ${
               profileCompletude < 30
                 ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
@@ -1737,7 +1762,7 @@ export default function Dashboard({
           const f26score = Math.round((f26done / f26criteriaEval.length) * 100);
           if (f26score >= 100 || daysLeft <= 0) return null;
           return (
-            <section className="px-4 sm:px-6 pb-4">
+            <section className="px-4 sm:px-6 mb-6">
               <div className={`rounded-xl border p-4 ${
                 f26score < 50
                   ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
@@ -1893,6 +1918,16 @@ export default function Dashboard({
             couleur={couleur}
           />
         </section>
+
+        {/* Revenue Chart - Full width — finance roles only */}
+        {canSeeFinances && isWidgetVisible('revenue') && (
+          <section className="px-4 sm:px-6 pb-8">
+            <RevenueChartWidget
+              setPage={setPage}
+              isDark={isDark}
+            />
+          </section>
+        )}
 
         {/* Operational Widgets Grid */}
         <section className="px-4 sm:px-6 pb-10">

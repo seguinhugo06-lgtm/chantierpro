@@ -85,13 +85,13 @@ button:active {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
-/* Subtle gradient backgrounds for cards */
+/* Subtle gradient backgrounds for cards — Linear-inspired */
 .card-gradient-light {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
 }
 
 .card-gradient-dark {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #161616 0%, #0a0a0a 100%);
 }
 
 /* Glass morphism effect */
@@ -781,4 +781,31 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.625rem;
     padding: 0.5rem 0;
   }
+}
+
+/* ============================================
+   Linear-inspired design tokens
+   ============================================ */
+:root {
+  --bg-primary: #fafafa;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f5f5;
+  --border-default: #ebebeb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.dark-mode {
+  --bg-primary: #0a0a0a;
+  --bg-card: #161616;
+  --bg-card-hover: #1e1e1e;
+  --border-default: #262626;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #666666;
+  --shadow-card: none;
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.2);
 }

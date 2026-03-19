@@ -1,6 +1,6 @@
 /**
- * HeroSection Component — Compact greeting header with contextual badges
- * Linear/Stripe-inspired minimal design.
+ * HeroSection Component — Minimal greeting header
+ * Linear-inspired clean design.
  */
 
 import { useMemo } from 'react';
@@ -61,31 +61,15 @@ export default function HeroSection({
 
   return (
     <section className="px-4 sm:px-6 py-4 sm:py-5">
-      <div className="max-w-7xl mx-auto">
-        {/* Greeting */}
-        <h1 className={`text-2xl sm:text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      <div className="max-w-[1440px] mx-auto">
+        {/* Greeting — font-semibold (not bold, Linear is lighter) */}
+        <h1 className={`text-2xl font-semibold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {greeting},{' '}
           <span style={{ color: couleur }}>{userName}</span>
         </h1>
 
-        {/* Contextual Recap Badges */}
-        {recapBadges.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap mt-2.5">
-            {recapBadges.map((badge) => (
-              <span
-                key={badge.label}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                  isDark ? badge.darkBg : badge.lightBg
-                }`}
-              >
-                {badge.label}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Metadata Row */}
-        <div className={`flex items-center gap-3 text-sm mt-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+        {/* Date — text-sm tertiary */}
+        <div className={`flex items-center gap-3 text-sm mt-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays size={13} className="flex-shrink-0 opacity-60" />
             {formattedDate}
@@ -105,6 +89,22 @@ export default function HeroSection({
             <span>chantier{activeChantiers !== 1 ? 's' : ''} actif{activeChantiers !== 1 ? 's' : ''}</span>
           </button>
         </div>
+
+        {/* Contextual Recap Badges — rounded-md, text-[11px] */}
+        {recapBadges.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap mt-2.5">
+            {recapBadges.map((badge) => (
+              <span
+                key={badge.label}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium ${
+                  isDark ? badge.darkBg : badge.lightBg
+                }`}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -112,8 +112,8 @@ export default function HeroSection({
 
 export function HeroSectionSkeleton({ isDark = false }) {
   return (
-    <section className={`px-4 sm:px-6 py-4 sm:py-5 ${isDark ? 'bg-slate-900' : 'bg-slate-100'}`}>
-      <div className="max-w-7xl mx-auto animate-pulse">
+    <section className="px-4 sm:px-6 py-4 sm:py-5">
+      <div className="max-w-[1440px] mx-auto animate-pulse">
         <div className={`h-7 w-56 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />
         <div className={`h-4 w-40 rounded-md mt-2 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`} />
       </div>

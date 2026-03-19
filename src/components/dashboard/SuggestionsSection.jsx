@@ -131,37 +131,28 @@ function SuggestionItem({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95, x: -20 }}
+      exit={{ opacity: 0, scale: 0.97, x: -20 }}
       className={cn(
-        'flex-shrink-0 w-80 p-4 rounded-xl border-2 transition-all duration-200',
-        'hover:shadow-lg hover:-translate-y-1',
+        'flex-shrink-0 w-80 p-4 rounded-xl border transition-all duration-150',
         'flex flex-col',
-        isDark ? 'bg-slate-800/80' : 'bg-white',
-        config.border
+        isDark ? 'bg-[#161616] border-gray-800/60' : 'bg-white border-gray-200/70'
       )}
+      style={{ borderLeftWidth: '2px', borderLeftColor: config.color }}
     >
-      {/* Header with icon and badge */}
+      {/* Header with dismiss/postpone */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={cn(
-              'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
-              config.iconBg
-            )}
-          >
-            <IconComponent
-              size={16}
-              style={{ color: config.color }}
-              className="flex-shrink-0"
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <IconComponent
+            size={14}
+            style={{ color: config.color }}
+            className="flex-shrink-0"
+          />
           <span
             className={cn(
-              'px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded-md whitespace-nowrap',
-              config.badgeBg,
-              config.badgeText
+              'text-[10px] font-medium uppercase tracking-wide',
+              isDark ? 'text-gray-500' : 'text-gray-400'
             )}
           >
             {config.label}
@@ -170,7 +161,6 @@ function SuggestionItem({
 
         {/* Action buttons: Postpone + Dismiss */}
         <div className="flex items-center gap-1">
-          {/* Postpone button */}
           {onPostpone && (
             <button
               type="button"
@@ -181,21 +171,20 @@ function SuggestionItem({
               disabled={isPostponing}
               title="Reporter à demain"
               className={cn(
-                'p-1.5 rounded-md transition-all flex-shrink-0 group',
+                'p-1 rounded-md transition-all flex-shrink-0',
                 isDark
-                  ? 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/20'
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50',
+                  ? 'text-gray-600 hover:text-blue-400 hover:bg-blue-500/20'
+                  : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50',
                 isPostponing && 'animate-pulse'
               )}
             >
-              <CalendarClock size={14} className={cn(
+              <CalendarClock size={13} className={cn(
                 'transition-transform',
                 isPostponing && 'animate-bounce'
               )} />
             </button>
           )}
 
-          {/* Dismiss button */}
           {suggestion.dismissible && (
             <button
               type="button"
@@ -208,12 +197,12 @@ function SuggestionItem({
               className={cn(
                 'p-1 rounded-md transition-colors flex-shrink-0',
                 isDark
-                  ? 'text-gray-500 hover:text-gray-300 hover:bg-slate-700'
-                  : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100',
+                  ? 'text-gray-600 hover:text-gray-400 hover:bg-slate-700'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
                 isDismissing && 'opacity-50 cursor-not-allowed'
               )}
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
@@ -221,23 +210,23 @@ function SuggestionItem({
 
       {/* Title */}
       <h3 className={cn(
-        'text-sm font-semibold leading-snug mb-1',
+        'text-sm font-medium leading-snug mb-1',
         isDark ? 'text-white' : 'text-gray-900'
       )}>
         {suggestion.title}
       </h3>
 
-      {/* Client/Chantier context - enriched display */}
+      {/* Client/Chantier context */}
       {(clientName || chantierName) && (
         <div className={cn(
           'flex items-center gap-1.5 text-xs mb-1.5',
-          isDark ? 'text-gray-300' : 'text-gray-700'
+          isDark ? 'text-gray-400' : 'text-gray-600'
         )}>
-          <User size={12} className="flex-shrink-0" />
+          <User size={11} className="flex-shrink-0" />
           <span className="font-medium truncate">{clientName || chantierName}</span>
           {daysSince !== undefined && (
             <>
-              <span className={isDark ? 'text-gray-500' : 'text-gray-600'}>•</span>
+              <span className={isDark ? 'text-gray-600' : 'text-gray-300'}>·</span>
               <span className={cn(
                 daysSince > 14 ? (isDark ? 'text-amber-400' : 'text-amber-600') : ''
               )}>
@@ -251,16 +240,16 @@ function SuggestionItem({
       {/* Description */}
       <p className={cn(
         'text-xs leading-relaxed mb-3',
-        isDark ? 'text-gray-400' : 'text-gray-600'
+        isDark ? 'text-gray-500' : 'text-gray-500'
       )}>
         {suggestion.description}
       </p>
 
-      {/* Value and Actions - always at bottom */}
+      {/* Value and Actions */}
       <div className="flex items-center justify-between mt-auto pt-2 gap-2">
         {suggestion.value && (
           <span className={cn(
-            'text-lg font-bold flex-shrink-0',
+            'text-base font-semibold tracking-tight flex-shrink-0',
             isDark ? 'text-white' : 'text-gray-900'
           )}>
             {suggestion.value}
@@ -268,7 +257,6 @@ function SuggestionItem({
         )}
 
         <div className="flex items-center gap-2 ml-auto">
-          {/* Primary Action Button - contextual */}
           <button
             type="button"
             onClick={() => {
@@ -282,40 +270,44 @@ function SuggestionItem({
             }}
             disabled={isActioning}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg',
-              'text-xs font-semibold transition-all duration-150 flex-shrink-0',
-              // Different styles for different action types
-              isRelanceAction
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm'
-                : isAnalyzeAction
-                  ? isDark
-                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30'
-                    : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-200'
-                  : isDark
-                    ? 'bg-white/10 hover:bg-white/20 text-white'
-                    : 'bg-gray-900 hover:bg-gray-800 text-white',
+              'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5',
+              'text-xs font-medium transition-all duration-150 flex-shrink-0',
               isActioning && 'opacity-50 cursor-not-allowed'
             )}
+            style={
+              !isRelanceAction && !isAnalyzeAction
+                ? {}
+                : undefined
+            }
           >
             {isActioning ? (
               <RefreshCw size={12} className="animate-spin" />
             ) : (
               <>
                 {isRelanceAction ? (
-                  <>
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+                    isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                  )}>
                     <Send size={12} />
-                    Envoyer une relance
-                  </>
+                    Relancer
+                  </span>
                 ) : isAnalyzeAction ? (
-                  <>
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+                    isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-700'
+                  )}>
                     <BarChart3 size={12} />
                     Analyser
-                  </>
+                  </span>
                 ) : (
-                  <>
+                  <span className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium',
+                    isDark ? 'bg-white/10 text-white' : 'bg-gray-900 text-white'
+                  )}>
                     {suggestion.action?.label || suggestion.ctaLabel || 'Voir'}
                     <ArrowRight size={12} className="flex-shrink-0" />
-                  </>
+                  </span>
                 )}
               </>
             )}
@@ -619,32 +611,27 @@ export default function SuggestionsSection({
 
   return (
     <div className={cn(
-      'rounded-2xl border overflow-hidden',
-      isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200',
+      'rounded-xl border overflow-hidden',
+      isDark ? 'bg-[#111] border-[#262626]' : 'bg-white border-gray-200/70',
       className
     )}>
       {/* Header */}
       <div className={cn(
-        'flex items-center justify-between px-5 py-4 border-b',
-        isDark ? 'border-slate-700' : 'border-gray-100'
+        'flex items-center justify-between px-5 py-3.5 border-b',
+        isDark ? 'border-[#1a1a1a]' : 'border-gray-100'
       )}>
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            'w-10 h-10 rounded-xl flex items-center justify-center',
-            isDark ? 'bg-amber-500/20' : 'bg-amber-100'
-          )}>
-            <Calendar size={20} className={isDark ? 'text-amber-400' : 'text-amber-600'} />
-          </div>
-          <div>
-            <h2 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-              À faire aujourd'hui
-            </h2>
-            {totalCount > 0 && (
-              <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-600')}>
-                {totalCount} action{totalCount > 1 ? 's' : ''} en attente
-              </p>
-            )}
-          </div>
+        <div className="flex items-center gap-2.5">
+          <h2 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+            Actions
+          </h2>
+          {totalCount > 0 && (
+            <span className={cn(
+              'text-[11px] font-medium px-1.5 py-0.5 rounded-md',
+              isDark ? 'bg-[#1a1a1a] text-gray-400' : 'bg-gray-100 text-gray-500'
+            )}>
+              {totalCount}
+            </span>
+          )}
         </div>
 
         {/* Scroll buttons */}

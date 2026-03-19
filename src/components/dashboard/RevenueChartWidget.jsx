@@ -1,11 +1,11 @@
 /**
- * RevenueChartWidget - Widget showing monthly performance with attractive design
+ * RevenueChartWidget - Linear-style analytics chart widget
  *
  * Features:
- * - Beautiful area chart with gradient
- * - Current month stats with comparison
- * - Animated stat cards
- * - Goal progress indicator
+ * - Clean area chart with subtle gradient
+ * - Period toggle (Sem/Mois/Trim)
+ * - Trend badge
+ * - Mini stats row below chart
  *
  * @module RevenueChartWidget
  */
@@ -20,9 +20,7 @@ import {
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
   ChevronRight,
-  Info,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -32,7 +30,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts';
 import { cn } from '../../lib/utils';
 import { useDevis } from '../../context/DataContext';
@@ -41,6 +38,12 @@ import Widget, { WidgetHeader, WidgetContent, WidgetFooter, WidgetLink } from '.
 // Month names
 const MONTH_NAMES = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 const MONTH_NAMES_FULL = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+const PERIOD_TABS = [
+  { value: 'week', label: 'Sem' },
+  { value: 'month', label: 'Mois' },
+  { value: 'quarter', label: 'Trim' },
+];
 
 /**
  * Format currency
@@ -64,18 +67,36 @@ function formatFullMoney(amount) {
 }
 
 /**
- * Custom tooltip
+ * Custom tooltip — Linear style
  */
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, isDark }) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white px-4 py-3 rounded-xl shadow-lg border border-gray-200">
-        <p className="text-xs text-gray-500 mb-1">{label}</p>
-        <p className="text-lg font-bold text-gray-900">
+      <div
+        className={cn(
+          'px-3.5 py-2.5 rounded-lg shadow-lg border text-sm',
+          isDark
+            ? 'bg-[#161616] border-[#262626]'
+            : 'bg-white border-[#ebebeb]'
+        )}
+      >
+        <p className={cn(
+          'text-[11px] mb-0.5',
+          isDark ? 'text-gray-500' : 'text-gray-400'
+        )}>
+          {label}
+        </p>
+        <p className={cn(
+          'text-sm font-semibold tracking-tight',
+          isDark ? 'text-white' : 'text-gray-900'
+        )}>
           {formatFullMoney(payload[0].value)}
         </p>
         {payload[0].payload.invoiceCount > 0 && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className={cn(
+            'text-[11px] mt-0.5',
+            isDark ? 'text-gray-500' : 'text-gray-400'
+          )}>
             {payload[0].payload.invoiceCount} facture{payload[0].payload.invoiceCount > 1 ? 's' : ''}
           </p>
         )}
@@ -86,123 +107,55 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 /**
- * Stat card component
+ * Period toggle — Linear-style pill tabs
  */
-function StatCard({ icon: Icon, label, value, subValue, trend, color, gradient, isDark, highlight }) {
+function PeriodToggle({ value, onChange, isDark }) {
   return (
     <div className={cn(
-      'relative overflow-hidden rounded-xl p-4 transition-all duration-200',
-      'border',
-      highlight
-        ? isDark
-          ? 'bg-gradient-to-br from-blue-900/30 to-blue-800/10 border-blue-500/30'
-          : 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200'
-        : isDark
-          ? 'bg-slate-800/50 border-slate-700'
-          : 'bg-gray-50 border-gray-100'
+      'inline-flex items-center gap-0.5 p-0.5 rounded-lg',
+      isDark ? 'bg-[#1a1a1a]' : 'bg-gray-100'
     )}>
-      {/* Gradient accent for highlight */}
-      {highlight && gradient && (
-        <div
-          className="absolute top-0 left-0 right-0 h-1"
-          style={{ background: gradient }}
-        />
-      )}
-
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className={cn(
-                'w-7 h-7 rounded-lg flex items-center justify-center',
-                isDark ? 'bg-slate-700' : 'bg-white shadow-sm'
-              )}
-              style={{ color }}
-            >
-              <Icon size={14} />
-            </div>
-            <p className={cn(
-              'text-xs font-medium',
-              isDark ? 'text-gray-400' : 'text-gray-500'
-            )}>
-              {label}
-            </p>
-          </div>
-
-          <p className={cn(
-            'text-xl font-bold mt-2',
-            isDark ? 'text-white' : 'text-gray-900'
-          )}>
-            {value}
-          </p>
-
-          {subValue && (
-            <p className={cn(
-              'text-xs mt-0.5',
-              isDark ? 'text-gray-500' : 'text-gray-400'
-            )}>
-              {subValue}
-            </p>
+      {PERIOD_TABS.map((tab) => (
+        <button
+          key={tab.value}
+          type="button"
+          onClick={() => onChange(tab.value)}
+          className={cn(
+            'px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150',
+            value === tab.value
+              ? isDark
+                ? 'bg-[#262626] text-white shadow-sm'
+                : 'bg-white text-gray-900 shadow-sm'
+              : isDark
+                ? 'text-gray-500 hover:text-gray-400'
+                : 'text-gray-500 hover:text-gray-700'
           )}
-        </div>
-
-        {trend !== null && trend !== undefined && (
-          <div className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium',
-            trend >= 0
-              ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-              : isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
-          )}>
-            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {Math.abs(trend)}%
-          </div>
-        )}
-      </div>
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }
 
 /**
- * Progress ring component
+ * Mini stat — compact inline stat below chart
  */
-function ProgressRing({ value, max, color, size = 48, strokeWidth = 4, isDark }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-  const offset = circumference - (progress / 100) * circumference;
-
+function MiniStat({ label, value, isDark }) {
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={isDark ? '#334155' : '#e5e7eb'}
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-500"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className={cn(
-          'text-xs font-bold',
-          isDark ? 'text-white' : 'text-gray-900'
-        )}>
-          {Math.round(progress)}%
-        </span>
-      </div>
+    <div className="flex-1 min-w-0">
+      <p className={cn(
+        'text-[11px] font-medium',
+        isDark ? 'text-gray-500' : 'text-gray-400'
+      )}>
+        {label}
+      </p>
+      <p className={cn(
+        'text-sm font-semibold tracking-tight mt-0.5',
+        isDark ? 'text-white' : 'text-gray-900'
+      )}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -212,16 +165,19 @@ function ProgressRing({ value, max, color, size = 48, strokeWidth = 4, isDark })
  */
 export default function RevenueChartWidget({ setPage, isDark = false, couleur = '#3b82f6', className }) {
   const { devis = [] } = useDevis();
+  const [period, setPeriod] = React.useState('month');
 
   // Calculate monthly revenue data
   const { chartData, stats } = React.useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+
+    // Determine months to show based on period
+    const monthCount = period === 'week' ? 4 : period === 'quarter' ? 12 : 6;
     const months = [];
 
-    // Get last 6 months
-    for (let i = 5; i >= 0; i--) {
+    for (let i = monthCount - 1; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({
         month: date.getMonth(),
@@ -239,13 +195,11 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
     let devisEnCoursCount = 0;
 
     devis.forEach(d => {
-      // Comptabilise devis en cours
       if (d.type === 'devis' && ['envoye', 'vu'].includes(d.statut)) {
         totalDevisEnCours += d.total_ht || 0;
         devisEnCoursCount++;
       }
 
-      // Comptabilise CA (devis acceptés + factures)
       if (d.statut === 'accepte' || d.type === 'facture') {
         const date = new Date(d.date);
         const monthData = months.find(
@@ -261,13 +215,10 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
     // Calculate stats
     const currentMonthData = months[months.length - 1];
     const previousMonthData = months[months.length - 2];
-    const total6Months = months.reduce((sum, m) => sum + m.revenue, 0);
-    // Average only months with actual activity (exclude zero months)
+    const totalPeriod = months.reduce((sum, m) => sum + m.revenue, 0);
     const activeMonths = months.filter(m => m.revenue > 0);
-    const average = activeMonths.length > 0 ? total6Months / activeMonths.length : 0;
-
-    // Goal (estimation based on average + 10%), plancher minimum 500€
-    const monthlyGoal = Math.max(average * 1.1, activeMonths.length > 0 ? 500 : 0) || 0;
+    const average = activeMonths.length > 0 ? totalPeriod / activeMonths.length : 0;
+    const bestMonth = months.reduce((best, m) => m.revenue > (best?.revenue || 0) ? m : best, null);
 
     let trend = null;
     if (previousMonthData?.revenue > 0) {
@@ -280,50 +231,52 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
         currentMonth: currentMonthData?.revenue || 0,
         currentMonthLabel: MONTH_NAMES_FULL[currentMonth],
         previousMonth: previousMonthData?.revenue || 0,
-        total6Months,
+        totalPeriod,
         average,
         trend,
-        monthlyGoal,
-        goalProgress: monthlyGoal > 0 ? (currentMonthData.revenue / monthlyGoal) * 100 : 0,
+        bestMonth: bestMonth?.fullLabel || '-',
+        bestMonthValue: bestMonth?.revenue || 0,
         totalDevisEnCours,
         devisEnCoursCount,
         invoiceCountThisMonth: currentMonthData?.invoiceCount || 0,
       },
     };
-  }, [devis]);
+  }, [devis, period]);
 
   const handleNavigate = () => {
     setPage?.('devis');
   };
 
-  const isEmpty = stats.total6Months === 0;
-  const maxRevenue = Math.max(...chartData.map(d => d.revenue), stats.monthlyGoal);
+  const isEmpty = stats.totalPeriod === 0;
 
   return (
     <Widget
       isDark={isDark}
       className={cn('col-span-full', className)}
     >
-      <WidgetHeader
-        title={`Performance ${stats.currentMonthLabel}`}
-        icon={<BarChart3 />}
-        isDark={isDark}
-        actions={
-          <div className="flex items-center gap-2">
-            {stats.trend !== null && (
-              <div className={cn(
-                'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold',
-                stats.trend >= 0
-                  ? (isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
-                  : (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700')
-              )}>
-                {stats.trend >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                {stats.trend >= 0 ? '+' : ''}{stats.trend}% vs mois dernier
-              </div>
-            )}
-          </div>
-        }
-      />
+      {/* Header with title, trend badge, and period toggle */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <h2 className={cn(
+            'text-base font-semibold',
+            isDark ? 'text-white' : 'text-gray-900'
+          )}>
+            Chiffre d'affaires
+          </h2>
+          {stats.trend !== null && (
+            <div className={cn(
+              'flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium',
+              stats.trend >= 0
+                ? (isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
+                : (isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600')
+            )}>
+              {stats.trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+              {stats.trend >= 0 ? '+' : ''}{stats.trend}%
+            </div>
+          )}
+        </div>
+        <PeriodToggle value={period} onChange={setPeriod} isDark={isDark} />
+      </div>
 
       <WidgetContent>
         {isEmpty ? (
@@ -332,10 +285,10 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
             isDark ? 'text-gray-400' : 'text-gray-500'
           )}>
             <div className={cn(
-              'w-16 h-16 rounded-2xl flex items-center justify-center mb-4',
-              isDark ? 'bg-slate-700' : 'bg-gray-100'
+              'w-14 h-14 rounded-xl flex items-center justify-center mb-4',
+              isDark ? 'bg-[#1a1a1a]' : 'bg-gray-50'
             )}>
-              <BarChart3 size={32} className="opacity-30" />
+              <BarChart3 size={28} className="opacity-30" />
             </div>
             <p className="text-sm font-medium">Aucune donnée ce mois</p>
             <p className="text-xs mt-1 opacity-75 max-w-xs">
@@ -343,184 +296,89 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard
-                icon={Euro}
-                label="Ce mois"
-                value={formatFullMoney(stats.currentMonth)}
-                subValue={`${stats.invoiceCountThisMonth} facture${stats.invoiceCountThisMonth > 1 ? 's' : ''}`}
-                trend={stats.trend}
-                color="#3b82f6"
-                gradient="linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)"
-                isDark={isDark}
-                highlight
-              />
-
-              <StatCard
-                icon={Calendar}
-                label="6 derniers mois"
-                value={formatFullMoney(stats.total6Months)}
-                subValue={`Moy. ${formatFullMoney(stats.average)}/mois`}
-                color="#8b5cf6"
-                isDark={isDark}
-              />
-
-              <StatCard
-                icon={Sparkles}
-                label="Devis en cours"
-                value={formatFullMoney(stats.totalDevisEnCours)}
-                subValue={`${stats.devisEnCoursCount} devis en attente`}
-                color="#f59e0b"
-                isDark={isDark}
-              />
-
-              {/* Goal progress */}
-              <div className={cn(
-                'relative overflow-hidden rounded-xl p-4 transition-all duration-200',
-                'border',
-                isDark
-                  ? 'bg-slate-800/50 border-slate-700'
-                  : 'bg-gray-50 border-gray-100'
-              )}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <div
-                        className={cn(
-                          'w-7 h-7 rounded-lg flex items-center justify-center',
-                          isDark ? 'bg-slate-700' : 'bg-white shadow-sm'
-                        )}
-                        style={{ color: '#10b981' }}
-                      >
-                        <Target size={14} />
-                      </div>
-                      <p className={cn(
-                        'text-xs font-medium',
-                        isDark ? 'text-gray-400' : 'text-gray-500'
-                      )}>
-                        Objectif
-                      </p>
-                      <div className="relative group">
-                        <Info size={12} className={cn('cursor-help', isDark ? 'text-gray-500' : 'text-gray-400')} />
-                        <div className={cn(
-                          'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 rounded-lg text-xs w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg',
-                          isDark ? 'bg-slate-700 text-gray-200' : 'bg-gray-800 text-white'
-                        )}>
-                          Objectif calculé automatiquement : moyenne du CA des 6 derniers mois + 10%
-                          <div className={cn(
-                            'absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent',
-                            isDark ? 'border-t-slate-700' : 'border-t-gray-800'
-                          )} />
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className={cn(
-                      'text-lg font-bold mt-2',
-                      isDark ? 'text-white' : 'text-gray-900'
-                    )}>
-                      {formatFullMoney(stats.monthlyGoal)}
-                    </p>
-
-                    <p className={cn(
-                      'text-xs mt-0.5',
-                      stats.goalProgress >= 100
-                        ? 'text-emerald-500 font-medium'
-                        : isDark ? 'text-gray-500' : 'text-gray-400'
-                    )}>
-                      {stats.goalProgress >= 100 ? '🎉 Objectif atteint!' : `${Math.round(stats.goalProgress)}% atteint`}
-                    </p>
-                    <p className={cn(
-                      'text-[10px] mt-1 italic',
-                      isDark ? 'text-gray-600' : 'text-gray-400'
-                    )}>
-                      Moy. 6 mois + 10%
-                    </p>
-                  </div>
-
-                  <ProgressRing
-                    value={stats.currentMonth}
-                    max={stats.monthlyGoal}
-                    color={stats.goalProgress >= 100 ? '#10b981' : '#3b82f6'}
-                    size={52}
-                    strokeWidth={5}
-                    isDark={isDark}
+          <div className="space-y-5">
+            {/* Area chart */}
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={couleur} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={couleur} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    horizontal={true}
+                    vertical={false}
+                    stroke={isDark ? '#1a1a1a' : '#f5f5f5'}
+                    strokeDasharray=""
                   />
-                </div>
-              </div>
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: isDark ? '#666' : '#999' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: isDark ? '#666' : '#999' }}
+                    tickFormatter={formatMoney}
+                  />
+                  <Tooltip content={<CustomTooltip isDark={isDark} />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke={couleur}
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    fill="url(#revenueGradient)"
+                    dot={(props) => {
+                      const { cx, cy, payload, index } = props;
+                      // Only show dot on last (current) point
+                      if (payload.isCurrent) {
+                        return (
+                          <g key={`dot-${payload.label}`}>
+                            <circle cx={cx} cy={cy} r={5} fill={couleur} />
+                            <circle cx={cx} cy={cy} r={2.5} fill={isDark ? '#161616' : '#fff'} />
+                          </g>
+                        );
+                      }
+                      return <g key={`dot-${payload.label}`} />;
+                    }}
+                    activeDot={{ r: 5, stroke: couleur, strokeWidth: 2, fill: isDark ? '#161616' : '#fff' }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
 
-            {/* Area chart */}
+            {/* Mini stats row */}
             <div className={cn(
-              'rounded-xl p-4',
-              isDark ? 'bg-slate-800/30' : 'bg-gray-50/50'
+              'flex items-center gap-6 pt-4 border-t',
+              isDark ? 'border-[#1a1a1a]' : 'border-gray-100'
             )}>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={couleur} stopOpacity={0.25} />
-                        <stop offset="100%" stopColor={couleur} stopOpacity={0.01} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="4 4"
-                      vertical={false}
-                      stroke={isDark ? '#1e293b' : '#f1f5f9'}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: isDark ? '#9ca3af' : '#6b7280' }}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: isDark ? '#9ca3af' : '#6b7280' }}
-                      tickFormatter={formatMoney}
-                      domain={[0, maxRevenue * 1.1]}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <ReferenceLine
-                      y={stats.monthlyGoal}
-                      stroke="#10b981"
-                      strokeDasharray="5 5"
-                      strokeWidth={1.5}
-                      label={{
-                        value: 'Objectif',
-                        position: 'right',
-                        fill: '#10b981',
-                        fontSize: 10,
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke={couleur}
-                      strokeWidth={2.5}
-                      strokeLinecap="round"
-                      fill="url(#revenueGradient)"
-                      dot={(props) => {
-                        const { cx, cy, payload } = props;
-                        if (payload.isCurrent) {
-                          return (
-                            <g key={`dot-${payload.label}`}>
-                              <circle cx={cx} cy={cy} r={6} fill={couleur} />
-                              <circle cx={cx} cy={cy} r={3} fill="#fff" />
-                            </g>
-                          );
-                        }
-                        return <circle key={`dot-${payload.label}`} cx={cx} cy={cy} r={3} fill={couleur} />;
-                      }}
-                      activeDot={{ r: 6, stroke: couleur, strokeWidth: 2, fill: '#fff' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <MiniStat
+                label="Total"
+                value={formatFullMoney(stats.totalPeriod)}
+                isDark={isDark}
+              />
+              <MiniStat
+                label="Moyenne"
+                value={formatFullMoney(stats.average)}
+                isDark={isDark}
+              />
+              <MiniStat
+                label="Meilleur"
+                value={formatFullMoney(stats.bestMonthValue)}
+                isDark={isDark}
+              />
+              {stats.devisEnCoursCount > 0 && (
+                <MiniStat
+                  label="En cours"
+                  value={`${stats.devisEnCoursCount} devis`}
+                  isDark={isDark}
+                />
+              )}
             </div>
           </div>
         )}
@@ -545,15 +403,18 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
 export function RevenueChartWidgetSkeleton({ isDark = false }) {
   return (
     <Widget loading isDark={isDark} className="col-span-full">
-      <WidgetHeader title="Performance ce mois" icon={<BarChart3 />} isDark={isDark} />
+      <WidgetHeader title="Chiffre d'affaires" icon={<BarChart3 />} isDark={isDark} />
       <WidgetContent>
-        <div className="animate-pulse space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className={cn('h-28 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+        <div className="animate-pulse space-y-5">
+          <div className={cn('h-52 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
+          <div className="flex gap-6 pt-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex-1 space-y-1.5">
+                <div className={cn('h-3 w-12 rounded', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
+                <div className={cn('h-4 w-20 rounded', isDark ? 'bg-slate-700' : 'bg-gray-100')} />
+              </div>
             ))}
           </div>
-          <div className={cn('h-48 rounded-xl', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
         </div>
       </WidgetContent>
     </Widget>

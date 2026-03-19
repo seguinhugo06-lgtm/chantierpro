@@ -397,15 +397,14 @@ function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDa
     <div
       className={cn(
         'group relative p-3 rounded-lg overflow-hidden',
-        'transition-all duration-200',
-        'hover:shadow-md',
+        'transition-all duration-150',
         hasAlert
           ? isDark
             ? 'bg-gradient-to-br from-orange-500/5 to-transparent border border-orange-500/20'
             : 'bg-gradient-to-br from-orange-50 to-orange-50/30 border border-orange-200/80'
           : isDark
-            ? 'bg-slate-800/50 border border-slate-700/50'
-            : 'bg-white border border-gray-100'
+            ? 'hover:bg-[#1a1a1a] border border-[#262626]'
+            : 'hover:bg-[#fafafa] border border-[#ebebeb]'
       )}
     >
       {/* Left accent bar */}
@@ -429,6 +428,7 @@ function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDa
             'text-sm font-medium leading-tight',
             isDark ? 'text-white' : 'text-gray-900'
           )}
+
           style={{
             display: '-webkit-box',
             WebkitLineClamp: 2,

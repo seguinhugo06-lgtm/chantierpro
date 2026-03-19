@@ -43,7 +43,7 @@ function Sparkline({ data, color }) {
   const gradientId = useMemo(() => `spark-${Math.random().toString(36).slice(2, 8)}`, []);
 
   return (
-    <div className="h-[32px] w-full mt-2" aria-hidden="true">
+    <div className="h-[32px] w-full mt-2">
       <ResponsiveContainer width="100%" height={32}>
         <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
           <defs>
@@ -71,13 +71,7 @@ function Sparkline({ data, color }) {
 function ProgressBar({ value, max, color, isDark }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
-    <div
-      className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}
-      role="progressbar"
-      aria-valuenow={Math.round(pct)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-    >
+    <div className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#f0f0f0]'}`}>
       <div
         className="h-2 rounded-full transition-all duration-500"
         style={{ width: `${pct}%`, background: color }}
@@ -88,17 +82,15 @@ function ProgressBar({ value, max, color, isDark }) {
 
 function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isDark, onClick, modeDiscret }) {
   const cardBg = isDark
-    ? 'bg-slate-800/80 border-slate-700/50'
-    : 'bg-white border-slate-200/60 shadow-sm';
-  const labelColor = isDark ? 'text-slate-400' : 'text-slate-500';
-  const valueColor = isDark ? 'text-white' : 'text-slate-900';
+    ? 'bg-[#161616] border-gray-800/60'
+    : 'bg-white border-gray-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
+  const labelColor = isDark ? 'text-[#666]' : 'text-[#999]';
+  const valueColor = isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]';
 
   return (
-    <button
-      type="button"
-      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer text-left w-full ${cardBg}`}
+    <div
+      className={`rounded-xl border p-4 sm:p-5 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] cursor-pointer ${cardBg}`}
       onClick={onClick}
-      aria-label={`${label} : ${value}`}
     >
       <div className="flex items-start justify-between">
         <div
@@ -122,7 +114,7 @@ function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isD
       </p>
 
       {children}
-    </button>
+    </div>
   );
 }
 
@@ -156,7 +148,7 @@ export default function KPIGrid({
     return currencyFormat.format(v);
   };
 
-  const badgeBg = isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600';
+  const badgeBg = isDark ? 'bg-[#1e1e1e] text-[#a0a0a0]' : 'bg-[#f5f5f5] text-[#666]';
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

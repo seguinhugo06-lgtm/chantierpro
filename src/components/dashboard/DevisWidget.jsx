@@ -362,121 +362,119 @@ function DevisCard({
   const daysPending = daysSince(devis.createdAt || devis.date_envoi);
   const needsRelance = daysPending >= RELANCE_THRESHOLD_DAYS;
 
+  // Status badge styling — Linear mini-table style
+  const getStatusBadge = (statut) => {
+    switch (statut) {
+      case 'brouillon':
+        return isDark ? 'bg-[#262626] text-gray-400' : 'bg-gray-100 text-gray-500';
+      case 'envoye':
+        return isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600';
+      case 'vu':
+        return isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600';
+      case 'accepte':
+      case 'signe':
+        return isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600';
+      case 'refuse':
+        return isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600';
+      default:
+        return isDark ? 'bg-[#262626] text-gray-400' : 'bg-gray-100 text-gray-500';
+    }
+  };
+
+  const statusLabels = {
+    brouillon: 'Brouillon',
+    envoye: 'Envoy\u00e9',
+    vu: 'Vu',
+    accepte: 'Accept\u00e9',
+    signe: 'Sign\u00e9',
+    refuse: 'Refus\u00e9',
+  };
+
+  // Client initials for avatar
+  const clientName = client?.nom || 'Client inconnu';
+  const initials = clientName.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
   return (
     <PreviewTooltip devis={devis} client={client}>
       <div
         className={cn(
-          // Base styles - Level 2 Elevation
-          'group p-4 rounded-lg border transition-all duration-200',
-          'shadow-sm',
-          // Conditional styling based on urgency
-          needsRelance
-            ? isDark
-              ? 'border-orange-500/30 bg-gradient-to-br from-orange-500/5 to-transparent'
-              : 'border-orange-300 bg-gradient-to-br from-orange-50 to-orange-50/30'
-            : isDark
-              ? 'border-slate-700 bg-slate-800/50'
-              : 'border-gray-200 bg-white',
-          // Hover states
-          isDark
-            ? 'hover:shadow-md hover:border-primary-600'
-            : 'hover:shadow-md hover:border-primary-300',
-          'hover:scale-[1.01]'
+          'group flex items-center gap-3 p-3 transition-all duration-150',
+          // Row hover — Linear style
+          isDark ? 'hover:bg-[#1a1a1a]' : 'hover:bg-[#fafafa]',
+          // Subtle separator
+          isDark ? 'border-b border-[#262626] last:border-0' : 'border-b border-[#ebebeb] last:border-0',
         )}
       >
-        {/* Header: Number + Amount */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={cn('text-xs font-semibold', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                {formatDevisNumber(devis)}
-              </span>
-              {needsRelance && (
-                <span className={cn(
-                  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
-                  isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-800'
-                )}>
-                  <AlertTriangle className="w-2.5 h-2.5" />
-                  {daysPending}j
-                </span>
-              )}
-            </div>
-            <p className={cn('text-sm font-semibold leading-snug', isDark ? 'text-white' : 'text-gray-900')} style={{ wordBreak: 'break-word' }}>
-              {client?.nom || 'Client inconnu'}
-            </p>
-            <p className={cn('text-xs mt-0.5 truncate', isDark ? 'text-gray-400' : 'text-gray-600')}>
-              {devis.titre || devis.objet || formatDevisNumber(devis)}
-            </p>
-          </div>
-          <div className="text-right flex-shrink-0">
-            <p className={cn('text-base font-bold', isDark ? 'text-white' : 'text-gray-900')}>
+        {/* Client avatar */}
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold text-white"
+          style={{ background: `linear-gradient(135deg, ${needsRelance ? '#f97316' : '#6366f1'}, ${needsRelance ? '#ea580c' : '#8b5cf6'})` }}
+        >
+          {initials}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-sm font-semibold leading-snug truncate', isDark ? 'text-white' : 'text-gray-900')}>
+            {clientName}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className={cn('text-xs truncate', isDark ? 'text-gray-400' : 'text-gray-500')}>
+              {formatDevisNumber(devis)}
+            </span>
+            <span className={cn('text-xs', isDark ? 'text-gray-500' : 'text-gray-400')}>
               {formatMoney(devis.total_ttc || devis.montant)}
-            </p>
-            {!needsRelance && daysPending > 0 && (
-              <p className={cn('text-[10px] mt-0.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                il y a {daysPending}j
-              </p>
-            )}
+            </span>
           </div>
         </div>
 
-        {/* Actions - show on hover on desktop, always on mobile */}
-        <div className={cn('flex items-center gap-1.5 pt-3 border-t', isDark ? 'border-slate-700/50' : 'border-gray-100')}>
+        {/* Status badge — Linear style */}
+        <span className={cn(
+          'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium uppercase tracking-wide flex-shrink-0',
+          getStatusBadge(devis.statut)
+        )}>
+          {needsRelance && <AlertTriangle className="w-3 h-3" />}
+          {needsRelance ? `${daysPending}j` : statusLabels[devis.statut] || devis.statut}
+        </span>
+
+        {/* Quick actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             type="button"
             onClick={() => onConvert(devis)}
             disabled={isConverting}
-            title="Transformer ce devis en facture"
+            title="Convertir en facture"
             className={cn(
-              'flex-1 inline-flex items-center justify-center gap-1.5',
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              'transition-all duration-150',
-              'bg-orange-500 hover:bg-orange-600 text-white shadow-sm',
+              'p-1.5 rounded-lg text-xs transition-all duration-150',
+              'bg-orange-500 hover:bg-orange-600 text-white',
               isConverting && 'opacity-50 cursor-not-allowed'
             )}
           >
-            {isConverting ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <ArrowRight className="w-3.5 h-3.5" />
-            )}
-            Convertir
+            {isConverting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
           </button>
           <button
             type="button"
             onClick={() => onRelance(devis)}
             disabled={isRelancing}
+            title="Relancer"
             className={cn(
-              'flex-1 inline-flex items-center justify-center gap-1.5',
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              'transition-all duration-150',
-              isDark
-                ? 'bg-slate-700 hover:bg-slate-600 text-gray-200'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+              'p-1.5 rounded-lg text-xs transition-all duration-150',
+              isDark ? 'bg-slate-700 hover:bg-slate-600 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700',
               isRelancing && 'opacity-50 cursor-not-allowed'
             )}
           >
-            {isRelancing ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            Relancer
+            {isRelancing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
           </button>
           <button
             type="button"
             onClick={() => onView(devis)}
+            title="Voir"
             className={cn(
-              'flex-1 inline-flex items-center justify-center gap-1.5',
-              'px-3 py-2 rounded-lg text-xs font-medium',
-              'transition-all duration-150',
-              isDark
-                ? 'bg-slate-700/50 hover:bg-slate-700 text-gray-400'
-                : 'bg-gray-50 hover:bg-gray-100 text-gray-500'
+              'p-1.5 rounded-lg text-xs transition-all duration-150',
+              isDark ? 'bg-slate-700/50 hover:bg-slate-700 text-gray-400' : 'bg-gray-50 hover:bg-gray-100 text-gray-500'
             )}
           >
             <Eye className="w-3.5 h-3.5" />
-            Voir
           </button>
         </div>
       </div>
@@ -772,7 +770,7 @@ function DevisWidget({
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div>
               {pendingDevis.map((devis) => (
                 <DevisCard
                   key={devis.id}
