@@ -270,13 +270,15 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     }
 
     // Transfer devis/chantiers from source to target
-    const sourceDevis = devis?.filter(d => d.client_id === sourceId) || [];
-    const sourceChantiers = chantiers?.filter(ch => ch.client_id === sourceId) || [];
-
-    // Note: We update client_id in state — Supabase sync will handle the rest
-    if (sourceDevis.length > 0 || sourceChantiers.length > 0) {
-      // These would need onUpdate callbacks from parent — for now we just delete the source
-      // The user can reassign documents manually if needed
+    if (!isDemo && supabase) {
+      await supabase.from('devis').update({ client_id: targetId }).eq('client_id', sourceId);
+      await supabase.from('chantiers').update({ client_id: targetId }).eq('client_id', sourceId);
+    } else {
+      // Demo mode: update local state references
+      const sourceDevis = devis?.filter(d => d.client_id === sourceId) || [];
+      const sourceChantiers = chantiers?.filter(ch => ch.client_id === sourceId) || [];
+      sourceDevis.forEach(d => { d.client_id = targetId; });
+      sourceChantiers.forEach(ch => { ch.client_id = targetId; });
     }
 
     // Delete the source client
@@ -658,7 +660,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
           } else if (terminatedNoInvoice.length > 0) {
             alert = { icon: AlertTriangle, color: '#f97316', bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: `Chantier terminé, facture en attente`, action: 'Voir', onAction: () => { if (setPage && setSelectedChantier) { setSelectedChantier(terminatedNoInvoice[0].id); setPage('chantiers'); } } };
           } else if (monthsSinceActivity < 0 && stats.chantiers === 0 && stats.devis === 0) {
-            alert = { icon: Zap, color: couleur, bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: 'Nouveau client — Créez votre premier devis !', action: 'Créer un devis', onAction: () => { if (setPage) { setPage('devis', { client_id: c.id }); setCreateMode?.(true); } } };
+            alert = { icon: Zap, color: couleur, bgLight: 'bg-orange-50', bgDark: 'bg-orange-900/20', textLight: 'text-orange-800', textDark: 'text-orange-200', message: 'Nouveau client — Créez votre premier devis !', action: 'Créer un devis', onAction: () => { if (setPage) { setPage('devis', { client_id: client.id }); setCreateMode?.(true); } } };
           } else if (monthsSinceActivity > 6 && stats.chantiers > 0) {
             alert = { icon: Info, color: '#6b7280', bgLight: 'bg-slate-50', bgDark: 'bg-slate-700/50', textLight: 'text-slate-700', textDark: 'text-slate-300', message: `Aucune activité depuis ${monthsSinceActivity} mois`, action: 'Nouveau devis', onAction: () => { if (setPage) { setPage('devis'); setCreateMode?.(true); } } };
           }
@@ -1219,7 +1221,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
                         const newNotes = client.notes ? `${client.notes}\n[${tag}]` : `[${tag}]`;
                         updateClient?.(client.id, { notes: newNotes });
                       }}
-                      className={`px-2 py-1 rounded-full text-[10px] font-medium transition-all ${hasTag ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                      className={`px-3 py-1.5 rounded-full text-xs min-h-[36px] font-medium transition-all ${hasTag ? 'text-white' : isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                       style={hasTag ? { background: couleur } : {}}
                     >
                       {tag}

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useToast } from '../context/AppContext';
-import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2 } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, ExternalLink, Calculator, Building2, ArrowLeft, Trash2, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Archive, Landmark, BarChart3, CreditCard, Users, Link2, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap } from 'lucide-react';
 import supabase, { auth, isDemo } from '../supabaseClient';
 import AdminHelp from './admin-help/AdminHelp';
 import {
@@ -24,33 +24,33 @@ import IntegrationsHub from './integrations/IntegrationsHub';
 
 // ── Tab groups for mobile navigation ────────────────────────────────────────
 const TAB_GROUPS = [
-  { id: 'entreprise', label: '⚡ Mon entreprise', tabs: [
-    { key: 'identite', label: '🏢 Identité' },
-    { key: 'legal', label: '📋 Légal' },
-    { key: 'assurances', label: '🛡️ Assurances' },
-    { key: 'banque', label: '🏦 Banque' },
+  { id: 'entreprise', label: 'Mon entreprise', icon: Zap, tabs: [
+    { key: 'identite', label: 'Identité', icon: Building2 },
+    { key: 'legal', label: 'Légal', icon: ClipboardList },
+    { key: 'assurances', label: 'Assurances', icon: Shield },
+    { key: 'banque', label: 'Banque', icon: Landmark },
   ]},
-  { id: 'documents', label: '📄 Documents', tabs: [
-    { key: 'documents', label: '📄 Documents' },
-    { key: 'templates', label: '📋 Modèles' },
-    { key: 'facture2026', label: '🧾 Facture 2026' },
-    { key: 'relances', label: '📨 Relances' },
+  { id: 'documents', label: 'Documents', icon: FileText, tabs: [
+    { key: 'documents', label: 'Documents', icon: FileText },
+    { key: 'templates', label: 'Modèles', icon: ClipboardList },
+    { key: 'facture2026', label: 'Facture 2026', icon: Receipt },
+    { key: 'relances', label: 'Relances', icon: Mail },
   ]},
-  { id: 'finance', label: '💶 Finance', tabs: [
-    { key: 'comptabilite', label: '🧮 Comptabilité' },
-    { key: 'rentabilite', label: '📊 Rentabilité' },
-    { key: 'paiements', label: '💳 Paiements' },
+  { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
+    { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
+    { key: 'rentabilite', label: 'Rentabilité', icon: BarChart3 },
+    { key: 'paiements', label: 'Paiements', icon: CreditCard },
   ]},
-  { id: 'equipe', label: '👥 Équipe', tabs: [
-    { key: 'team', label: '👥 Équipe & Accès' },
+  { id: 'equipe', label: 'Équipe', icon: Users, tabs: [
+    { key: 'team', label: 'Équipe & Accès', icon: Users },
   ]},
-  { id: 'integrations', label: '🔗 Intégrations', tabs: [
-    { key: 'integrations', label: '🔗 Intégrations' },
+  { id: 'integrations', label: 'Intégrations', icon: Link2, tabs: [
+    { key: 'integrations', label: 'Intégrations', icon: Link2 },
   ]},
-  { id: 'avance', label: '⚙️ Avancé', tabs: [
-    { key: 'donnees', label: '💾 Données' },
-    { key: 'administratif', label: '📁 Administratif' },
-    { key: 'multi', label: '🏗️ Multi-entreprise' },
+  { id: 'avance', label: 'Avancé', icon: Settings2, tabs: [
+    { key: 'donnees', label: 'Données', icon: HardDrive },
+    { key: 'administratif', label: 'Administratif', icon: FolderOpen },
+    { key: 'multi', label: 'Multi-entreprise', icon: Construction },
   ]},
 ];
 
@@ -65,12 +65,12 @@ const WIZARD_STEPS_DEF = [
 
 // ── Frais de structure charge items ─────────────────────────────────────────
 const FRAIS_ITEMS = [
-  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: '🏠' },
-  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: '🛡️' },
-  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: '📱' },
-  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: '🧮' },
-  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: '⛽' },
-  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: '📦' },
+  { key: 'loyer', label: 'Loyer / local', placeholder: '1500', icon: Home },
+  { key: 'assurances', label: 'Assurances (RC + Décennale)', placeholder: '800', icon: Shield },
+  { key: 'telephone', label: 'Téléphone / Internet', placeholder: '100', icon: Smartphone },
+  { key: 'comptable', label: 'Comptable / Expert', placeholder: '300', icon: Calculator },
+  { key: 'carburant', label: 'Carburant / Déplacements', placeholder: '400', icon: Fuel },
+  { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: Package },
 ];
 
 // Villes RCS principales France
@@ -514,7 +514,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     className="w-full mt-1 px-4 py-2.5 text-white rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
                     style={{ background: couleur }}
                   >
-                    🪄 Compléter avec l'assistant
+                    <Sparkles size={14} className="inline mr-1" /> Compléter avec l'assistant
                   </button>
                 </div>
               </div>
@@ -580,7 +580,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}`}
                 style={activeInGroup ? { color: entreprise.couleur } : {}}
               >
-                {group.label}
+                <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={14} />}{group.label}</span>
                 {activeInGroup && (
                   <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ backgroundColor: entreprise.couleur }} />
                 )}
@@ -602,7 +602,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${tab === t.key ? 'text-white shadow-sm' : isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
                   style={tab === t.key ? { backgroundColor: entreprise.couleur } : {}}
                 >
-                  {t.label}
+                  <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
                 </button>
               ))}
             </div>
@@ -625,7 +625,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     : isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <span>{group.label}</span>
+                <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={15} />}{group.label}</span>
                 <div className="flex items-center gap-2">
                   {activeInGroup && !isOpen && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${couleur}20`, color: couleur }}>
@@ -648,7 +648,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                       } ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-red-500' : ''}`}
                       style={tab === t.key ? { backgroundColor: couleur } : {}}
                     >
-                      {t.label}
+                      <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
                     </button>
                   ))}
                 </div>
@@ -679,7 +679,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                       </span>
                     ) : (
-                      <span className="text-3xl text-slate-300">🏢</span>
+                      <Building2 size={28} className="text-slate-300" />
                     )}
                   </div>
                   <div className="space-y-2">
@@ -1211,7 +1211,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
         <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className={`font-semibold mb-4 ${textPrimary}`}>📊 Calcul de Rentabilité</h3>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><BarChart3 size={18} /> Calcul de Rentabilité</h3>
           <div className="space-y-4">
             <div className="flex items-end gap-3 flex-wrap">
               <div>
@@ -1230,11 +1230,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             {/* Mini-wizard frais de structure */}
             {showFraisCalc && (
               <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-semibold ${textPrimary}`}>🧮 Calculez votre taux réel</p>
+                <p className={`text-sm font-semibold flex items-center gap-1.5 ${textPrimary}`}><Calculator size={15} /> Calculez votre taux réel</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {FRAIS_ITEMS.map(item => (
                     <div key={item.key}>
-                      <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>{item.icon} {item.label}</label>
+                      <label className={`flex items-center gap-1 text-xs font-medium mb-1 ${textSecondary}`}>{item.icon && <item.icon size={13} />} {item.label}</label>
                       <input
                         type="number"
                         placeholder={item.placeholder}
@@ -1681,7 +1681,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {/* Onboarding Replay */}
           <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
             <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              🎓 Visite guidée
+              <GraduationCap size={18} /> Visite guidée
             </h3>
             <p className={`text-sm ${textMuted} mb-4`}>
               Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de BatiGesti.
@@ -1906,7 +1906,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl" style={{background: `${entreprise.couleur}20`}}>🏢</div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{background: `${entreprise.couleur}20`}}><Building2 size={28} style={{ color: entreprise.couleur }} /></div>
               )}
               <div>
                 <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>

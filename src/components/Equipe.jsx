@@ -166,10 +166,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   // Role configuration with icons and colors
   const roleConfig = {
     'Chef de chantier': { icon: HardHat, color: '#f59e0b', emoji: '👷' },
+    'Ouvrier qualifié': { icon: Wrench, color: '#6366f1', emoji: '🔧' },
     'Ouvrier qualifie': { icon: Wrench, color: '#6366f1', emoji: '🔧' },
+    'Électricien': { icon: Plug, color: '#eab308', emoji: '⚡' },
     'Electricien': { icon: Plug, color: '#eab308', emoji: '⚡' },
     'Plombier': { icon: Wrench, color: '#3b82f6', emoji: '🔧' },
     'Peintre': { icon: Paintbrush, color: '#8b5cf6', emoji: '🎨' },
+    'Maçon': { icon: Building2, color: '#a16207', emoji: '🧱' },
     'Macon': { icon: Building2, color: '#a16207', emoji: '🧱' },
     'Carreleur': { icon: Building2, color: '#78716c', emoji: '🔲' },
     'Menuisier': { icon: Wrench, color: '#92400e', emoji: '🪵' },
@@ -228,7 +231,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         }
       }
     } catch (e) {
-      console.error('Failed to load timer state:', e);
+      // Silent fail — timer state is non-critical
     }
   }, []);
 
@@ -241,7 +244,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         localStorage.removeItem(TIMER_STORAGE_KEY);
       }
     } catch (e) {
-      console.error('Failed to save timer state:', e);
+      // Silent fail — timer state is non-critical
     }
   }, [chrono]);
 
