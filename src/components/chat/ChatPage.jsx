@@ -78,12 +78,13 @@ const ChatPage = memo(function ChatPage({
   // ── Load channels ─────────────────────────────────────────────────────────
 
   const refreshChannels = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) { setLoadingChannels(false); return; }
     try {
       const data = await loadChannels(supabase, { userId, orgId });
-      setChannels(data);
+      setChannels(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('[ChatPage] Load channels error:', err);
+      console.warn('[ChatPage] Load channels error:', err?.message || err);
+      setChannels([]);
     } finally {
       setLoadingChannels(false);
     }
