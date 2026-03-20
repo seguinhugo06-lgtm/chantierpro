@@ -1538,7 +1538,7 @@ export default function Dashboard({
                   })}
                   {totalActions > 3 && (
                     <button
-                      onClick={() => setPage?.('devis')}
+                      onClick={() => setPage?.('memos')}
                       className={`w-full text-center py-2 text-xs font-semibold rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
                     >
                       Voir toutes les {totalActions} actions →
@@ -1691,15 +1691,13 @@ export default function Dashboard({
         {profileCompletude >= 50 && profileCompletude < 80 && (
           <section className="px-4 sm:px-6 mb-6">
             <div className={`rounded-xl border p-4 ${
-              profileCompletude < 30
-                ? isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                : profileCompletude < 60
-                  ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-                  : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
+              profileCompletude < 60
+                ? isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
+                : isDark ? 'bg-blue-900/20 border-blue-800/50' : 'bg-blue-50 border-blue-200'
             }`}>
               <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                  profileCompletude < 30 ? 'bg-red-500/20 text-red-500' : profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
+                  profileCompletude < 60 ? 'bg-amber-500/20 text-amber-600' : 'bg-blue-500/20 text-blue-500'
                 }`}>
                   {profileCompletude}%
                 </div>

@@ -171,7 +171,7 @@ function PreviewTooltip({ children, devis, client }) {
 /**
  * Confirmation Modal component
  */
-function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabel, confirmVariant = 'primary', isLoading }) {
+function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabel, confirmVariant = 'primary', isLoading, isDark = false }) {
   if (!isOpen) return null;
 
   return (
@@ -180,19 +180,22 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl w-full max-w-md shadow-xl border border-gray-200 animate-slide-up"
+        className={cn(
+          'rounded-xl w-full max-w-md shadow-xl border animate-slide-up',
+          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className={cn('flex items-center justify-between p-5 border-b', isDark ? 'border-slate-700' : 'border-gray-100')}>
+          <h2 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className={cn('p-2 rounded-lg transition-colors', isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100')}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className={cn('w-5 h-5', isDark ? 'text-slate-400' : 'text-gray-500')} />
           </button>
         </div>
 
@@ -202,7 +205,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
+        <div className={cn('flex items-center justify-end gap-3 p-5 border-t', isDark ? 'border-slate-700' : 'border-gray-100')}>
           <Button variant="ghost" onClick={onClose} disabled={isLoading}>
             Annuler
           </Button>
@@ -223,7 +226,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, children, confirmLabe
 /**
  * Relance Modal with email/SMS template
  */
-function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) {
+function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading, isDark = false }) {
   const [method, setMethod] = useState('email');
   const [message, setMessage] = useState('');
 
@@ -246,9 +249,10 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
       confirmLabel="Envoyer relance"
       confirmVariant="primary"
       isLoading={isLoading}
+      isDark={isDark}
     >
       <div className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
           Devis <span className="font-medium">{normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}</span> • {formatMoney(devis?.total_ttc)}
         </p>
 
@@ -260,7 +264,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
               'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors',
               method === 'email'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 hover:border-gray-300'
+                : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <Mail className="w-4 h-4" />
@@ -272,7 +276,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
               'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors',
               method === 'sms'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 hover:border-gray-300'
+                : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-gray-200 hover:border-gray-300'
             )}
           >
             <MessageSquare className="w-4 h-4" />
@@ -282,14 +286,17 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
 
         {/* Message textarea */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className={cn('block text-sm font-medium mb-1', isDark ? 'text-slate-300' : 'text-gray-700')}>
             Message
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={5}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className={cn(
+              'w-full px-3 py-2 rounded-lg border text-sm resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent',
+              isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900'
+            )}
           />
         </div>
       </div>
@@ -300,7 +307,7 @@ function RelanceModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
 /**
  * Convert to Facture Modal
  */
-function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) {
+function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading, isDark = false }) {
   return (
     <ConfirmModal
       isOpen={isOpen}
@@ -310,18 +317,19 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
       confirmLabel="Convertir"
       confirmVariant="primary"
       isLoading={isLoading}
+      isDark={isDark}
     >
       <div className="space-y-4">
-        <div className="p-4 bg-gray-50 rounded-lg">
+        <div className={cn('p-4 rounded-lg', isDark ? 'bg-slate-700' : 'bg-gray-50')}>
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-primary-100">
               <FileText className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <p className="font-medium text-gray-900">
+              <p className={cn('font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                 {normalizeDevisRef(devis?.numero, devis?.type, devis?.id)}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
                 {client?.nom || 'Client inconnu'}
               </p>
               <p className="text-lg font-bold text-primary-600 mt-1">
@@ -331,13 +339,13 @@ function ConvertModal({ isOpen, onClose, onConfirm, devis, client, isLoading }) 
           </div>
         </div>
 
-        <p className="text-sm text-gray-600">
+        <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-gray-600')}>
           Cette action va créer une facture à partir de ce devis. Le devis sera marqué comme accepté.
         </p>
 
-        <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-          <CheckCircle className="w-4 h-4 text-blue-600" />
-          <span className="text-sm text-blue-700">
+        <div className={cn('flex items-center gap-2 p-3 rounded-lg', isDark ? 'bg-blue-500/10' : 'bg-blue-50')}>
+          <CheckCircle className={cn('w-4 h-4', isDark ? 'text-blue-400' : 'text-blue-600')} />
+          <span className={cn('text-sm', isDark ? 'text-blue-300' : 'text-blue-700')}>
             Toutes les lignes du devis seront copiées
           </span>
         </div>
@@ -485,20 +493,20 @@ function DevisCard({
 /**
  * DevisCardSkeleton - Loading skeleton for devis card
  */
-function DevisCardSkeleton() {
+function DevisCardSkeleton({ isDark = false }) {
   return (
-    <div className="p-4 rounded-lg border border-gray-200 shadow-sm animate-pulse">
+    <div className={cn('p-4 rounded-lg border shadow-sm animate-pulse', isDark ? 'border-slate-700' : 'border-gray-200')}>
       <div className="flex items-start justify-between mb-2">
         <div className="space-y-2">
-          <div className="h-4 w-40 rounded bg-gray-200" />
-          <div className="h-3 w-32 rounded bg-gray-100" />
+          <div className={cn('h-4 w-40 rounded', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+          <div className={cn('h-3 w-32 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
         </div>
       </div>
-      <div className="h-6 w-24 rounded bg-gray-200 mb-3" />
+      <div className={cn('h-6 w-24 rounded mb-3', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
       <div className="flex gap-2">
-        <div className="h-8 flex-1 rounded bg-gray-100" />
-        <div className="h-8 flex-1 rounded bg-gray-100" />
-        <div className="h-8 flex-1 rounded bg-gray-100" />
+        <div className={cn('h-8 flex-1 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
+        <div className={cn('h-8 flex-1 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
+        <div className={cn('h-8 flex-1 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
       </div>
     </div>
   );
@@ -569,7 +577,7 @@ function DevisWidget({
         setPendingDevis(data || []);
       }
     } catch (err) {
-      console.error('Error fetching pending devis:', err);
+      // Silenced in production
       setError(err.message || 'Erreur de chargement');
     } finally {
       setLoading(false);
@@ -636,7 +644,7 @@ function DevisWidget({
       setRelanceModal({ isOpen: false, devis: null, client: null });
       showToast(`✅ Relance envoyée par ${methodLabel} à ${clientName}`, 'success');
     } catch (err) {
-      console.error('Error sending relance:', err);
+      // Silenced in production
       showToast(`❌ Erreur lors de l'envoi de la relance`, 'error');
     } finally {
       setIsRelancing(false);
@@ -689,7 +697,7 @@ function DevisWidget({
 
       setConvertModal({ isOpen: false, devis: null, client: null });
     } catch (err) {
-      console.error('Error converting to facture:', err);
+      // Silenced in production
     } finally {
       setIsConverting(false);
     }
@@ -806,6 +814,7 @@ function DevisWidget({
         devis={relanceModal.devis}
         client={relanceModal.client}
         isLoading={isRelancing}
+        isDark={isDark}
       />
 
       {/* Convert Modal */}
@@ -816,6 +825,7 @@ function DevisWidget({
         devis={convertModal.devis}
         client={convertModal.client}
         isLoading={isConverting}
+        isDark={isDark}
       />
     </>
   );

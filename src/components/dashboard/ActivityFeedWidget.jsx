@@ -151,11 +151,11 @@ const ActivityFeedWidget = memo(function ActivityFeedWidget({
   return (
     <div
       className={`
-        rounded-2xl border overflow-hidden h-full flex flex-col
+        rounded-xl border overflow-hidden h-full flex flex-col
         transition-shadow duration-200 hover:shadow-md
         ${isDark
           ? 'bg-slate-800 border-slate-700/50'
-          : 'bg-white border-gray-100 shadow-sm'
+          : 'bg-white border-gray-200/70 shadow-sm'
         }
       `}
     >

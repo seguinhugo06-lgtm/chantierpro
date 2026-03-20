@@ -131,15 +131,18 @@ function formatCompact(amount) {
 /**
  * Custom tooltip for donut chart
  */
-function DonutTooltip({ active, payload }) {
+function DonutTooltip({ active, payload, isDark }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
-        <p className="text-sm font-medium text-gray-900">
+      <div className={cn(
+        'px-3 py-2 rounded-lg shadow-lg border',
+        isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+      )}>
+        <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
           {data.label}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-gray-500')}>
           {formatCurrency(data.value)} ({data.count} facture{data.count > 1 ? 's' : ''})
         </p>
       </div>
@@ -320,7 +323,7 @@ function DonutCenter({ total, isDark }) {
 /**
  * RelanceModal - Modal to relance overdue invoices
  */
-function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
+function RelanceModal({ isOpen, onClose, factures, getClient, onRelance, isDark = false }) {
   const [relancingIds, setRelancingIds] = React.useState(new Set());
 
   const handleRelance = async (facture) => {
@@ -347,7 +350,7 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
         <ModalTitle>Factures à relancer</ModalTitle>
       </ModalHeader>
       <ModalBody>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className={cn('text-sm mb-4', isDark ? 'text-slate-400' : 'text-gray-600')}>
           {factures.length} facture{factures.length > 1 ? 's' : ''} impayée{factures.length > 1 ? 's' : ''} depuis plus de 60 jours
         </p>
 
@@ -360,22 +363,22 @@ function RelanceModal({ isOpen, onClose, factures, getClient, onRelance }) {
             return (
               <div
                 key={facture.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                className={cn('flex items-center justify-between p-3 rounded-lg', isDark ? 'bg-slate-700' : 'bg-gray-50')}
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                     {formatDevisNumber(facture)}
-                    <span className="text-gray-400 mx-1">•</span>
-                    <span className="text-gray-600">
+                    <span className={cn('mx-1', isDark ? 'text-slate-500' : 'text-gray-400')}>•</span>
+                    <span className={isDark ? 'text-slate-400' : 'text-gray-600'}>
                       {client?.nom || 'Client inconnu'}
                     </span>
                   </p>
-                  <p className="text-xs text-red-600">
+                  <p className={cn('text-xs', isDark ? 'text-red-400' : 'text-red-600')}>
                     {days} jours de retard
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className={cn('text-sm font-bold', isDark ? 'text-white' : 'text-gray-900')}>
                     {formatCurrency(facture.total_ttc)}
                   </span>
                   <Button
@@ -529,7 +532,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
   }, [fetchUnpaidData]);
 
   const handleRelance = (facture) => {
-    console.log('Relancing facture:', facture.id);
+    // Relance action placeholder
   };
 
   const handleManageFactures = () => {
@@ -704,6 +707,7 @@ export default function TresorerieWidget({ userId, className, setPage, isDark = 
           factures={unpaidData.groups.over60.factures}
           getClient={getClient}
           onRelance={handleRelance}
+          isDark={isDark}
         />
       )}
     </>

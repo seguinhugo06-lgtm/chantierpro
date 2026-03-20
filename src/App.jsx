@@ -1783,15 +1783,32 @@ export default function App() {
               );
             })}
             {/* 5th item: Plus / Menu — opens sidebar for all pages */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${isDark ? 'text-slate-400 active:text-slate-300' : 'text-[#666] active:text-[#666]'}`}
-            >
-              <div className="flex items-center justify-center w-12 h-7 rounded-full">
-                <Menu size={21} strokeWidth={1.5} />
-              </div>
-              <span className="text-[10px] mt-0.5 font-medium">Plus</span>
-            </button>
+            {(() => {
+              const mainTabs = ['dashboard', 'devis', 'chantiers', 'clients'];
+              const isPlusActive = !mainTabs.includes(page);
+              return (
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
+                    isPlusActive
+                      ? ''
+                      : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
+                  }`}
+                  style={isPlusActive ? { color: couleur } : {}}
+                >
+                  {isPlusActive && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full" style={{ backgroundColor: couleur }} />
+                  )}
+                  <div
+                    className="flex items-center justify-center w-12 h-7 rounded-full"
+                    style={isPlusActive ? { backgroundColor: `${couleur}15` } : {}}
+                  >
+                    <Menu size={21} strokeWidth={isPlusActive ? 2.5 : 1.5} />
+                  </div>
+                  <span className={`text-[10px] mt-0.5 ${isPlusActive ? 'font-bold' : 'font-medium'}`}>Plus</span>
+                </button>
+              );
+            })()}
           </div>
         </nav>
       </div>

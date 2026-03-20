@@ -9,7 +9,7 @@ const COLUMNS = [
   {
     title: 'Produit',
     links: [
-      { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites' },
+      { label: 'Fonctionnalit\u00e9s', href: '/fonctionnalites', isPage: true },
       { label: 'Tarifs', href: '#pricing' },
       { label: 'Devis IA', href: '#features' },
       { label: 'Conformit\u00e9 2026', href: '#features' },
@@ -18,7 +18,7 @@ const COLUMNS = [
   {
     title: 'Ressources',
     links: [
-      { label: 'Ressources', href: '/ressources' },
+      { label: 'Ressources', href: '/ressources', isPage: true },
       { label: 'T\u00e9moignages', href: '#testimonials' },
       { label: 'FAQ', href: '#faq' },
       { label: 'Blog', href: '#', disabled: true },
@@ -27,21 +27,28 @@ const COLUMNS = [
   {
     title: 'L\u00e9gal',
     links: [
-      { label: 'Mentions l\u00e9gales', href: '/mentions-legales' },
-      { label: 'CGU', href: '/cgu' },
-      { label: 'CGV', href: '/cgv' },
-      { label: 'Confidentialit\u00e9', href: '/confidentialite' },
+      { label: 'Mentions l\u00e9gales', href: '/mentions-legales', isPage: true },
+      { label: 'CGU', href: '/cgu', isPage: true },
+      { label: 'CGV', href: '/cgv', isPage: true },
+      { label: 'Confidentialit\u00e9', href: '/confidentialite', isPage: true },
     ],
   },
 ];
 
-export default function FooterSection() {
+export default function FooterSection({ onNavigate }) {
   const year = new Date().getFullYear();
 
-  const handleNavClick = (e, href) => {
-    if (href.startsWith('#')) {
-      e.preventDefault();
-      const el = document.querySelector(href);
+  const handleNavClick = (e, link) => {
+    e.preventDefault();
+    if (link.isPage) {
+      if (onNavigate) {
+        onNavigate(link.href.replace('/', ''));
+      } else {
+        window.history.pushState({}, '', link.href);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    } else if (link.href.startsWith('#')) {
+      const el = document.querySelector(link.href);
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -97,7 +104,7 @@ export default function FooterSection() {
                     ) : (
                       <a
                         href={link.href}
-                        onClick={(e) => handleNavClick(e, link.href)}
+                        onClick={(e) => handleNavClick(e, link)}
                         className="text-sm hover:text-white transition-colors"
                       >
                         {link.label}

@@ -538,21 +538,24 @@ function DaySeparator({ date, isDark = false }) {
 /**
  * ChantierCardSkeleton - Loading skeleton
  */
-function ChantierCardSkeleton() {
+function ChantierCardSkeleton({ isDark = false }) {
   return (
-    <div className="p-3 rounded-lg border-l-4 border-l-gray-300 bg-gray-50 animate-pulse">
+    <div className={cn(
+      'p-3 rounded-lg border-l-4 animate-pulse',
+      isDark ? 'border-l-slate-600 bg-slate-800/50' : 'border-l-gray-300 bg-gray-50'
+    )}>
       <div className="flex items-start gap-2 mb-2">
-        <div className="w-2.5 h-2.5 rounded-full bg-gray-200 mt-1.5" />
+        <div className={cn('w-2.5 h-2.5 rounded-full mt-1.5', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
         <div className="flex-1 space-y-1.5">
-          <div className="h-4 w-3/4 rounded bg-gray-200" />
-          <div className="h-3 w-1/2 rounded bg-gray-100" />
+          <div className={cn('h-4 w-3/4 rounded', isDark ? 'bg-slate-700' : 'bg-gray-200')} />
+          <div className={cn('h-3 w-1/2 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
         </div>
       </div>
       <div className="ml-4.5 space-y-2">
-        <div className="h-4 w-40 rounded bg-gray-100" />
+        <div className={cn('h-4 w-40 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
         <div className="flex gap-2">
-          <div className="w-8 h-8 rounded bg-gray-100" />
-          <div className="w-8 h-8 rounded bg-gray-100" />
+          <div className={cn('w-8 h-8 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
+          <div className={cn('w-8 h-8 rounded', isDark ? 'bg-slate-700/50' : 'bg-gray-100')} />
         </div>
       </div>
     </div>

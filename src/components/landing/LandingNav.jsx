@@ -63,7 +63,8 @@ export default function LandingNav({ onLogin, onSignup }) {
     setDropdownOpen(false);
     if (href.startsWith('/')) {
       setMenuOpen(false);
-      window.location.href = href;
+      window.history.pushState({}, '', href);
+      window.dispatchEvent(new PopStateEvent('popstate'));
       return;
     }
     if (fromMobile && menuOpen) {
@@ -169,12 +170,12 @@ export default function LandingNav({ onLogin, onSignup }) {
                         })}
                       </div>
                       <div className="mt-3 pt-3 border-t border-slate-100">
-                        <a
-                          href="/fonctionnalites"
-                          className="flex items-center justify-center gap-1 text-sm text-orange-500 font-medium hover:text-orange-600 transition-colors py-1"
+                        <button
+                          onClick={() => scrollTo('/fonctionnalites')}
+                          className="flex items-center justify-center gap-1 text-sm text-orange-500 font-medium hover:text-orange-600 transition-colors py-1 w-full"
                         >
                           Voir toutes les fonctionnalit&eacute;s &rarr;
-                        </a>
+                        </button>
                       </div>
                       </div>
                     </motion.div>

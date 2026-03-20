@@ -717,7 +717,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         setSnackbar({ type: 'success', message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé` });
       }
     } catch (err) {
-      console.error('Error creating devis:', err);
+      // Error creating devis logged silently
       showToast(mapError(err), 'error');
     } finally {
       setIsSubmitting(false);
@@ -1008,7 +1008,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 }
                 setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
               } catch (err) {
-                console.error('Error updating echeancier on payment:', err);
+                // echeancier update error handled silently
               }
             }
           }
@@ -1631,7 +1631,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         // Auto-upload to Google Drive if connected
         triggerDriveUpload(doc);
       } catch (err) {
-        console.error('Factur-X generation failed, fallback to HTML:', err);
+        // Factur-X generation failed, fallback to HTML
         showToast('Erreur Factur-X, export HTML de secours', 'warning');
         fallbackHtmlPrint(content, doc);
       } finally {
@@ -2305,7 +2305,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             {/* Header actions - with labels for better accessibility */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { console.error(e); } finally { setActionLoading(null); } })}
+                onClick={() => tryDownload(selected, async (doc) => { setActionLoading('pdf'); try { await printPDF(doc); } catch(e) { /* PDF error handled silently */ } finally { setActionLoading(null); } })}
                 disabled={actionLoading === 'pdf'}
                 className="min-w-[44px] min-h-[44px] sm:px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
                 title="Télécharger le PDF"
@@ -2647,7 +2647,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
                   {selected.statut === 'refuse' && (
                     <button
-                      onClick={() => { /* duplicate logic */ }}
+                      onClick={() => duplicateDocument(selected)}
                       className={`px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
                     >
                       <Copy size={16} /> Dupliquer
@@ -3980,7 +3980,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                       }
                       setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
                     } catch (err) {
-                      console.error('Error updating echeancier on payment:', err);
+                      // echeancier update error handled silently
                     }
                   }
                 }
@@ -4411,11 +4411,11 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                 <X size={16} />
                 <span>Annuler</span>
               </button>
-              <button onClick={handleCreate} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 ${isDark ? 'bg-slate-600 text-white hover:bg-slate-500' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}>
+              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 border ${isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-600 hover:bg-slate-100'}`}>
                 <FileText size={16} />
-                <span>Brouillon</span>
+                <span>Enregistrer brouillon</span>
               </button>
-              <button onClick={handleCreate} disabled={isSubmitting} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold disabled:opacity-50" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
+              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold disabled:opacity-50" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
                 <Check size={18} />
                 <span>{isSubmitting ? 'Création...' : `Créer le ${form.type}`}</span>
               </button>

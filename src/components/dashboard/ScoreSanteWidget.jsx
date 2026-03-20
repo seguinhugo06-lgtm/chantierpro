@@ -374,7 +374,7 @@ export function ScoreSanteWidget({ isDark, setPage, couleur }) {
 
   return (
     <div
-      className={`${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} rounded-2xl border p-5`}
+      className={`${isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-gray-200/70'} rounded-xl border p-5`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
