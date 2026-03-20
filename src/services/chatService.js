@@ -120,7 +120,15 @@ const DEMO_USERS = [
 function getDemoData() {
   try {
     const raw = localStorage.getItem(DEMO_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure all required keys exist
+      if (!parsed.channels) parsed.channels = [];
+      if (!parsed.members) parsed.members = {};
+      if (!parsed.messages) parsed.messages = {};
+      if (!parsed.reactions) parsed.reactions = {};
+      return parsed;
+    }
   } catch { /* ignore */ }
   return initDemoData();
 }
