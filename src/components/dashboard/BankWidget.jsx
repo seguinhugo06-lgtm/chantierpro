@@ -85,7 +85,7 @@ export default function BankWidget({
         setTransactions(txs);
       }
     } catch (e) {
-      console.error('BankWidget load error:', e);
+      console.warn('[BankWidget] load not available:', e.message);
     }
     setLoading(false);
   }, []);

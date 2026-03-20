@@ -214,7 +214,7 @@ export async function getRecentActivity(supabase, { limit = 20, entityTypes = nu
 
   const { data, error } = await query;
   if (error) {
-    console.error('[auditService] getRecentActivity error:', error);
+    console.warn('[auditService] getRecentActivity not available:', error.message);
     return [];
   }
 
