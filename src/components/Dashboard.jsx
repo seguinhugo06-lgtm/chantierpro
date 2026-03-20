@@ -1492,14 +1492,14 @@ export default function Dashboard({
 
           return (
             <section className="px-4 sm:px-6 mb-6">
-              <div className={`rounded-xl border p-4 ${isDark ? 'bg-[#111] border-[#262626]' : 'bg-white border-gray-200/70'}`}>
+              <div className={`rounded-xl border p-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <ClipboardList size={15} style={{ color: couleur }} />
                     <h2 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       Actions du jour
                     </h2>
-                    <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-[#1a1a1a] text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${isDark ? 'bg-slate-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                       {sorted.length}
                     </span>
                   </div>
@@ -1511,8 +1511,8 @@ export default function Dashboard({
                       <div
                         key={item.id}
                         className={`flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-1.5 p-2.5 rounded-lg transition-all duration-150 ${
-                          isDark ? 'hover:bg-[#1a1a1a]' : 'hover:bg-[#fafafa]'
-                        } border ${isDark ? 'border-[#262626]' : 'border-gray-200/70'}`}
+                          isDark ? 'hover:bg-slate-800' : 'hover:bg-[#fafafa]'
+                        } border ${isDark ? 'border-slate-700' : 'border-gray-200/70'}`}
                         style={{ borderLeftWidth: '2px', borderLeftColor: borderColor }}
                       >
                         {item.iconComponent && (

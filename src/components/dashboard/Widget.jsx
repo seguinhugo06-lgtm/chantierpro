@@ -23,24 +23,24 @@ function WidgetSkeleton({ rows = 3, isDark = false }) {
       {/* Header skeleton */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={cn('w-9 h-9 rounded-xl', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')} />
-          <div className={cn('h-5 w-32 rounded-md', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')} />
+          <div className={cn('w-9 h-9 rounded-xl', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')} />
+          <div className={cn('h-5 w-32 rounded-md', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')} />
         </div>
-        <div className={cn('w-8 h-8 rounded-lg', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')} />
+        <div className={cn('w-8 h-8 rounded-lg', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')} />
       </div>
 
       {/* Content skeleton */}
       <div className="space-y-3">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
-            <div className={cn('w-10 h-10 rounded-xl', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')} />
+            <div className={cn('w-10 h-10 rounded-xl', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')} />
             <div className="flex-1 space-y-2">
               <div
-                className={cn('h-4 rounded-md', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')}
+                className={cn('h-4 rounded-md', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')}
                 style={{ width: `${70 + Math.random() * 30}%` }}
               />
               <div
-                className={cn('h-3 rounded', isDark ? 'bg-[#161616]' : 'bg-[#fafafa]')}
+                className={cn('h-3 rounded', isDark ? 'bg-slate-800' : 'bg-[#fafafa]')}
                 style={{ width: `${40 + Math.random() * 30}%` }}
               />
             </div>
@@ -49,8 +49,8 @@ function WidgetSkeleton({ rows = 3, isDark = false }) {
       </div>
 
       {/* Footer skeleton */}
-      <div className={cn('pt-4 border-t', isDark ? 'border-[#262626]' : 'border-[#ebebeb]')}>
-        <div className={cn('h-8 w-24 rounded-lg', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]')} />
+      <div className={cn('pt-4 border-t', isDark ? 'border-slate-700' : 'border-[#ebebeb]')}>
+        <div className={cn('h-8 w-24 rounded-lg', isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]')} />
       </div>
     </div>
   );
@@ -73,7 +73,7 @@ export function WidgetEmptyState({
         // Empty state container with dashed border
         'flex flex-col items-center justify-center py-8 px-4 text-center',
         'rounded-lg',
-        isDark ? 'bg-[#161616]/50 border-[#262626]' : 'bg-[#fafafa] border-[#ebebeb]',
+        isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-[#fafafa] border-[#ebebeb]',
         'border-2 border-dashed',
         className
       )}
@@ -81,22 +81,22 @@ export function WidgetEmptyState({
       {/* Icon - WCAG AA visible */}
       <div className={cn(
         'flex items-center justify-center w-14 h-14 rounded-xl mb-4',
-        isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]'
+        isDark ? 'bg-slate-700' : 'bg-[#f5f5f5]'
       )}>
         {icon ? (
           React.isValidElement(icon) &&
           React.cloneElement(icon, {
-            className: cn('w-7 h-7', isDark ? 'text-[#666]' : 'text-[#999]'),
+            className: cn('w-7 h-7', isDark ? 'text-slate-500' : 'text-[#999]'),
           })
         ) : (
-          <FileQuestion className={cn('w-7 h-7', isDark ? 'text-[#666]' : 'text-[#999]')} />
+          <FileQuestion className={cn('w-7 h-7', isDark ? 'text-slate-500' : 'text-[#999]')} />
         )}
       </div>
 
       {/* Title */}
       <p className={cn(
         'text-base font-semibold mb-1',
-        isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]'
+        isDark ? 'text-slate-100' : 'text-[#1a1a1a]'
       )}>
         {title}
       </p>
@@ -104,7 +104,7 @@ export function WidgetEmptyState({
       {/* Description */}
       <p className={cn(
         'text-sm max-w-[240px] leading-relaxed',
-        isDark ? 'text-[#666]' : 'text-[#666]'
+        isDark ? 'text-slate-500' : 'text-[#666]'
       )}>
         {description}
       </p>
@@ -146,17 +146,17 @@ export const WidgetHeader = React.forwardRef(
           {icon && (
             <div className={cn(
               'flex items-center justify-center w-9 h-9 rounded-xl',
-              isDark ? 'bg-[#1e1e1e]/50' : 'bg-[#fafafa]'
+              isDark ? 'bg-slate-700/50' : 'bg-[#fafafa]'
             )}>
               {React.isValidElement(icon) &&
                 React.cloneElement(icon, {
-                  className: cn('w-[18px] h-[18px]', isDark ? 'text-[#666]' : 'text-[#999]'),
+                  className: cn('w-[18px] h-[18px]', isDark ? 'text-slate-500' : 'text-[#999]'),
                 })}
             </div>
           )}
           <h2 className={cn(
             'text-base font-semibold',
-            isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]'
+            isDark ? 'text-slate-100' : 'text-[#1a1a1a]'
           )}>
             {title}
           </h2>
@@ -202,7 +202,7 @@ export const WidgetFooter = React.forwardRef(
         ref={ref}
         className={cn(
           'flex items-center justify-between pt-4 mt-auto border-t',
-          isDark ? 'border-[#262626]' : 'border-[#ebebeb]',
+          isDark ? 'border-slate-700' : 'border-[#ebebeb]',
           className
         )}
         {...props}
@@ -225,7 +225,7 @@ export function WidgetMenuButton({ onClick, isDark = false, className, title = "
       className={cn(
         'p-2 rounded-md transition-all duration-150',
         isDark
-          ? 'text-[#666] hover:text-[#a0a0a0] hover:bg-[#1e1e1e]'
+          ? 'text-slate-500 hover:text-slate-400 hover:bg-slate-700'
           : 'text-[#999] hover:text-[#666] hover:bg-[#f5f5f5]',
         'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
         'active:scale-95',
@@ -272,7 +272,7 @@ export function WidgetTabs({ tabs, activeTab, onTabChange, isDark = false, class
     <div
       className={cn(
         'inline-flex items-center gap-0.5 p-1 rounded-xl',
-        isDark ? 'bg-[#1e1e1e]/50' : 'bg-[#f5f5f5]',
+        isDark ? 'bg-slate-700/50' : 'bg-[#f5f5f5]',
         className
       )}
     >
@@ -285,10 +285,10 @@ export function WidgetTabs({ tabs, activeTab, onTabChange, isDark = false, class
             'px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200',
             activeTab === tab.value
               ? isDark
-                ? 'bg-[#262626] text-[#f5f5f5] shadow-sm'
+                ? 'bg-slate-700 text-slate-100 shadow-sm'
                 : 'bg-white text-[#1a1a1a] shadow-sm'
               : isDark
-                ? 'text-[#666] hover:text-[#a0a0a0]'
+                ? 'text-slate-500 hover:text-slate-400'
                 : 'text-[#999] hover:text-[#666]'
           )}
         >
@@ -320,7 +320,7 @@ const Widget = React.forwardRef(
         className={cn(
           // Base styles — Linear-inspired
           'rounded-xl overflow-hidden border',
-          isDark ? 'bg-[#161616] border-gray-800/60' : 'bg-white border-gray-200/70',
+          isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-gray-200/70',
           'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           'hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:-translate-y-[1px]',
           'p-5 sm:p-6',

@@ -76,7 +76,7 @@ function CustomTooltip({ active, payload, label, isDark }) {
         className={cn(
           'px-3.5 py-2.5 rounded-lg shadow-lg border text-sm',
           isDark
-            ? 'bg-[#161616] border-[#262626]'
+            ? 'bg-slate-800 border-slate-700'
             : 'bg-white border-[#ebebeb]'
         )}
       >
@@ -113,7 +113,7 @@ function PeriodToggle({ value, onChange, isDark }) {
   return (
     <div className={cn(
       'inline-flex items-center gap-0.5 p-0.5 rounded-lg',
-      isDark ? 'bg-[#1a1a1a]' : 'bg-gray-100'
+      isDark ? 'bg-slate-800' : 'bg-gray-100'
     )}>
       {PERIOD_TABS.map((tab) => (
         <button
@@ -124,7 +124,7 @@ function PeriodToggle({ value, onChange, isDark }) {
             'px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150',
             value === tab.value
               ? isDark
-                ? 'bg-[#262626] text-white shadow-sm'
+                ? 'bg-slate-700 text-white shadow-sm'
                 : 'bg-white text-gray-900 shadow-sm'
               : isDark
                 ? 'text-gray-500 hover:text-gray-400'
@@ -286,7 +286,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
           )}>
             <div className={cn(
               'w-14 h-14 rounded-xl flex items-center justify-center mb-4',
-              isDark ? 'bg-[#1a1a1a]' : 'bg-gray-50'
+              isDark ? 'bg-slate-800' : 'bg-gray-50'
             )}>
               <BarChart3 size={28} className="opacity-30" />
             </div>
@@ -310,19 +310,19 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                   <CartesianGrid
                     horizontal={true}
                     vertical={false}
-                    stroke={isDark ? '#1a1a1a' : '#f5f5f5'}
+                    stroke={isDark ? '#1e293b' : '#f5f5f5'}
                     strokeDasharray=""
                   />
                   <XAxis
                     dataKey="label"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: isDark ? '#666' : '#999' }}
+                    tick={{ fontSize: 11, fill: isDark ? '#64748b' : '#999' }}
                   />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 11, fill: isDark ? '#666' : '#999' }}
+                    tick={{ fontSize: 11, fill: isDark ? '#64748b' : '#999' }}
                     tickFormatter={formatMoney}
                   />
                   <Tooltip content={<CustomTooltip isDark={isDark} />} />
@@ -340,13 +340,13 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
                         return (
                           <g key={`dot-${payload.label}`}>
                             <circle cx={cx} cy={cy} r={5} fill={couleur} />
-                            <circle cx={cx} cy={cy} r={2.5} fill={isDark ? '#161616' : '#fff'} />
+                            <circle cx={cx} cy={cy} r={2.5} fill={isDark ? '#1e293b' : '#fff'} />
                           </g>
                         );
                       }
                       return <g key={`dot-${payload.label}`} />;
                     }}
-                    activeDot={{ r: 5, stroke: couleur, strokeWidth: 2, fill: isDark ? '#161616' : '#fff' }}
+                    activeDot={{ r: 5, stroke: couleur, strokeWidth: 2, fill: isDark ? '#1e293b' : '#fff' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -355,7 +355,7 @@ export default function RevenueChartWidget({ setPage, isDark = false, couleur = 
             {/* Mini stats row */}
             <div className={cn(
               'flex items-center gap-6 pt-4 border-t',
-              isDark ? 'border-[#1a1a1a]' : 'border-gray-100'
+              isDark ? 'border-slate-700' : 'border-gray-100'
             )}>
               <MiniStat
                 label="Total"

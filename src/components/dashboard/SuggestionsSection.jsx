@@ -137,7 +137,7 @@ function SuggestionItem({
       className={cn(
         'flex-shrink-0 w-80 p-4 rounded-xl border transition-all duration-150',
         'flex flex-col',
-        isDark ? 'bg-[#161616] border-gray-800/60' : 'bg-white border-gray-200/70'
+        isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-gray-200/70'
       )}
       style={{ borderLeftWidth: '2px', borderLeftColor: config.color }}
     >
@@ -612,13 +612,13 @@ export default function SuggestionsSection({
   return (
     <div className={cn(
       'rounded-xl border overflow-hidden',
-      isDark ? 'bg-[#111] border-[#262626]' : 'bg-white border-gray-200/70',
+      isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200/70',
       className
     )}>
       {/* Header */}
       <div className={cn(
         'flex items-center justify-between px-5 py-3.5 border-b',
-        isDark ? 'border-[#1a1a1a]' : 'border-gray-100'
+        isDark ? 'border-slate-700' : 'border-gray-100'
       )}>
         <div className="flex items-center gap-2.5">
           <h2 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
@@ -627,7 +627,7 @@ export default function SuggestionsSection({
           {totalCount > 0 && (
             <span className={cn(
               'text-[11px] font-medium px-1.5 py-0.5 rounded-md',
-              isDark ? 'bg-[#1a1a1a] text-gray-400' : 'bg-gray-100 text-gray-500'
+              isDark ? 'bg-slate-800 text-gray-400' : 'bg-gray-100 text-gray-500'
             )}>
               {totalCount}
             </span>

@@ -71,7 +71,7 @@ function Sparkline({ data, color }) {
 function ProgressBar({ value, max, color, isDark }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
-    <div className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#f0f0f0]'}`}>
+    <div className={`w-full h-2 rounded-full mt-3 ${isDark ? 'bg-slate-700' : 'bg-[#f0f0f0]'}`}>
       <div
         className="h-2 rounded-full transition-all duration-500"
         style={{ width: `${pct}%`, background: color }}
@@ -82,10 +82,10 @@ function ProgressBar({ value, max, color, isDark }) {
 
 function KPICardItem({ icon: Icon, iconColor, label, value, trend, children, isDark, onClick, modeDiscret }) {
   const cardBg = isDark
-    ? 'bg-[#161616] border-gray-800/60'
+    ? 'bg-slate-800 border-slate-700/50'
     : 'bg-white border-gray-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
-  const labelColor = isDark ? 'text-[#666]' : 'text-[#999]';
-  const valueColor = isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]';
+  const labelColor = isDark ? 'text-slate-500' : 'text-[#999]';
+  const valueColor = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
 
   return (
     <div
@@ -148,7 +148,7 @@ export default function KPIGrid({
     return currencyFormat.format(v);
   };
 
-  const badgeBg = isDark ? 'bg-[#1e1e1e] text-[#a0a0a0]' : 'bg-[#f5f5f5] text-[#666]';
+  const badgeBg = isDark ? 'bg-slate-700 text-slate-400' : 'bg-[#f5f5f5] text-[#666]';
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

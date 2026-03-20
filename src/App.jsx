@@ -101,14 +101,14 @@ const safeStr = (v, fallback = '') => {
 
 // Theme classes helper — Linear-inspired palette
 const getThemeClasses = (isDark) => ({
-  card: isDark ? "bg-[#161616] border-gray-800/60" : "bg-white border-gray-200/70",
-  cardHover: isDark ? "hover:bg-[#1e1e1e]" : "hover:bg-[#f5f5f5]",
-  input: isDark ? "bg-[#1e1e1e] border-[#262626] text-[#f5f5f5] placeholder-[#666]" : "bg-white border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]",
-  text: isDark ? "text-[#f5f5f5]" : "text-[#1a1a1a]",
-  textSecondary: isDark ? "text-[#a0a0a0]" : "text-[#666]",
-  textMuted: isDark ? "text-[#666]" : "text-[#999]",
-  bg: isDark ? "bg-[#0a0a0a]" : "bg-[#fafafa]",
-  border: isDark ? "border-[#262626]" : "border-[#ebebeb]",
+  card: isDark ? "bg-slate-800 border-slate-700/50" : "bg-white border-gray-200/70",
+  cardHover: isDark ? "hover:bg-slate-700" : "hover:bg-[#f5f5f5]",
+  input: isDark ? "bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500" : "bg-white border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]",
+  text: isDark ? "text-slate-100" : "text-[#1a1a1a]",
+  textSecondary: isDark ? "text-slate-400" : "text-[#666]",
+  textMuted: isDark ? "text-slate-500" : "text-[#999]",
+  bg: isDark ? "bg-slate-900" : "bg-[#fafafa]",
+  border: isDark ? "border-slate-700" : "border-[#ebebeb]",
 });
 
 export default function App() {
@@ -1019,7 +1019,7 @@ export default function App() {
 
   // Login Page
   if (!user) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex">
+    <div className="min-h-screen bg-slate-900 flex">
       {/* Left - Hero */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600" />
@@ -1064,12 +1064,12 @@ export default function App() {
           </div>
           
           <h2 className="text-3xl font-bold text-white mb-2">{showSignUp ? 'Créer un compte' : 'Connexion'}</h2>
-          <p className="text-[#666] mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
+          <p className="text-slate-500 mb-8">{showSignUp ? 'Commencez gratuitement' : 'Accédez à votre espace'}</p>
           
           <form onSubmit={showSignUp ? handleSignUp : handleSignIn} className="space-y-4">
             {showSignUp && (
               <input
-                className="w-full px-4 py-3 bg-[#161616] border border-[#262626] rounded-xl text-white placeholder-[#999] focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                 placeholder="Nom entreprise"
                 value={authForm.nom}
                 onChange={e => setAuthForm(p => ({...p, nom: e.target.value}))}
@@ -1079,7 +1079,7 @@ export default function App() {
             )}
             <input
               type="email"
-              className="w-full px-4 py-3 bg-[#161616] border border-[#262626] rounded-xl text-white placeholder-[#999] focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
               placeholder="Email"
               value={authForm.email}
               onChange={e => setAuthForm(p => ({...p, email: e.target.value}))}
@@ -1090,7 +1090,7 @@ export default function App() {
             <div>
               <input
                 type="password"
-                className="w-full px-4 py-3 bg-[#161616] border border-[#262626] rounded-xl text-white placeholder-[#999] focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                 placeholder="Mot de passe"
                 value={authForm.password}
                 onChange={e => setAuthForm(p => ({...p, password: e.target.value}))}
@@ -1102,7 +1102,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => showToast('Contactez support@batigesti.fr', 'info')}
-                  className="text-sm text-[#666] hover:text-orange-400 mt-2 transition-colors self-end"
+                  className="text-sm text-slate-500 hover:text-orange-400 mt-2 transition-colors self-end"
                 >
                   Mot de passe oublié ?
                 </button>
@@ -1132,7 +1132,7 @@ export default function App() {
             </button>
           </form>
           
-          <p className="text-center text-[#666] mt-6">
+          <p className="text-center text-slate-500 mt-6">
             {showSignUp ? 'Déjà inscrit ?' : 'Pas de compte ?'}{' '}
             <button onClick={() => setShowSignUp(!showSignUp)} className="text-orange-500 hover:text-orange-400 font-medium">
               {showSignUp ? 'Se connecter' : "S'inscrire"}
@@ -1265,11 +1265,11 @@ export default function App() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Optimized mobile layout with collapsed icons-only mode on md-xl */}
-      <aside className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-[#0a0a0a] border-r border-[#262626]' : 'bg-white border-r border-[#ebebeb]'} transform transition-all duration-200 flex flex-col
+      <aside className={`fixed top-0 left-0 z-50 h-full ${isDark ? 'bg-slate-900 border-r border-slate-700' : 'bg-white border-r border-[#ebebeb]'} transform transition-all duration-200 flex flex-col
         ${sidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full'}
         md:translate-x-0 md:w-[72px] xl:w-64 md:shadow-none`}>
         {/* Header with close button on mobile */}
-        <div className={`flex items-center gap-3 px-3 py-3 border-b ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'} flex-shrink-0 md:justify-center xl:justify-start`}>
+        <div className={`flex items-center gap-3 px-3 py-3 border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} flex-shrink-0 md:justify-center xl:justify-start`}>
           <div className="hidden xl:block flex-1 min-w-0">
             <EntrepriseSwitcher
               isDark={isDark}
@@ -1292,7 +1292,7 @@ export default function App() {
           {/* Close button - mobile only */}
           <button
             onClick={() => setSidebarOpen(false)}
-            className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-[#666] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#999] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+            className={`md:hidden p-2 rounded-xl transition-colors ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-100' : 'text-[#999] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
             aria-label="Fermer le menu"
           >
             <X size={18} />
@@ -1307,7 +1307,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-[#a0a0a0] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1328,7 +1328,7 @@ export default function App() {
             {/* Devis IA — sub-item right under Devis & Factures */}
             <button
               onClick={() => { setPage('ia-devis'); setSidebarOpen(false); try { localStorage.setItem('cp_ia_devis_visited', '1'); } catch(e) {} }}
-              className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start pl-7 pr-3 md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-[#666] hover:bg-[#161616] hover:text-[#a0a0a0]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+              className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start pl-7 pr-3 md:px-3 xl:pl-7 xl:pr-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-95 ${page === 'ia-devis' ? 'text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
               style={page === 'ia-devis' ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
               title="Devis IA"
             >
@@ -1342,7 +1342,7 @@ export default function App() {
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-[#a0a0a0] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1363,16 +1363,16 @@ export default function App() {
           </nav>
 
           {/* Separator */}
-          <div className={`my-2 mx-3 border-t ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`} />
+          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`} />
 
           {/* Planning & Tâches group */}
           <nav className="space-y-0.5 mb-1" aria-label="Organisation">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-[#666]' : 'text-[#999]'}`}>Organisation</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Organisation</p>
             {nav.filter(n => n.id === 'planning' || n.id === 'memos').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-[#a0a0a0] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1394,12 +1394,12 @@ export default function App() {
 
           {/* Secondary navigation */}
           <nav className="space-y-0.5" aria-label="Gestion">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-[#666]' : 'text-[#999]'}`}>Gestion</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Gestion</p>
             {nav.filter(n => !['dashboard','devis','chantiers','clients','planning','memos','profil','plan'].includes(n.id)).map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); setSelectedChantier(null); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-[#a0a0a0] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1426,16 +1426,16 @@ export default function App() {
           </nav>
 
           {/* Separator */}
-          <div className={`my-2 mx-3 border-t ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`} />
+          <div className={`my-2 mx-3 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`} />
 
           {/* Profil section */}
           <nav className="space-y-0.5" aria-label="Profil">
-            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-[#666]' : 'text-[#999]'}`}>Profil</p>
+            <p className={`px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider md:hidden xl:block ${isDark ? 'text-slate-500' : 'text-[#999]'}`}>Profil</p>
             {nav.filter(n => n.id === 'profil' || n.id === 'plan').map(n => (
               <button
                 key={n.id}
                 onClick={() => { setPage(n.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-[#a0a0a0] hover:bg-[#161616] hover:text-[#f5f5f5]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+                className={`w-full flex items-center gap-3 justify-start md:justify-center xl:justify-start px-3 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95 ${page === n.id ? 'text-white shadow-md' : isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
                 style={page === n.id ? {background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`} : {}}
                 aria-current={page === n.id ? 'page' : undefined}
                 title={n.label}
@@ -1448,11 +1448,11 @@ export default function App() {
         </div>
 
         {/* Bottom actions - fixed at bottom */}
-        <div className={`flex-shrink-0 p-2 border-t ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'} space-y-1`}>
+        <div className={`flex-shrink-0 p-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} space-y-1`}>
           <div className="flex gap-1 md:flex-col xl:flex-row">
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-[#666] hover:bg-[#161616] hover:text-[#a0a0a0]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all ${modeDiscret ? 'bg-amber-600 text-white shadow-md' : isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
               title={modeDiscret ? 'Désactiver mode confidentiel — Afficher les montants' : 'Activer mode confidentiel — Masquer tous les montants (€) à l\'écran'}
             >
               {modeDiscret ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -1460,7 +1460,7 @@ export default function App() {
             </button>
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 ${isDark ? 'text-[#666] hover:bg-[#161616] hover:text-[#a0a0a0]' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-slate-400' : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'}`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
             >
               {isDark ? <Sun size={15} /> : <Moon size={15} />}
@@ -1469,7 +1469,7 @@ export default function App() {
           </div>
           <button
             onClick={handleSignOut}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ${isDark ? 'text-[#666] hover:bg-red-500/10 hover:text-red-400' : 'text-[#666] hover:bg-red-50 hover:text-red-500'}`}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs transition-all active:scale-95 ${isDark ? 'text-slate-500 hover:bg-red-500/10 hover:text-red-400' : 'text-[#666] hover:bg-red-50 hover:text-red-500'}`}
           >
             <LogOut size={13} />
             <span className="md:hidden xl:inline">Déconnexion</span>
@@ -1478,16 +1478,16 @@ export default function App() {
       </aside>
 
       {/* Main content */}
-      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#fafafa]'}`}>
+      <div className={`md:pl-[72px] xl:pl-64 min-h-screen overflow-x-hidden pb-14 lg:pb-0 ${isDark ? 'bg-slate-900' : 'bg-[#fafafa]'}`}>
         {/* Header - Optimized for mobile with proper left/right distribution */}
-        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-[#0a0a0a]/95 border-[#262626]' : 'bg-white/80 border-[#ebebeb]'}`}>
+        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-2 sm:px-4 py-2 flex items-center justify-between ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/80 border-[#ebebeb]'}`}>
 
           {/* LEFT GROUP: Menu + Logo + Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* Menu button - mobile only (sidebar visible from md: up) */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-[#f5f5f5] hover:bg-[#161616]' : 'hover:bg-[#f5f5f5]'}`}
+              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'text-slate-100 hover:bg-slate-800' : 'hover:bg-[#f5f5f5]'}`}
               aria-label="Ouvrir le menu"
             >
               <Menu size={20} />
@@ -1534,11 +1534,11 @@ export default function App() {
           <div className="hidden md:flex flex-1 justify-center px-4">
             <button
               onClick={() => setShowSearch(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] ${isDark ? 'border-[#262626] hover:border-[#333] bg-[#161616]/50 text-[#666]' : 'border-[#ebebeb] hover:border-[#ddd] bg-[#fafafa] text-[#999]'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all w-full max-w-[320px] ${isDark ? 'border-slate-700 hover:border-slate-600 bg-slate-800/50 text-slate-500' : 'border-[#ebebeb] hover:border-[#ddd] bg-[#fafafa] text-[#999]'}`}
             >
               <Search size={16} />
               <span className="text-sm truncate">Rechercher...</span>
-              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-[#262626] text-[#666]' : 'bg-[#f0f0f0] text-[#999]'}`}>⌘K</kbd>
+              <kbd className={`ml-auto text-xs px-1.5 py-0.5 rounded hidden lg:block ${isDark ? 'bg-slate-700 text-slate-500' : 'bg-[#f0f0f0] text-[#999]'}`}>⌘K</kbd>
             </button>
           </div>
 
@@ -1547,7 +1547,7 @@ export default function App() {
             {/* Search button - mobile only (icon) */}
             <button
               onClick={() => setShowSearch(true)}
-              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-[#161616] text-[#a0a0a0]' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`md:hidden w-11 h-11 rounded-xl flex items-center justify-center ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               title="Rechercher"
               aria-label="Rechercher"
             >
@@ -1557,7 +1557,7 @@ export default function App() {
             {/* Theme toggle - hidden on mobile, shown in sidebar instead */}
             <button
               onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${isDark ? 'hover:bg-[#161616] text-amber-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${isDark ? 'hover:bg-slate-800 text-amber-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               title={isDark ? 'Mode clair' : 'Mode sombre'}
               aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
             >
@@ -1567,7 +1567,7 @@ export default function App() {
             {/* Help button - tablet and desktop only */}
             <button
               onClick={() => setShowHelp(true)}
-              className={`hidden md:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-[#161616] text-[#a0a0a0]' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden md:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               title="Aide"
               aria-label="Ouvrir l'aide"
             >
@@ -1577,7 +1577,7 @@ export default function App() {
             {/* Mode confidentiel toggle — hidden on small mobile, visible sm+ */}
             <button
               onClick={() => { const next = !modeDiscret; setModeDiscret(next); showToast(next ? 'Mode confidentiel activé — Montants masqués' : 'Mode confidentiel désactivé — Montants visibles', 'info'); }}
-              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-[#161616] text-[#a0a0a0]' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
+              className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-colors ${modeDiscret ? 'text-white' : isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666]'}`}
               style={modeDiscret ? {background: couleur} : {}}
               title={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
               aria-label={modeDiscret ? 'Afficher les montants' : 'Masquer les montants'}
@@ -1598,7 +1598,7 @@ export default function App() {
                 }}
                 className={`hidden sm:flex w-11 h-11 lg:w-auto lg:h-11 lg:px-3 rounded-xl items-center justify-center gap-2 text-sm font-medium transition-all flex-shrink-0 border-2 ${
                   isDark
-                    ? 'border-[#262626] text-[#a0a0a0] hover:border-[#333] hover:bg-[#161616]/50'
+                    ? 'border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
                     : 'border-[#ebebeb] text-[#666] hover:border-[#ddd] hover:bg-[#f5f5f5]'
                 }`}
                 title="Installer l'application"
@@ -1612,7 +1612,7 @@ export default function App() {
             {/* Notifications */}
             <button
               onClick={() => setShowNotifs(!showNotifs)}
-              className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-[#1e1e1e] text-[#a0a0a0] hover:text-white' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#1a1a1a]'}`}
+              className={`relative w-11 h-11 rounded-xl flex items-center justify-center transition-all ${showNotifs ? 'text-white shadow-lg' : isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#1a1a1a]'}`}
               style={showNotifs ? {background: couleur} : {}}
               title={unreadNotifs.length > 0 ? `${unreadNotifs.length} notification${unreadNotifs.length > 1 ? 's' : ''} non lue${unreadNotifs.length > 1 ? 's' : ''}` : 'Notifications'}
               aria-label={`Notifications${unreadNotifs.length > 0 ? ` (${unreadNotifs.length} non lues)` : ''}`}
@@ -1641,7 +1641,7 @@ export default function App() {
               {showQuickAdd && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowQuickAdd(false)} />
-                  <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-[#161616] border border-[#262626]' : 'bg-white border border-[#ebebeb]'}`}>
+                  <div className={`absolute right-0 top-full mt-2 w-48 sm:w-56 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl z-50 py-2 overflow-hidden ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-[#ebebeb]'}`}>
                     {[
                       { label: 'Nouveau devis', icon: FileText, p: 'devis', create: 'devis' },
                       { label: 'Nouveau client', icon: Users, p: 'clients', create: 'client' },
@@ -1651,7 +1651,7 @@ export default function App() {
                       <button
                         key={item.label}
                         onClick={() => { if (item.create) setCreateMode(p => ({...p, [item.create]: true})); setPage(item.p); setShowQuickAdd(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-[#1e1e1e] text-white' : 'hover:bg-[#fafafa] text-[#1a1a1a]'}`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors ${isDark ? 'hover:bg-slate-700 text-white' : 'hover:bg-[#fafafa] text-[#1a1a1a]'}`}
                       >
                         <item.icon size={18} style={{color: couleur}} />
                         <span>{item.label}</span>
@@ -1744,7 +1744,7 @@ export default function App() {
         />
 
         {/* Mobile Bottom Navigation Bar — replaces sidebar on small screens */}
-        <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg ${isDark ? 'bg-[#0a0a0a]/95 border-[#262626]' : 'bg-white/95 border-[#ebebeb]'} pb-[env(safe-area-inset-bottom)]`}>
+        <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t backdrop-blur-lg ${isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-[#ebebeb]'} pb-[env(safe-area-inset-bottom)]`}>
           <div className="flex items-center justify-around h-14">
             {[
               { id: 'dashboard', icon: Home, label: 'Accueil' },
@@ -1765,7 +1765,7 @@ export default function App() {
                   className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
                     isActive
                       ? ''
-                      : isDark ? 'text-[#666] active:text-[#a0a0a0]' : 'text-[#999] active:text-[#666]'
+                      : isDark ? 'text-slate-500 active:text-slate-400' : 'text-[#999] active:text-[#666]'
                   }`}
                   style={isActive ? { color: couleur } : {}}
                 >
@@ -1785,7 +1785,7 @@ export default function App() {
             {/* 5th item: Plus / Menu — opens sidebar for all pages */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${isDark ? 'text-[#999] active:text-[#a0a0a0]' : 'text-[#666] active:text-[#666]'}`}
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${isDark ? 'text-slate-400 active:text-slate-300' : 'text-[#666] active:text-[#666]'}`}
             >
               <div className="flex items-center justify-center w-12 h-7 rounded-full">
                 <Menu size={21} strokeWidth={1.5} />
@@ -1907,7 +1907,7 @@ export default function App() {
           />
           {/* Modal */}
           <div
-            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-[#161616]' : 'bg-white'}`}
+            className={`relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-white'}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="notif-title"
@@ -1928,7 +1928,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setShowNotifs(false)}
-                  className={`p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-[#1e1e1e] text-[#666]' : 'hover:bg-[#f5f5f5] text-[#999]'}`}
+                  className={`p-2.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-500' : 'hover:bg-[#f5f5f5] text-[#999]'}`}
                   aria-label="Fermer"
                 >
                   <X size={22} />
@@ -1947,7 +1947,7 @@ export default function App() {
                   <p className={`text-sm mt-2 ${tc.textMuted}`}>Aucune notification pour le moment</p>
                 </div>
               ) : (
-                <div className={`divide-y ${isDark ? 'divide-[#262626]' : 'divide-[#ebebeb]'}`}>
+                <div className={`divide-y ${isDark ? 'divide-slate-700' : 'divide-[#ebebeb]'}`}>
                   {notifications.map(n => {
                     const typeConfig = {
                       success: { icon: '✅', bg: isDark ? 'bg-emerald-900/40' : 'bg-emerald-100' },
@@ -1976,7 +1976,7 @@ export default function App() {
                             setShowNotifs(false);
                           }
                         }}
-                        className={`w-full text-left px-5 py-4 transition-all ${!n.read ? (isDark ? 'bg-[#1e1e1e]/40' : 'bg-orange-50/70') : ''} ${isDark ? 'hover:bg-[#1e1e1e]/60' : 'hover:bg-[#fafafa]'}`}
+                        className={`w-full text-left px-5 py-4 transition-all ${!n.read ? (isDark ? 'bg-slate-700/40' : 'bg-orange-50/70') : ''} ${isDark ? 'hover:bg-slate-700/60' : 'hover:bg-[#fafafa]'}`}
                       >
                         <div className="flex items-start gap-4">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${config.bg}`}>
@@ -2006,13 +2006,13 @@ export default function App() {
 
             {/* Footer */}
             {notifications.length > 0 && (
-              <div className={`flex-shrink-0 px-5 py-4 border-t ${isDark ? 'border-[#262626] bg-[#161616]/80' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
+              <div className={`flex-shrink-0 px-5 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-800/80' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
                 <button
                   onClick={() => {
                     markAllNotifsRead();
                     setShowNotifs(false);
                   }}
-                  className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-[#1e1e1e] text-[#a0a0a0] hover:bg-[#262626]' : 'bg-[#f0f0f0] text-[#666] hover:bg-[#ebebeb]'}`}
+                  className={`w-full py-3 rounded-xl text-sm font-medium transition-colors ${isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-[#f0f0f0] text-[#666] hover:bg-[#ebebeb]'}`}
                 >
                   Tout marquer comme lu
                 </button>
@@ -2024,7 +2024,7 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden" aria-label="Navigation rapide">
-        <div className={`flex items-center justify-around px-1 py-1 border-t ${isDark ? 'bg-[#0a0a0a]/95 border-[#262626] backdrop-blur' : 'bg-white/95 border-[#ebebeb] backdrop-blur'}`}>
+        <div className={`flex items-center justify-around px-1 py-1 border-t ${isDark ? 'bg-slate-900/95 border-slate-700 backdrop-blur' : 'bg-white/95 border-[#ebebeb] backdrop-blur'}`}>
           {[
             { id: 'dashboard', icon: Home, label: 'Accueil' },
             { id: 'devis', icon: FileText, label: 'Devis' },
@@ -2034,7 +2034,7 @@ export default function App() {
             <button
               key={item.id}
               onClick={() => { setPage(item.id); setSelectedChantier(null); }}
-              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg min-h-[44px] transition-colors ${page === item.id ? 'text-white' : isDark ? 'text-[#666]' : 'text-[#999]'}`}
+              className={`flex flex-col items-center justify-center py-1.5 px-3 rounded-lg min-h-[44px] transition-colors ${page === item.id ? 'text-white' : isDark ? 'text-slate-500' : 'text-[#999]'}`}
               style={page === item.id ? { color: couleur } : {}}
             >
               <item.icon size={20} />
@@ -2052,7 +2052,7 @@ export default function App() {
               toast.type === 'success' ? (isDark ? 'bg-emerald-900/90 text-emerald-100' : 'bg-emerald-600 text-white') :
               toast.type === 'error' ? (isDark ? 'bg-red-900/90 text-red-100' : 'bg-red-600 text-white') :
               toast.type === 'warning' ? (isDark ? 'bg-amber-900/90 text-amber-100' : 'bg-amber-600 text-white') :
-              (isDark ? 'bg-[#1e1e1e] text-[#f5f5f5]' : 'bg-[#161616] text-white')
+              (isDark ? 'bg-slate-800 text-slate-100' : 'bg-[#161616] text-white')
             }`}
           >
             {toast.type === 'success' && <CheckCircle size={18} />}
@@ -2156,8 +2156,8 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
   const [helpSection, setHelpSection] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const textPrimary = isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]';
-  const textSecondary = isDark ? 'text-[#a0a0a0]' : 'text-[#666]';
+  const textPrimary = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
 
   const helpSections = {
     overview: {
@@ -2173,7 +2173,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               Jean, plombier, utilise BatiGesti pour : créer ses devis en 5 min, suivre la marge de chaque chantier, et ne jamais oublier une relance client.
             </p>
           </div>
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
             <h4 className={`font-semibold mb-2 ${textPrimary}`}>📍 Par où commencer ?</h4>
             <ol className={`text-sm space-y-2 ${textSecondary}`}>
               <li>1. Configurez votre entreprise dans <strong>Paramètres</strong></li>
@@ -2192,15 +2192,15 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
         <div className="space-y-4">
           <p className={textSecondary}>Créez des devis professionnels et transformez-les en factures en un clic.</p>
           <div className="space-y-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>1. Créer un devis</h5>
               <p className={`text-sm ${textSecondary}`}>Cliquez sur "Nouveau" puis ajoutez vos lignes depuis le catalogue ou manuellement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>2. Envoyer au client</h5>
               <p className={`text-sm ${textSecondary}`}>Générez le PDF et envoyez-le par WhatsApp ou email directement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>3. Convertir en facture</h5>
               <p className={`text-sm ${textSecondary}`}>Devis accepté ? Demandez un acompte ou facturez directement.</p>
             </div>
@@ -2216,15 +2216,15 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
         <div className="space-y-4">
           <p className={textSecondary}>Suivez chaque chantier : dépenses, heures, avancement et rentabilité.</p>
           <div className="space-y-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>📊 Suivi financier</h5>
               <p className={`text-sm ${textSecondary}`}>Ajoutez vos dépenses (matériaux, sous-traitance) et pointez les heures. La marge se calcule automatiquement.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>📸 Photos de chantier</h5>
               <p className={`text-sm ${textSecondary}`}>Prenez des photos avant/pendant/après pour documenter votre travail.</p>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'}`}>
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'}`}>
               <h5 className={`font-medium mb-1 ${textPrimary}`}>✅ To-do list</h5>
               <p className={`text-sm ${textSecondary}`}>Créez des tâches pour ne rien oublier sur chaque chantier.</p>
             </div>
@@ -2239,7 +2239,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
       content: (
         <div className="space-y-4">
           <p className={textSecondary}>La marge nette est calculée automatiquement :</p>
-          <div className={`p-4 rounded-xl font-mono text-sm ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#f5f5f5]'}`}>
+          <div className={`p-4 rounded-xl font-mono text-sm ${isDark ? 'bg-slate-800' : 'bg-[#f5f5f5]'}`}>
             <p className={textPrimary}>Marge = CA - Dépenses - Main d'œuvre</p>
           </div>
           <div className="space-y-2">
@@ -2324,14 +2324,14 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Rechercher une question..."
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-[#1e1e1e] border-[#262626] text-white placeholder-[#999]' : 'bg-[#fafafa] border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]'}`}
+              className={`w-full px-4 py-2.5 rounded-xl border text-sm ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-[#fafafa] border-[#ebebeb] text-[#1a1a1a] placeholder-[#999]'}`}
             />
             {filtered.length === 0 && (
               <p className={`text-sm text-center py-4 ${textSecondary}`}>Aucun résultat. Contactez-nous à support@batigesti.fr</p>
             )}
             {filtered.map((item, i) => (
-              <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
-                <summary className={`px-4 py-3 cursor-pointer text-sm font-medium ${isDark ? 'hover:bg-[#1e1e1e]' : 'hover:bg-[#fafafa]'} ${textPrimary}`}>
+              <details key={i} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
+                <summary className={`px-4 py-3 cursor-pointer text-sm font-medium ${isDark ? 'hover:bg-slate-700' : 'hover:bg-[#fafafa]'} ${textPrimary}`}>
                   {item.q}
                 </summary>
                 <div className={`px-4 pb-3 text-sm ${textSecondary}`}>{item.a}</div>
@@ -2348,7 +2348,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
       content: (
         <div className="space-y-4">
           <p className={textSecondary}>Notre équipe répond sous 48h ouvrées.</p>
-          <div className={`p-5 rounded-xl ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'} space-y-3`}>
+          <div className={`p-5 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} space-y-3`}>
             <div className="flex items-center gap-3">
               <span className="text-2xl">📧</span>
               <div>
@@ -2387,9 +2387,9 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setShowHelp(false)}>
-      <div className={`${isDark ? 'bg-[#161616]' : 'bg-white'} rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-2xl w-full max-w-3xl shadow-2xl animate-slide-up max-h-[90vh] overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className={`p-4 sm:p-5 border-b ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
+        <div className={`p-4 sm:p-5 border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}20` }}>
@@ -2400,14 +2400,14 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
                 <p className={`text-sm ${textSecondary}`}>Tout savoir sur BatiGesti</p>
               </div>
             </div>
-            <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-[#1e1e1e]' : 'hover:bg-[#f5f5f5]'}`}>
+            <button onClick={() => setShowHelp(false)} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center ${isDark ? 'hover:bg-slate-700' : 'hover:bg-[#f5f5f5]'}`}>
               <span className={textPrimary}>✕</span>
             </button>
           </div>
         </div>
 
         {/* Tabs - Mobile only */}
-        <div className={`md:hidden border-b ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
+        <div className={`md:hidden border-b ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
           <div className="flex overflow-x-auto p-2 gap-1 scrollbar-hide">
             {Object.entries(helpSections).map(([key, section]) => (
               <button
@@ -2417,7 +2417,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
                   helpSection === key
                     ? 'text-white'
                     : isDark
-                      ? 'bg-[#1e1e1e] text-[#a0a0a0] hover:bg-[#262626]'
+                      ? 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                       : 'bg-[#f5f5f5] text-[#666] hover:bg-[#f0f0f0]'
                 }`}
                 style={helpSection === key ? { background: couleur } : {}}
@@ -2432,7 +2432,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
         {/* Content with sidebar for desktop */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar - Desktop only */}
-          <div className={`hidden md:block w-48 border-r ${isDark ? 'border-[#262626] bg-[#161616]/50' : 'border-[#ebebeb] bg-[#fafafa]'} p-3`}>
+          <div className={`hidden md:block w-48 border-r ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-[#ebebeb] bg-[#fafafa]'} p-3`}>
             <div className="space-y-1">
               {Object.entries(helpSections).map(([key, section]) => (
                 <button
@@ -2442,7 +2442,7 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
                     helpSection === key
                       ? 'text-white'
                       : isDark
-                        ? 'text-[#666] hover:bg-[#1e1e1e] hover:text-[#a0a0a0]'
+                        ? 'text-slate-500 hover:bg-slate-700 hover:text-slate-400'
                         : 'text-[#666] hover:bg-[#f5f5f5] hover:text-[#1a1a1a]'
                   }`}
                   style={helpSection === key ? { background: couleur } : {}}
@@ -2472,8 +2472,8 @@ function HelpModal({ showHelp, setShowHelp, isDark, couleur, tc }) {
 function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
   const [step, setStep] = useState(0);
 
-  const textPrimary = isDark ? 'text-[#f5f5f5]' : 'text-[#1a1a1a]';
-  const textSecondary = isDark ? 'text-[#a0a0a0]' : 'text-[#666]';
+  const textPrimary = isDark ? 'text-slate-100' : 'text-[#1a1a1a]';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-[#666]';
 
   const steps = [
     {
@@ -2508,7 +2508,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
       subtitle: "Du devis à la facture en 2 clics",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'} border ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: couleur + '30' }}>
@@ -2521,12 +2521,12 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
               <span className={`px-3 py-1 rounded-full text-xs ${isDark ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Accepté</span>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#161616]/80' : 'bg-white'} space-y-2`}>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800/80' : 'bg-white'} space-y-2`}>
               <div className="flex justify-between text-sm">
                 <span className={textSecondary}>Rénovation cuisine complète</span>
                 <span className={textPrimary}>5 000 €</span>
               </div>
-              <div className={`pt-2 border-t ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'} flex justify-between`}>
+              <div className={`pt-2 border-t ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'} flex justify-between`}>
                 <span className={`font-medium ${textPrimary}`}>Total TTC</span>
                 <span className="font-bold text-lg" style={{ color: couleur }}>5 500 €</span>
               </div>
@@ -2546,7 +2546,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
       subtitle: "Dépenses, heures et rentabilité",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#fafafa]'} border ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-[#fafafa]'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className={`font-bold ${textPrimary}`}>Rénovation Dupont</p>
@@ -2558,15 +2558,15 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-[#161616]' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
                 <p className="font-bold text-blue-500">5 500€</p>
                 <p className={`text-xs ${textSecondary}`}>CA</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-[#161616]' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
                 <p className="font-bold text-red-500">1 200€</p>
                 <p className={`text-xs ${textSecondary}`}>Dépenses</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-[#161616]' : 'bg-white'}`}>
+              <div className={`p-3 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
                 <p className="font-bold text-emerald-500">3 685€</p>
                 <p className={`text-xs ${textSecondary}`}>Marge</p>
               </div>
@@ -2584,7 +2584,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
       subtitle: "Votre première étape",
       content: (
         <div className="space-y-4">
-          <div className={`p-5 rounded-2xl ${isDark ? 'bg-gradient-to-br from-[#1e1e1e] to-[#161616]' : 'bg-gradient-to-br from-[#fafafa] to-white'} border ${isDark ? 'border-[#262626]' : 'border-[#ebebeb]'}`}>
+          <div className={`p-5 rounded-2xl ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80' : 'bg-gradient-to-br from-[#fafafa] to-white'} border ${isDark ? 'border-slate-700' : 'border-[#ebebeb]'}`}>
             <ol className="space-y-4">
               <li className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style={{ background: couleur }}>1</div>
@@ -2631,18 +2631,18 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
-      <div className={`${isDark ? 'bg-[#161616]' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
+      <div className={`${isDark ? 'bg-slate-800' : 'bg-white'} rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden relative`}>
         {/* Close button */}
         <button
           onClick={skipOnboarding}
-          className={`absolute top-4 right-4 p-2 rounded-xl z-10 transition-colors ${isDark ? 'hover:bg-[#1e1e1e] text-[#666] hover:text-[#a0a0a0]' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#666]'}`}
+          className={`absolute top-4 right-4 p-2 rounded-xl z-10 transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-500 hover:text-slate-400' : 'hover:bg-[#f5f5f5] text-[#666] hover:text-[#666]'}`}
           aria-label="Fermer"
         >
           <X size={20} />
         </button>
 
         {/* Progress bar */}
-        <div className={`h-1 ${isDark ? 'bg-[#1e1e1e]' : 'bg-[#ebebeb]'}`}>
+        <div className={`h-1 ${isDark ? 'bg-slate-700' : 'bg-[#ebebeb]'}`}>
           <div className="h-full transition-all duration-300" style={{ width: `${((step + 1) / steps.length) * 100}%`, background: couleur }}></div>
         </div>
 
@@ -2658,7 +2658,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
         </div>
 
         {/* Footer */}
-        <div className={`px-4 py-3 border-t ${isDark ? 'border-[#262626] bg-[#161616]/50' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
+        <div className={`px-4 py-3 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-[#ebebeb] bg-[#fafafa]'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
@@ -2673,7 +2673,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               </div>
               <button
                 onClick={skipOnboarding}
-                className={`text-xs ${isDark ? 'text-[#999] hover:text-[#a0a0a0]' : 'text-[#666] hover:text-[#666]'}`}
+                className={`text-xs ${isDark ? 'text-slate-400 hover:text-slate-300' : 'text-[#666] hover:text-[#666]'}`}
               >
                 Passer
               </button>
@@ -2682,7 +2682,7 @@ function OnboardingModal({ setShowOnboarding, isDark, couleur }) {
               {step > 0 && (
                 <button
                   onClick={() => setStep(step - 1)}
-                  className={`px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-[#1e1e1e] text-[#a0a0a0] hover:bg-[#262626]' : 'bg-[#f5f5f5] text-[#666] hover:bg-[#f0f0f0]'}`}
+                  className={`px-3 py-2 rounded-xl text-sm ${isDark ? 'bg-slate-700 text-slate-400 hover:bg-slate-600' : 'bg-[#f5f5f5] text-[#666] hover:bg-[#f0f0f0]'}`}
                 >
                   Retour
                 </button>

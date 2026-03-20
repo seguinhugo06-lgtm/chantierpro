@@ -366,7 +366,7 @@ function DevisCard({
   const getStatusBadge = (statut) => {
     switch (statut) {
       case 'brouillon':
-        return isDark ? 'bg-[#262626] text-gray-400' : 'bg-gray-100 text-gray-500';
+        return isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500';
       case 'envoye':
         return isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600';
       case 'vu':
@@ -377,7 +377,7 @@ function DevisCard({
       case 'refuse':
         return isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600';
       default:
-        return isDark ? 'bg-[#262626] text-gray-400' : 'bg-gray-100 text-gray-500';
+        return isDark ? 'bg-slate-700 text-gray-400' : 'bg-gray-100 text-gray-500';
     }
   };
 
@@ -400,9 +400,9 @@ function DevisCard({
         className={cn(
           'group flex items-center gap-3 p-3 transition-all duration-150',
           // Row hover — Linear style
-          isDark ? 'hover:bg-[#1a1a1a]' : 'hover:bg-[#fafafa]',
+          isDark ? 'hover:bg-slate-800' : 'hover:bg-[#fafafa]',
           // Subtle separator
-          isDark ? 'border-b border-[#262626] last:border-0' : 'border-b border-[#ebebeb] last:border-0',
+          isDark ? 'border-b border-slate-700 last:border-0' : 'border-b border-[#ebebeb] last:border-0',
         )}
       >
         {/* Client avatar */}

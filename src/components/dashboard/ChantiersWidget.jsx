@@ -403,7 +403,7 @@ function ChantierCard({ chantier, client, weather, equipe, onGPS, onPhotos, isDa
             ? 'bg-gradient-to-br from-orange-500/5 to-transparent border border-orange-500/20'
             : 'bg-gradient-to-br from-orange-50 to-orange-50/30 border border-orange-200/80'
           : isDark
-            ? 'hover:bg-[#1a1a1a] border border-[#262626]'
+            ? 'hover:bg-slate-800 border border-slate-700'
             : 'hover:bg-[#fafafa] border border-[#ebebeb]'
       )}
     >

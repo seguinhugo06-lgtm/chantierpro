@@ -91,7 +91,7 @@ button:active {
 }
 
 .card-gradient-dark {
-  background: linear-gradient(135deg, #161616 0%, #0a0a0a 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
 }
 
 /* Glass morphism effect */
@@ -799,13 +799,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .dark-mode {
-  --bg-primary: #0a0a0a;
-  --bg-card: #161616;
-  --bg-card-hover: #1e1e1e;
-  --border-default: #262626;
-  --text-primary: #f5f5f5;
-  --text-secondary: #a0a0a0;
-  --text-tertiary: #666666;
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --border-default: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
   --shadow-card: none;
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
