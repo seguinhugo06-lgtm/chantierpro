@@ -401,7 +401,7 @@ const ChatPage = memo(function ChatPage({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 flex h-[calc(100vh-56px)] lg:h-[calc(100vh-0px)] overflow-hidden rounded-none`}>
+    <div className={`${bgClass} -m-3 sm:-m-4 lg:-m-6 -mb-14 lg:-mb-6 flex h-[calc(100vh-56px-56px)] lg:h-[calc(100vh-56px)] overflow-hidden rounded-none`}>
       {/* Mobile sidebar overlay */}
       {showMobileSidebar && (
         <div className="lg:hidden absolute inset-0 z-30">
